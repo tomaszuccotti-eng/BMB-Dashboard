@@ -409,22 +409,60 @@ function buildTableCard(data){
     {key:'maturity',label:'Vencimiento',fmt:null},
     {key:'dias_maturity',label:'Días',fmt:'int'},
   ];
-  const headers=cols.map(c=>`<th>${c.label}</th>`).join('');
-  const rows=data.map(r=>{
-    const cells=cols.map(c=>{
-      if(c.key==='especie')return`<td onclick="openDetail('${r.especie}')">${r.especie}</td>`;
-      if(c.key==='maturity')return`<td>${r.maturity?r.maturity.substring(0,10):'—'}</td>`;
-      const fmtd=fmt(r[c.key],c.fmt);
-      let cls='';
-      if(c.cls==='var')cls=varClass(r.variacion);
-      if(c.cls==='tir')cls=tirClass(r.tir);
-      return`<td class="${cls}">${fmtd}</td>`;
+
+  let sortKey=null, sortDir=1;
+
+  function renderTable(rows){
+    const sorted=[...rows];
+    if(sortKey){
+      sorted.sort((a,b)=>{
+        const va=sortKey==='especie'||sortKey==='maturity'?a[sortKey]:(n(a[sortKey])||0);
+        const vb=sortKey==='especie'||sortKey==='maturity'?b[sortKey]:(n(b[sortKey])||0);
+        if(va<vb)return -1*sortDir;
+        if(va>vb)return 1*sortDir;
+        return 0;
+      });
+    }
+
+    const headers=cols.map(c=>{
+      const isActive=sortKey===c.key;
+      const arrow=isActive?(sortDir===1?'▲':'▼'):'⇅';
+      const arrowColor=isActive?'var(--accent3)':'var(--text3)';
+      return`<th style="cursor:pointer;user-select:none" onclick="__sortTable('${c.key}')">${c.label} <span style="font-size:9px;color:${arrowColor}">${arrow}</span></th>`;
     }).join('');
-    return`<tr>${cells}</tr>`;
-  }).join('');
+
+    const tableRows=sorted.map(r=>{
+      const cells=cols.map(c=>{
+        if(c.key==='especie')return`<td onclick="openDetail('${r.especie}')">${r.especie}</td>`;
+        if(c.key==='maturity')return`<td>${r.maturity?r.maturity.substring(0,10):'—'}</td>`;
+        const fmtd=fmt(r[c.key],c.fmt);
+        let cls='';
+        if(c.cls==='var')cls=varClass(r.variacion);
+        if(c.cls==='tir')cls=tirClass(r.tir);
+        return`<td class="${cls}">${fmtd}</td>`;
+      }).join('');
+      return`<tr>${cells}</tr>`;
+    }).join('');
+
+    card.querySelector('tbody').innerHTML=tableRows;
+    card.querySelectorAll('th').forEach((th,i)=>{
+      th.onclick=()=>__sortTable(cols[i].key);
+    });
+  }
+
+  window.__sortTable=function(key){
+    if(sortKey===key){sortDir*=-1;}else{sortKey=key;sortDir=1;}
+    renderTable(data);
+  };
+
   card.innerHTML=`
     <div class="card-header"><span class="card-title">Tabla — ${TIPOS[CURRENT_TAB]}</span></div>
-    <div class="table-scroll"><table class="data-table"><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table></div>`;
+    <div class="table-scroll"><table class="data-table">
+      <thead><tr>${cols.map(c=>`<th style="cursor:pointer;user-select:none" onclick="__sortTable('${c.key}')">${c.label} <span style="font-size:9px;color:var(--text3)">⇅</span></th>`).join('')}</tr></thead>
+      <tbody></tbody>
+    </table></div>`;
+
+  renderTable(data);
   return card;
 }
 
