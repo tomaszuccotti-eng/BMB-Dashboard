@@ -577,18 +577,17 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
         <span class="mosaic-badge">DISPONIBLE</span>
       </div>
 
-      <!-- Equity → próximo -->
-      <div class="mosaic-card disabled">
+      <!-- Equity → activo -->
+      <div class="mosaic-card" onclick="enterEquity()" style="cursor:pointer;">
         <div class="mosaic-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="3" width="20" height="14" rx="2"/>
-            <polyline points="8 21 12 17 16 21"/>
-            <line x1="12" y1="17" x2="12" y2="21"/>
+            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
+            <polyline points="16 7 22 7 22 13"/>
           </svg>
         </div>
         <div class="mosaic-name">Renta Variable</div>
-        <div class="mosaic-desc">Acciones locales, ADRs y CEDEARs del mercado argentino.</div>
-        <span class="mosaic-badge badge-soon">PRÓXIMAMENTE</span>
+        <div class="mosaic-desc">Acciones del mercado argentino con precios y variaciones.</div>
+        <span class="mosaic-badge">DISPONIBLE</span>
       </div>
 
       <!-- ONs → próximo -->
@@ -661,6 +660,28 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
   </div>
 </div>
 
+<!-- ══════════════════ APP RENTA VARIABLE ══════════════════ -->
+<div id="app-equity" style="display:none;flex-direction:column;min-height:100vh;">
+  <div class="header">
+    <div class="header-left">
+      <div class="logo" onclick="backToLanding()" style="gap:0;">
+        <img id="bm-logo-equity" src="" alt="Bull Market" style="height:28px;width:auto;margin-right:10px;mix-blend-mode:multiply;">
+        <span style="font-size:11px;font-family:var(--mono);color:var(--text3);font-weight:400;">— RENTA VARIABLE</span>
+      </div>
+      <div class="header-date" id="equity-date">—</div>
+    </div>
+    <div class="header-right">
+      <div class="status-dot"></div>
+    </div>
+  </div>
+  <div class="main" id="equity-content">
+    <div class="loading-state" id="equity-loading">
+      <div class="spinner"></div>
+      <div style="color:var(--text3);font-size:11px;font-family:var(--mono);">Cargando datos...</div>
+    </div>
+  </div>
+</div>
+
 <!-- DETAIL OVERLAY -->
 <div class="detail-view" id="detail-view">
   <div class="detail-header">
@@ -703,6 +724,7 @@ function setLogos(){
 document.addEventListener('DOMContentLoaded', setLogos);
 
 const SHEET_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vS3HCJ_QcVOvx3sj6ZZxofvqh91vyUxLhacQhQatYTLYABvMcqelJmgKYEFGO3NYSHAFnVmySErB9vd/pub?gid=0&single=true&output=csv';
+const SHEET_URL_EQUITY='https://docs.google.com/spreadsheets/d/e/2PACX-1vRUEu_zO60H9j9dOZv0-sRj4qpuBh50KHqBYGkFlG5NbhpXkHDxyJxl07qDvyvQ_vBXx0MkrDtJK7f5/pub?gid=0&single=true&output=csv';
 
 let ALL_DATA=[];
 let CURRENT_PLAZO='C.I.';
@@ -710,6 +732,8 @@ let CURRENT_TAB='lecap';
 let COMPARE_DATE=null;
 let COMPARE_MODE=null;
 let DATA_LOADED=false;
+let EQUITY_DATA=[];
+let DATA_EQUITY_LOADED=false;
 
 const TIPOS={lecap:'LECAP',boncap:'BONCAP',boncer:'BONCER',soberano:'SOBERANO',dolar_linked:'DOLAR_LINKED',bopreal:'BOPREAL',fixed_rate:'FIXED_RATE',badlar:'BADLAR',dual:'DUAL'};
 const COL_LABELS={fecha:'Fecha',especie:'Ticker',tir:'TIR',mod_duration:'MD',precio_limpio:'Px Limpio',ultimo:'Último',variacion:'Var%',maturity:'Vencimiento',dias_maturity:'Días',duration:'Duration',convexidad:'Convexidad'};
@@ -722,9 +746,20 @@ function enterApp(){
   document.getElementById('legal-footer').style.display='block';
   if(!DATA_LOADED) loadData();
 }
+function enterEquity(){
+  document.getElementById('landing').style.display='none';
+  document.getElementById('app-equity').style.display='flex';
+  document.getElementById('app-equity').style.flexDirection='column';
+  document.getElementById('legal-footer').style.display='block';
+  // sync logo
+  const logoEq=document.getElementById('bm-logo-equity');
+  if(logoEq&&LOGO_B64)logoEq.src=LOGO_B64;
+  if(!DATA_EQUITY_LOADED) loadEquityData();
+}
 function backToLanding(){
   document.getElementById('landing').style.display='flex';
   document.getElementById('app').style.display='none';
+  document.getElementById('app-equity').style.display='none';
   document.getElementById('legal-footer').style.display='none';
 }
 
@@ -1594,6 +1629,125 @@ function buildHistCharts(histRows,days){
 function closeDetail(){
   document.getElementById('detail-view').classList.remove('open');
   window._histRows=null;window._currentEspecie=null;
+}
+
+// ══════════════════ RENTA VARIABLE ══════════════════
+
+async function loadEquityData(){
+  try{
+    const res=await fetch(SHEET_URL_EQUITY);
+    const text=await res.text();
+    EQUITY_DATA=parseCSV(text);
+    DATA_EQUITY_LOADED=true;
+    const ld=getEquityLatestDate();
+    document.getElementById('equity-date').textContent=ld?fmtDate(ld):'—';
+    document.getElementById('equity-loading').style.display='none';
+    renderEquity();
+  }catch(e){
+    document.getElementById('equity-loading').innerHTML=
+      '<div style="color:var(--red);font-family:var(--mono);font-size:11px;">Error al cargar datos.</div>';
+  }
+}
+
+function getEquityLatestDate(){
+  const dates=EQUITY_DATA.map(r=>r.fecha).filter(Boolean).sort();
+  return dates[dates.length-1]||null;
+}
+
+function renderEquity(){
+  const main=document.getElementById('equity-content');
+  if(!main)return;
+  const ld=getEquityLatestDate();
+  const f=(ld||'').substring(0,10);
+  const data=EQUITY_DATA.filter(r=>r.fecha&&r.fecha.substring(0,10)===f&&r.especie&&r.especie!=='especie');
+  if(data.length===0){main.innerHTML='<div class="empty-msg">Sin datos.</div>';return;}
+  main.innerHTML='';
+  main.appendChild(buildEquityTable(data));
+}
+
+function buildEquityTable(data){
+  const card=document.createElement('div');
+  card.className='card';
+
+  const cols=[
+    {key:'especie',   label:'Ticker',      fmt:null},
+    {key:'ultimo',    label:'Último',       fmt:'num2'},
+    {key:'cierre_ant',label:'Cierre Ant.',  fmt:'num2'},
+    {key:'variacion', label:'Variación',    fmt:'var', cls:'var'},
+    {key:'total_vn',  label:'Vol. Nominal', fmt:'vol'},
+  ];
+
+  let sortKey='variacion', sortDir=-1; // default: mayor variación primero
+
+  function fmtVol(val){
+    const v=n(val);
+    if(isNaN(v))return'—';
+    if(v>=1e9)return(v/1e9).toFixed(2)+'B';
+    if(v>=1e6)return(v/1e6).toFixed(2)+'M';
+    if(v>=1e3)return(v/1e3).toFixed(1)+'K';
+    return v.toFixed(0);
+  }
+
+  function fmtEq(val,type){
+    if(type==='vol') return fmtVol(val);
+    return fmt(val,type);
+  }
+
+  function renderRows(){
+    const sorted=[...data];
+    sorted.sort((a,b)=>{
+      const isStr=sortKey==='especie';
+      const va=isStr?a[sortKey]:(n(a[sortKey])||0);
+      const vb=isStr?b[sortKey]:(n(b[sortKey])||0);
+      if(va<vb)return -1*sortDir;
+      if(va>vb)return  1*sortDir;
+      return 0;
+    });
+
+    // rebuild thead
+    const thead=card.querySelector('thead tr');
+    if(thead){
+      thead.innerHTML=cols.map(c=>{
+        let cls='';
+        if(sortKey===c.key)cls=sortDir===1?'sorted-asc':'sorted-desc';
+        return`<th class="${cls}">${c.label}</th>`;
+      }).join('');
+      thead.querySelectorAll('th').forEach((th,i)=>{
+        th.style.cursor='pointer';th.style.userSelect='none';
+        th.onclick=()=>{
+          if(sortKey===cols[i].key){sortDir*=-1;}else{sortKey=cols[i].key;sortDir=1;}
+          renderRows();
+        };
+      });
+    }
+
+    const tbody=card.querySelector('tbody');
+    if(!tbody)return;
+    tbody.innerHTML=sorted.map(r=>{
+      const cells=cols.map(c=>{
+        if(c.key==='especie') return`<td style="color:var(--accent);font-weight:600;text-align:left;">${r.especie}</td>`;
+        const fmtd=fmtEq(r[c.key],c.fmt);
+        let cls='';
+        if(c.cls==='var') cls=varClass(r.variacion);
+        return`<td class="${cls}">${fmtd}</td>`;
+      }).join('');
+      return`<tr>${cells}</tr>`;
+    }).join('');
+  }
+
+  const theadHtml=cols.map(c=>`<th style="cursor:pointer;user-select:none">${c.label}</th>`).join('');
+  card.innerHTML=`
+    <div class="card-header">
+      <span class="card-title">Acciones — Mercado Local</span>
+      <span style="font-size:10px;font-family:var(--mono);color:var(--text3);">Click en columna para ordenar</span>
+    </div>
+    <div class="table-scroll"><table class="data-table">
+      <thead><tr>${theadHtml}</tr></thead>
+      <tbody></tbody>
+    </table></div>`;
+
+  renderRows();
+  return card;
 }
 </script>
 </body>
