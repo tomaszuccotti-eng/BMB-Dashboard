@@ -1091,37 +1091,37 @@ function buildTableCard(data){
   let cols;
   if(CURRENT_TAB==='dual'){
     cols=[
-      {key:'especie',   label:'Ticker',      fmt:null},
-      {key:'ultimo',    label:'Último',       fmt:'num2'},
-      {key:'tir_fija',  label:'TIR Fija',     fmt:'pct', cls:'tir_fija'},
-      {key:'tir_tamar', label:'TIR TAMAR',    fmt:'pct', cls:'tir_tamar'},
-      {key:'tir',       label:'TIR Ganadora', fmt:'pct', cls:'tir'},
-      {key:'mod_duration',label:'MD',         fmt:'num4'},
-      {key:'variacion', label:'Var%',          fmt:'var', cls:'var'},
-      {key:'maturity',  label:'Vencimiento',  fmt:null},
+      {key:'especie',      label:'Ticker',    fmt:null},
+      {key:'ultimo',       label:'Dirty Px',  fmt:'num2'},
+      {key:'tir_fija',     label:'TIR Fija',  fmt:'pct', cls:'tir_fija', dual_leg:true},
+      {key:'tir_tamar',    label:'TIR TAMAR', fmt:'pct', cls:'tir_tamar', dual_leg:true},
+      {key:'mod_duration', label:'MD',        fmt:'num4'},
+      {key:'variacion',    label:'Var%',       fmt:'var', cls:'var'},
+      {key:'maturity',     label:'Vencimiento',fmt:null},
       {key:'dias_maturity',label:'Días',      fmt:'int'},
     ];
   } else if(CURRENT_TAB==='dolar_linked'){
     cols=[
-      {key:'especie',      label:'Ticker',     fmt:null},
-      {key:'dirty_usd',    label:'Precio USD',  fmt:'usd'},
-      {key:'tir',          label:'TIR',         fmt:'pct', cls:'tir'},
-      {key:'mod_duration', label:'MD',          fmt:'num4'},
-      {key:'variacion',    label:'Var%',         fmt:'var', cls:'var'},
-      {key:'maturity',     label:'Vencimiento', fmt:null},
-      {key:'dias_maturity',label:'Días',        fmt:'int'},
-    ];
-  } else {
-    cols=[
-      {key:'especie',      label:'Ticker',      fmt:null},
-      {key:'ultimo',       label:'Último',       fmt:'num2'},
-      {key:'precio_limpio',label:'Px Limpio',    fmt:'num2'},
+      {key:'especie',      label:'Ticker',       fmt:null},
+      {key:'ultimo',       label:'Dirty Px $',   fmt:'num2'},
+      {key:'precio_limpio',label:'Dirty Px U$S', fmt:'num2'},
       {key:'tir',          label:'TIR',          fmt:'pct', cls:'tir'},
       {key:'mod_duration', label:'MD',           fmt:'num4'},
-      {key:'duration',     label:'Duration',     fmt:'num2'},
       {key:'variacion',    label:'Var%',          fmt:'var', cls:'var'},
       {key:'maturity',     label:'Vencimiento',  fmt:null},
       {key:'dias_maturity',label:'Días',         fmt:'int'},
+    ];
+  } else {
+    cols=[
+      {key:'especie',      label:'Ticker',    fmt:null},
+      {key:'ultimo',       label:'Dirty Px',  fmt:'num2'},
+      {key:'precio_limpio',label:'Clean Px',  fmt:'num2'},
+      {key:'tir',          label:'TIR',       fmt:'pct', cls:'tir'},
+      {key:'mod_duration', label:'MD',        fmt:'num4'},
+      {key:'duration',     label:'Duration',  fmt:'num2'},
+      {key:'variacion',    label:'Var%',       fmt:'var', cls:'var'},
+      {key:'maturity',     label:'Vencimiento',fmt:null},
+      {key:'dias_maturity',label:'Días',      fmt:'int'},
     ];
   }
 
@@ -1160,6 +1160,11 @@ function buildTableCard(data){
     const tbody=card.querySelector('tbody');
     if(!tbody)return;
     tbody.innerHTML=sorted.map(r=>{
+      // Para duales: determinar pata activa comparando tir_fija vs tir_tamar (o usando r.tir si existe)
+      const activeLeg=CURRENT_TAB==='dual'
+        ? (n(r.tir_fija)>=n(r.tir_tamar)?'tir_fija':'tir_tamar')
+        : null;
+
       const cells=cols.map(c=>{
         if(c.key==='especie')return`<td onclick="openDetail('${r.especie}')">${r.especie}</td>`;
         if(c.key==='maturity')return`<td>${r.maturity?r.maturity.substring(0,10):'—'}</td>`;
@@ -1167,6 +1172,10 @@ function buildTableCard(data){
         let cls='';
         if(c.cls==='var')   cls=varClass(r.variacion);
         if(c.cls==='tir'||c.cls==='tir_fija'||c.cls==='tir_tamar')cls=tirClass(r[c.key]);
+        // Icono pata activa para duales
+        if(c.dual_leg && c.key===activeLeg){
+          return`<td class="${cls}">${fmtd} <span title="Pata activa" style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;background:var(--accent);border-radius:50%;margin-left:4px;vertical-align:middle;cursor:default;"><svg width="8" height="8" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span></td>`;
+        }
         return`<td class="${cls}">${fmtd}</td>`;
       }).join('');
       return`<tr>${cells}</tr>`;
