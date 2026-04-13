@@ -507,6 +507,33 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 .empty-msg { text-align:center; padding:40px; color:var(--text3); font-size:12px; font-family:var(--mono); }
 .table-scroll { overflow-x:auto; }
 
+.outlier-indicator {
+  position:absolute;
+  right:16px;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  pointer-events:none;
+  z-index:5;
+}
+.outlier-pip {
+  display:flex;
+  align-items:center;
+  gap:4px;
+  cursor:pointer;
+  pointer-events:all;
+  background:rgba(255,255,255,0.92);
+  border:1px solid var(--border2);
+  border-radius:4px;
+  padding:2px 6px 2px 4px;
+  font-size:9px;
+  font-family:var(--mono);
+  color:var(--text2);
+  transition:all .15s;
+  box-shadow:0 1px 4px rgba(30,39,243,0.10);
+}
+.outlier-pip:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
+.outlier-pip svg { flex-shrink:0; }
 /* Dual curves grid */
 .curves-grid { display:grid; grid-template-columns:1fr 1fr; gap:0; }
 .curves-grid .chart-canvas-wrap { height:220px; }
@@ -520,7 +547,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 <div id="landing">
   <div class="landing-header">
     <div class="landing-logo">
-      <img id="bm-logo-landing" src="" alt="Bull Market" style="height:38px;width:auto;">
+      <img id="bm-logo-landing" src="" alt="Bull Market" style="height:38px;width:auto;mix-blend-mode:multiply;">
     </div>
     <div class="landing-tagline" style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
       <span>RESEARCH &amp; ANALYTICS PLATFORM</span>
@@ -600,7 +627,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
   <div class="header">
     <div class="header-left">
       <div class="logo" onclick="backToLanding()" style="gap:0;">
-        <img id="bm-logo-app" src="" alt="Bull Market" style="height:28px;width:auto;margin-right:10px;">
+        <img id="bm-logo-app" src="" alt="Bull Market" style="height:28px;width:auto;margin-right:10px;mix-blend-mode:multiply;">
         <span style="font-size:11px;font-family:var(--mono);color:var(--text3);font-weight:400;">— RENTA FIJA</span>
       </div>
       <div class="header-date" id="header-date">—</div>
@@ -914,11 +941,18 @@ function renderSection(){
   main.appendChild(buildTableCard(data));
 }
 
-// ── CURVE CARD (genérica) ──
+// ── CURVE CARD (genérica) con outlier click-to-exclude ──
 function buildCurveCard(data,cmpData){
   const card=document.createElement('div');
   card.className='card';
   const ld=getLatestDate();
+
+  // Estado de excluidos (por tab, persiste mientras no cambiás de tab)
+  if(!window._excluded) window._excluded={};
+  const tabKey=CURRENT_TAB+'_'+CURRENT_PLAZO;
+  if(!window._excluded[tabKey]) window._excluded[tabKey]=new Set();
+  const excluded=window._excluded[tabKey];
+
   card.innerHTML=`
     <div class="card-header">
       <span class="card-title">Curva de Rendimientos — ${TIPOS[CURRENT_TAB]}</span>
@@ -930,21 +964,110 @@ function buildCurveCard(data,cmpData){
         <input type="date" class="date-input" value="${COMPARE_DATE?COMPARE_DATE.substring(0,10):''}" onchange="setCmpDate(this.value)" title="Fecha libre">
       </div>
     </div>
-    <div class="chart-wrap"><div class="chart-canvas-wrap"><canvas id="curve-chart"></canvas></div></div>
+    <div class="chart-wrap" style="position:relative;">
+      <div class="outlier-indicator" id="outlier-pips" style="top:8px;"></div>
+      <div class="chart-canvas-wrap"><canvas id="curve-chart"></canvas></div>
+    </div>
     <div class="chart-legend" id="curve-legend"></div>`;
 
   setTimeout(()=>{
     const valid=data.filter(r=>{const md=n(r.mod_duration),tir=n(r.tir);return md>0&&isFinite(tir)&&tir!==0;});
-    const pts=valid.map(r=>({x:n(r.mod_duration),y:n(r.tir)*100,label:r.especie}));
-    const datasets=[];
-    const tr=trendDataset(pts,'#1E27F3',false);
-    if(tr)datasets.push(tr);
-    datasets.push({label:ld?fmtDate(ld):'Hoy',data:pts,backgroundColor:'#1E27F3',borderColor:'#1E27F3',pointRadius:5,pointHoverRadius:7,showLine:false,order:2});
+    const allPts=valid.map(r=>({x:n(r.mod_duration),y:n(r.tir)*100,label:r.especie}));
+
+    let chartInst=null;
+
+    function getActivePts(){ return allPts.filter(p=>!excluded.has(p.label)); }
+
+    function buildDatasets(activePts){
+      const ds=[];
+      const tr=trendDataset(activePts,'#1E27F3',false);
+      if(tr)ds.push(tr);
+      // Dataset con todos los puntos; excluidos aparecen semi-transparentes
+      const colors=allPts.map(p=>excluded.has(p.label)?'rgba(30,39,243,0.18)':'#1E27F3');
+      const radii=allPts.map(p=>excluded.has(p.label)?4:5);
+      ds.push({
+        label:ld?fmtDate(ld):'Hoy',
+        data:allPts,
+        backgroundColor:colors,
+        borderColor:colors,
+        pointRadius:radii,
+        pointHoverRadius:7,
+        showLine:false,order:2
+      });
+      return ds;
+    }
+
+    function getActiveYRange(activePts){
+      if(activePts.length===0)return{min:undefined,max:undefined};
+      const ys=activePts.map(p=>p.y);
+      const pad=(Math.max(...ys)-Math.min(...ys))*0.12||2;
+      return{min:Math.min(...ys)-pad, max:Math.max(...ys)+pad};
+    }
+
+    function updateOutlierPips(){
+      const pipsEl=document.getElementById('outlier-pips');
+      if(!pipsEl)return;
+      const activePts=getActivePts();
+      const activeYRange=getActiveYRange(activePts);
+      // Puntos excluidos que quedarían fuera del rango visible
+      const oob=[...excluded].filter(lbl=>{
+        const pt=allPts.find(p=>p.label===lbl);
+        if(!pt)return false;
+        return activeYRange.min!==undefined&&(pt.y<activeYRange.min||pt.y>activeYRange.max);
+      });
+      // Puntos excluidos que SÍ están en rango (igual mostramos sus pips)
+      const inRange=[...excluded].filter(lbl=>!oob.includes(lbl));
+      const allExcl=[...oob,...inRange];
+      if(allExcl.length===0){pipsEl.innerHTML='';return;}
+      pipsEl.innerHTML=allExcl.map(lbl=>{
+        const pt=allPts.find(p=>p.label===lbl);
+        const tirStr=pt?pt.y.toFixed(1)+'%':'?';
+        const isOob=oob.includes(lbl);
+        return`<div class="outlier-pip" onclick="window._reactivatePt('${lbl}')" title="Click para reactivar">
+          <svg width="8" height="8" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" fill="${isOob?'#ef4444':'#8a90b0'}"/></svg>
+          ${lbl} ${tirStr}
+        </div>`;
+      }).join('');
+    }
+
+    function redraw(){
+      if(!chartInst)return;
+      const activePts=getActivePts();
+      const yr=getActiveYRange(activePts);
+      // Recalcular tendencia
+      const newTrend=trendDataset(activePts,'#1E27F3',false);
+      // Reconstruir datasets
+      const newColors=allPts.map(p=>excluded.has(p.label)?'rgba(30,39,243,0.18)':'#1E27F3');
+      const newRadii=allPts.map(p=>excluded.has(p.label)?4:5);
+      // Actualizar trend dataset (ds[0])
+      if(chartInst.data.datasets[0]&&chartInst.data.datasets[0].label==='_trend'){
+        chartInst.data.datasets[0].data=newTrend?newTrend.data:[];
+      }
+      // Actualizar puntos dataset (último)
+      const ptDs=chartInst.data.datasets.find(d=>d.label!=='_trend');
+      if(ptDs){ptDs.backgroundColor=newColors;ptDs.borderColor=newColors;ptDs.pointRadius=newRadii;}
+      // Reescalar eje Y a puntos activos
+      chartInst.options.scales.y.min=yr.min;
+      chartInst.options.scales.y.max=yr.max;
+      chartInst.update('active');
+      updateOutlierPips();
+    }
+
+    window._reactivatePt=function(lbl){
+      excluded.delete(lbl);
+      redraw();
+    };
 
     const legendEl=document.getElementById('curve-legend');
     legendEl.innerHTML=`
       <div class="legend-item"><div class="legend-line" style="background:#1E27F3"></div>Tendencia ${ld?fmtDate(ld):'Hoy'}</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#1E27F3"></div>Puntos ${ld?fmtDate(ld):'Hoy'}</div>`;
+      <div class="legend-item"><div class="legend-dot" style="background:#1E27F3"></div>Puntos activos &nbsp;
+        <span style="color:var(--text3);font-size:9px;">(click en punto para excluir)</span>
+      </div>`;
+
+    const activePts=getActivePts();
+    const yr=getActiveYRange(activePts);
+    const datasets=buildDatasets(activePts);
 
     if(cmpData&&cmpData.length>0){
       const cv=cmpData.filter(r=>{const md=n(r.mod_duration),tir=n(r.tir);return md>0&&isFinite(tir)&&tir!==0;});
@@ -959,21 +1082,41 @@ function buildCurveCard(data,cmpData){
 
     const ctx=document.getElementById('curve-chart');
     if(!ctx)return;
-    new Chart(ctx,{
+
+    chartInst=new Chart(ctx,{
       type:'scatter',data:{datasets},
       options:{
         ...CHART_OPTS_BASE,
+        onClick(evt,elements){
+          // Solo puntos del dataset principal (no trend, no cmp)
+          if(!elements||elements.length===0)return;
+          const el=elements[0];
+          const ds=chartInst.data.datasets[el.datasetIndex];
+          if(!ds||ds.label==='_trend')return;
+          const pt=ds.data[el.index];
+          if(!pt||!pt.label)return;
+          if(excluded.has(pt.label)){excluded.delete(pt.label);}
+          else{excluded.add(pt.label);}
+          redraw();
+        },
         plugins:{
           ...CHART_OPTS_BASE.plugins,
           tooltip:{
             ...CHART_OPTS_BASE.plugins.tooltip,
             filter:item=>item.dataset.label!=='_trend',
-            callbacks:{label:c=>{const p=c.raw;return`${p.label||''}: TIR ${p.y?p.y.toFixed(2):'?'}% | MD ${p.x?p.x.toFixed(4):'?'}`;}}
+            callbacks:{label:c=>{
+              const p=c.raw;
+              const isExcl=excluded.has(p.label);
+              return`${isExcl?'[excluido] ':''}${p.label||''}: TIR ${p.y?p.y.toFixed(2):'?'}% | MD ${p.x?p.x.toFixed(4):'?'}`;
+            }}
           }
         },
         scales:{
           x:{...CHART_OPTS_BASE.scales.x,title:{display:true,text:'Modified Duration',color:'#8a90b0',font:{size:10}}},
-          y:{...CHART_OPTS_BASE.scales.y,title:{display:true,text:'TIR (%)',color:'#8a90b0',font:{size:10}},ticks:{...CHART_OPTS_BASE.scales.y.ticks,callback:v=>v.toFixed(1)+'%'}}
+          y:{...CHART_OPTS_BASE.scales.y,
+            min:yr.min, max:yr.max,
+            title:{display:true,text:'TIR (%)',color:'#8a90b0',font:{size:10}},
+            ticks:{...CHART_OPTS_BASE.scales.y.ticks,callback:v=>v.toFixed(1)+'%'}}
         }
       },
       plugins:[{id:'labels',afterDraw(chart){
@@ -983,15 +1126,18 @@ function buildCurveCard(data,cmpData){
           const meta=chart.getDatasetMeta(di);
           ds.data.forEach((pt,pi)=>{
             const el=meta.data[pi];if(!el||!pt.label)return;
+            const isExcl=excluded.has(pt.label);
             c2.save();
             c2.font="500 9px 'DM Mono',monospace";
-            c2.fillStyle=ds.backgroundColor==='#1E27F3'?'#8a90b0':'#c9973a';
+            c2.fillStyle=isExcl?'rgba(138,144,176,0.4)':(ds.backgroundColor==='#1E27F3'||Array.isArray(ds.backgroundColor)?'#8a90b0':'#c9973a');
+            if(isExcl){c2.font="500 9px 'DM Mono',monospace";c2.globalAlpha=0.35;}
             c2.fillText(pt.label,el.x+6,el.y-4);
             c2.restore();
           });
         });
       }}]
     });
+    updateOutlierPips();
   },50);
   return card;
 }
