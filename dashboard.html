@@ -138,6 +138,8 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  text-align: center;
   gap: 14px;
   min-height: 180px;
   text-decoration: none;
@@ -208,7 +210,6 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
   color: var(--accent);
   letter-spacing: .5px;
   margin-top: auto;
-  align-self: flex-start;
 }
 .mosaic-card.active-module .mosaic-badge {
   background: rgba(255,255,255,0.2);
@@ -759,7 +760,7 @@ function fmt(val,type){
 function fmtDate(d){ if(!d)return'—'; const s=d.substring(0,10); const [y,m,dy]=s.split('-'); const mnames=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']; return `${parseInt(dy)} ${mnames[parseInt(m)-1]} ${y}`; }
 
 function varClass(val){const v=n(val);if(isNaN(v))return'';return v>0?'pos':v<0?'neg':'neu';}
-function tirClass(val){const v=n(val)*100;if(isNaN(v))return'';return v>=35?'tir-high':v<=20?'tir-low':'';}
+function tirClass(val){const v=n(val)*100;if(isNaN(v)||!isFinite(v))return'';return v<0?'tir-low':'';}
 
 // ── DATA ──
 async function loadData(){
