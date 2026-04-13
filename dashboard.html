@@ -3,122 +3,637 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bull Market — Fixed Income Dashboard</title>
+<title>Bull Market — Dashboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-  :root {
-    --bg:#050810;--bg2:#0a0f1e;--bg3:#0f1628;--bg4:#161d35;
-    --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
-    --text:#e8eaf0;--text2:#8892a4;--text3:#4a5468;
-    --accent:#2563eb;--accent2:#3b82f6;--accent3:#60a5fa;
-    --green:#10b981;--red:#ef4444;--yellow:#f59e0b;
-    --mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;
-  }
-  *{margin:0;padding:0;box-sizing:border-box;}
-  body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;min-height:100vh;overflow-x:hidden;}
-  .header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:100;}
-  .header-left{display:flex;align-items:center;gap:16px;}
-  .logo{font-size:14px;font-weight:700;color:var(--text);letter-spacing:.5px;display:flex;align-items:center;gap:8px;}
-  .logo-dot{width:8px;height:8px;background:var(--accent2);border-radius:50%;box-shadow:0 0 8px var(--accent2);}
-  .header-date{font-size:11px;color:var(--text3);font-family:var(--mono);}
-  .header-right{display:flex;align-items:center;gap:8px;}
-  .plazo-toggle{display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
-  .plazo-btn{padding:5px 14px;font-size:11px;font-weight:500;font-family:var(--mono);cursor:pointer;border:none;background:transparent;color:var(--text2);transition:all .15s;letter-spacing:.3px;}
-  .plazo-btn.active{background:var(--accent);color:#fff;}
-  .status-dot{width:6px;height:6px;background:var(--green);border-radius:50%;box-shadow:0 0 6px var(--green);animation:pulse 2s infinite;}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-  .tabs-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 24px;display:flex;overflow-x:auto;scrollbar-width:none;}
-  .tabs-bar::-webkit-scrollbar{display:none;}
-  .tab{padding:12px 16px;font-size:11px;font-weight:500;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .15s;letter-spacing:.3px;text-transform:uppercase;}
-  .tab:hover{color:var(--text2);}
-  .tab.active{color:var(--accent3);border-bottom-color:var(--accent);}
-  .main{padding:20px 24px;}
-  .loading-state{display:flex;align-items:center;justify-content:center;height:300px;flex-direction:column;gap:12px;}
-  .spinner{width:24px;height:24px;border:2px solid var(--border2);border-top-color:var(--accent2);border-radius:50%;animation:spin .8s linear infinite;}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
-  @media(max-width:900px){.grid-2{grid-template-columns:1fr;}}
-  .card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px;}
-  .card-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
-  .card-title{font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--text2);}
-  .data-table{width:100%;border-collapse:collapse;}
-  .data-table th{padding:8px 12px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border);white-space:nowrap;}
-  .data-table th:first-child{text-align:left;}
-  .data-table td{padding:8px 12px;text-align:right;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;color:var(--text);white-space:nowrap;}
-  .data-table td:first-child{text-align:left;font-weight:600;color:var(--accent3);cursor:pointer;}
-  .data-table td:first-child:hover{color:#fff;text-decoration:underline;}
-  .data-table tr:last-child td{border-bottom:none;}
-  .data-table tr:hover td{background:var(--bg3);}
-  .pos{color:var(--green)!important;}.neg{color:var(--red)!important;}.neu{color:var(--text2)!important;}
-  .chart-wrap{padding:16px;}
-  .chart-canvas-wrap{position:relative;width:100%;height:300px;}
-  .compare-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-  .cmp-btn{padding:4px 10px;font-size:10px;font-weight:500;font-family:var(--mono);cursor:pointer;border:1px solid var(--border2);border-radius:4px;background:transparent;color:var(--text2);transition:all .15s;}
-  .cmp-btn:hover{border-color:var(--accent2);color:var(--accent3);}
-  .cmp-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
-  .date-input{padding:4px 8px;font-size:10px;font-family:var(--mono);background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text);cursor:pointer;}
-  .date-input::-webkit-calendar-picker-indicator{filter:invert(.5);}
-  .detail-view{display:none;position:fixed;inset:0;background:var(--bg);z-index:200;overflow-y:auto;}
-  .detail-view.open{display:block;}
-  .detail-header{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:10;}
-  .back-btn{padding:6px 12px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--border2);border-radius:6px;background:transparent;color:var(--text2);transition:all .15s;display:flex;align-items:center;gap:6px;}
-  .back-btn:hover{background:var(--bg3);color:var(--text);}
-  .detail-ticker{font-size:20px;font-weight:700;font-family:var(--mono);color:var(--accent3);}
-  .detail-meta{font-size:11px;color:var(--text3);}
-  .detail-body{padding:20px 24px;}
-  .detail-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
-  @media(max-width:800px){.detail-grid{grid-template-columns:repeat(2,1fr);}}
-  .stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;}
-  .stat-label{font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);margin-bottom:6px;}
-  .stat-value{font-size:18px;font-weight:600;font-family:var(--mono);color:var(--text);}
-  .hist-controls{display:flex;gap:6px;}
-  .hist-btn{padding:4px 10px;font-size:10px;font-weight:500;font-family:var(--mono);cursor:pointer;border:1px solid var(--border2);border-radius:4px;background:transparent;color:var(--text2);transition:all .15s;}
-  .hist-btn:hover{color:var(--accent3);border-color:var(--accent2);}
-  .hist-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
-  .chart-legend{display:flex;gap:16px;flex-wrap:wrap;padding:0 16px 12px;}
-  .legend-item{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text2);font-family:var(--mono);}
-  .legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-  .legend-line{width:20px;height:2px;flex-shrink:0;}
-  .empty-msg{text-align:center;padding:40px;color:var(--text3);font-size:12px;}
-  .table-scroll{overflow-x:auto;}
+:root {
+  --bg: #ffffff;
+  --bg2: #f7f8fc;
+  --bg3: #eef0f7;
+  --bg4: #e4e7f2;
+  --border: rgba(30,39,243,0.10);
+  --border2: rgba(30,39,243,0.18);
+  --text: #0a0c1a;
+  --text2: #3a3f5c;
+  --text3: #8a90b0;
+  --accent: #1E27F3;
+  --accent2: #3a42f5;
+  --accent3: #1E27F3;
+  --accent-light: rgba(30,39,243,0.08);
+  --accent-mid: rgba(30,39,243,0.15);
+  --green: #0d9e6e;
+  --red: #e03131;
+  --yellow: #d97706;
+  --mono: 'DM Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+  --display: 'Syne', sans-serif;
+}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:var(--sans); font-size:13px; min-height:100vh; overflow-x:hidden; }
+
+/* ── LANDING ── */
+#landing {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  position: relative;
+  overflow: hidden;
+}
+#landing::before {
+  content:'';
+  position:absolute;
+  top:-200px; right:-200px;
+  width:600px; height:600px;
+  background: radial-gradient(circle, rgba(30,39,243,0.07) 0%, transparent 70%);
+  pointer-events:none;
+}
+#landing::after {
+  content:'';
+  position:absolute;
+  bottom:-100px; left:-100px;
+  width:400px; height:400px;
+  background: radial-gradient(circle, rgba(30,39,243,0.05) 0%, transparent 70%);
+  pointer-events:none;
+}
+.landing-header {
+  padding: 32px 48px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  position: relative; z-index:1;
+}
+.landing-logo {
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.landing-logo-mark {
+  width: 28px; height: 28px;
+  background: var(--accent);
+  border-radius: 6px;
+  display: flex; align-items:center; justify-content:center;
+}
+.landing-logo-mark svg { width:16px; height:16px; }
+.landing-tagline {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text3);
+  font-family: var(--mono);
+  letter-spacing: .5px;
+}
+.landing-hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  position: relative; z-index:1;
+}
+.landing-title {
+  font-family: var(--display);
+  font-size: clamp(36px, 5vw, 64px);
+  font-weight: 800;
+  color: var(--text);
+  text-align: center;
+  line-height: 1.05;
+  margin-bottom: 16px;
+  letter-spacing: -1px;
+}
+.landing-title span {
+  color: var(--accent);
+}
+.landing-subtitle {
+  font-size: 15px;
+  color: var(--text3);
+  text-align: center;
+  margin-bottom: 64px;
+  font-weight: 400;
+  max-width: 400px;
+}
+.mosaic {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  max-width: 720px;
+  width: 100%;
+}
+.mosaic-card {
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  padding: 32px 28px;
+  cursor: pointer;
+  transition: all .22s cubic-bezier(.4,0,.2,1);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 180px;
+  text-decoration: none;
+}
+.mosaic-card::before {
+  content:'';
+  position:absolute;
+  inset:0;
+  background: var(--accent-light);
+  opacity:0;
+  transition: opacity .22s;
+}
+.mosaic-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 40px rgba(30,39,243,0.12);
+}
+.mosaic-card:hover::before { opacity:1; }
+.mosaic-card.active-module {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+.mosaic-card.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.mosaic-card.disabled:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--border);
+}
+.mosaic-card.disabled:hover::before { opacity:0; }
+.mosaic-icon {
+  width: 44px; height: 44px;
+  background: var(--accent-light);
+  border-radius: 10px;
+  display: flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+}
+.mosaic-card.active-module .mosaic-icon {
+  background: rgba(255,255,255,0.2);
+}
+.mosaic-icon svg { width:22px; height:22px; color: var(--accent); }
+.mosaic-card.active-module .mosaic-icon svg { color: #fff; }
+.mosaic-name {
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.1;
+}
+.mosaic-card.active-module .mosaic-name { color: #fff; }
+.mosaic-desc {
+  font-size: 12px;
+  color: var(--text3);
+  line-height: 1.5;
+  font-weight: 400;
+}
+.mosaic-card.active-module .mosaic-desc { color: rgba(255,255,255,0.7); }
+.mosaic-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-family: var(--mono);
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: var(--accent-mid);
+  color: var(--accent);
+  letter-spacing: .5px;
+  margin-top: auto;
+  align-self: flex-start;
+}
+.mosaic-card.active-module .mosaic-badge {
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+}
+.badge-soon {
+  background: var(--bg3);
+  color: var(--text3);
+}
+
+/* ── APP ── */
+#app { display:none; flex-direction:column; min-height:100vh; }
+
+.header {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+  position: sticky; top:0; z-index:100;
+}
+.header-left { display:flex; align-items:center; gap:16px; }
+.logo {
+  font-family: var(--display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing:.3px;
+  display:flex; align-items:center; gap:8px;
+  cursor:pointer;
+}
+.logo-dot {
+  width:8px; height:8px;
+  background: var(--accent);
+  border-radius:50%;
+  box-shadow: 0 0 8px var(--accent);
+}
+.header-date {
+  font-size:11px;
+  color:var(--text3);
+  font-family:var(--mono);
+}
+.header-right { display:flex; align-items:center; gap:8px; }
+.plazo-toggle {
+  display:flex;
+  background:var(--bg3);
+  border:1px solid var(--border);
+  border-radius:6px;
+  overflow:hidden;
+}
+.plazo-btn {
+  padding:5px 14px;
+  font-size:11px;
+  font-weight:500;
+  font-family:var(--mono);
+  cursor:pointer;
+  border:none;
+  background:transparent;
+  color:var(--text2);
+  transition:all .15s;
+  letter-spacing:.3px;
+}
+.plazo-btn.active { background:var(--accent); color:#fff; }
+.status-dot {
+  width:6px; height:6px;
+  background: var(--green);
+  border-radius:50%;
+  box-shadow: 0 0 6px var(--green);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+.tabs-bar {
+  background:var(--bg);
+  border-bottom:1px solid var(--border);
+  padding:0 24px;
+  display:flex;
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+.tabs-bar::-webkit-scrollbar { display:none; }
+.tab {
+  padding:12px 16px;
+  font-size:11px;
+  font-weight:500;
+  color:var(--text3);
+  cursor:pointer;
+  border-bottom:2px solid transparent;
+  white-space:nowrap;
+  transition:all .15s;
+  letter-spacing:.3px;
+  text-transform:uppercase;
+  font-family: var(--mono);
+}
+.tab:hover { color:var(--text2); }
+.tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+.main { padding:20px 24px; }
+.loading-state { display:flex; align-items:center; justify-content:center; height:300px; flex-direction:column; gap:12px; }
+.spinner { width:24px; height:24px; border:2px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+@media(max-width:900px){ .grid-2{ grid-template-columns:1fr; } }
+
+.card {
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:10px;
+  overflow:hidden;
+  margin-bottom:16px;
+  box-shadow: 0 1px 4px rgba(30,39,243,0.04);
+}
+.card-header {
+  padding:12px 16px;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background: var(--bg2);
+}
+.card-title {
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.8px;
+  text-transform:uppercase;
+  color:var(--text2);
+  font-family:var(--mono);
+}
+
+.data-table { width:100%; border-collapse:collapse; }
+.data-table th {
+  padding:8px 12px;
+  text-align:right;
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:.5px;
+  text-transform:uppercase;
+  color:var(--text3);
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  white-space:nowrap;
+  font-family:var(--mono);
+  cursor:pointer;
+  user-select:none;
+}
+.data-table th:first-child { text-align:left; }
+.data-table th.sorted-asc::after { content:' ▲'; color:var(--accent); }
+.data-table th.sorted-desc::after { content:' ▼'; color:var(--accent); }
+.data-table th:not(.sorted-asc):not(.sorted-desc)::after { content:' ⇅'; color:var(--text3); font-size:9px; }
+.data-table td {
+  padding:8px 12px;
+  text-align:right;
+  border-bottom:1px solid var(--border);
+  font-family:var(--mono);
+  font-size:11px;
+  color:var(--text);
+  white-space:nowrap;
+}
+.data-table td:first-child { text-align:left; font-weight:600; color:var(--accent); cursor:pointer; }
+.data-table td:first-child:hover { text-decoration:underline; }
+.data-table tr:last-child td { border-bottom:none; }
+.data-table tr:hover td { background:var(--accent-light); }
+
+.pos { color:var(--green)!important; }
+.neg { color:var(--red)!important; }
+.neu { color:var(--text3)!important; }
+.tir-high { color:var(--green)!important; font-weight:600; }
+.tir-low  { color:var(--red)!important; }
+
+.chart-wrap { padding:16px; }
+.chart-canvas-wrap { position:relative; width:100%; height:300px; }
+
+.compare-controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.cmp-btn {
+  padding:4px 10px;
+  font-size:10px;
+  font-weight:500;
+  font-family:var(--mono);
+  cursor:pointer;
+  border:1px solid var(--border2);
+  border-radius:4px;
+  background:transparent;
+  color:var(--text2);
+  transition:all .15s;
+}
+.cmp-btn:hover { border-color:var(--accent); color:var(--accent); }
+.cmp-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+.date-input {
+  padding:4px 8px;
+  font-size:10px;
+  font-family:var(--mono);
+  background:var(--bg3);
+  border:1px solid var(--border2);
+  border-radius:4px;
+  color:var(--text);
+  cursor:pointer;
+}
+
+.detail-view {
+  display:none;
+  position:fixed;
+  inset:0;
+  background:var(--bg);
+  z-index:200;
+  overflow-y:auto;
+}
+.detail-view.open { display:block; }
+.detail-header {
+  background:var(--bg);
+  border-bottom:1px solid var(--border);
+  padding:14px 24px;
+  display:flex;
+  align-items:center;
+  gap:16px;
+  position:sticky; top:0; z-index:10;
+  box-shadow: 0 2px 8px rgba(30,39,243,0.06);
+}
+.back-btn {
+  padding:6px 12px;
+  font-size:11px;
+  font-weight:500;
+  cursor:pointer;
+  border:1px solid var(--border2);
+  border-radius:6px;
+  background:transparent;
+  color:var(--text2);
+  transition:all .15s;
+  display:flex; align-items:center; gap:6px;
+  font-family:var(--mono);
+}
+.back-btn:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
+.detail-ticker {
+  font-size:20px;
+  font-weight:700;
+  font-family:var(--mono);
+  color:var(--accent);
+}
+.detail-meta { font-size:11px; color:var(--text3); }
+
+.detail-body { padding:20px 24px; }
+.detail-grid {
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:12px;
+  margin-bottom:20px;
+}
+@media(max-width:800px){ .detail-grid{ grid-template-columns:repeat(2,1fr); } }
+.stat-card {
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:12px 14px;
+  box-shadow: 0 1px 4px rgba(30,39,243,0.04);
+}
+.stat-label {
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:.5px;
+  text-transform:uppercase;
+  color:var(--text3);
+  margin-bottom:6px;
+  font-family:var(--mono);
+}
+.stat-value {
+  font-size:18px;
+  font-weight:600;
+  font-family:var(--mono);
+  color:var(--text);
+}
+
+.hist-controls { display:flex; gap:6px; }
+.hist-btn {
+  padding:4px 10px;
+  font-size:10px;
+  font-weight:500;
+  font-family:var(--mono);
+  cursor:pointer;
+  border:1px solid var(--border2);
+  border-radius:4px;
+  background:transparent;
+  color:var(--text2);
+  transition:all .15s;
+}
+.hist-btn:hover { color:var(--accent); border-color:var(--accent); }
+.hist-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+.chart-legend { display:flex; gap:16px; flex-wrap:wrap; padding:0 16px 12px; }
+.legend-item { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--text2); font-family:var(--mono); }
+.legend-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.legend-line { width:20px; height:2px; flex-shrink:0; }
+
+.empty-msg { text-align:center; padding:40px; color:var(--text3); font-size:12px; font-family:var(--mono); }
+.table-scroll { overflow-x:auto; }
+
+/* Dual curves grid */
+.curves-grid { display:grid; grid-template-columns:1fr 1fr; gap:0; }
+.curves-grid .chart-canvas-wrap { height:220px; }
+.curves-divider { border-left:1px solid var(--border); }
+@media(max-width:700px){ .curves-grid{ grid-template-columns:1fr; } .curves-divider{border-left:none;border-top:1px solid var(--border);} }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <div class="header-left">
-    <div class="logo"><div class="logo-dot"></div>BULL MARKET — FIXED INCOME</div>
-    <div class="header-date" id="header-date">—</div>
+<!-- ══════════════════ LANDING ══════════════════ -->
+<div id="landing">
+  <div class="landing-header">
+    <div class="landing-logo">
+      <div class="landing-logo-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+          <polyline points="16 7 22 7 22 13"></polyline>
+        </svg>
+      </div>
+      BULL MARKET
+    </div>
+    <div class="landing-tagline">RESEARCH & ANALYTICS PLATFORM</div>
   </div>
-  <div class="header-right">
-    <div class="status-dot"></div>
-    <div class="plazo-toggle">
-      <button class="plazo-btn active" onclick="setPlazo('C.I.')">C.I.</button>
-      <button class="plazo-btn" onclick="setPlazo('24Hs.')">24Hs.</button>
+
+  <div class="landing-hero">
+    <div class="landing-title">Mercados.<br><span>En tiempo real.</span></div>
+    <div class="landing-subtitle">Seleccioná el módulo que querés explorar</div>
+
+    <div class="mosaic">
+      <!-- Fixed Income → activo -->
+      <div class="mosaic-card active-module" onclick="enterApp()">
+        <div class="mosaic-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+            <path d="M2 17l10 5 10-5"/>
+            <path d="M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <div class="mosaic-name">Renta Fija</div>
+        <div class="mosaic-desc">LECAPs, BONCAPs, BONCERs, Soberanos, Duales y más.</div>
+        <span class="mosaic-badge">DISPONIBLE</span>
+      </div>
+
+      <!-- Equity → próximo -->
+      <div class="mosaic-card disabled">
+        <div class="mosaic-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2"/>
+            <polyline points="8 21 12 17 16 21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+        </div>
+        <div class="mosaic-name">Renta Variable</div>
+        <div class="mosaic-desc">Acciones locales, ADRs y CEDEARs del mercado argentino.</div>
+        <span class="mosaic-badge badge-soon">PRÓXIMAMENTE</span>
+      </div>
+
+      <!-- ONs → próximo -->
+      <div class="mosaic-card disabled">
+        <div class="mosaic-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+        </div>
+        <div class="mosaic-name">Obligaciones Negociables</div>
+        <div class="mosaic-desc">ONs corporativas en pesos y dólares con análisis de spread.</div>
+        <span class="mosaic-badge badge-soon">PRÓXIMAMENTE</span>
+      </div>
+
+      <!-- FX → próximo -->
+      <div class="mosaic-card disabled">
+        <div class="mosaic-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="1" x2="12" y2="23"/>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+        </div>
+        <div class="mosaic-name">FX</div>
+        <div class="mosaic-desc">Tipos de cambio, dólar CCL, MEP y brechas cambiarias.</div>
+        <span class="mosaic-badge badge-soon">PRÓXIMAMENTE</span>
+      </div>
     </div>
   </div>
 </div>
 
-<div class="tabs-bar">
-  <div class="tab active"  onclick="showTab('lecap',this)">LECAPs</div>
-  <div class="tab" onclick="showTab('boncap',this)">BONCAPs</div>
-  <div class="tab" onclick="showTab('boncer',this)">BONCERs</div>
-  <div class="tab" onclick="showTab('soberano',this)">Soberanos</div>
-  <div class="tab" onclick="showTab('dolar_linked',this)">Dólar Linked</div>
-  <div class="tab" onclick="showTab('bopreal',this)">BOPREALes</div>
-  <div class="tab" onclick="showTab('fixed_rate',this)">Fixed Rate</div>
-  <div class="tab" onclick="showTab('badlar',this)">BADLAR</div>
-  <div class="tab" onclick="showTab('dual',this)">Duales</div>
-</div>
+<!-- ══════════════════ APP ══════════════════ -->
+<div id="app">
+  <div class="header">
+    <div class="header-left">
+      <div class="logo" onclick="backToLanding()">
+        <div class="logo-dot"></div>
+        BULL MARKET — RENTA FIJA
+      </div>
+      <div class="header-date" id="header-date">—</div>
+    </div>
+    <div class="header-right">
+      <div class="status-dot"></div>
+      <div class="plazo-toggle">
+        <button class="plazo-btn active" onclick="setPlazo('C.I.')">C.I.</button>
+        <button class="plazo-btn" onclick="setPlazo('24Hs.')">24Hs.</button>
+      </div>
+    </div>
+  </div>
 
-<div class="main" id="main-content">
-  <div class="loading-state" id="loading">
-    <div class="spinner"></div>
-    <div style="color:var(--text3);font-size:11px;font-family:var(--mono);">Cargando datos...</div>
+  <div class="tabs-bar">
+    <div class="tab active"  onclick="showTab('lecap',this)">LECAPs</div>
+    <div class="tab" onclick="showTab('boncap',this)">BONCAPs</div>
+    <div class="tab" onclick="showTab('boncer',this)">BONCERs</div>
+    <div class="tab" onclick="showTab('soberano',this)">Soberanos</div>
+    <div class="tab" onclick="showTab('dolar_linked',this)">Dólar Linked</div>
+    <div class="tab" onclick="showTab('bopreal',this)">BOPREALes</div>
+    <div class="tab" onclick="showTab('fixed_rate',this)">Fixed Rate</div>
+    <div class="tab" onclick="showTab('badlar',this)">BADLAR</div>
+    <div class="tab" onclick="showTab('dual',this)">Duales</div>
+  </div>
+
+  <div class="main" id="main-content">
+    <div class="loading-state" id="loading">
+      <div class="spinner"></div>
+      <div style="color:var(--text3);font-size:11px;font-family:var(--mono);">Cargando datos...</div>
+    </div>
   </div>
 </div>
 
+<!-- DETAIL OVERLAY -->
 <div class="detail-view" id="detail-view">
   <div class="detail-header">
     <button class="back-btn" onclick="closeDetail()">← Volver</button>
@@ -136,58 +651,93 @@ let CURRENT_PLAZO='C.I.';
 let CURRENT_TAB='lecap';
 let COMPARE_DATE=null;
 let COMPARE_MODE=null;
+let DATA_LOADED=false;
 
 const TIPOS={lecap:'LECAP',boncap:'BONCAP',boncer:'BONCER',soberano:'SOBERANO',dolar_linked:'DOLAR_LINKED',bopreal:'BOPREAL',fixed_rate:'FIXED_RATE',badlar:'BADLAR',dual:'DUAL'};
 const COL_LABELS={fecha:'Fecha',especie:'Ticker',tir:'TIR',mod_duration:'MD',precio_limpio:'Px Limpio',ultimo:'Último',variacion:'Var%',maturity:'Vencimiento',dias_maturity:'Días',duration:'Duration',convexidad:'Convexidad'};
 
-// CSV parser con soporte coma decimal
+// ── LANDING ──
+function enterApp(){
+  document.getElementById('landing').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('app').style.flexDirection='column';
+  if(!DATA_LOADED) loadData();
+}
+function backToLanding(){
+  document.getElementById('landing').style.display='flex';
+  document.getElementById('app').style.display='none';
+}
+
+// ── CSV PARSER (fix: detecta separador, no reemplaza comas numéricas ciegamente) ──
 function parseCSV(text){
   const lines=text.trim().split('\n');
-  const headers=lines[0].split(',').map(h=>h.trim().replace(/"/g,''));
-  return lines.slice(1).map(line=>{
+  const raw0=lines[0];
+  // detectar separador: si la primera línea tiene ; usamos ;
+  const sep=raw0.includes(';')?';':',';
+  
+  function splitLine(line){
     const vals=[];let cur='',inQ=false;
     for(let i=0;i<line.length;i++){
       const c=line[i];
       if(c==='"'){inQ=!inQ;continue;}
-      if(c===','&&!inQ){vals.push(cur);cur='';continue;}
+      if(c===sep&&!inQ){vals.push(cur);cur='';continue;}
       cur+=c;
     }
     vals.push(cur);
+    return vals;
+  }
+
+  const headers=splitLine(raw0).map(h=>h.trim().replace(/"/g,''));
+  
+  return lines.slice(1).map(line=>{
+    const vals=splitLine(line);
     const obj={};
     headers.forEach((h,i)=>{
-      let v=(vals[i]||'').trim();
-      // reemplazar coma decimal por punto
-      v=v.replace(/,/g,'.');
+      let v=(vals[i]||'').trim().replace(/"/g,'');
+      // solo reemplazar coma decimal si el valor tiene exactamente una coma y es numérico
+      if(/^-?\d+,\d+$/.test(v)) v=v.replace(',','.');
       obj[h]=v;
     });
     return obj;
-  }).filter(r=>r.especie&&r.especie!=='especie');
+  }).filter(r=>r.especie&&r.especie!=='especie'&&r.especie!=='');
 }
 
-// Parsear número (TIR viene como fracción 0.32 = 32%)
-function n(val){return parseFloat((val||'').toString().replace(',','.'));}
+function n(val){
+  if(val===null||val===undefined||val==='')return NaN;
+  const s=val.toString().trim();
+  // si ya tiene punto decimal no tocar
+  if(/^-?\d+\.\d+$/.test(s))return parseFloat(s);
+  // si tiene coma decimal
+  if(/^-?\d+,\d+$/.test(s))return parseFloat(s.replace(',','.'));
+  return parseFloat(s);
+}
 
 function fmt(val,type){
   const v=n(val);
-  if(isNaN(v))return'—';
-  if(type==='pct') return(v*100).toFixed(2)+'%';
-  if(type==='num2')return v.toFixed(2);
-  if(type==='num4')return v.toFixed(4);
-  if(type==='int') return Math.round(v).toString();
-  if(type==='var') return(v>=0?'+':'')+v.toFixed(2)+'%';
+  if(isNaN(v)||!isFinite(v))return'—';
+  if(type==='pct')  return(v*100).toFixed(2)+'%';
+  if(type==='num2') return v.toFixed(2);
+  if(type==='num4') return v.toFixed(4);
+  if(type==='int')  return Math.round(v).toString();
+  if(type==='var')  return(v>=0?'+':'')+v.toFixed(2)+'%';
+  if(type==='usd')  return'U$S '+v.toFixed(2);
   return v.toFixed(2);
 }
 
-function varClass(val){const v=n(val);if(isNaN(v))return'';return v>0?'pos':v<0?'neg':'neu';}
-function tirClass(val){const v=n(val)*100;if(isNaN(v))return'';return v>=35?'pos':v<=20?'neg':'';}
+function fmtDate(d){ if(!d)return'—'; const s=d.substring(0,10); const [y,m,dy]=s.split('-'); const mnames=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']; return `${parseInt(dy)} ${mnames[parseInt(m)-1]} ${y}`; }
 
+function varClass(val){const v=n(val);if(isNaN(v))return'';return v>0?'pos':v<0?'neg':'neu';}
+function tirClass(val){const v=n(val)*100;if(isNaN(v))return'';return v>=35?'tir-high':v<=20?'tir-low':'';}
+
+// ── DATA ──
 async function loadData(){
   try{
     const res=await fetch(SHEET_URL);
     const text=await res.text();
     ALL_DATA=parseCSV(text);
+    DATA_LOADED=true;
     const ld=getLatestDate();
-    document.getElementById('header-date').textContent=ld?ld.substring(0,10):'—';
+    document.getElementById('header-date').textContent=ld?fmtDate(ld):'—';
     document.getElementById('loading').style.display='none';
     renderSection();
   }catch(e){
@@ -220,6 +770,7 @@ function filterData(tipo,plazo,fecha){
   );
 }
 
+// ── CONTROLS ──
 function setPlazo(p){
   CURRENT_PLAZO=p;
   document.querySelectorAll('.plazo-btn').forEach(b=>b.classList.toggle('active',b.textContent===p));
@@ -252,7 +803,7 @@ function setCmpDate(val){
   renderSection();
 }
 
-// Regresión polinómica grado 2 — devuelve f(x)=ax²+bx+c
+// ── POLY FIT ──
 function polyFit2(pts){
   const p=pts.filter(pt=>isFinite(pt.x)&&isFinite(pt.y));
   if(p.length<3)return null;
@@ -273,7 +824,7 @@ function polyFit2(pts){
   }
   const c=[0,0,0];
   for(let i=2;i>=0;i--){let s=B[i];for(let j=i+1;j<3;j++)s-=A[i][j]*c[j];c[i]=s/A[i][i];}
-  const [cc,b,a]=c;
+  const[cc,b,a]=c;
   return x=>a*x*x+b*x+cc;
 }
 
@@ -295,16 +846,42 @@ function trendDataset(points,color,dashed){
   };
 }
 
+// ── CHART DEFAULTS ──
+const CHART_OPTS_BASE={
+  responsive:true,maintainAspectRatio:false,
+  plugins:{
+    legend:{display:false},
+    tooltip:{
+      backgroundColor:'#fff',borderColor:'rgba(30,39,243,0.2)',borderWidth:1,
+      titleColor:'#3a3f5c',bodyColor:'#0a0c1a',padding:10,
+      titleFont:{family:"'DM Mono',monospace",size:11},
+      bodyFont:{family:"'DM Mono',monospace",size:11}
+    }
+  },
+  scales:{
+    x:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:10}}},
+    y:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:10}}}
+  }
+};
+
+// ── RENDER ──
 function renderSection(){
   const main=document.getElementById('main-content');
   main.innerHTML='';
   const data=filterData(CURRENT_TAB,CURRENT_PLAZO,null);
   if(data.length===0){main.innerHTML='<div class="empty-msg">Sin datos para este instrumento.</div>';return;}
   const cmpData=COMPARE_DATE?filterData(CURRENT_TAB,CURRENT_PLAZO,COMPARE_DATE):null;
-  main.appendChild(buildCurveCard(data,cmpData));
+
+  // Duales: dos curvas independientes
+  if(CURRENT_TAB==='dual'){
+    main.appendChild(buildDualCurvesCard(data,cmpData));
+  } else {
+    main.appendChild(buildCurveCard(data,cmpData));
+  }
   main.appendChild(buildTableCard(data));
 }
 
+// ── CURVE CARD (genérica) ──
 function buildCurveCard(data,cmpData){
   const card=document.createElement('div');
   card.className='card';
@@ -320,95 +897,200 @@ function buildCurveCard(data,cmpData){
         <input type="date" class="date-input" value="${COMPARE_DATE?COMPARE_DATE.substring(0,10):''}" onchange="setCmpDate(this.value)" title="Fecha libre">
       </div>
     </div>
-    <div class="chart-wrap"><div class="chart-canvas-wrap"><canvas id="curve-chart" role="img" aria-label="Curva TIR vs MD"></canvas></div></div>
+    <div class="chart-wrap"><div class="chart-canvas-wrap"><canvas id="curve-chart"></canvas></div></div>
     <div class="chart-legend" id="curve-legend"></div>`;
 
   setTimeout(()=>{
     const valid=data.filter(r=>{const md=n(r.mod_duration),tir=n(r.tir);return md>0&&isFinite(tir)&&tir!==0;});
     const pts=valid.map(r=>({x:n(r.mod_duration),y:n(r.tir)*100,label:r.especie}));
-
     const datasets=[];
-    const tr=trendDataset(pts,'#3b82f6',false);
+    const tr=trendDataset(pts,'#1E27F3',false);
     if(tr)datasets.push(tr);
-    datasets.push({label:ld?ld.substring(0,10):'Hoy',data:pts,backgroundColor:'#3b82f6',borderColor:'#3b82f6',pointRadius:5,pointHoverRadius:7,showLine:false,order:2});
+    datasets.push({label:ld?fmtDate(ld):'Hoy',data:pts,backgroundColor:'#1E27F3',borderColor:'#1E27F3',pointRadius:5,pointHoverRadius:7,showLine:false,order:2});
 
     const legendEl=document.getElementById('curve-legend');
     legendEl.innerHTML=`
-      <div class="legend-item"><div class="legend-line" style="background:#3b82f6"></div>Tendencia ${ld?ld.substring(0,10):'Hoy'}</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>Puntos ${ld?ld.substring(0,10):'Hoy'}</div>`;
+      <div class="legend-item"><div class="legend-line" style="background:#1E27F3"></div>Tendencia ${ld?fmtDate(ld):'Hoy'}</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#1E27F3"></div>Puntos ${ld?fmtDate(ld):'Hoy'}</div>`;
 
     if(cmpData&&cmpData.length>0){
       const cv=cmpData.filter(r=>{const md=n(r.mod_duration),tir=n(r.tir);return md>0&&isFinite(tir)&&tir!==0;});
       const cp=cv.map(r=>({x:n(r.mod_duration),y:n(r.tir)*100,label:r.especie}));
       const tr2=trendDataset(cp,'#f59e0b',true);
       if(tr2)datasets.push(tr2);
-      datasets.push({label:COMPARE_DATE?COMPARE_DATE.substring(0,10):'Comparar',data:cp,backgroundColor:'#f59e0b',borderColor:'#f59e0b',pointRadius:4,pointHoverRadius:6,pointStyle:'triangle',showLine:false,order:2});
+      datasets.push({label:COMPARE_DATE?fmtDate(COMPARE_DATE):'Comparar',data:cp,backgroundColor:'#f59e0b',borderColor:'#f59e0b',pointRadius:4,pointHoverRadius:6,pointStyle:'triangle',showLine:false,order:2});
       legendEl.innerHTML+=`
-        <div class="legend-item"><div class="legend-line" style="background:#f59e0b;opacity:.7"></div>Tendencia ${COMPARE_DATE?COMPARE_DATE.substring(0,10):'Comparar'}</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Puntos ${COMPARE_DATE?COMPARE_DATE.substring(0,10):'Comparar'}</div>`;
+        <div class="legend-item"><div class="legend-line" style="background:#f59e0b;opacity:.7"></div>Tendencia ${COMPARE_DATE?fmtDate(COMPARE_DATE):'Comparar'}</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Puntos ${COMPARE_DATE?fmtDate(COMPARE_DATE):'Comparar'}</div>`;
     }
 
     const ctx=document.getElementById('curve-chart');
     if(!ctx)return;
     new Chart(ctx,{
-      type:'scatter',
-      data:{datasets},
+      type:'scatter',data:{datasets},
       options:{
-        responsive:true,maintainAspectRatio:false,
+        ...CHART_OPTS_BASE,
         plugins:{
-          legend:{display:false},
+          ...CHART_OPTS_BASE.plugins,
           tooltip:{
+            ...CHART_OPTS_BASE.plugins.tooltip,
             filter:item=>item.dataset.label!=='_trend',
-            callbacks:{label:c=>{const p=c.raw;return`${p.label||''}: TIR ${p.y?p.y.toFixed(2):'?'}% | MD ${p.x?p.x.toFixed(4):'?'}`;},
-            },
-            backgroundColor:'#0f1628',borderColor:'rgba(255,255,255,0.12)',borderWidth:1,
-            titleColor:'#8892a4',bodyColor:'#e8eaf0',padding:10,
-            titleFont:{family:"'JetBrains Mono',monospace",size:11},
-            bodyFont:{family:"'JetBrains Mono',monospace",size:11}
+            callbacks:{label:c=>{const p=c.raw;return`${p.label||''}: TIR ${p.y?p.y.toFixed(2):'?'}% | MD ${p.x?p.x.toFixed(4):'?'}`;}}
           }
         },
         scales:{
-          x:{title:{display:true,text:'Modified Duration',color:'#4a5468',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#4a5468',font:{family:"'JetBrains Mono',monospace",size:10}}},
-          y:{title:{display:true,text:'TIR (%)',color:'#4a5468',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#4a5468',font:{family:"'JetBrains Mono',monospace",size:10},callback:v=>v.toFixed(1)+'%'}}
+          x:{...CHART_OPTS_BASE.scales.x,title:{display:true,text:'Modified Duration',color:'#8a90b0',font:{size:10}}},
+          y:{...CHART_OPTS_BASE.scales.y,title:{display:true,text:'TIR (%)',color:'#8a90b0',font:{size:10}},ticks:{...CHART_OPTS_BASE.scales.y.ticks,callback:v=>v.toFixed(1)+'%'}}
         }
       },
-      plugins:[{
-        id:'labels',
-        afterDraw(chart){
+      plugins:[{id:'labels',afterDraw(chart){
+        const c2=chart.ctx;
+        chart.data.datasets.forEach((ds,di)=>{
+          if(ds.label==='_trend')return;
+          const meta=chart.getDatasetMeta(di);
+          ds.data.forEach((pt,pi)=>{
+            const el=meta.data[pi];if(!el||!pt.label)return;
+            c2.save();
+            c2.font="500 9px 'DM Mono',monospace";
+            c2.fillStyle=ds.backgroundColor==='#1E27F3'?'#8a90b0':'#c9973a';
+            c2.fillText(pt.label,el.x+6,el.y-4);
+            c2.restore();
+          });
+        });
+      }}]
+    });
+  },50);
+  return card;
+}
+
+// ── DUAL CURVES CARD (dos gráficos lado a lado) ──
+function buildDualCurvesCard(data,cmpData){
+  const card=document.createElement('div');
+  card.className='card';
+  const ld=getLatestDate();
+  card.innerHTML=`
+    <div class="card-header">
+      <span class="card-title">Curvas de Rendimiento — DUAL</span>
+      <div class="compare-controls">
+        <button class="cmp-btn ${COMPARE_MODE==='D1'?'active':''}" onclick="setCmp('D1')">-1D</button>
+        <button class="cmp-btn ${COMPARE_MODE==='W1'?'active':''}" onclick="setCmp('W1')">-1S</button>
+        <button class="cmp-btn ${COMPARE_MODE==='M1'?'active':''}" onclick="setCmp('M1')">-1M</button>
+        <button class="cmp-btn ${COMPARE_MODE==='M3'?'active':''}" onclick="setCmp('M3')">-3M</button>
+        <input type="date" class="date-input" value="${COMPARE_DATE?COMPARE_DATE.substring(0,10):''}" onchange="setCmpDate(this.value)">
+      </div>
+    </div>
+    <div class="curves-grid">
+      <div class="chart-wrap">
+        <div style="font-size:10px;font-family:var(--mono);color:var(--text3);font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">TIR Fija</div>
+        <div class="chart-canvas-wrap"><canvas id="curve-fija"></canvas></div>
+      </div>
+      <div class="chart-wrap curves-divider">
+        <div style="font-size:10px;font-family:var(--mono);color:var(--text3);font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">TIR TAMAR</div>
+        <div class="chart-canvas-wrap"><canvas id="curve-tamar"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-legend" id="dual-legend"></div>`;
+
+  setTimeout(()=>{
+    const mkDualChart=(canvasId,field,colorMain,colorCmp,cmpRows)=>{
+      const valid=data.filter(r=>{const md=n(r.mod_duration),tir=n(r[field]);return md>0&&isFinite(tir)&&tir!==0;});
+      const pts=valid.map(r=>({x:n(r.mod_duration),y:n(r[field])*100,label:r.especie}));
+      const datasets=[];
+      const tr=trendDataset(pts,colorMain,false);if(tr)datasets.push(tr);
+      datasets.push({label:ld?fmtDate(ld):'Hoy',data:pts,backgroundColor:colorMain,borderColor:colorMain,pointRadius:5,pointHoverRadius:7,showLine:false,order:2});
+      if(cmpRows&&cmpRows.length>0){
+        const cv=cmpRows.filter(r=>{const md=n(r.mod_duration),tir=n(r[field]);return md>0&&isFinite(tir)&&tir!==0;});
+        const cp=cv.map(r=>({x:n(r.mod_duration),y:n(r[field])*100,label:r.especie}));
+        const tr2=trendDataset(cp,colorCmp,true);if(tr2)datasets.push(tr2);
+        datasets.push({label:'cmp',data:cp,backgroundColor:colorCmp,borderColor:colorCmp,pointRadius:4,pointHoverRadius:6,pointStyle:'triangle',showLine:false,order:2});
+      }
+      const ctx=document.getElementById(canvasId);if(!ctx)return;
+      new Chart(ctx,{
+        type:'scatter',data:{datasets},
+        options:{
+          ...CHART_OPTS_BASE,
+          plugins:{
+            ...CHART_OPTS_BASE.plugins,
+            tooltip:{
+              ...CHART_OPTS_BASE.plugins.tooltip,
+              filter:item=>item.dataset.label!=='_trend',
+              callbacks:{label:c=>{const p=c.raw;return`${p.label||''}: ${p.y?p.y.toFixed(2):'?'}% | MD ${p.x?p.x.toFixed(4):'?'}`;}}
+            }
+          },
+          scales:{
+            x:{...CHART_OPTS_BASE.scales.x,title:{display:true,text:'Modified Duration',color:'#8a90b0',font:{size:10}}},
+            y:{...CHART_OPTS_BASE.scales.y,ticks:{...CHART_OPTS_BASE.scales.y.ticks,callback:v=>v.toFixed(1)+'%'}}
+          }
+        },
+        plugins:[{id:'labels',afterDraw(chart){
           const c2=chart.ctx;
           chart.data.datasets.forEach((ds,di)=>{
             if(ds.label==='_trend')return;
             const meta=chart.getDatasetMeta(di);
             ds.data.forEach((pt,pi)=>{
               const el=meta.data[pi];if(!el||!pt.label)return;
-              c2.save();
-              c2.font="500 9px 'JetBrains Mono',monospace";
-              c2.fillStyle=ds.backgroundColor==='#3b82f6'?'#8892a4':'#c9973a';
-              c2.fillText(pt.label,el.x+6,el.y-4);
-              c2.restore();
+              c2.save();c2.font="500 9px 'DM Mono',monospace";
+              c2.fillStyle='#8a90b0';
+              c2.fillText(pt.label,el.x+6,el.y-4);c2.restore();
             });
           });
-        }
-      }]
-    });
+        }}]
+      });
+    };
+    mkDualChart('curve-fija','tir_fija','#1E27F3','#f59e0b',cmpData);
+    mkDualChart('curve-tamar','tir_tamar','#0d9e6e','#f59e0b',cmpData);
+
+    const legendEl=document.getElementById('dual-legend');
+    legendEl.innerHTML=`
+      <div class="legend-item"><div class="legend-dot" style="background:#1E27F3"></div>TIR Fija</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#0d9e6e"></div>TIR TAMAR</div>
+      ${cmpData?`<div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Comparar</div>`:''}`;
   },50);
   return card;
 }
 
+// ── TABLE CARD ──
 function buildTableCard(data){
   const card=document.createElement('div');
   card.className='card';
-  const cols=[
-    {key:'especie',label:'Ticker',fmt:null},
-    {key:'ultimo',label:'Último',fmt:'num2'},
-    {key:'precio_limpio',label:'Px Limpio',fmt:'num2'},
-    {key:'tir',label:'TIR',fmt:'pct',cls:'tir'},
-    {key:'mod_duration',label:'MD',fmt:'num4'},
-    {key:'duration',label:'Duration',fmt:'num2'},
-    {key:'variacion',label:'Var%',fmt:'var',cls:'var'},
-    {key:'maturity',label:'Vencimiento',fmt:null},
-    {key:'dias_maturity',label:'Días',fmt:'int'},
-  ];
+
+  // Columnas según tipo
+  let cols;
+  if(CURRENT_TAB==='dual'){
+    cols=[
+      {key:'especie',   label:'Ticker',      fmt:null},
+      {key:'ultimo',    label:'Último',       fmt:'num2'},
+      {key:'tir_fija',  label:'TIR Fija',     fmt:'pct', cls:'tir_fija'},
+      {key:'tir_tamar', label:'TIR TAMAR',    fmt:'pct', cls:'tir_tamar'},
+      {key:'tir',       label:'TIR Ganadora', fmt:'pct', cls:'tir'},
+      {key:'mod_duration',label:'MD',         fmt:'num4'},
+      {key:'variacion', label:'Var%',          fmt:'var', cls:'var'},
+      {key:'maturity',  label:'Vencimiento',  fmt:null},
+      {key:'dias_maturity',label:'Días',      fmt:'int'},
+    ];
+  } else if(CURRENT_TAB==='dolar_linked'){
+    cols=[
+      {key:'especie',      label:'Ticker',     fmt:null},
+      {key:'dirty_usd',    label:'Precio USD',  fmt:'usd'},
+      {key:'tir',          label:'TIR',         fmt:'pct', cls:'tir'},
+      {key:'mod_duration', label:'MD',          fmt:'num4'},
+      {key:'variacion',    label:'Var%',         fmt:'var', cls:'var'},
+      {key:'maturity',     label:'Vencimiento', fmt:null},
+      {key:'dias_maturity',label:'Días',        fmt:'int'},
+    ];
+  } else {
+    cols=[
+      {key:'especie',      label:'Ticker',      fmt:null},
+      {key:'ultimo',       label:'Último',       fmt:'num2'},
+      {key:'precio_limpio',label:'Px Limpio',    fmt:'num2'},
+      {key:'tir',          label:'TIR',          fmt:'pct', cls:'tir'},
+      {key:'mod_duration', label:'MD',           fmt:'num4'},
+      {key:'duration',     label:'Duration',     fmt:'num2'},
+      {key:'variacion',    label:'Var%',          fmt:'var', cls:'var'},
+      {key:'maturity',     label:'Vencimiento',  fmt:null},
+      {key:'dias_maturity',label:'Días',         fmt:'int'},
+    ];
+  }
 
   let sortKey=null, sortDir=1;
 
@@ -416,56 +1098,69 @@ function buildTableCard(data){
     const sorted=[...rows];
     if(sortKey){
       sorted.sort((a,b)=>{
-        const va=sortKey==='especie'||sortKey==='maturity'?a[sortKey]:(n(a[sortKey])||0);
-        const vb=sortKey==='especie'||sortKey==='maturity'?b[sortKey]:(n(b[sortKey])||0);
+        const isStr=sortKey==='especie'||sortKey==='maturity';
+        const va=isStr?a[sortKey]:(n(a[sortKey])||0);
+        const vb=isStr?b[sortKey]:(n(b[sortKey])||0);
         if(va<vb)return -1*sortDir;
         if(va>vb)return 1*sortDir;
         return 0;
       });
     }
 
-    const headers=cols.map(c=>{
-      const isActive=sortKey===c.key;
-      const arrow=isActive?(sortDir===1?'▲':'▼'):'⇅';
-      const arrowColor=isActive?'var(--accent3)':'var(--text3)';
-      return`<th style="cursor:pointer;user-select:none" onclick="__sortTable('${c.key}')">${c.label} <span style="font-size:9px;color:${arrowColor}">${arrow}</span></th>`;
-    }).join('');
+    // rebuild headers with sort indicators
+    const thead=card.querySelector('thead tr');
+    if(thead){
+      thead.innerHTML=cols.map((c,i)=>{
+        let cls='';
+        if(sortKey===c.key) cls=sortDir===1?'sorted-asc':'sorted-desc';
+        return`<th class="${cls}" data-col="${i}">${c.label}</th>`;
+      }).join('');
+      thead.querySelectorAll('th').forEach((th,i)=>{
+        th.style.cursor='pointer';th.style.userSelect='none';
+        th.onclick=()=>{
+          if(sortKey===cols[i].key){sortDir*=-1;}else{sortKey=cols[i].key;sortDir=1;}
+          renderTable(data);
+        };
+      });
+    }
 
-    const tableRows=sorted.map(r=>{
+    const tbody=card.querySelector('tbody');
+    if(!tbody)return;
+    tbody.innerHTML=sorted.map(r=>{
       const cells=cols.map(c=>{
         if(c.key==='especie')return`<td onclick="openDetail('${r.especie}')">${r.especie}</td>`;
         if(c.key==='maturity')return`<td>${r.maturity?r.maturity.substring(0,10):'—'}</td>`;
         const fmtd=fmt(r[c.key],c.fmt);
         let cls='';
-        if(c.cls==='var')cls=varClass(r.variacion);
-        if(c.cls==='tir')cls=tirClass(r.tir);
+        if(c.cls==='var')   cls=varClass(r.variacion);
+        if(c.cls==='tir'||c.cls==='tir_fija'||c.cls==='tir_tamar')cls=tirClass(r[c.key]);
         return`<td class="${cls}">${fmtd}</td>`;
       }).join('');
       return`<tr>${cells}</tr>`;
     }).join('');
-
-    card.querySelector('tbody').innerHTML=tableRows;
-    card.querySelectorAll('th').forEach((th,i)=>{
-      th.onclick=()=>__sortTable(cols[i].key);
-    });
   }
 
-  window.__sortTable=function(key){
-    if(sortKey===key){sortDir*=-1;}else{sortKey=key;sortDir=1;}
-    renderTable(data);
-  };
-
+  const theadHtml=cols.map(c=>`<th data-key="${c.key}" style="cursor:pointer;user-select:none">${c.label}</th>`).join('');
   card.innerHTML=`
     <div class="card-header"><span class="card-title">Tabla — ${TIPOS[CURRENT_TAB]}</span></div>
     <div class="table-scroll"><table class="data-table">
-      <thead><tr>${cols.map(c=>`<th style="cursor:pointer;user-select:none" onclick="__sortTable('${c.key}')">${c.label} <span style="font-size:9px;color:var(--text3)">⇅</span></th>`).join('')}</tr></thead>
+      <thead><tr>${theadHtml}</tr></thead>
       <tbody></tbody>
     </table></div>`;
+
+  // attach sort handlers
+  card.querySelectorAll('th').forEach((th,i)=>{
+    th.onclick=()=>{
+      if(sortKey===cols[i].key){sortDir*=-1;}else{sortKey=cols[i].key;sortDir=1;}
+      renderTable(data);
+    };
+  });
 
   renderTable(data);
   return card;
 }
 
+// ── DETAIL VIEW ──
 function openDetail(especie){
   document.getElementById('detail-view').classList.add('open');
   document.getElementById('detail-ticker').textContent=especie;
@@ -478,99 +1173,141 @@ function openDetail(especie){
   }
   const body=document.getElementById('detail-body');
   body.innerHTML='';
+
   if(latest){
-    const stats=[
-      {label:'TIR',value:fmt(latest.tir,'pct'),cls:tirClass(latest.tir)},
-      {label:'Mod. Duration',value:fmt(latest.mod_duration,'num4')},
-      {label:'Precio Limpio',value:fmt(latest.precio_limpio,'num2')},
-      {label:'Último',value:fmt(latest.ultimo,'num2')},
-      {label:'Variación',value:fmt(latest.variacion,'var'),cls:varClass(latest.variacion)},
-      {label:'Días al Venc.',value:fmt(latest.dias_maturity,'int')},
-      {label:'Duration',value:fmt(latest.duration,'num2')},
-      {label:'Convexidad',value:fmt(latest.convexidad,'num4')},
-    ];
+    let stats;
+    if(CURRENT_TAB==='dolar_linked'){
+      // Dollar Linked: mostrar dirty/clean en pesos y USD
+      stats=[
+        {label:'TIR (USD)',      value:fmt(latest.tir,'pct'),          cls:tirClass(latest.tir)},
+        {label:'Precio Dirty $', value:fmt(latest.dirty_pesos,'num2')},
+        {label:'Precio Dirty U$S',value:fmt(latest.dirty_usd,'usd')},
+        {label:'Días al Venc.',  value:fmt(latest.dias_maturity,'int')},
+        {label:'Mod. Duration',  value:fmt(latest.mod_duration,'num4')},
+        {label:'Duration',       value:fmt(latest.duration,'num2')},
+        {label:'Variación',      value:fmt(latest.variacion,'var'),     cls:varClass(latest.variacion)},
+        {label:'Convexidad',     value:fmt(latest.convexidad,'num4')},
+      ];
+    } else if(CURRENT_TAB==='dual'){
+      stats=[
+        {label:'TIR Fija',      value:fmt(latest.tir_fija,'pct'),   cls:tirClass(latest.tir_fija)},
+        {label:'TIR TAMAR',     value:fmt(latest.tir_tamar,'pct'),  cls:tirClass(latest.tir_tamar)},
+        {label:'TIR Ganadora',  value:fmt(latest.tir,'pct'),        cls:tirClass(latest.tir)},
+        {label:'Último',        value:fmt(latest.ultimo,'num2')},
+        {label:'Precio Limpio', value:fmt(latest.precio_limpio,'num2')},
+        {label:'Variación',     value:fmt(latest.variacion,'var'),   cls:varClass(latest.variacion)},
+        {label:'Días al Venc.', value:fmt(latest.dias_maturity,'int')},
+        {label:'Mod. Duration', value:fmt(latest.mod_duration,'num4')},
+      ];
+    } else {
+      stats=[
+        {label:'TIR',           value:fmt(latest.tir,'pct'),          cls:tirClass(latest.tir)},
+        {label:'Mod. Duration', value:fmt(latest.mod_duration,'num4')},
+        {label:'Precio Limpio', value:fmt(latest.precio_limpio,'num2')},
+        {label:'Último',        value:fmt(latest.ultimo,'num2')},
+        {label:'Variación',     value:fmt(latest.variacion,'var'),     cls:varClass(latest.variacion)},
+        {label:'Días al Venc.', value:fmt(latest.dias_maturity,'int')},
+        {label:'Duration',      value:fmt(latest.duration,'num2')},
+        {label:'Convexidad',    value:fmt(latest.convexidad,'num4')},
+      ];
+    }
     const grid=document.createElement('div');
     grid.className='detail-grid';
-    stats.forEach(s=>{grid.innerHTML+=`<div class="stat-card"><div class="stat-label">${s.label}</div><div class="stat-value ${s.cls||''}">${s.value}</div></div>`;});
+    stats.forEach(s=>{
+      grid.innerHTML+=`<div class="stat-card"><div class="stat-label">${s.label}</div><div class="stat-value ${s.cls||''}">${s.value}</div></div>`;
+    });
     body.appendChild(grid);
   }
+
   const byDate={};
   allRows.forEach(r=>{const d=(r.fecha||'').substring(0,10);if(d&&!byDate[d])byDate[d]=r;});
   const histRows=Object.entries(byDate).sort((a,b)=>b[0].localeCompare(a[0]));
+
+  // Selección de campo TIR para histórico (dual = tir_fija + tir_tamar, resto = tir)
+  const isDual=CURRENT_TAB==='dual';
+  const isDL=CURRENT_TAB==='dolar_linked';
 
   const histSection=document.createElement('div');
   histSection.innerHTML=`
     <div class="grid-2">
       <div class="card" style="margin-bottom:0">
         <div class="card-header" style="justify-content:space-between">
-          <span class="card-title">TIR Histórica</span>
-          <div class="hist-controls">
-            <button class="hist-btn active" onclick="filterHist('tir',7,this)">1S</button>
-            <button class="hist-btn" onclick="filterHist('tir',30,this)">1M</button>
-            <button class="hist-btn" onclick="filterHist('tir',90,this)">3M</button>
-            <button class="hist-btn" onclick="filterHist('tir',999,this)">Todo</button>
+          <span class="card-title">${isDual?'TIR Fija / TAMAR':'TIR'} Histórica</span>
+          <div class="hist-controls" id="hist-period-ctrl">
+            <button class="hist-btn active" onclick="filterHistAll(7,this)">1S</button>
+            <button class="hist-btn" onclick="filterHistAll(30,this)">1M</button>
+            <button class="hist-btn" onclick="filterHistAll(90,this)">3M</button>
+            <button class="hist-btn" onclick="filterHistAll(999,this)">Todo</button>
           </div>
         </div>
-        <div class="chart-wrap"><div class="chart-canvas-wrap" style="height:200px"><canvas id="hist-tir-chart" role="img" aria-label="TIR histórica"></canvas></div></div>
+        <div class="chart-wrap"><div class="chart-canvas-wrap" style="height:200px"><canvas id="hist-tir-chart"></canvas></div></div>
       </div>
       <div class="card" style="margin-bottom:0">
         <div class="card-header" style="justify-content:space-between">
-          <span class="card-title">Precio Histórico</span>
-          <div class="hist-controls">
-            <button class="hist-btn active" onclick="filterHist('precio',7,this)">1S</button>
-            <button class="hist-btn" onclick="filterHist('precio',30,this)">1M</button>
-            <button class="hist-btn" onclick="filterHist('precio',90,this)">3M</button>
-            <button class="hist-btn" onclick="filterHist('precio',999,this)">Todo</button>
-          </div>
+          <span class="card-title">${isDL?'Precio Dirty USD':'Precio'} Histórico</span>
         </div>
-        <div class="chart-wrap"><div class="chart-canvas-wrap" style="height:200px"><canvas id="hist-px-chart" role="img" aria-label="Precio histórico"></canvas></div></div>
+        <div class="chart-wrap"><div class="chart-canvas-wrap" style="height:200px"><canvas id="hist-px-chart"></canvas></div></div>
       </div>
     </div>`;
   body.appendChild(histSection);
 
+  // Tabla historial
   const tableCard=document.createElement('div');
   tableCard.className='card';
-  const allCols=['fecha','especie','plazo','ultimo','precio_limpio','variacion','tir','duration','mod_duration','convexidad','maturity','dias_maturity'];
-  const thCells=allCols.map(c=>`<th>${COL_LABELS[c]||c}</th>`).join('');
+  let allCols;
+  if(isDual){
+    allCols=['fecha','especie','plazo','ultimo','tir_fija','tir_tamar','tir','mod_duration','maturity','dias_maturity'];
+  } else if(isDL){
+    allCols=['fecha','especie','plazo','dirty_pesos','dirty_usd','variacion','tir','mod_duration','maturity','dias_maturity'];
+  } else {
+    allCols=['fecha','especie','plazo','ultimo','precio_limpio','variacion','tir','duration','mod_duration','convexidad','maturity','dias_maturity'];
+  }
+  const lbl={fecha:'Fecha',especie:'Ticker',plazo:'Plazo',ultimo:'Último',precio_limpio:'Px Limpio',variacion:'Var%',tir:'TIR',tir_fija:'TIR Fija',tir_tamar:'TIR TAMAR',duration:'Duration',mod_duration:'MD',convexidad:'Convexidad',maturity:'Vencimiento',dias_maturity:'Días',dirty_pesos:'Dirty $',dirty_usd:'Dirty U$S'};
+  const thCells=allCols.map(c=>`<th>${lbl[c]||c}</th>`).join('');
   const tdRows=histRows.map(([d,r])=>`<tr>
     <td style="color:var(--text2)">${d}</td>
-    <td style="color:var(--accent3);font-weight:600">${r.especie}</td>
+    <td style="color:var(--accent);font-weight:600">${r.especie}</td>
     <td style="color:var(--text2)">${r.plazo}</td>
-    <td>${fmt(r.ultimo,'num2')}</td>
-    <td>${fmt(r.precio_limpio,'num2')}</td>
-    <td class="${varClass(r.variacion)}">${fmt(r.variacion,'var')}</td>
-    <td class="${tirClass(r.tir)}">${fmt(r.tir,'pct')}</td>
-    <td>${fmt(r.duration,'num2')}</td>
-    <td>${fmt(r.mod_duration,'num4')}</td>
-    <td>${fmt(r.convexidad,'num4')}</td>
-    <td>${r.maturity?r.maturity.substring(0,10):'—'}</td>
-    <td>${fmt(r.dias_maturity,'int')}</td>
+    ${allCols.slice(3).map(c=>{
+      if(c==='variacion') return`<td class="${varClass(r[c])}">${fmt(r[c],'var')}</td>`;
+      if(c==='tir'||c==='tir_fija'||c==='tir_tamar') return`<td class="${tirClass(r[c])}">${fmt(r[c],'pct')}</td>`;
+      if(c==='maturity') return`<td>${r[c]?r[c].substring(0,10):'—'}</td>`;
+      if(c==='dias_maturity') return`<td>${fmt(r[c],'int')}</td>`;
+      if(c==='dirty_usd') return`<td>${fmt(r[c],'usd')}</td>`;
+      return`<td>${fmt(r[c],'num2')}</td>`;
+    }).join('')}
   </tr>`).join('');
   tableCard.innerHTML=`
     <div class="card-header"><span class="card-title">Historial — ${especie}</span></div>
     <div class="table-scroll"><table class="data-table"><thead><tr>${thCells}</tr></thead><tbody>${tdRows}</tbody></table></div>`;
   body.appendChild(tableCard);
 
-  setTimeout(()=>buildHistCharts(histRows,7),80);
+  // cargar charts
   window._histRows=histRows;
   window._currentEspecie=especie;
+  window._currentTab=CURRENT_TAB;
+  setTimeout(()=>buildHistCharts(histRows,7),80);
 }
 
-window.filterHist=function(type,days,btn){
+// ── filterHistAll: sincroniza ambos gráficos ──
+window.filterHistAll=function(days,btn){
   btn.closest('.hist-controls').querySelectorAll('.hist-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  buildHistCharts(window._histRows,days,type);
+  buildHistCharts(window._histRows,days);
 };
 
-function buildHistCharts(histRows,days,type){
+function buildHistCharts(histRows,days){
   const cutoff=new Date();
   cutoff.setDate(cutoff.getDate()-(days>=999?99999:days));
   const filtered=histRows.filter(([d])=>new Date(d)>=cutoff).reverse();
   const labels=filtered.map(([d])=>d.substring(5));
-  const tirVals=filtered.map(([,r])=>{const v=n(r.tir);return(!isFinite(v)||v===0)?null:parseFloat((v*100).toFixed(4));});
-  const pxVals=filtered.map(([,r])=>{const v=n(r.precio_limpio);return isNaN(v)?null:parseFloat(v.toFixed(2));});
+  const tab=window._currentTab||CURRENT_TAB;
 
-  const mkChart=(canvasId,vals,color,label,isPct)=>{
+  const isDual=tab==='dual';
+  const isDL=tab==='dolar_linked';
+
+  // TIR chart
+  const mkLine=(canvasId,vals,color,label,isPct)=>{
     const canvas=document.getElementById(canvasId);if(!canvas)return;
     const ex=Chart.getChart(canvas);if(ex)ex.destroy();
     new Chart(canvas,{
@@ -580,28 +1317,68 @@ function buildHistCharts(histRows,days,type){
         responsive:true,maintainAspectRatio:false,
         plugins:{
           legend:{display:false},
-          tooltip:{callbacks:{label:c=>`${label}: ${isPct?c.raw.toFixed(2)+'%':c.raw}`},
-            backgroundColor:'#0f1628',borderColor:'rgba(255,255,255,0.12)',borderWidth:1,
-            titleColor:'#8892a4',bodyColor:'#e8eaf0',padding:10,
-            titleFont:{family:"'JetBrains Mono',monospace",size:11},bodyFont:{family:"'JetBrains Mono',monospace",size:11}}
+          tooltip:{
+            callbacks:{label:c=>`${label}: ${isPct?(c.raw!==null?c.raw.toFixed(2)+'%':'—'):c.raw}`},
+            backgroundColor:'#fff',borderColor:'rgba(30,39,243,0.2)',borderWidth:1,
+            titleColor:'#3a3f5c',bodyColor:'#0a0c1a',padding:10,
+            titleFont:{family:"'DM Mono',monospace",size:11},bodyFont:{family:"'DM Mono',monospace",size:11}
+          }
         },
         scales:{
-          x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#4a5468',font:{family:"'JetBrains Mono',monospace",size:9},maxRotation:45,autoSkip:true,maxTicksLimit:8}},
-          y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#4a5468',font:{family:"'JetBrains Mono',monospace",size:9},callback:v=>isPct?v.toFixed(1)+'%':v.toFixed(1)}}
+          x:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:9},maxRotation:45,autoSkip:true,maxTicksLimit:8}},
+          y:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:9},callback:v=>isPct?(v!==null?v.toFixed(1)+'%':''):v.toFixed(1)}}
         }
       }
     });
   };
-  if(!type||type==='tir')   mkChart('hist-tir-chart',tirVals,'#3b82f6','TIR',true);
-  if(!type||type==='precio')mkChart('hist-px-chart', pxVals, '#10b981','Px Limpio',false);
+
+  if(isDual){
+    // dos líneas en el mismo canvas
+    const fijaVals=filtered.map(([,r])=>{const v=n(r.tir_fija);return(!isFinite(v))?null:parseFloat((v*100).toFixed(4));});
+    const tamarVals=filtered.map(([,r])=>{const v=n(r.tir_tamar);return(!isFinite(v))?null:parseFloat((v*100).toFixed(4));});
+    const canvas=document.getElementById('hist-tir-chart');if(canvas){
+      const ex=Chart.getChart(canvas);if(ex)ex.destroy();
+      new Chart(canvas,{
+        type:'line',
+        data:{labels,datasets:[
+          {label:'TIR Fija',data:fijaVals,borderColor:'#1E27F3',backgroundColor:'rgba(30,39,243,0.06)',borderWidth:1.5,pointRadius:fijaVals.length<=15?3:0,fill:false,tension:.3,spanGaps:true},
+          {label:'TIR TAMAR',data:tamarVals,borderColor:'#0d9e6e',backgroundColor:'rgba(13,158,110,0.06)',borderWidth:1.5,pointRadius:tamarVals.length<=15?3:0,fill:false,tension:.3,spanGaps:true}
+        ]},
+        options:{
+          responsive:true,maintainAspectRatio:false,
+          plugins:{
+            legend:{display:true,labels:{color:'#3a3f5c',font:{family:"'DM Mono',monospace",size:10},boxWidth:12}},
+            tooltip:{
+              backgroundColor:'#fff',borderColor:'rgba(30,39,243,0.2)',borderWidth:1,
+              titleColor:'#3a3f5c',bodyColor:'#0a0c1a',padding:10,
+              titleFont:{family:"'DM Mono',monospace",size:11},bodyFont:{family:"'DM Mono',monospace",size:11},
+              callbacks:{label:c=>`${c.dataset.label}: ${c.raw!==null?c.raw.toFixed(2)+'%':'—'}`}
+            }
+          },
+          scales:{
+            x:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:9},maxRotation:45,autoSkip:true,maxTicksLimit:8}},
+            y:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:9},callback:v=>v.toFixed(1)+'%'}}
+          }
+        }
+      });
+    }
+  } else {
+    const tirVals=filtered.map(([,r])=>{const v=n(r.tir);return(!isFinite(v)||v===0)?null:parseFloat((v*100).toFixed(4));});
+    mkLine('hist-tir-chart',tirVals,'#1E27F3','TIR',true);
+  }
+
+  // Precio chart
+  const pxField=isDL?'dirty_usd':'precio_limpio';
+  const pxVals=filtered.map(([,r])=>{const v=n(r[pxField]);return isNaN(v)?null:parseFloat(v.toFixed(2));});
+  const pxLabel=isDL?'Dirty USD':'Px Limpio';
+  const pxColor=isDL?'#d97706':'#0d9e6e';
+  mkLine('hist-px-chart',pxVals,pxColor,pxLabel,false);
 }
 
 function closeDetail(){
   document.getElementById('detail-view').classList.remove('open');
   window._histRows=null;window._currentEspecie=null;
 }
-
-loadData();
 </script>
 </body>
 </html>
