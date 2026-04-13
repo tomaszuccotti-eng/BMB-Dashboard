@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -672,6 +672,10 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
     </div>
     <div class="header-right">
       <div class="status-dot"></div>
+      <div class="plazo-toggle">
+        <button class="plazo-btn active" onclick="setEquityPlazo('C.I.')">C.I.</button>
+        <button class="plazo-btn" onclick="setEquityPlazo('24Hs.')">24Hs.</button>
+      </div>
     </div>
   </div>
   <div class="main" id="equity-content">
@@ -734,6 +738,7 @@ let COMPARE_MODE=null;
 let DATA_LOADED=false;
 let EQUITY_DATA=[];
 let DATA_EQUITY_LOADED=false;
+let EQUITY_PLAZO='C.I.';
 
 const TIPOS={lecap:'LECAP',boncap:'BONCAP',boncer:'BONCER',soberano:'SOBERANO',dolar_linked:'DOLAR_LINKED',bopreal:'BOPREAL',fixed_rate:'FIXED_RATE',badlar:'BADLAR',dual:'DUAL'};
 const COL_LABELS={fecha:'Fecha',especie:'Ticker',tir:'TIR',mod_duration:'MD',precio_limpio:'Px Limpio',ultimo:'Último',variacion:'Var%',maturity:'Vencimiento',dias_maturity:'Días',duration:'Duration',convexidad:'Convexidad'};
@@ -746,6 +751,12 @@ function enterApp(){
   document.getElementById('legal-footer').style.display='block';
   if(!DATA_LOADED) loadData();
 }
+function setEquityPlazo(p){
+  EQUITY_PLAZO=p;
+  document.querySelectorAll('#app-equity .plazo-btn').forEach(b=>b.classList.toggle('active',b.textContent===p));
+  renderEquity();
+}
+
 function enterEquity(){
   document.getElementById('landing').style.display='none';
   document.getElementById('app-equity').style.display='flex';
@@ -1659,7 +1670,7 @@ function renderEquity(){
   if(!main)return;
   const ld=getEquityLatestDate();
   const f=(ld||'').substring(0,10);
-  const data=EQUITY_DATA.filter(r=>r.fecha&&r.fecha.substring(0,10)===f&&r.especie&&r.especie!=='especie');
+  const data=EQUITY_DATA.filter(r=>r.fecha&&r.fecha.substring(0,10)===f&&r.especie&&r.especie!=='especie'&&r.plazo===EQUITY_PLAZO);
   if(data.length===0){main.innerHTML='<div class="empty-msg">Sin datos.</div>';return;}
   main.innerHTML='';
   main.appendChild(buildEquityTable(data));
