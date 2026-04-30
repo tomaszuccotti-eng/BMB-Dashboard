@@ -590,8 +590,8 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
         <span class="mosaic-badge">DISPONIBLE</span>
       </div>
 
-      <!-- ONs → próximo -->
-      <div class="mosaic-card disabled">
+      <!-- Balances → activo -->
+      <div class="mosaic-card" onclick="enterBalances()" style="cursor:pointer;">
         <div class="mosaic-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -600,9 +600,9 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
             <line x1="16" y1="17" x2="8" y2="17"/>
           </svg>
         </div>
-        <div class="mosaic-name">Obligaciones Negociables</div>
-        <div class="mosaic-desc">ONs corporativas en pesos y dólares con análisis de spread.</div>
-        <span class="mosaic-badge badge-soon">PRÓXIMAMENTE</span>
+        <div class="mosaic-name">Balances</div>
+        <div class="mosaic-desc">Generador de reportes financieros con IA a partir de ticker o PDF.</div>
+        <span class="mosaic-badge">DISPONIBLE</span>
       </div>
 
       <!-- FX → próximo -->
@@ -697,6 +697,137 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 </div>
 
 <!-- ══ LEGAL DISCLAIMER FOOTER ══ -->
+<!-- ══════════════════ APP BALANCES ══════════════════ -->
+<div id="app-balances" style="display:none;min-height:100vh;background:#0d1117;">
+  <div style="background:#161b22;border-bottom:1px solid #30363d;padding:12px 24px;display:flex;align-items:center;gap:16px;">
+    <button onclick="backToLanding()" style="padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid #30363d;border-radius:6px;background:transparent;color:#8b949e;transition:all .15s;font-family:var(--mono);display:flex;align-items:center;gap:6px;" onmouseover="this.style.background='#1E27F3';this.style.color='#fff';this.style.borderColor='#1E27F3';" onmouseout="this.style.background='transparent';this.style.color='#8b949e';this.style.borderColor='#30363d';">← Volver</button>
+    <span style="font-family:var(--display);font-size:14px;font-weight:700;color:#e6edf3;">Stock Deep Research</span>
+    <span style="font-size:10px;font-family:var(--mono);color:#8b949e;background:rgba(88,166,255,0.1);padding:2px 8px;border-radius:10px;border:1px solid rgba(88,166,255,0.2);">GENERADOR DE REPORTES · AI</span>
+  </div>
+
+  <div style="display:grid;grid-template-columns:360px 1fr;min-height:calc(100vh - 53px);">
+    <!-- SIDEBAR -->
+    <div style="background:#161b22;border-right:1px solid #30363d;padding:24px 20px;display:flex;flex-direction:column;gap:20px;position:sticky;top:53px;height:calc(100vh - 53px);overflow-y:auto;">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+          <div style="width:36px;height:36px;background:#0d2240;border:1px solid #58a6ff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;">📊</div>
+          <div>
+            <div style="font-size:16px;font-weight:700;color:#e6edf3;">Stock Deep Research</div>
+            <div style="font-size:11px;color:#8b949e;">Generador de reportes · Yahoo Finance</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8b949e;margin-bottom:8px;">1 · Ticker</div>
+        <div style="position:relative;">
+          <input id="bTicker" type="text" placeholder="Ej: AAPL, MELI, NVDA" maxlength="10"
+            style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:10px 14px;font-size:20px;font-weight:700;letter-spacing:.1em;color:#e6edf3;text-transform:uppercase;outline:none;transition:border-color .2s;font-family:inherit;"
+            onfocus="this.style.borderColor='#58a6ff'" onblur="this.style.borderColor='#30363d'"
+            onkeydown="if(event.key==='Enter')bFetchData()" />
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
+          ${['MELI','AAPL','NVDA','AMZN','MSFT','GOOGL','TSLA','NU','SE','META'].map(t=>`<span onclick="document.getElementById('bTicker').value='${t}'" style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;border:1px solid #30363d;background:#0d1117;color:#8b949e;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='#58a6ff';this.style.color='#58a6ff';this.style.background='#0d2240';" onmouseout="this.style.borderColor='#30363d';this.style.color='#8b949e';this.style.background='#0d1117';">${t}</span>`).join('')}
+        </div>
+        <button id="bFetchBtn" onclick="bFetchData()" style="width:100%;padding:11px;border-radius:8px;border:none;background:#1a4a80;color:#58a6ff;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;font-family:inherit;" onmouseover="this.style.background='#1e5a9a'" onmouseout="this.style.background='#1a4a80'">
+          Buscar datos en Yahoo Finance
+        </button>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#8b949e;">
+        <span style="flex:1;height:1px;background:#30363d;"></span>o subir PDF<span style="flex:1;height:1px;background:#30363d;"></span>
+      </div>
+
+      <div>
+        <div id="bPdfZone" onclick="document.getElementById('bPdfInput').click()" style="border:1.5px dashed #30363d;border-radius:8px;padding:16px;text-align:center;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='#58a6ff';this.style.background='#0d2240';" onmouseout="this.style.borderColor='#30363d';this.style.background='transparent';">
+          <div id="bPdfIcon" style="font-size:22px;margin-bottom:4px;">📄</div>
+          <div id="bPdfLabel" style="font-size:12px;color:#8b949e;">Arrastrá o hacé click — Balance / 10-K / Earnings</div>
+          <input type="file" id="bPdfInput" accept=".pdf" style="display:none" onchange="bHandlePDF(this)" />
+        </div>
+      </div>
+
+      <div id="bStatusBox" style="display:none;padding:10px 12px;border-radius:6px;font-size:12px;"></div>
+
+      <div style="height:1px;background:#30363d;"></div>
+
+      <div>
+        <div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8b949e;margin-bottom:8px;">2 · Secciones del reporte</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;" id="bOptGrid">
+          <div class="b-opt on" data-key="thesis" onclick="bToggleOpt(this)" style="border:1px solid #58a6ff;border-radius:6px;padding:8px 10px;cursor:pointer;background:#0d2240;">
+            <div style="font-size:11px;font-weight:600;color:#58a6ff;">Tesis</div>
+            <div style="font-size:10px;color:#8b949e;">Análisis redactado por IA</div>
+          </div>
+          <div class="b-opt on" data-key="peers" onclick="bToggleOpt(this)" style="border:1px solid #58a6ff;border-radius:6px;padding:8px 10px;cursor:pointer;background:#0d2240;">
+            <div style="font-size:11px;font-weight:600;color:#58a6ff;">Pares</div>
+            <div style="font-size:10px;color:#8b949e;">Múltiplos comparativos</div>
+          </div>
+          <div class="b-opt on" data-key="risks" onclick="bToggleOpt(this)" style="border:1px solid #58a6ff;border-radius:6px;padding:8px 10px;cursor:pointer;background:#0d2240;">
+            <div style="font-size:11px;font-weight:600;color:#58a6ff;">Bull / Bear</div>
+            <div style="font-size:10px;color:#8b949e;">Catalizadores y riesgos</div>
+          </div>
+          <div class="b-opt on" data-key="charts" onclick="bToggleOpt(this)" style="border:1px solid #58a6ff;border-radius:6px;padding:8px 10px;cursor:pointer;background:#0d2240;">
+            <div style="font-size:11px;font-weight:600;color:#58a6ff;">Gráficos</div>
+            <div style="font-size:10px;color:#8b949e;">Revenue, EBITDA, EPS</div>
+          </div>
+          <div class="b-opt on" data-key="moat" onclick="bToggleOpt(this)" style="border:1px solid #58a6ff;border-radius:6px;padding:8px 10px;cursor:pointer;background:#0d2240;">
+            <div style="font-size:11px;font-weight:600;color:#58a6ff;">Moat</div>
+            <div style="font-size:10px;color:#8b949e;">Foso competitivo</div>
+          </div>
+          <div class="b-opt" data-key="dcf" onclick="bToggleOpt(this)" style="border:1px solid #30363d;border-radius:6px;padding:8px 10px;cursor:pointer;background:#0d1117;">
+            <div style="font-size:11px;font-weight:600;color:#e6edf3;">DCF</div>
+            <div style="font-size:10px;color:#8b949e;">Valoración por flujos</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8b949e;margin-bottom:8px;">3 · Idioma</div>
+        <div style="display:flex;gap:6px;">
+          <div id="bLangEs" onclick="bSetLang('es')" style="flex:1;padding:6px;border-radius:6px;border:1px solid #58a6ff;background:#0d2240;color:#58a6ff;font-size:11px;font-weight:600;cursor:pointer;text-align:center;">Español</div>
+          <div id="bLangEn" onclick="bSetLang('en')" style="flex:1;padding:6px;border-radius:6px;border:1px solid #30363d;background:#0d1117;color:#8b949e;font-size:11px;font-weight:600;cursor:pointer;text-align:center;">English</div>
+          <div id="bLangPt" onclick="bSetLang('pt')" style="flex:1;padding:6px;border-radius:6px;border:1px solid #30363d;background:#0d1117;color:#8b949e;font-size:11px;font-weight:600;cursor:pointer;text-align:center;">Português</div>
+        </div>
+      </div>
+
+      <div>
+        <button id="bGenerateBtn" onclick="bGenerateReport()" disabled
+          style="width:100%;padding:13px;border-radius:8px;border:none;background:#238636;color:#fff;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;"
+          onmouseover="if(!this.disabled)this.style.background='#2ea043'" onmouseout="if(!this.disabled)this.style.background='#238636'">
+          ✦ Generar reporte completo
+        </button>
+        <div style="font-size:11px;color:#8b949e;margin-top:8px;text-align:center;line-height:1.5;">El reporte se genera con <strong style="color:#e6edf3;">Claude AI</strong><br>vía la API de Anthropic</div>
+      </div>
+      <div style="font-size:11px;color:#8b949e;text-align:center;padding-top:4px;">Solo para uso educativo e informativo.<br>No constituye asesoramiento de inversión.</div>
+    </div>
+
+    <!-- MAIN AREA -->
+    <div style="padding:32px;display:flex;flex-direction:column;background:#0d1117;">
+      <div id="bWelcome" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:16px;color:#8b949e;padding:60px 40px;">
+        <div style="font-size:56px;opacity:.4;">📈</div>
+        <h2 style="font-size:22px;font-weight:700;color:#e6edf3;opacity:.6;">Generador de reportes financieros</h2>
+        <p style="font-size:14px;max-width:380px;line-height:1.6;">Ingresá un ticker o subí un PDF con el balance de la empresa. Los datos se obtienen de Yahoo Finance y el reporte es generado con IA.</p>
+      </div>
+
+      <div id="bPreviewSection" style="display:none;">
+        <div id="bPreviewHeader" style="background:linear-gradient(135deg,#161b22 0%,#1a2332 100%);border:1px solid #30363d;border-radius:12px;padding:24px 28px;margin-bottom:16px;"></div>
+        <div id="bIsTableWrap" style="display:none;background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin-top:16px;overflow-x:auto;">
+          <div style="font-size:13px;font-weight:700;color:#e6edf3;margin-bottom:12px;">Estado de Resultados Histórico</div>
+          <table id="bIsTable" style="width:100%;border-collapse:collapse;font-size:13px;"></table>
+        </div>
+      </div>
+
+      <div id="bReportSection" style="display:none;margin-top:20px;">
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <button onclick="bDownloadReport()" style="padding:7px 14px;border-radius:6px;border:1px solid #58a6ff;background:#0d2240;color:#58a6ff;font-size:12px;cursor:pointer;font-family:inherit;">⬇ Descargar HTML</button>
+          <button onclick="bOpenInTab()" style="padding:7px 14px;border-radius:6px;border:1px solid #30363d;background:#161b22;color:#e6edf3;font-size:12px;cursor:pointer;font-family:inherit;">↗ Abrir en pestaña</button>
+          <button onclick="bClearReport()" style="padding:7px 14px;border-radius:6px;border:1px solid #30363d;background:#161b22;color:#8b949e;font-size:12px;cursor:pointer;font-family:inherit;">✕ Limpiar</button>
+        </div>
+        <iframe id="bReportFrame" style="width:100%;border:1px solid #30363d;border-radius:10px;background:#161b22;min-height:600px;height:75vh;"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="legal-footer" style="display:none;background:var(--bg2);border-top:1px solid var(--border);padding:24px 48px 32px;margin-top:auto;">
   <div style="max-width:960px;margin:0 auto;">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
@@ -767,10 +898,15 @@ function enterEquity(){
   if(logoEq&&LOGO_B64)logoEq.src=LOGO_B64;
   if(!DATA_EQUITY_LOADED) loadEquityData();
 }
+function enterBalances(){
+  document.getElementById('landing').style.display='none';
+  document.getElementById('app-balances').style.display='block';
+}
 function backToLanding(){
   document.getElementById('landing').style.display='flex';
   document.getElementById('app').style.display='none';
   document.getElementById('app-equity').style.display='none';
+  document.getElementById('app-balances').style.display='none';
   document.getElementById('legal-footer').style.display='none';
 }
 
@@ -1551,7 +1687,255 @@ function openDetail(especie){
   setTimeout(()=>buildHistCharts(histRows,7),80);
 }
 
-// ── filterHistAll: sincroniza ambos gráficos ──
+// ══════════════════ BALANCE MODULE ══════════════════
+(function(){
+  const ANTHROPIC_API='https://api.anthropic.com/v1/messages';
+  let bApiKey=localStorage.getItem('anthropic_key')||'';
+  let bFetchedData=null, bPdfBase64=null, bGeneratedHTML=null;
+  let bSelectedOpts=new Set(['thesis','peers','risks','charts','moat']);
+  let bLang='es';
+
+  // --- Status ---
+  function bShowStatus(msg,type){
+    const el=document.getElementById('bStatusBox');
+    if(!el)return;
+    const colors={info:{bg:'#0d2240',color:'#58a6ff',border:'#1a3a60'},ok:{bg:'#1a4a26',color:'#3fb950',border:'#1a4a26'},err:{bg:'#4a1a1a',color:'#f85149',border:'#4a1a1a'}};
+    const c=colors[type]||colors.info;
+    el.style.display='flex';
+    el.style.background=c.bg;
+    el.style.color=c.color;
+    el.style.border=`1px solid ${c.border}`;
+    el.style.borderRadius='6px';
+    el.style.padding='10px 12px';
+    el.style.fontSize='12px';
+    el.style.gap='8px';
+    el.style.alignItems='flex-start';
+    el.innerHTML=`<span>${type==='info'?'ℹ':type==='ok'?'✓':'⚠'}</span><span>${msg}</span>`;
+  }
+
+  // --- Opts ---
+  window.bToggleOpt=function(el){
+    const k=el.dataset.key;
+    const on=el.classList.toggle('on');
+    if(on){bSelectedOpts.add(k);el.style.borderColor='#58a6ff';el.style.background='#0d2240';el.querySelector('div').style.color='#58a6ff';}
+    else{bSelectedOpts.delete(k);el.style.borderColor='#30363d';el.style.background='#0d1117';el.querySelector('div').style.color='#e6edf3';}
+  };
+
+  // --- Lang ---
+  window.bSetLang=function(l){
+    bLang=l;
+    ['Es','En','Pt'].forEach(x=>{
+      const el=document.getElementById('bLang'+x);
+      if(!el)return;
+      const on=x.toLowerCase()===l;
+      el.style.borderColor=on?'#58a6ff':'#30363d';
+      el.style.background=on?'#0d2240':'#0d1117';
+      el.style.color=on?'#58a6ff':'#8b949e';
+    });
+  };
+
+  // --- Format helpers ---
+  function bFmt(v,prefix='$',suffix=''){
+    if(v==null||isNaN(v))return'—';
+    const av=Math.abs(v);
+    if(av>=1e12)return prefix+(v/1e12).toFixed(2)+'T'+suffix;
+    if(av>=1e9)return prefix+(v/1e9).toFixed(2)+'B'+suffix;
+    if(av>=1e6)return prefix+(v/1e6).toFixed(2)+'M'+suffix;
+    if(av>=1e3)return prefix+(v/1e3).toFixed(1)+'K'+suffix;
+    return prefix+Number(v).toFixed(2)+suffix;
+  }
+  function bFmtPct(v){if(v==null||isNaN(v))return'—';return(v*100).toFixed(1)+'%';}
+  function bFmtX(v){if(v==null||isNaN(v))return'—';return Number(v).toFixed(1)+'x';}
+
+  // --- CORS fetch ---
+  async function bTryFetch(url,opts={}){
+    try{const r=await fetch(url,{...opts,signal:AbortSignal.timeout(6000)});if(r.ok)return r;}catch(_){}
+    try{const r=await fetch('https://corsproxy.io/?'+encodeURIComponent(url),{signal:AbortSignal.timeout(8000)});if(r.ok)return r;}catch(_){}
+    try{
+      const r=await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,{signal:AbortSignal.timeout(8000)});
+      if(r.ok){const j=await r.json();return{ok:true,json:async()=>JSON.parse(j.contents),_allorigins:true};}
+    }catch(_){}
+    throw new Error('No se pudo conectar a Yahoo Finance (CORS). Probá usar el PDF directamente.');
+  }
+
+  // --- Fetch ---
+  window.bFetchData=async function(){
+    const ticker=(document.getElementById('bTicker')||{}).value?.trim().toUpperCase();
+    if(!ticker){bShowStatus('Ingresá un ticker válido','err');return;}
+    const btn=document.getElementById('bFetchBtn');
+    btn.disabled=true;btn.innerHTML='<div style="width:14px;height:14px;border:2px solid rgba(88,166,255,.3);border-top-color:#58a6ff;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;"></div> Buscando...';
+    bShowStatus('Conectando con Yahoo Finance para '+ticker+'...','info');
+    document.getElementById('bWelcome').style.display='none';
+    try{
+      const modules='summaryDetail,defaultKeyStatistics,financialData,assetProfile,incomeStatementHistory,balanceSheetHistory,cashflowStatementHistory,recommendationTrend';
+      const url=`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=${encodeURIComponent(modules)}`;
+      const res=await bTryFetch(url);
+      const json=await res.json();
+      if(json.quoteSummary?.error)throw new Error(json.quoteSummary.error.description||'Error de Yahoo Finance');
+      if(!json.quoteSummary?.result?.[0])throw new Error('Ticker no encontrado: '+ticker);
+      const q=json.quoteSummary.result[0];
+      if(!q.financialData?.totalRevenue&&!q.summaryDetail?.marketCap)throw new Error('Yahoo Finance devolvió datos incompletos para '+ticker+'. Probá con el PDF.');
+      bFetchedData={ticker,quote:q};
+      bRenderPreview(ticker,q);
+      document.getElementById('bGenerateBtn').disabled=false;
+      bShowStatus('✓ Datos obtenidos. Revisá el preview y generá el reporte.','ok');
+    }catch(e){
+      let msg=e.message;
+      if(msg.includes('CORS')||msg.includes('fetch')||msg.includes('network')||msg.includes('Failed'))
+        msg='CORS bloqueado. Soluciones: (1) abrí desde un servidor local, (2) usá extensión "CORS Unblock", o (3) subí el PDF directamente.';
+      bShowStatus(msg,'err');
+      document.getElementById('bWelcome').style.display='flex';
+      bFetchedData=null;
+      document.getElementById('bGenerateBtn').disabled=true;
+    }finally{
+      btn.disabled=false;btn.innerHTML='Buscar datos en Yahoo Finance';
+    }
+  };
+
+  // --- Preview ---
+  function bRenderPreview(ticker,q){
+    const fd=q.financialData||{};const sd=q.summaryDetail||{};const ks=q.defaultKeyStatistics||{};const ap=q.assetProfile||{};
+    const price=fd.currentPrice?.raw||sd.regularMarketPrice?.raw;
+    const prevClose=sd.previousClose?.raw;
+    const chg=price&&prevClose?((price-prevClose)/prevClose*100):null;
+    const chgColor=chg>=0?'#3fb950':'#f85149';
+    const chgSign=chg>=0?'+':'';
+    document.getElementById('bPreviewHeader').innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+        <div>
+          <div style="font-size:28px;font-weight:800;color:#58a6ff;letter-spacing:.05em;">${ticker}</div>
+          <div style="font-size:15px;font-weight:600;color:#e6edf3;">${ap.longName||ticker}</div>
+          <div style="font-size:12px;color:#8b949e;margin-top:2px;">${[ap.sector,ap.industry,ap.country].filter(Boolean).join(' · ')}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:32px;font-weight:800;color:#e6edf3;">${bFmt(price)}</div>
+          ${chg!=null?`<div style="font-size:14px;font-weight:600;color:${chgColor};margin-top:2px;">${chgSign}${chg.toFixed(2)}%</div>`:''}
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;">
+        ${[['Market Cap',bFmt(sd.marketCap?.raw)],['Revenue TTM',bFmt(fd.totalRevenue?.raw)],['Rev Growth',bFmtPct(fd.revenueGrowth?.raw)],['Gross Margin',bFmtPct(fd.grossMargins?.raw)],['Op. Margin',bFmtPct(fd.operatingMargins?.raw)],['Net Margin',bFmtPct(fd.profitMargins?.raw)],['P/E TTM',bFmtX(sd.trailingPE?.raw)],['EV/EBITDA',bFmtX(ks.enterpriseToEbitda?.raw)],['FCF',bFmt(fd.freeCashflow?.raw)],['ROE',bFmtPct(fd.returnOnEquity?.raw)],['Beta',sd.beta?.raw?.toFixed(2)||'—'],['PT Analistas',bFmt(fd.targetMeanPrice?.raw)]].map(([l,v])=>`<div style="background:#1c2230;border-radius:8px;padding:12px 14px;"><div style="font-size:10px;color:#8b949e;margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em;">${l}</div><div style="font-size:18px;font-weight:700;color:#e6edf3;">${v}</div></div>`).join('')}
+      </div>`;
+    const isList=q.incomeStatementHistory?.incomeStatementHistory||[];
+    if(isList.length>0){
+      const years=isList.map(x=>new Date(x.endDate?.raw*1000).getFullYear()).reverse();
+      const rows=[['Revenue',isList.map(x=>bFmt(x.totalRevenue?.raw)).reverse()],['Gross Profit',isList.map(x=>bFmt(x.grossProfit?.raw)).reverse()],['EBIT',isList.map(x=>bFmt(x.ebit?.raw)).reverse()],['Net Income',isList.map(x=>bFmt(x.netIncome?.raw)).reverse()],['EPS Diluido',isList.map(x=>x.dilutedEPS?.raw!=null?'$'+x.dilutedEPS.raw.toFixed(2):'—').reverse()]];
+      const thStyle='text-align:right;padding:8px 12px;font-size:10px;font-weight:600;color:#8b949e;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #30363d;background:#1c2230;';
+      const tdStyle='text-align:right;padding:8px 12px;border-bottom:1px solid #30363d;color:#e6edf3;';
+      document.getElementById('bIsTable').innerHTML=`<thead><tr><th style="${thStyle}text-align:left;">Métrica</th>${years.map(y=>`<th style="${thStyle}">${y}</th>`).join('')}</tr></thead><tbody>${rows.map(([name,vals])=>`<tr><td style="${tdStyle}text-align:left;color:#8b949e;">${name}</td>${vals.map(v=>`<td style="${tdStyle}">${v}</td>`).join('')}</tr>`).join('')}</tbody>`;
+      document.getElementById('bIsTableWrap').style.display='block';
+    }
+    document.getElementById('bPreviewSection').style.display='block';
+  }
+
+  // --- PDF ---
+  window.bHandlePDF=function(input){
+    const file=input.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=e=>{
+      bPdfBase64=e.target.result.split(',')[1];
+      const zone=document.getElementById('bPdfZone');
+      zone.style.borderColor='#3fb950';zone.style.borderStyle='solid';zone.style.background='#1a4a26';
+      document.getElementById('bPdfIcon').textContent='✓';
+      document.getElementById('bPdfLabel').textContent=file.name;
+      document.getElementById('bPdfLabel').style.color='#3fb950';
+      document.getElementById('bGenerateBtn').disabled=false;
+      document.getElementById('bWelcome').style.display='none';
+      document.getElementById('bPreviewSection').style.display='block';
+      document.getElementById('bPreviewHeader').innerHTML=`<div style="font-size:28px;font-weight:800;color:#58a6ff;">📄 PDF</div><div style="font-size:15px;font-weight:600;color:#e6edf3;">${file.name}</div><div style="font-size:12px;color:#8b949e;margin-top:2px;">Claude extraerá automáticamente todos los datos financieros del documento</div>`;
+      document.getElementById('bIsTableWrap').style.display='none';
+      bShowStatus('PDF cargado. Presioná "Generar reporte" para analizar.','ok');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // --- Ensure key ---
+  function bEnsureKey(){
+    if(bApiKey)return true;
+    const k=prompt('Ingresá tu Anthropic API Key para generar el reporte:');
+    if(!k)return false;
+    bApiKey=k.trim();localStorage.setItem('anthropic_key',bApiKey);return true;
+  }
+
+  // --- Generate ---
+  window.bGenerateReport=async function(){
+    if(!bEnsureKey())return;
+    if(!bFetchedData&&!bPdfBase64){bShowStatus('Primero buscá un ticker o subí un PDF.','err');return;}
+    const btn=document.getElementById('bGenerateBtn');
+    btn.disabled=true;
+    btn.innerHTML='<div style="width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;"></div> Generando con Claude...';
+    bShowStatus('Enviando datos a Claude AI — esto puede tomar 30-60 segundos...','info');
+    const langMap={es:'español',en:'inglés',pt:'portugués'};
+    const optMap={thesis:'tesis de inversión redactada por IA',peers:'comparación de pares con múltiplos',risks:'catalizadores bull y riesgos bear',charts:'gráficos con Chart.js (revenue, EBITDA, márgenes, EPS)',moat:'análisis del foso competitivo',dcf:'DCF simplificado'};
+    const optsStr=[...bSelectedOpts].map(k=>optMap[k]).filter(Boolean).join(', ');
+    let userContent=[];let prompt='';
+    if(bPdfBase64){
+      userContent.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:bPdfBase64}});
+      prompt=`Analizá este documento financiero y generá un reporte de investigación de acciones profesional en ${langMap[bLang]}. Extraé todos los datos del PDF (revenue, EBITDA, net income, EPS, balance, cash flow, márgenes). Incluí: ${optsStr}.`;
+    }else{
+      const q=bFetchedData.quote;const ticker=bFetchedData.ticker;
+      const fd=q.financialData||{};const sd=q.summaryDetail||{};const ks=q.defaultKeyStatistics||{};const ap=q.assetProfile||{};
+      const isList=q.incomeStatementHistory?.incomeStatementHistory||[];const bsList=q.balanceSheetHistory?.balanceSheetStatements||[];const cfList=q.cashflowStatementHistory?.cashflowStatements||[];
+      const dataPayload={ticker,company:ap.longName,sector:ap.sector,industry:ap.industry,country:ap.country,description:(ap.longBusinessSummary||'').slice(0,800),price:fd.currentPrice?.raw,high52:sd.fiftyTwoWeekHigh?.raw,low52:sd.fiftyTwoWeekLow?.raw,marketCap:sd.marketCap?.raw,beta:sd.beta?.raw,shares:ks.sharesOutstanding?.raw,revenue:fd.totalRevenue?.raw,revenueGrowth:fd.revenueGrowth?.raw,ebitda:fd.ebitda?.raw,ebitdaMargins:fd.ebitdaMargins?.raw,grossMargins:fd.grossMargins?.raw,operatingMargins:fd.operatingMargins?.raw,profitMargins:fd.profitMargins?.raw,freeCashflow:fd.freeCashflow?.raw,totalDebt:fd.totalDebt?.raw,totalCash:fd.totalCash?.raw,currentRatio:fd.currentRatio?.raw,debtToEquity:fd.debtToEquity?.raw,roe:fd.returnOnEquity?.raw,roa:fd.returnOnAssets?.raw,pe:sd.trailingPE?.raw,forwardPE:sd.forwardPE?.raw,ps:sd.priceToSalesTrailing12Months?.raw,pb:ks.priceToBook?.raw,evEbitda:ks.enterpriseToEbitda?.raw,evRevenue:ks.enterpriseToRevenue?.raw,eps:ks.trailingEps?.raw,targetMean:fd.targetMeanPrice?.raw,targetLow:fd.targetLowPrice?.raw,targetHigh:fd.targetHighPrice?.raw,recommendation:fd.recommendationKey,analystCount:ks.numberOfAnalystOpinions?.raw,incomeHistory:isList.map(x=>({year:new Date(x.endDate?.raw*1000).getFullYear(),revenue:x.totalRevenue?.raw,grossProfit:x.grossProfit?.raw,ebit:x.ebit?.raw,netIncome:x.netIncome?.raw,eps:x.dilutedEPS?.raw})).reverse(),balanceHistory:bsList.map(x=>({year:new Date(x.endDate?.raw*1000).getFullYear(),totalAssets:x.totalAssets?.raw,totalLiab:x.totalLiab?.raw,cash:x.cash?.raw,totalDebt:x.longTermDebt?.raw,equity:x.totalStockholderEquity?.raw})).reverse(),cashflowHistory:cfList.map(x=>({year:new Date(x.endDate?.raw*1000).getFullYear(),operatingCF:x.totalCashFromOperatingActivities?.raw,capex:x.capitalExpenditures?.raw,freeCF:(x.totalCashFromOperatingActivities?.raw||0)+(x.capitalExpenditures?.raw||0)})).reverse()};
+      prompt=`Tenés los siguientes datos financieros completos de Yahoo Finance para ${ticker}:\n\n${JSON.stringify(dataPayload,null,2)}\n\nGenerá un reporte de investigación de acciones profesional COMPLETO en ${langMap[bLang]}, en un único bloque HTML self-contained (con CSS inline y Chart.js desde CDN). El reporte debe tener dark-theme (bg #0d1117, cards, KPI strip, gráficos, tablas de múltiplos, comparación de pares del mismo sector). Incluí obligatoriamente: ${optsStr}. Usá los datos históricos del incomeHistory para los gráficos. Enriquecé con tu conocimiento del sector/industria y los principales competidores para la comparación de pares. El HTML debe ser completamente funcional y auto-contenido.`;
+      userContent.push({type:'text',text:prompt});
+    }
+    if(bPdfBase64&&prompt)userContent.push({type:'text',text:prompt});
+    try{
+      const res=await fetch(ANTHROPIC_API,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':bApiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-calls':'true'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:16000,messages:[{role:'user',content:userContent.length===1?userContent[0].text:userContent}]})
+      });
+      if(!res.ok){const err=await res.json();throw new Error(err.error?.message||'API error '+res.status);}
+      const data=await res.json();
+      const raw=data.content?.[0]?.text||'';
+      let html=raw;
+      const htmlMatch=raw.match(/```html\n?([\s\S]*?)\n?```/i)||raw.match(/(<!DOCTYPE[\s\S]*?<\/html>)/i);
+      if(htmlMatch)html=htmlMatch[1]||htmlMatch[0];
+      bGeneratedHTML=html;
+      const frame=document.getElementById('bReportFrame');
+      frame.srcdoc=html;
+      document.getElementById('bReportSection').style.display='block';
+      bShowStatus('Reporte generado correctamente. Descargalo o abrilo en una nueva pestaña.','ok');
+    }catch(e){
+      console.error(e);
+      if(e.message.includes('401')||e.message.includes('authentication')){bApiKey='';localStorage.removeItem('anthropic_key');bShowStatus('API Key inválida. Recargá la página para ingresar una nueva.','err');}
+      else{bShowStatus('Error al generar: '+e.message,'err');}
+    }finally{
+      btn.disabled=false;btn.innerHTML='✦ Generar reporte completo';
+    }
+  };
+
+  // --- Output ---
+  window.bDownloadReport=function(){
+    if(!bGeneratedHTML)return;
+    const ticker=bFetchedData?.ticker||'reporte';
+    const date=new Date().toISOString().slice(0,10);
+    const blob=new Blob([bGeneratedHTML],{type:'text/html;charset=utf-8'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${ticker}_deep_research_${date}.html`;a.click();
+  };
+  window.bOpenInTab=function(){
+    if(!bGeneratedHTML)return;
+    const win=window.open('','_blank');win.document.write(bGeneratedHTML);win.document.close();
+  };
+  window.bClearReport=function(){
+    bGeneratedHTML=null;document.getElementById('bReportSection').style.display='none';
+  };
+
+  // --- Drag & drop ---
+  document.addEventListener('DOMContentLoaded',function(){
+    const zone=document.getElementById('bPdfZone');
+    if(!zone)return;
+    zone.addEventListener('dragover',e=>{e.preventDefault();zone.style.borderColor='#58a6ff';});
+    zone.addEventListener('dragleave',()=>{zone.style.borderColor='#30363d';});
+    zone.addEventListener('drop',e=>{
+      e.preventDefault();zone.style.borderColor='#30363d';
+      const f=e.dataTransfer.files[0];
+      if(f?.type==='application/pdf'){const inp=document.getElementById('bPdfInput');const dt=new DataTransfer();dt.items.add(f);inp.files=dt.files;bHandlePDF(inp);}
+    });
+  });
+})();
+
 window.filterHistAll=function(days,btn){
   btn.closest('.hist-controls').querySelectorAll('.hist-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
