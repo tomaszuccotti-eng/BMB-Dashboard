@@ -1747,48 +1747,104 @@ function openDetail(especie){
   function bFmtPct(v){if(v==null||isNaN(v))return'—';return(v*100).toFixed(1)+'%';}
   function bFmtX(v){if(v==null||isNaN(v))return'—';return Number(v).toFixed(1)+'x';}
 
-  // --- CORS fetch ---
-  async function bTryFetch(url,opts={}){
-    try{const r=await fetch(url,{...opts,signal:AbortSignal.timeout(6000)});if(r.ok)return r;}catch(_){}
-    try{const r=await fetch('https://corsproxy.io/?'+encodeURIComponent(url),{signal:AbortSignal.timeout(8000)});if(r.ok)return r;}catch(_){}
-    try{
-      const r=await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,{signal:AbortSignal.timeout(8000)});
-      if(r.ok){const j=await r.json();return{ok:true,json:async()=>JSON.parse(j.contents),_allorigins:true};}
-    }catch(_){}
-    throw new Error('No se pudo conectar a Yahoo Finance (CORS). Probá usar el PDF directamente.');
+  // --- CORS fetch: multi-proxy con fallbacks robustos ---
+  const YF_MODULES='summaryDetail,defaultKeyStatistics,financialData,assetProfile,incomeStatementHistory,balanceSheetHistory,cashflowStatementHistory,recommendationTrend';
+
+  async function bFetchJSON(url){
+    // Estrategia 1: YF Chart API v8 via allorigins (más confiable)
+    const proxies=[
+      // allorigins — wraps response en {contents}
+      async()=>{
+        const r=await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,{signal:AbortSignal.timeout(12000)});
+        if(!r.ok)throw new Error('allorigins fail');
+        const j=await r.json();
+        if(!j.contents)throw new Error('allorigins empty');
+        return JSON.parse(j.contents);
+      },
+      // corsproxy.io
+      async()=>{
+        const r=await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`,{signal:AbortSignal.timeout(12000)});
+        if(!r.ok)throw new Error('corsproxy fail '+r.status);
+        return r.json();
+      },
+      // thingproxy
+      async()=>{
+        const r=await fetch(`https://thingproxy.freeboard.io/fetch/${url}`,{signal:AbortSignal.timeout(12000)});
+        if(!r.ok)throw new Error('thingproxy fail');
+        return r.json();
+      },
+      // cors-anywhere (heroku — puede requerir activación manual)
+      async()=>{
+        const r=await fetch(`https://cors-anywhere.herokuapp.com/${url}`,{signal:AbortSignal.timeout(12000),headers:{'X-Requested-With':'XMLHttpRequest'}});
+        if(!r.ok)throw new Error('cors-anywhere fail');
+        return r.json();
+      },
+    ];
+
+    let lastErr;
+    for(const proxy of proxies){
+      try{
+        const data=await proxy();
+        return data;
+      }catch(e){lastErr=e;continue;}
+    }
+    throw lastErr||new Error('Todos los proxies fallaron');
   }
 
-  // --- Fetch ---
+  // Intenta v10 primero, si falla prueba v11 (estructura diferente)
+  async function bFetchYahoo(ticker){
+    const urlV10=`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=${encodeURIComponent(YF_MODULES)}&corsDomain=finance.yahoo.com&formatted=false&lang=en-US&region=US`;
+    const urlV11=`https://query2.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=${encodeURIComponent(YF_MODULES)}&formatted=false`;
+
+    bShowStatus(`Intentando proxy 1/4 para ${ticker}...`,'info');
+    let data;
+    try{
+      data=await bFetchJSON(urlV10);
+    }catch(e){
+      bShowStatus(`Proxy 1 falló, probando alternativa...`,'info');
+      try{
+        data=await bFetchJSON(urlV11);
+      }catch(e2){
+        throw new Error('No se pudo conectar a Yahoo Finance con ningún proxy disponible. Usá el PDF o intentá más tarde.');
+      }
+    }
+
+    if(data.quoteSummary?.error){
+      const msg=data.quoteSummary.error.description||JSON.stringify(data.quoteSummary.error);
+      throw new Error('Yahoo Finance: '+msg);
+    }
+    const result=data.quoteSummary?.result?.[0];
+    if(!result) throw new Error(`Ticker "${ticker}" no encontrado en Yahoo Finance.`);
+    return result;
+  }
+
+  // --- Fetch principal ---
   window.bFetchData=async function(){
     const ticker=(document.getElementById('bTicker')||{}).value?.trim().toUpperCase();
     if(!ticker){bShowStatus('Ingresá un ticker válido','err');return;}
     const btn=document.getElementById('bFetchBtn');
-    btn.disabled=true;btn.innerHTML='<div style="width:14px;height:14px;border:2px solid rgba(88,166,255,.3);border-top-color:#58a6ff;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;"></div> Buscando...';
-    bShowStatus('Conectando con Yahoo Finance para '+ticker+'...','info');
+    btn.disabled=true;
+    btn.innerHTML='<div style="width:14px;height:14px;border:2px solid rgba(88,166,255,.3);border-top-color:#58a6ff;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;display:inline-block;margin-right:6px;"></div> Buscando...';
+    bShowStatus(`Conectando con Yahoo Finance para ${ticker}...`,'info');
     document.getElementById('bWelcome').style.display='none';
     try{
-      const modules='summaryDetail,defaultKeyStatistics,financialData,assetProfile,incomeStatementHistory,balanceSheetHistory,cashflowStatementHistory,recommendationTrend';
-      const url=`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=${encodeURIComponent(modules)}`;
-      const res=await bTryFetch(url);
-      const json=await res.json();
-      if(json.quoteSummary?.error)throw new Error(json.quoteSummary.error.description||'Error de Yahoo Finance');
-      if(!json.quoteSummary?.result?.[0])throw new Error('Ticker no encontrado: '+ticker);
-      const q=json.quoteSummary.result[0];
-      if(!q.financialData?.totalRevenue&&!q.summaryDetail?.marketCap)throw new Error('Yahoo Finance devolvió datos incompletos para '+ticker+'. Probá con el PDF.');
+      const q=await bFetchYahoo(ticker);
+      // Validación mínima de datos
+      const hasData=q.financialData||q.summaryDetail||q.defaultKeyStatistics;
+      if(!hasData) throw new Error('Yahoo Finance devolvió datos vacíos para '+ticker+'. Probá con el PDF.');
       bFetchedData={ticker,quote:q};
       bRenderPreview(ticker,q);
       document.getElementById('bGenerateBtn').disabled=false;
-      bShowStatus('✓ Datos obtenidos. Revisá el preview y generá el reporte.','ok');
+      bShowStatus('✓ Datos obtenidos correctamente. Revisá el preview y generá el reporte.','ok');
     }catch(e){
-      let msg=e.message;
-      if(msg.includes('CORS')||msg.includes('fetch')||msg.includes('network')||msg.includes('Failed'))
-        msg='CORS bloqueado. Soluciones: (1) abrí desde un servidor local, (2) usá extensión "CORS Unblock", o (3) subí el PDF directamente.';
-      bShowStatus(msg,'err');
+      console.error('[bFetchData]',e);
+      bShowStatus(e.message,'err');
       document.getElementById('bWelcome').style.display='flex';
       bFetchedData=null;
       document.getElementById('bGenerateBtn').disabled=true;
     }finally{
-      btn.disabled=false;btn.innerHTML='Buscar datos en Yahoo Finance';
+      btn.disabled=false;
+      btn.innerHTML='Buscar datos en Yahoo Finance';
     }
   };
 
