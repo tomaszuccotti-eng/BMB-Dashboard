@@ -1817,9 +1817,9 @@ function openDetail(especie){
 
       let cik = null, companyName = '';
 
-      // data.sec.gov tiene CORS abierto. company_tickers.json mapea ticker → CIK
+      // data.sec.gov tiene CORS abierto (a diferencia de www.sec.gov)
       const tickersRes = await fetch('https://data.sec.gov/files/company_tickers.json');
-      if(!tickersRes.ok) throw new Error('No se pudo conectar con SEC EDGAR (data.sec.gov). Verificá tu conexión.');
+      if(!tickersRes.ok) throw new Error('No se pudo conectar con SEC EDGAR. Verificá tu conexión.');
       const tickersData = await tickersRes.json();
 
       for(const entry of Object.values(tickersData)){
