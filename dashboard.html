@@ -1822,7 +1822,7 @@ function openDetail(especie){
     document.getElementById('bApiResults').style.display='none';
     document.getElementById('bApiPeriodTabs').style.display='none';
 
-    const url=`https://financialmodelingprep.com/api/v3/balance-sheet-statement/${ticker}?period=${bApiPeriod}&limit=10&apikey=${FMP_KEY}`;
+    const url=`https://financialmodelingprep.com/stable/balance-sheet-statement?symbol=${ticker}&period=${bApiPeriod}&limit=10&apikey=${FMP_KEY}`;
     dbLog(`→ GET ${url.replace(FMP_KEY,'***KEY***')}`, 'info');
 
     try{
@@ -1880,8 +1880,8 @@ function openDetail(especie){
     document.getElementById('bApiMeta').innerHTML=
       `<span style="margin-right:14px">Período: <strong style="color:#e8eaf6">${d.period||'—'}</strong></span>`+
       `<span style="margin-right:14px">Fecha: <strong style="color:#e8eaf6">${d.date||'—'}</strong></span>`+
-      `<span style="margin-right:14px">Moneda: <strong style="color:#e8eaf6">${d.reportedCurrency||'USD'}</strong></span>`+
-      `<span>Filing: <strong style="color:#e8eaf6">${d.fillingDate||'—'}</strong></span>`;
+      `<span style="margin-right:14px">Moneda: <strong style="color:#e8eaf6">${d.reportedCurrency||d.reported_currency||'USD'}</strong></span>`+
+      `<span>Filing: <strong style="color:#e8eaf6">${d.fillingDate||d.filing_date||'—'}</strong></span>`;
 
     // Period tabs top-right
     const tabsTop=document.getElementById('bApiPeriodTabsTop');
@@ -1906,63 +1906,63 @@ function openDetail(especie){
     });
 
     // KPIs
-    const ebitda=(d.operatingIncome||0)+(d.depreciationAndAmortization||0);
-    const netDebt=(d.totalDebt||0)-(d.cashAndCashEquivalents||0);
-    const workCap=(d.totalCurrentAssets||0)-(d.totalCurrentLiabilities||0);
+    const ebitda=((d.operatingIncome||d.operating_income||0)||0)+((d.depreciationAndAmortization||d.depreciation_and_amortization||0)||0);
+    const netDebt=((d.totalDebt||d.total_debt||0)||0)-((d.cashAndCashEquivalents||d.cash_and_cash_equivalents||0)||0);
+    const workCap=((d.totalCurrentAssets||d.total_current_assets||0)||0)-((d.totalCurrentLiabilities||d.total_current_liabilities||0)||0);
     document.getElementById('bApiKpis').innerHTML=
       kpi('EBITDA aprox.',    fmtV(ebitda),               'EBIT + D&A',      true)+
-      kpi('Total Activos',    fmtV(d.totalAssets))+
-      kpi('Total Pasivos',    fmtV(d.totalLiabilities),   null,              false, d.totalLiabilities>d.totalAssets)+
-      kpi('Patrimonio Neto',  fmtV(d.totalStockholdersEquity), null,         (d.totalStockholdersEquity||0)>0,(d.totalStockholdersEquity||0)<0)+
+      kpi('Total Activos',    fmtV((d.totalAssets||d.total_assets||0)))+
+      kpi('Total Pasivos',    fmtV((d.totalLiabilities||d.total_liabilities||0)),   null,              false, (d.totalLiabilities||d.total_liabilities||0)>(d.totalAssets||d.total_assets||0))+
+      kpi('Patrimonio Neto',  fmtV((d.totalStockholdersEquity||d.total_stockholders_equity||d.total_equity||0)), null,         ((d.totalStockholdersEquity||d.total_stockholders_equity||d.total_equity||0)||0)>0,((d.totalStockholdersEquity||d.total_stockholders_equity||d.total_equity||0)||0)<0)+
       kpi('Deuda Neta',       fmtV(netDebt),              'Deuda − Caja',    netDebt<0)+
-      kpi('Caja & Equiv.',    fmtV(d.cashAndCashEquivalents), null,          true)+
-      kpi('Deuda Total',      fmtV(d.totalDebt))+
+      kpi('Caja & Equiv.',    fmtV((d.cashAndCashEquivalents||d.cash_and_cash_equivalents||0)), null,          true)+
+      kpi('Deuda Total',      fmtV((d.totalDebt||d.total_debt||0)))+
       kpi('Capital Trabajo',  fmtV(workCap),              'Act.Cte − Pas.Cte', workCap>0);
 
     document.getElementById('bApiAssets').innerHTML=
-      kpi('Activos Corrientes',fmtV(d.totalCurrentAssets))+
-      kpi('Caja & Equiv.',    fmtV(d.cashAndCashEquivalents))+
-      kpi('Inversiones CP',   fmtV(d.shortTermInvestments))+
-      kpi('Cuentas x Cobrar', fmtV(d.netReceivables))+
-      kpi('Inventario',       fmtV(d.inventory))+
-      kpi('Otros Act. Ctes.', fmtV(d.otherCurrentAssets))+
-      kpi('Activos No Ctes.', fmtV(d.totalNonCurrentAssets))+
-      kpi('PP&E neto',        fmtV(d.propertyPlantEquipmentNet))+
+      kpi('Activos Corrientes',fmtV((d.totalCurrentAssets||d.total_current_assets||0)))+
+      kpi('Caja & Equiv.',    fmtV((d.cashAndCashEquivalents||d.cash_and_cash_equivalents||0)))+
+      kpi('Inversiones CP',   fmtV((d.shortTermInvestments||d.short_term_investments)))+
+      kpi('Cuentas x Cobrar', fmtV((d.netReceivables||d.net_receivables)))+
+      kpi('Inventario',       fmtV((d.inventory||0)))+
+      kpi('Otros Act. Ctes.', fmtV((d.otherCurrentAssets||d.other_current_assets)))+
+      kpi('Activos No Ctes.', fmtV((d.totalNonCurrentAssets||d.total_non_current_assets)))+
+      kpi('PP&E neto',        fmtV((d.propertyPlantEquipmentNet||d.property_plant_equipment_net)))+
       kpi('Inversiones LP',   fmtV(d.longTermInvestments))+
-      kpi('Goodwill',         fmtV(d.goodwill))+
-      kpi('Intangibles',      fmtV(d.intangibleAssets))+
-      kpi('Otros Act. LP',    fmtV(d.otherNonCurrentAssets));
+      kpi('Goodwill',         fmtV((d.goodwill||0)))+
+      kpi('Intangibles',      fmtV((d.intangibleAssets||d.intangible_assets||0)))+
+      kpi('Otros Act. LP',    fmtV((d.otherNonCurrentAssets||d.other_non_current_assets)));
 
     document.getElementById('bApiLiab').innerHTML=
-      kpi('Pasivos Corrientes',fmtV(d.totalCurrentLiabilities))+
-      kpi('Deuda CP',          fmtV(d.shortTermDebt))+
-      kpi('Cuentas x Pagar',   fmtV(d.accountPayables))+
-      kpi('Ing. Dif. CP',      fmtV(d.deferredRevenue))+
-      kpi('Otros Pas. Ctes.',  fmtV(d.otherCurrentLiabilities))+
-      kpi('Pasivos No Ctes.',  fmtV(d.totalNonCurrentLiabilities))+
-      kpi('Deuda LP',          fmtV(d.longTermDebt))+
-      kpi('Imp. Diferidos',    fmtV(d.deferredTaxLiabilitiesNonCurrent))+
-      kpi('Gan. Retenidas',    fmtV(d.retainedEarnings), null, (d.retainedEarnings||0)>0,(d.retainedEarnings||0)<0)+
-      kpi('Patrimonio Total',  fmtV(d.totalStockholdersEquity), null, (d.totalStockholdersEquity||0)>0,(d.totalStockholdersEquity||0)<0);
+      kpi('Pasivos Corrientes',fmtV((d.totalCurrentLiabilities||d.total_current_liabilities||0)))+
+      kpi('Deuda CP',          fmtV((d.shortTermDebt||d.short_term_debt)))+
+      kpi('Cuentas x Pagar',   fmtV((d.accountPayables||d.account_payables||d.accounts_payable)))+
+      kpi('Ing. Dif. CP',      fmtV((d.deferredRevenue||d.deferred_revenue)))+
+      kpi('Otros Pas. Ctes.',  fmtV((d.otherCurrentLiabilities||d.other_current_liabilities)))+
+      kpi('Pasivos No Ctes.',  fmtV((d.totalNonCurrentLiabilities||d.total_non_current_liabilities)))+
+      kpi('Deuda LP',          fmtV((d.longTermDebt||d.long_term_debt||0)))+
+      kpi('Imp. Diferidos',    fmtV((d.deferredTaxLiabilitiesNonCurrent||d.deferred_tax_liabilities_non_current)))+
+      kpi('Gan. Retenidas',    fmtV((d.retainedEarnings||d.retained_earnings||0)), null, ((d.retainedEarnings||d.retained_earnings||0)||0)>0,((d.retainedEarnings||d.retained_earnings||0)||0)<0)+
+      kpi('Patrimonio Total',  fmtV((d.totalStockholdersEquity||d.total_stockholders_equity||d.total_equity||0)), null, ((d.totalStockholdersEquity||d.total_stockholders_equity||d.total_equity||0)||0)>0,((d.totalStockholdersEquity||d.total_stockholders_equity||d.total_equity||0)||0)<0);
 
     // Full historical table
     const rows=[
-      {g:'── ACTIVOS ──'},{label:'Caja & equivalentes',key:'cashAndCashEquivalents'},
-      {label:'Inversiones CP',key:'shortTermInvestments'},{label:'Cuentas por cobrar',key:'netReceivables'},
-      {label:'Inventario',key:'inventory'},{label:'Otros activos corrientes',key:'otherCurrentAssets'},
-      {label:'TOTAL ACTIVOS CORRIENTES',key:'totalCurrentAssets'},
-      {label:'PP&E neto',key:'propertyPlantEquipmentNet'},{label:'Goodwill',key:'goodwill'},
-      {label:'Intangibles',key:'intangibleAssets'},{label:'Inversiones LP',key:'longTermInvestments'},
-      {label:'Otros activos LP',key:'otherNonCurrentAssets'},{label:'TOTAL ACTIVOS NO CORRIENTES',key:'totalNonCurrentAssets'},
-      {label:'TOTAL ACTIVOS',key:'totalAssets'},
-      {g:'── PASIVOS ──'},{label:'Deuda CP',key:'shortTermDebt'},{label:'Cuentas por pagar',key:'accountPayables'},
-      {label:'Ingresos dif. CP',key:'deferredRevenue'},{label:'Otros pasivos corrientes',key:'otherCurrentLiabilities'},
-      {label:'TOTAL PASIVOS CORRIENTES',key:'totalCurrentLiabilities'},{label:'Deuda LP',key:'longTermDebt'},
-      {label:'Impuestos diferidos',key:'deferredTaxLiabilitiesNonCurrent'},{label:'Otros pasivos LP',key:'otherNonCurrentLiabilities'},
-      {label:'TOTAL PASIVOS NO CORRIENTES',key:'totalNonCurrentLiabilities'},{label:'TOTAL PASIVOS',key:'totalLiabilities'},
-      {g:'── PATRIMONIO ──'},{label:'Acciones comunes',key:'commonStock'},{label:'Ganancias retenidas',key:'retainedEarnings'},
-      {label:'Otros',key:'othertotalStockholdersEquity'},{label:'PATRIMONIO NETO',key:'totalStockholdersEquity'},
-      {label:'TOTAL PAS. + PATRIMONIO',key:'totalLiabilitiesAndStockholdersEquity'},
+      {g:'── ACTIVOS ──'},{label:'Caja & equivalentes',key:'cashAndCashEquivalents',alt:'cash_and_cash_equivalents'},
+      {label:'Inversiones CP',key:'shortTermInvestments',alt:'short_term_investments'},{label:'Cuentas por cobrar',key:'netReceivables',alt:'net_receivables'},
+      {label:'Inventario',key:'inventory',alt:'inventory'},{label:'Otros activos corrientes',key:'otherCurrentAssets',alt:'other_current_assets'},
+      {label:'TOTAL ACTIVOS CORRIENTES',key:'totalCurrentAssets',alt:'total_current_assets'},
+      {label:'PP&E neto',key:'propertyPlantEquipmentNet',alt:'property_plant_equipment_net'},{label:'Goodwill',key:'goodwill',alt:'goodwill'},
+      {label:'Intangibles',key:'intangibleAssets',alt:'intangible_assets'},{label:'Inversiones LP',key:'longTermInvestments',alt:'long_term_investments'},
+      {label:'Otros activos LP',key:'otherNonCurrentAssets',alt:'other_non_current_assets'},{label:'TOTAL ACTIVOS NO CORRIENTES',key:'totalNonCurrentAssets',alt:'total_non_current_assets'},
+      {label:'TOTAL ACTIVOS',key:'totalAssets',alt:'total_assets'},
+      {g:'── PASIVOS ──'},{label:'Deuda CP',key:'shortTermDebt',alt:'short_term_debt'},{label:'Cuentas por pagar',key:'accountPayables',alt:'accounts_payable'},
+      {label:'Ingresos dif. CP',key:'deferredRevenue',alt:'deferred_revenue'},{label:'Otros pasivos corrientes',key:'otherCurrentLiabilities',alt:'other_current_liabilities'},
+      {label:'TOTAL PASIVOS CORRIENTES',key:'totalCurrentLiabilities',alt:'total_current_liabilities'},{label:'Deuda LP',key:'longTermDebt',alt:'long_term_debt'},
+      {label:'Impuestos diferidos',key:'deferredTaxLiabilitiesNonCurrent',alt:'deferred_tax_liabilities_non_current'},{label:'Otros pasivos LP',key:'otherNonCurrentLiabilities',alt:'other_non_current_liabilities'},
+      {label:'TOTAL PASIVOS NO CORRIENTES',key:'totalNonCurrentLiabilities',alt:'total_non_current_liabilities'},{label:'TOTAL PASIVOS',key:'totalLiabilities',alt:'total_liabilities'},
+      {g:'── PATRIMONIO ──'},{label:'Acciones comunes',key:'commonStock',alt:'common_stock'},{label:'Ganancias retenidas',key:'retainedEarnings',alt:'retained_earnings'},
+      {label:'Otros',key:'othertotalStockholdersEquity',alt:'other_stockholders_equity'},{label:'PATRIMONIO NETO',key:'totalStockholdersEquity',alt:'total_equity'},
+      {label:'TOTAL PAS. + PATRIMONIO',key:'totalLiabilitiesAndStockholdersEquity',alt:'total_liabilities_and_total_equity'},
     ];
     const thS=`padding:8px 12px;font-size:10px;font-weight:600;color:#8b99c4;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid rgba(30,39,243,0.15);background:#131929;text-align:right;white-space:nowrap;`;
     const tdS=`padding:7px 12px;font-size:12px;border-bottom:1px solid rgba(30,39,243,0.08);text-align:right;white-space:nowrap;`;
@@ -1971,7 +1971,7 @@ function openDetail(especie){
     document.getElementById('bApiTableBody').innerHTML=rows.map(row=>{
       if(row.g) return `<tr><td colspan="${all.length+1}" style="padding:5px 12px;font-size:10px;color:#4a5280;text-transform:uppercase;letter-spacing:.1em;background:#131929;border-bottom:1px solid rgba(30,39,243,0.15);">${row.g}</td></tr>`;
       const cells=all.map(item=>{
-        const v=item[row.key];
+        const v=item[row.key]!==undefined?item[row.key]:(row.alt?item[row.alt]:undefined);
         const c=v>0?'#e8eaf6':v<0?'#f85149':'#8b99c4';
         return `<td style="${tdS}color:${c};">${fmtV(v)}</td>`;
       }).join('');
