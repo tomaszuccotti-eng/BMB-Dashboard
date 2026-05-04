@@ -1818,7 +1818,8 @@ function openDetail(especie){
       let cik = null, companyName = '';
 
       // data.sec.gov tiene CORS abierto (a diferencia de www.sec.gov)
-      const tickersRes = await fetch('https://data.sec.gov/files/company_tickers.json');
+      const PROXY = 'https://sec-proxy.tzuccotti.workers.dev';
+      const tickersRes = await fetch(`${PROXY}?url=${encodeURIComponent('https://data.sec.gov/files/company_tickers.json')}`);
       if(!tickersRes.ok) throw new Error('No se pudo conectar con SEC EDGAR. Verificá tu conexión.');
       const tickersData = await tickersRes.json();
 
@@ -1835,8 +1836,8 @@ function openDetail(especie){
 
       // 2. Cargar datos en paralelo
       const [factsRes, subRes] = await Promise.all([
-        fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`),
-        fetch(`https://data.sec.gov/submissions/CIK${cik}.json`),
+        fetch(`${PROXY}?url=${encodeURIComponent(`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`)}`),
+        fetch(`${PROXY}?url=${encodeURIComponent(`https://data.sec.gov/submissions/CIK${cik}.json`)}`),
       ]);
       const facts = await factsRes.json();
       const sub   = await subRes.json();
