@@ -2315,7 +2315,7 @@ function openDetail(especie){
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>${d.ticker||d.company} — Deep Research | ${today}</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"><'+'/script>
 <style>
 :root{--bg:#0d1117;--card:#161b22;--card2:#1c2230;--border:#30363d;--text:#e6edf3;--muted:#8b949e;
   --green:#3fb950;--green-dim:#1a4a26;--red:#f85149;--red-dim:#4a1a1a;
@@ -2487,9 +2487,7 @@ new Chart(document.getElementById('cMar'),{type:'line',data:{labels:YRS,datasets
 new Chart(document.getElementById('cCF'),{type:'bar',data:{labels:YRS,datasets:[
   {label:'Op. CF',data:${jarr(sOcf)},backgroundColor:'rgba(63,185,80,.7)',borderColor:'#3fb950',borderWidth:1}
 ]},options:{...D}});
-<\/script>
-</body>
-</html>`;
+<'+'/script>\n</body>\n</html>`;
 
       bGeneratedHTML = html;
       document.getElementById('bReportFrame').srcdoc = html;
@@ -2525,48 +2523,6 @@ new Chart(document.getElementById('cCF'),{type:'bar',data:{labels:YRS,datasets:[
   };
 
 })();
-<\/script>
-</body>
-</html>`;
-
-      bGeneratedHTML = html;
-      const frame = document.getElementById('bReportFrame');
-      frame.srcdoc = html;
-      document.getElementById('bReportSection').style.display = 'block';
-      bShowStatus('✓ Reporte generado. Podés descargarlo o abrirlo en una nueva pestaña.', 'ok');
-
-    } catch(e) {
-      console.error('[bGenerateReport]', e);
-      bShowStatus('Error al generar el reporte: ' + e.message, 'err');
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = '✦ Generar reporte';
-    }
-  };
-
-  // ── Output ──
-  window.bDownloadReport = function(){
-    if(!bGeneratedHTML) return;
-    const name = (bParsedData?.company || 'reporte').replace(/[^a-z0-9]/gi,'_');
-    const blob = new Blob([bGeneratedHTML], {type:'text/html;charset=utf-8'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = name + '_' + new Date().toISOString().slice(0,10) + '.html';
-    a.click();
-  };
-  window.bOpenInTab = function(){
-    if(!bGeneratedHTML) return;
-    const w = window.open('','_blank');
-    w.document.write(bGeneratedHTML);
-    w.document.close();
-  };
-  window.bClearReport = function(){
-    bGeneratedHTML = null;
-    document.getElementById('bReportSection').style.display = 'none';
-  };
-
-})();
-
 
 window.filterHistAll=function(days,btn){
   btn.closest('.hist-controls').querySelectorAll('.hist-btn').forEach(b=>b.classList.remove('active'));
