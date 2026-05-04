@@ -1812,17 +1812,16 @@ function openDetail(especie){
     $('secResults').style.display='none';
 
     try{
-      // 1. Buscar CIK
-      const searchUrl = `https://efts.sec.gov/LATEST/search-index?q=%22${ticker}%22&dateRange=custom&startdt=2020-01-01&forms=10-K,20-F`;
-      // Usamos el endpoint de company search que no tiene CORS issues
-      const cikUrl = `https://www.sec.gov/cgi-bin/browse-edgar?company=&CIK=${ticker}&type=10-K&dateb=&owner=include&count=10&search_text=&action=getcompany&output=atom`;
-
-      // EDGAR company tickers JSON — el más limpio
-      showStatus('Resolviendo CIK...','load');
-      const tickersRes = await fetch('https://www.sec.gov/files/company_tickers.json');
-      const tickersData = await tickersRes.json();
+      // 1. Resolver CIK desde data.sec.gov (CORS confirmado con Access-Control-Allow-Origin: *)
+      showStatus('Buscando en SEC EDGAR...','load');
 
       let cik = null, companyName = '';
+
+      // data.sec.gov tiene CORS abierto. company_tickers.json mapea ticker → CIK
+      const tickersRes = await fetch('https://data.sec.gov/files/company_tickers.json');
+      if(!tickersRes.ok) throw new Error('No se pudo conectar con SEC EDGAR (data.sec.gov). Verificá tu conexión.');
+      const tickersData = await tickersRes.json();
+
       for(const entry of Object.values(tickersData)){
         if(entry.ticker.toUpperCase() === ticker){
           cik = String(entry.cik_str).padStart(10,'0');
@@ -1830,7 +1829,7 @@ function openDetail(especie){
           break;
         }
       }
-      if(!cik) throw new Error(`No se encontró "${ticker}" en SEC EDGAR. Verificá que cotice en NYSE/NASDAQ/AMEX.`);
+      if(!cik) throw new Error(`"${ticker}" no encontrado en SEC EDGAR. Solo empresas con cotización en NYSE/NASDAQ/AMEX.`);
 
       showStatus(`${companyName} encontrada (CIK: ${cik}). Cargando datos...`,'load');
 
