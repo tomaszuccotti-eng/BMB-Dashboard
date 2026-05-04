@@ -740,6 +740,21 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
       </div>
       <!-- Status -->
       <div id="bStatusBox" style="display:none;margin-top:14px;"></div>
+
+      <!-- Debug console -->
+      <div style="margin-top:10px;">
+        <button id="bDebugToggle" onclick="bToggleDebug()"
+          style="font-size:11px;color:#4a5280;background:transparent;border:1px solid rgba(30,39,243,0.15);border-radius:5px;padding:4px 10px;cursor:pointer;font-family:var(--mono);">🔧 Consola debug</button>
+        <div id="bDebugBox" style="display:none;margin-top:8px;background:#0a0d18;border:1px solid rgba(30,39,243,0.2);border-radius:8px;padding:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span style="font-size:10px;font-weight:700;color:#4a5280;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;">Consola API</span>
+            <button onclick="bClearDebug()" style="font-size:10px;color:#4a5280;background:transparent;border:none;cursor:pointer;font-family:var(--mono);">✕ Limpiar</button>
+          </div>
+          <div id="bDebugLog" style="font-family:var(--mono);font-size:11px;line-height:1.7;max-height:220px;overflow-y:auto;word-break:break-all;">
+            <div style="color:#4a5280;">— Buscá un ticker para ver los logs —</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ══ PERIOD TABS ══ -->
@@ -1775,6 +1790,27 @@ function openDetail(especie){
   // ════════════════════════════════════════════
   // FMP API
   // ════════════════════════════════════════════
+  // ── Debug console ──
+  function dbLog(msg, type){
+    const el = document.getElementById('bDebugLog');
+    if(!el) return;
+    const color = type==='err'?'#f85149': type==='ok'?'#3fb950': type==='warn'?'#d4a017':'#8b99c4';
+    const ts = new Date().toLocaleTimeString('es-AR',{hour12:false});
+    el.innerHTML += `<div style="color:${color};margin-bottom:2px;"><span style="color:#4a5280;">[${ts}]</span> ${msg}</div>`;
+    el.scrollTop = el.scrollHeight;
+  }
+  window.bToggleDebug = function(){
+    const box = document.getElementById('bDebugBox');
+    if(!box) return;
+    const visible = box.style.display !== 'none';
+    box.style.display = visible ? 'none' : 'block';
+    document.getElementById('bDebugToggle').textContent = visible ? '🔧 Consola debug' : '🔧 Ocultar consola';
+  };
+  window.bClearDebug = function(){
+    const el = document.getElementById('bDebugLog');
+    if(el) el.innerHTML = '';
+  };
+
   window.bApiFetch = async function(){
     const ticker = (document.getElementById('bApiTicker').value||'').trim().toUpperCase();
     if(!ticker){ bShowStatus('Ingresá un ticker (ej: AAPL, MELI).','err'); return; }
@@ -1786,20 +1822,49 @@ function openDetail(especie){
     document.getElementById('bApiResults').style.display='none';
     document.getElementById('bApiPeriodTabs').style.display='none';
 
-    try{
-      const url=`https://financialmodelingprep.com/api/v3/balance-sheet-statement/${ticker}?period=${bApiPeriod}&limit=10&apikey=${FMP_KEY}`;
-      const res=await fetch(url);
-      const data=await res.json();
+    const url=`https://financialmodelingprep.com/api/v3/balance-sheet-statement/${ticker}?period=${bApiPeriod}&limit=10&apikey=${FMP_KEY}`;
+    dbLog(`→ GET ${url.replace(FMP_KEY,'***KEY***')}`, 'info');
 
-      if(!Array.isArray(data)||!data.length){
-        bShowStatus(`No se encontraron datos para "${ticker}". Verificá el ticker.`,'err');
+    try{
+      const res = await fetch(url);
+      dbLog(`← HTTP ${res.status} ${res.statusText}`, res.ok ? 'ok' : 'err');
+
+      const text = await res.text();
+      dbLog(`← Body (primeros 300 chars): ${text.slice(0,300)}`, 'info');
+
+      let data;
+      try { data = JSON.parse(text); }
+      catch(pe){ throw new Error('Respuesta no es JSON válido: '+text.slice(0,120)); }
+
+      // FMP devuelve error como objeto con "Error Message" o como array vacío
+      if(data['Error Message']){
+        dbLog(`← Error de API: ${data['Error Message']}`, 'err');
+        throw new Error('FMP: '+data['Error Message']);
+      }
+      if(data['message']){
+        dbLog(`← Mensaje de API: ${data['message']}`, 'warn');
+        throw new Error('FMP: '+data['message']);
+      }
+
+      if(!Array.isArray(data)){
+        dbLog(`← Respuesta inesperada (no es array): ${JSON.stringify(data).slice(0,200)}`, 'err');
+        throw new Error('Respuesta inesperada de FMP. Ver consola debug.');
+      }
+
+      if(!data.length){
+        dbLog(`← Array vacío para ${ticker} — ticker no existe o sin datos en FMP`, 'warn');
+        bShowStatus(`No se encontraron datos para "${ticker}". Verificá que cotice en NYSE/NASDAQ/AMEX.`,'err');
         document.getElementById('bWelcome').style.display='block';
         return;
       }
+
+      dbLog(`← ✓ ${data.length} períodos recibidos para ${ticker} (${data[0].date||'?'} → ${data[data.length-1].date||'?'})`, 'ok');
       bApiData=data; bApiIdx=0;
       bRenderApi();
       bShowStatus(`✓ ${data.length} períodos cargados para ${ticker}.`,'ok');
+
     }catch(e){
+      dbLog(`← Excepción: ${e.message}`, 'err');
       bShowStatus('Error: '+e.message,'err');
       document.getElementById('bWelcome').style.display='block';
     }finally{
