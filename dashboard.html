@@ -1820,14 +1820,14 @@ function openDetail(especie){
 
     // Estrategia A: company_tickers_exchange.json (más completo, incluye exchange)
     const TICKER_URLS = [
-      'https://data.sec.gov/submissions/company_tickers_exchange.json',
-      'https://data.sec.gov/submissions/company_tickers.json',
-    ];
+  'https://www.sec.gov/files/company_tickers_exchange.json',
+  'https://www.sec.gov/files/company_tickers.json',
+];
 
     let tickersData = null;
     for(const tUrl of TICKER_URLS){
       try{
-        const res = await fetch(`${PROXY}?url=${encodeURIComponent(tUrl)}`);
+        const res = await fetch(`${PROXY}?url=${tUrl}`);
         if(res.ok){
           tickersData = await res.json();
           break;
@@ -1874,8 +1874,8 @@ function openDetail(especie){
 
     // ── 2. Cargar facts + submissions en paralelo ─────────────────
     const [factsRes, subRes] = await Promise.all([
-      fetch(`${PROXY}?url=${encodeURIComponent(`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`)}`),
-      fetch(`${PROXY}?url=${encodeURIComponent(`https://data.sec.gov/submissions/CIK${cik}.json`)}`),
+      fetch(`${PROXY}?url=https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`),
+      fetch(`${PROXY}?url=https://data.sec.gov/submissions/CIK${cik}.json`),
     ]);
 
     if(!factsRes.ok) throw new Error(`Error al cargar datos financieros (HTTP ${factsRes.status}). Intentá de nuevo.`);
