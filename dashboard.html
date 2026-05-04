@@ -1802,67 +1802,115 @@ function openDetail(especie){
   // SEC EDGAR SEARCH
   // ══════════════════════════════════════════════
   window.secSearch = async function(){
-    const ticker = ($('secTicker').value||'').trim().toUpperCase();
-    if(!ticker){ showStatus('Ingresá un ticker.','err'); return; }
+  const ticker = ($('secTicker').value||'').trim().toUpperCase();
+  if(!ticker){ showStatus('Ingresá un ticker.','err'); return; }
 
-    const btn = $('secSearchBtn');
-    btn.disabled=true; btn.textContent='⏳ Buscando...';
-    showStatus(`Buscando ${ticker} en SEC EDGAR...`,'load');
-    $('secWelcome').style.display='none';
-    $('secResults').style.display='none';
+  const btn = $('secSearchBtn');
+  btn.disabled=true; btn.textContent='⏳ Buscando...';
+  showStatus(`Buscando ${ticker} en SEC EDGAR...`,'load');
+  $('secWelcome').style.display='none';
+  $('secResults').style.display='none';
 
-    try{
-      // 1. Resolver CIK desde data.sec.gov (CORS confirmado con Access-Control-Allow-Origin: *)
-      showStatus('Buscando en SEC EDGAR...','load');
+  const PROXY = 'https://sec-proxy.tzuccotti.workers.dev';
 
-      let cik = null, companyName = '';
+  try{
+    // ── 1. Resolver CIK ──────────────────────────────────────────
+    showStatus('Conectando con SEC EDGAR...','load');
+    let cik = null, companyName = '';
 
-      // data.sec.gov tiene CORS abierto (a diferencia de www.sec.gov)
-      const PROXY = 'https://sec-proxy.tzuccotti.workers.dev';
-      const tickersRes = await fetch(`${PROXY}?url=${encodeURIComponent('https://data.sec.gov/files/company_tickers.json')}`);
-      if(!tickersRes.ok) throw new Error('No se pudo conectar con SEC EDGAR. Verificá tu conexión.');
-      const tickersData = await tickersRes.json();
+    // Estrategia A: company_tickers_exchange.json (más completo, incluye exchange)
+    const TICKER_URLS = [
+      'https://data.sec.gov/submissions/company_tickers_exchange.json',
+      'https://data.sec.gov/submissions/company_tickers.json',
+    ];
 
+    let tickersData = null;
+    for(const tUrl of TICKER_URLS){
+      try{
+        const res = await fetch(`${PROXY}?url=${encodeURIComponent(tUrl)}`);
+        if(res.ok){
+          tickersData = await res.json();
+          break;
+        }
+      } catch(_){}
+    }
+
+    if(!tickersData) throw new Error('No se pudo conectar con SEC EDGAR. Verificá tu conexión a internet.');
+
+    // company_tickers_exchange tiene formato { fields:[...], data:[[cik,name,ticker,exchange],...] }
+    // company_tickers tiene formato { "0":{ cik_str, title, ticker }, "1":... }
+    if(tickersData.data && tickersData.fields){
+      // formato exchange
+      const iCik    = tickersData.fields.indexOf('cik');
+      const iName   = tickersData.fields.indexOf('name');
+      const iTicker = tickersData.fields.indexOf('ticker');
+      for(const row of tickersData.data){
+        if((row[iTicker]||'').toUpperCase() === ticker){
+          cik = String(row[iCik]).padStart(10,'0');
+          companyName = row[iName];
+          break;
+        }
+      }
+    } else {
+      // formato plano
       for(const entry of Object.values(tickersData)){
-        if(entry.ticker.toUpperCase() === ticker){
+        if((entry.ticker||'').toUpperCase() === ticker){
           cik = String(entry.cik_str).padStart(10,'0');
           companyName = entry.title;
           break;
         }
       }
-      if(!cik) throw new Error(`"${ticker}" no encontrado en SEC EDGAR. Solo empresas con cotización en NYSE/NASDAQ/AMEX.`);
-
-      showStatus(`${companyName} encontrada (CIK: ${cik}). Cargando datos...`,'load');
-
-      // 2. Cargar datos en paralelo
-      const [factsRes, subRes] = await Promise.all([
-        fetch(`${PROXY}?url=${encodeURIComponent(`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`)}`),
-        fetch(`${PROXY}?url=${encodeURIComponent(`https://data.sec.gov/submissions/CIK${cik}.json`)}`),
-      ]);
-      const facts = await factsRes.json();
-      const sub   = await subRes.json();
-
-      showStatus('Procesando estados financieros...','load');
-
-      // 3. Renderizar
-      renderCompanyHeader(ticker, companyName, cik, sub, facts);
-      renderFinancials(facts);
-      renderEvents(sub);
-
-      $('secResults').style.display='block';
-      $('secWelcome').style.display='none';
-      secShowTab('fin');
-      showStatus(`✓ Datos cargados para ${companyName}.`,'ok');
-
-    }catch(e){
-      console.error(e);
-      showStatus(e.message,'err');
-      $('secWelcome').style.display='block';
-    }finally{
-      btn.disabled=false; btn.textContent='Buscar →';
     }
-  };
 
+    if(!cik){
+      throw new Error(
+        `"${ticker}" no encontrado en SEC EDGAR. ` +
+        `Sólo empresas con cotización en NYSE/NASDAQ/AMEX. ` +
+        `Probá con el ticker exacto (ej: MELI, AAPL, NVDA).`
+      );
+    }
+
+    showStatus(`✓ ${companyName} (CIK: ${cik}). Cargando estados financieros...`,'load');
+
+    // ── 2. Cargar facts + submissions en paralelo ─────────────────
+    const [factsRes, subRes] = await Promise.all([
+      fetch(`${PROXY}?url=${encodeURIComponent(`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`)}`),
+      fetch(`${PROXY}?url=${encodeURIComponent(`https://data.sec.gov/submissions/CIK${cik}.json`)}`),
+    ]);
+
+    if(!factsRes.ok) throw new Error(`Error al cargar datos financieros (HTTP ${factsRes.status}). Intentá de nuevo.`);
+    if(!subRes.ok)   throw new Error(`Error al cargar filings (HTTP ${subRes.status}). Intentá de nuevo.`);
+
+    const facts = await factsRes.json();
+    const sub   = await subRes.json();
+
+    // Validar que haya datos XBRL
+    const hasUsGaap = !!(facts.facts?.['us-gaap'] && Object.keys(facts.facts['us-gaap']).length > 0);
+    const hasIfrs   = !!(facts.facts?.['ifrs-full'] && Object.keys(facts.facts['ifrs-full']).length > 0);
+    if(!hasUsGaap && !hasIfrs){
+      throw new Error(`${companyName} no tiene datos XBRL disponibles en SEC EDGAR.`);
+    }
+
+    showStatus('Procesando estados financieros...','load');
+
+    // ── 3. Renderizar ─────────────────────────────────────────────
+    renderCompanyHeader(ticker, companyName, cik, sub, facts);
+    renderFinancials(facts);
+    renderEvents(sub);
+
+    $('secResults').style.display='block';
+    $('secWelcome').style.display='none';
+    secShowTab('fin');
+    showStatus(`✓ ${companyName} cargada correctamente.`,'ok');
+
+  }catch(e){
+    console.error('[secSearch]', e);
+    showStatus(e.message,'err');
+    $('secWelcome').style.display='block';
+  }finally{
+    btn.disabled=false; btn.textContent='Buscar →';
+  }
+};
   // ══════════════════════════════════════════════
   // RENDER COMPANY HEADER
   // ══════════════════════════════════════════════
