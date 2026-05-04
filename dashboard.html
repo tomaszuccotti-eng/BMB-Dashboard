@@ -710,6 +710,24 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
     <span style="font-family:var(--display);font-size:15px;font-weight:700;color:#e8eaf6;">Balance Explorer</span>
     <span style="font-size:10px;font-family:var(--mono);color:#1E27F3;background:rgba(30,39,243,0.1);padding:2px 10px;border-radius:10px;border:1px solid rgba(30,39,243,0.3);">SEC EDGAR · GRATIS · SIN KEY</span>
     <div style="flex:1"></div>
+    <!-- Period toggle -->
+    <div style="display:flex;background:#131929;border:1px solid rgba(30,39,243,0.25);border-radius:6px;overflow:hidden;margin-right:12px;">
+      <button id="secPeriodAnnual" onclick="secSetPeriod('annual')"
+        style="padding:5px 14px;font-size:11px;font-weight:700;cursor:pointer;border:none;background:#1E27F3;color:#fff;font-family:var(--mono);letter-spacing:.04em;transition:all .15s;">Anual</button>
+      <button id="secPeriodQ" onclick="secSetPeriod('quarterly')"
+        style="padding:5px 14px;font-size:11px;font-weight:700;cursor:pointer;border:none;background:transparent;color:#4a5280;font-family:var(--mono);letter-spacing:.04em;transition:all .15s;">Trimestral</button>
+    </div>
+    <!-- Year range selector -->
+    <div style="display:flex;align-items:center;gap:6px;margin-right:12px;">
+      <span style="font-size:10px;color:#4a5280;font-family:var(--mono);">Años:</span>
+      <select id="secYearsSelect" onchange="secSetYears(this.value)"
+        style="background:#0f1422;border:1px solid rgba(30,39,243,0.3);border-radius:6px;color:#8b99c4;font-family:var(--mono);font-size:11px;padding:4px 8px;cursor:pointer;outline:none;">
+        <option value="3" selected>Últ. 3</option>
+        <option value="5">Últ. 5</option>
+        <option value="8">Últ. 8</option>
+        <option value="99">Todo</option>
+      </select>
+    </div>
     <span style="font-size:11px;color:#4a5280;font-family:var(--mono);">NYSE · NASDAQ · AMEX</span>
   </div>
 
@@ -741,6 +759,24 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
         <span class="sec-chip" onclick="secChip('JPM')">JPM</span>
         <span class="sec-chip" onclick="secChip('NU')">NU</span>
       </div>
+
+      <!-- Autocomplete ticker browser -->
+      <div style="margin-top:16px;">
+        <div style="font-size:10px;color:#4a5280;font-family:var(--mono);margin-bottom:8px;">Buscar ticker por nombre o símbolo:</div>
+        <div style="position:relative;max-width:480px;" id="secAutoWrap">
+          <input id="secAutoInput" type="text" placeholder="Ej: Apple, Micro, NVDA..." autocomplete="off"
+            style="width:100%;background:#0f1422;border:1px solid rgba(30,39,243,0.35);border-radius:8px;padding:9px 14px 9px 36px;font-size:13px;color:#e8eaf6;outline:none;font-family:var(--mono);transition:border-color .2s;"
+            onfocus="this.style.borderColor='#1E27F3';secAutoShow()"
+            onblur="setTimeout(()=>secAutoHide(),180)"
+            oninput="secAutoFilter(this.value)"
+            onkeydown="secAutoKey(event)" />
+          <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:#4a5280;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <div id="secAutoList"
+            style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#0f1422;border:1px solid rgba(30,39,243,0.35);border-radius:8px;max-height:260px;overflow-y:auto;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+          </div>
+        </div>
+      </div>
+
       <!-- Status -->
       <div id="secStatus" style="display:none;margin-top:14px;"></div>
     </div>
@@ -777,10 +813,12 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 
       <!-- Tabs -->
       <div style="display:flex;gap:0;margin-bottom:24px;border:1px solid rgba(30,39,243,0.2);border-radius:8px;overflow:hidden;width:fit-content;">
-        <button id="secTabFinBtn" onclick="secShowTab('fin')"
-          style="padding:10px 28px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:#1E27F3;color:#fff;font-family:var(--mono);letter-spacing:.05em;">📊 Estados Financieros</button>
-        <button id="secTabEvBtn" onclick="secShowTab('ev')"
-          style="padding:10px 28px;font-size:12px;font-weight:700;cursor:pointer;border:none;border-left:1px solid rgba(30,39,243,0.3);background:transparent;color:#4a5280;font-family:var(--mono);letter-spacing:.05em;">📋 Hechos Relevantes</button>
+      <button id="secTabFinBtn" onclick="secShowTab('fin')"
+        style="padding:10px 28px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:#1E27F3;color:#fff;font-family:var(--mono);letter-spacing:.05em;">📊 Estados Financieros</button>
+      <button id="secTabRatBtn" onclick="secShowTab('rat')"
+        style="padding:10px 28px;font-size:12px;font-weight:700;cursor:pointer;border:none;border-left:1px solid rgba(30,39,243,0.3);background:transparent;color:#4a5280;font-family:var(--mono);letter-spacing:.05em;">📐 Ratios</button>
+      <button id="secTabEvBtn" onclick="secShowTab('ev')"
+        style="padding:10px 28px;font-size:12px;font-weight:700;cursor:pointer;border:none;border-left:1px solid rgba(30,39,243,0.3);background:transparent;color:#4a5280;font-family:var(--mono);letter-spacing:.05em;">📋 Hechos Relevantes</button>
       </div>
 
       <!-- ── TAB: FINANCIALS ── -->
@@ -810,6 +848,11 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 
         <!-- Tables -->
         <div id="secTables"></div>
+      </div>
+
+      <!-- ── TAB: RATIOS ── -->
+      <div id="secTabRat" style="display:none;">
+        <div id="secRatios"></div>
       </div>
 
       <!-- ── TAB: EVENTOS ── -->
@@ -1788,12 +1831,101 @@ function openDetail(especie){
 
   window.secChip = function(t){ $('secTicker').value=t; secSearch(); };
 
+  // ── State ──
+  let SEC_PERIOD = 'annual';   // 'annual' | 'quarterly'
+  let SEC_YEARS  = 3;          // number of periods to show
+  let _lastFacts = null;       // cache for re-render on period/years change
+
+  window.secSetPeriod = function(p){
+    SEC_PERIOD = p;
+    $('secPeriodAnnual').style.background = p==='annual'?'#1E27F3':'transparent';
+    $('secPeriodAnnual').style.color      = p==='annual'?'#fff':'#4a5280';
+    $('secPeriodQ').style.background      = p==='quarterly'?'#1E27F3':'transparent';
+    $('secPeriodQ').style.color           = p==='quarterly'?'#fff':'#4a5280';
+    if(_lastFacts){ renderFinancials(_lastFacts); renderRatios(_lastFacts); }
+  };
+
+  window.secSetYears = function(v){
+    SEC_YEARS = parseInt(v)||3;
+    if(_lastFacts){ renderFinancials(_lastFacts); renderRatios(_lastFacts); }
+  };
+
+  // ── Autocomplete ──
+  let _secTickerList = null; // [{ticker, name}]
+  let _autoIdx = -1;
+
+  async function loadTickerList(){
+    if(_secTickerList) return;
+    const PROXY = 'https://sec-proxy.tzuccotti.workers.dev';
+    try{
+      const res = await fetch(`${PROXY}?url=https://www.sec.gov/files/company_tickers_exchange.json`);
+      if(!res.ok) throw new Error();
+      const data = await res.json();
+      if(data.data && data.fields){
+        const iT=data.fields.indexOf('ticker'), iN=data.fields.indexOf('name');
+        _secTickerList = data.data.map(r=>({ticker:(r[iT]||'').toUpperCase(), name:r[iN]||''}));
+      }
+    }catch(_){
+      _secTickerList = [];
+    }
+  }
+
+  window.secAutoShow = async function(){
+    await loadTickerList();
+    secAutoFilter($('secAutoInput').value);
+  };
+
+  window.secAutoHide = function(){
+    const el=$('secAutoList'); if(el) el.style.display='none';
+    _autoIdx=-1;
+  };
+
+  window.secAutoFilter = function(q){
+    const el=$('secAutoList'); if(!el) return;
+    if(!q||q.length<1){ el.style.display='none'; return; }
+    const ql=q.toLowerCase();
+    const results = (_secTickerList||[])
+      .filter(r=>r.ticker.startsWith(ql.toUpperCase())||r.name.toLowerCase().includes(ql))
+      .slice(0,12);
+    if(!results.length){ el.style.display='none'; return; }
+    _autoIdx=-1;
+    el.innerHTML = results.map((r,i)=>`
+      <div data-idx="${i}" data-ticker="${r.ticker}"
+        style="padding:9px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(30,39,243,0.08);transition:background .1s;"
+        onmouseenter="this.style.background='rgba(30,39,243,0.1)'"
+        onmouseleave="this.style.background='transparent'"
+        onmousedown="secAutoSelect('${r.ticker}')">
+        <span style="font-size:13px;font-weight:700;color:#a5b4fc;font-family:var(--mono);min-width:52px;">${r.ticker}</span>
+        <span style="font-size:11px;color:#8b99c4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.name}</span>
+      </div>`).join('');
+    el.style.display='block';
+  };
+
+  window.secAutoSelect = function(ticker){
+    $('secAutoInput').value='';
+    $('secAutoList').style.display='none';
+    $('secTicker').value=ticker;
+    secSearch();
+  };
+
+  window.secAutoKey = function(e){
+    const el=$('secAutoList'); if(!el||el.style.display==='none') return;
+    const items=el.querySelectorAll('[data-idx]');
+    if(e.key==='ArrowDown'){e.preventDefault();_autoIdx=Math.min(_autoIdx+1,items.length-1);items.forEach((it,i)=>it.style.background=i===_autoIdx?'rgba(30,39,243,0.15)':'transparent');}
+    else if(e.key==='ArrowUp'){e.preventDefault();_autoIdx=Math.max(_autoIdx-1,0);items.forEach((it,i)=>it.style.background=i===_autoIdx?'rgba(30,39,243,0.15)':'transparent');}
+    else if(e.key==='Enter'&&_autoIdx>=0){const t=items[_autoIdx].dataset.ticker;secAutoSelect(t);}
+    else if(e.key==='Escape'){secAutoHide();}
+  };
+
   // ── Tabs ──
   window.secShowTab = function(tab){
     $('secTabFin').style.display = tab==='fin'?'block':'none';
+    $('secTabRat').style.display = tab==='rat'?'block':'none';
     $('secTabEv').style.display  = tab==='ev' ?'block':'none';
     $('secTabFinBtn').style.background = tab==='fin'?'#1E27F3':'transparent';
     $('secTabFinBtn').style.color      = tab==='fin'?'#fff':'#4a5280';
+    $('secTabRatBtn').style.background = tab==='rat'?'#1E27F3':'transparent';
+    $('secTabRatBtn').style.color      = tab==='rat'?'#fff':'#4a5280';
     $('secTabEvBtn').style.background  = tab==='ev' ?'#1E27F3':'transparent';
     $('secTabEvBtn').style.color       = tab==='ev' ?'#fff':'#4a5280';
   };
@@ -1894,8 +2026,10 @@ function openDetail(especie){
     showStatus('Procesando estados financieros...','load');
 
     // ── 3. Renderizar ─────────────────────────────────────────────
+    _lastFacts = facts;
     renderCompanyHeader(ticker, companyName, cik, sub, facts);
     renderFinancials(facts);
+    renderRatios(facts);
     renderEvents(sub);
 
     $('secResults').style.display='block';
@@ -1974,57 +2108,92 @@ function openDetail(especie){
   // ══════════════════════════════════════════════
   function renderFinancials(facts){
     const us = facts.facts['us-gaap']||{};
+    const isQ = SEC_PERIOD === 'quarterly';
 
-    // Helper: extract annual time series
+    // Helper: extract time series (annual or quarterly)
     function series(obj, ...keys){
       for(const k of keys){
         const c = (obj[k]||{}).units||{};
-        const arr = (c['USD']||c['shares']||[])
-          .filter(x=>(x.form==='10-K'||x.form==='20-F'||x.form==='10-K/A') && x.end && !x.start)
-          .sort((a,b)=>a.end>b.end?1:-1);
-        // dedupe by fiscal year
+        let arr;
+        if(isQ){
+          // quarterly: 10-Q entries with start+end (duration = quarter)
+          arr = (c['USD']||c['shares']||[])
+            .filter(x=>(x.form==='10-Q'||x.form==='10-K') && x.end && x.start)
+            .filter(x=>{
+              // keep entries spanning ~1 quarter (60-100 days) or ~1 year for 10-K
+              const days = (new Date(x.end)-new Date(x.start))/(1000*86400);
+              return (days>=60&&days<=100)||(days>=340&&days<=380&&x.form==='10-K');
+            })
+            .sort((a,b)=>a.end>b.end?1:-1);
+        } else {
+          // annual: 10-K entries without start (point-in-time) or with full-year duration
+          arr = (c['USD']||c['shares']||[])
+            .filter(x=>(x.form==='10-K'||x.form==='20-F'||x.form==='10-K/A') && x.end && !x.start)
+            .sort((a,b)=>a.end>b.end?1:-1);
+        }
+        // dedupe by period label
         const seen=new Set(), out=[];
         for(const item of arr){
-          const yr=item.end.slice(0,4);
-          if(!seen.has(yr)){seen.add(yr);out.push({yr, val:item.val, date:item.end});}
+          const label = isQ
+            ? `${item.end.slice(0,4)}Q${Math.ceil(parseInt(item.end.slice(5,7))/3)}`
+            : item.end.slice(0,4);
+          if(!seen.has(label)){seen.add(label);out.push({yr:label, val:item.val, date:item.end});}
         }
-        if(out.length) return out.slice(-8); // last 8 years
+        if(out.length) return out.slice(-Math.min(SEC_YEARS*(isQ?4:1), isQ?20:8));
       }
       return [];
     }
 
-    const sRevenue  = series(us,'Revenues','RevenueFromContractWithCustomerExcludingAssessedTax','SalesRevenueNet');
+    // Balance sheet: point-in-time (use period-end regardless of form)
+    function seriesBS(obj, ...keys){
+      for(const k of keys){
+        const c = (obj[k]||{}).units||{};
+        const arr = (c['USD']||c['shares']||[])
+          .filter(x=>x.end && !x.start && (x.form==='10-K'||x.form==='20-F'||x.form==='10-Q'||x.form==='10-K/A'))
+          .sort((a,b)=>a.end>b.end?1:-1);
+        const seen=new Set(), out=[];
+        for(const item of arr){
+          const label = isQ
+            ? `${item.end.slice(0,4)}Q${Math.ceil(parseInt(item.end.slice(5,7))/3)}`
+            : item.end.slice(0,4);
+          if(!seen.has(label)){seen.add(label);out.push({yr:label,val:item.val,date:item.end});}
+        }
+        if(out.length) return out.slice(-Math.min(SEC_YEARS*(isQ?4:1), isQ?20:8));
+      }
+      return [];
+    }
+
+    const sRevenue  = series(us,'Revenues','RevenueFromContractWithCustomerExcludingAssessedTax','SalesRevenueNet','RevenueNet');
     const sNetInc   = series(us,'NetIncomeLoss','ProfitLoss');
     const sGrossP   = series(us,'GrossProfit');
     const sOpInc    = series(us,'OperatingIncomeLoss');
-    const sAssets   = series(us,'Assets');
-    const sLiab     = series(us,'Liabilities');
-    const sEquity   = series(us,'StockholdersEquity','StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest');
-    const sCash     = series(us,'CashAndCashEquivalentsAtCarryingValue','Cash');
+    const sAssets   = seriesBS(us,'Assets');
+    const sLiab     = seriesBS(us,'Liabilities');
+    const sEquity   = seriesBS(us,'StockholdersEquity','StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest');
+    const sCash     = seriesBS(us,'CashAndCashEquivalentsAtCarryingValue','Cash','CashCashEquivalentsAndShortTermInvestments');
     const sOpCF     = series(us,'NetCashProvidedByUsedInOperatingActivities');
     const sCapex    = series(us,'PaymentsToAcquirePropertyPlantAndEquipment','CapitalExpenditureDiscontinuedOperations');
     const sEPS      = series(us,'EarningsPerShareDiluted','EarningsPerShareBasic');
-    const sDebt     = series(us,'LongTermDebt','LongTermDebtNoncurrent');
+    const sDebt     = seriesBS(us,'LongTermDebt','LongTermDebtNoncurrent');
+    const sDA       = series(us,'DepreciationDepletionAndAmortization','DepreciationAndAmortization');
+    const sRD       = series(us,'ResearchAndDevelopmentExpense');
+    const sSGA      = series(us,'SellingGeneralAndAdministrativeExpense');
+    const sShares   = seriesBS(us,'CommonStockSharesOutstanding','WeightedAverageNumberOfSharesOutstandingBasic');
+    const sCurrentA = seriesBS(us,'AssetsCurrent');
+    const sCurrentL = seriesBS(us,'LiabilitiesCurrent');
+    const sInventory= seriesBS(us,'InventoryNet','Inventories');
+    const sReceiv   = seriesBS(us,'AccountsReceivableNetCurrent');
+    const sIntangib = seriesBS(us,'IntangibleAssetsNetExcludingGoodwill','FiniteLivedIntangibleAssetsNet');
+    const sGoodwill = seriesBS(us,'Goodwill');
+    const sTax      = series(us,'IncomeTaxExpenseBenefit');
+    const sInterest = series(us,'InterestExpense','InterestAndDebtExpense');
 
-    // Compute margins
-    const sGrossM = sRevenue.map((r,i)=>{
-      const g = sGrossP.find(x=>x.yr===r.yr);
-      return g ? {yr:r.yr, val: g.val/r.val*100} : null;
-    }).filter(Boolean);
-    const sNetM = sRevenue.map(r=>{
-      const n = sNetInc.find(x=>x.yr===r.yr);
-      return n ? {yr:r.yr, val: n.val/r.val*100} : null;
-    }).filter(Boolean);
-    const sOpM = sRevenue.map(r=>{
-      const o = sOpInc.find(x=>x.yr===r.yr);
-      return o ? {yr:r.yr, val: o.val/r.val*100} : null;
-    }).filter(Boolean);
-
-    // Free CF
-    const sFCF = sOpCF.map(o=>{
-      const c = sCapex.find(x=>x.yr===o.yr);
-      return {yr:o.yr, val: c ? o.val-Math.abs(c.val) : o.val};
-    });
+    // Computed series
+    const sGrossM = sRevenue.map(r=>{const g=sGrossP.find(x=>x.yr===r.yr);return g&&r.val?{yr:r.yr,val:g.val/r.val*100}:null;}).filter(Boolean);
+    const sNetM   = sRevenue.map(r=>{const n=sNetInc.find(x=>x.yr===r.yr);return n&&r.val?{yr:r.yr,val:n.val/r.val*100}:null;}).filter(Boolean);
+    const sOpM    = sRevenue.map(r=>{const o=sOpInc.find(x=>x.yr===r.yr);return o&&r.val?{yr:r.yr,val:o.val/r.val*100}:null;}).filter(Boolean);
+    const sEBITDA = sOpInc.map(o=>{const d=sDA.find(x=>x.yr===o.yr);return d?{yr:o.yr,val:o.val+Math.abs(d.val)}:{yr:o.yr,val:o.val};});
+    const sFCF    = sOpCF.map(o=>{const c=sCapex.find(x=>x.yr===o.yr);return{yr:o.yr,val:c?o.val-Math.abs(c.val):o.val};});
 
     // ── Charts ──
     const chartCfg = {
@@ -2036,13 +2205,14 @@ function openDetail(especie){
     function toM(arr){ return arr.map(x=>+(x.val/1e6).toFixed(0)); }
     function labels(arr){ return arr.map(x=>x.yr); }
 
-    // Destroy old charts if exist
+    // Destroy old charts
     ['secChartIncome','secChartBalance','secChartMargins','secChartCF'].forEach(id=>{
-      const el=$(id); if(el._chart){el._chart.destroy();el._chart=null;}
+      const el=$(id); if(el&&el._chart){el._chart.destroy();el._chart=null;}
     });
 
     function mkChart(id, config){
       const el=$(id); if(!el)return;
+      if(el._chart){el._chart.destroy();}
       el._chart = new Chart(el, config);
     }
 
@@ -2050,6 +2220,7 @@ function openDetail(especie){
       labels: labels(sRevenue),
       datasets:[
         {label:'Revenue',data:toM(sRevenue),backgroundColor:'rgba(30,39,243,0.6)',borderColor:'#1E27F3',borderWidth:1},
+        {label:'Gross Profit',data:toM(sGrossP.filter(x=>sRevenue.find(r=>r.yr===x.yr))),backgroundColor:'rgba(165,180,252,0.4)',borderColor:'#a5b4fc',borderWidth:1},
         {label:'Net Income',data:toM(sNetInc.filter(x=>sRevenue.find(r=>r.yr===x.yr))),backgroundColor:'rgba(63,185,80,0.5)',borderColor:'#3fb950',borderWidth:1},
       ]
     },options:{...chartCfg}});
@@ -2082,7 +2253,6 @@ function openDetail(especie){
 
     // ── Tables ──
     function tbl(title, rows){
-      // rows: [{label, series}]
       const allYears = [...new Set(rows.flatMap(r=>r.series.map(x=>x.yr)))].sort();
       if(!allYears.length) return '';
       const thS='padding:8px 12px;font-size:10px;font-weight:600;color:#8b99c4;text-transform:uppercase;letter-spacing:.05em;';
@@ -2112,32 +2282,210 @@ function openDetail(especie){
         {label:'Revenue',             series:sRevenue},
         {label:'Gross Profit',        series:sGrossP},
         {label:'Operating Income',    series:sOpInc,   colorFn:colorPosNeg},
+        {label:'EBITDA',              series:sEBITDA,  colorFn:colorPosNeg},
         {label:'Net Income',          series:sNetInc,  colorFn:colorPosNeg},
         {label:'EPS Diluted',         series:sEPS,     fmt:v=>'$'+v.toFixed(2), colorFn:colorPosNeg},
-      ]),
-      tbl('📊 Márgenes', [
-        {label:'Gross Margin %',  series:sGrossM, fmt:v=>fmtPct(v), colorFn:colorPct},
-        {label:'Op. Margin %',    series:sOpM,    fmt:v=>fmtPct(v), colorFn:colorPct},
-        {label:'Net Margin %',    series:sNetM,   fmt:v=>fmtPct(v), colorFn:colorPct},
-      ]),
+        {label:'R&D Expense',         series:sRD},
+        {label:'SG&A Expense',        series:sSGA},
+        {label:'D&A',                 series:sDA},
+        {label:'Tax Expense',         series:sTax},
+        {label:'Interest Expense',    series:sInterest},
+      ].filter(r=>r.series.length>0)),
+      tbl('📐 Márgenes', [
+        {label:'Gross Margin %',      series:sGrossM,  fmt:v=>fmtPct(v), colorFn:colorPct},
+        {label:'Op. Margin %',        series:sOpM,     fmt:v=>fmtPct(v), colorFn:colorPct},
+        {label:'Net Margin %',        series:sNetM,    fmt:v=>fmtPct(v), colorFn:colorPct},
+        {label:'EBITDA Margin %',     series:sRevenue.map(r=>{const e=sEBITDA.find(x=>x.yr===r.yr);return e&&r.val?{yr:r.yr,val:e.val/r.val*100}:null;}).filter(Boolean), fmt:v=>fmtPct(v), colorFn:colorPct},
+      ].filter(r=>r.series.length>0)),
       tbl('🏦 Balance Sheet', [
-        {label:'Total Assets',        series:sAssets},
-        {label:'Total Liabilities',   series:sLiab,   colorFn:()=>'#f85149'},
-        {label:'Equity',              series:sEquity,  colorFn:colorPosNeg},
-        {label:'Cash & Equivalents',  series:sCash,    colorFn:()=>'#3fb950'},
-        {label:'Long-term Debt',      series:sDebt,    colorFn:()=>'#f85149'},
-      ]),
+        {label:'Cash & Equivalents',   series:sCash,       colorFn:()=>'#3fb950'},
+        {label:'Accounts Receivable',  series:sReceiv},
+        {label:'Inventories',          series:sInventory},
+        {label:'Current Assets',       series:sCurrentA},
+        {label:'Total Assets',         series:sAssets},
+        {label:'Current Liabilities',  series:sCurrentL,   colorFn:()=>'#f85149'},
+        {label:'Long-term Debt',       series:sDebt,       colorFn:()=>'#f85149'},
+        {label:'Total Liabilities',    series:sLiab,       colorFn:()=>'#f85149'},
+        {label:'Equity',               series:sEquity,     colorFn:colorPosNeg},
+        {label:'Goodwill',             series:sGoodwill},
+        {label:'Intangibles',          series:sIntangib},
+        {label:'Shares Outstanding',   series:sShares,     fmt:v=>v>=1e9?(v/1e9).toFixed(2)+'B':v>=1e6?(v/1e6).toFixed(0)+'M':v.toFixed(0)},
+      ].filter(r=>r.series.length>0)),
       tbl('💸 Cash Flow', [
-        {label:'Operating CF',   series:sOpCF,   colorFn:colorPosNeg},
-        {label:'Capex',          series:sCapex,  fmt:v=>fmtM(-Math.abs(v))},
-        {label:'Free Cash Flow', series:sFCF,    colorFn:colorPosNeg},
-      ]),
+        {label:'Operating CF',    series:sOpCF,   colorFn:colorPosNeg},
+        {label:'Capex',           series:sCapex,  fmt:v=>fmtM(-Math.abs(v))},
+        {label:'Free Cash Flow',  series:sFCF,    colorFn:colorPosNeg},
+        {label:'D&A (CF)',        series:sDA},
+      ].filter(r=>r.series.length>0)),
     ].join('');
   }
 
   // ══════════════════════════════════════════════
-  // RENDER EVENTS (8-K, últimos 3 meses)
+  // RENDER RATIOS
   // ══════════════════════════════════════════════
+  function renderRatios(facts){
+    const el=$('secRatios'); if(!el) return;
+    const us = facts.facts['us-gaap']||{};
+    const isQ = SEC_PERIOD === 'quarterly';
+
+    function series(obj,...keys){
+      for(const k of keys){
+        const c=(obj[k]||{}).units||{};
+        let arr;
+        if(isQ){
+          arr=(c['USD']||c['shares']||[]).filter(x=>(x.form==='10-Q'||x.form==='10-K')&&x.end&&x.start).filter(x=>{const d=(new Date(x.end)-new Date(x.start))/(1000*86400);return(d>=60&&d<=100)||(d>=340&&d<=380&&x.form==='10-K');}).sort((a,b)=>a.end>b.end?1:-1);
+        } else {
+          arr=(c['USD']||c['shares']||[]).filter(x=>(x.form==='10-K'||x.form==='20-F'||x.form==='10-K/A')&&x.end&&!x.start).sort((a,b)=>a.end>b.end?1:-1);
+        }
+        const seen=new Set(),out=[];
+        for(const item of arr){
+          const label=isQ?`${item.end.slice(0,4)}Q${Math.ceil(parseInt(item.end.slice(5,7))/3)}`:item.end.slice(0,4);
+          if(!seen.has(label)){seen.add(label);out.push({yr:label,val:item.val,date:item.end});}
+        }
+        if(out.length) return out.slice(-Math.min(SEC_YEARS*(isQ?4:1),isQ?20:8));
+      }
+      return [];
+    }
+    function seriesBS(obj,...keys){
+      for(const k of keys){
+        const c=(obj[k]||{}).units||{};
+        const arr=(c['USD']||c['shares']||[]).filter(x=>x.end&&!x.start&&(x.form==='10-K'||x.form==='20-F'||x.form==='10-Q'||x.form==='10-K/A')).sort((a,b)=>a.end>b.end?1:-1);
+        const seen=new Set(),out=[];
+        for(const item of arr){
+          const label=isQ?`${item.end.slice(0,4)}Q${Math.ceil(parseInt(item.end.slice(5,7))/3)}`:item.end.slice(0,4);
+          if(!seen.has(label)){seen.add(label);out.push({yr:label,val:item.val,date:item.end});}
+        }
+        if(out.length) return out.slice(-Math.min(SEC_YEARS*(isQ?4:1),isQ?20:8));
+      }
+      return [];
+    }
+
+    const sRevenue  = series(us,'Revenues','RevenueFromContractWithCustomerExcludingAssessedTax','SalesRevenueNet','RevenueNet');
+    const sNetInc   = series(us,'NetIncomeLoss','ProfitLoss');
+    const sGrossP   = series(us,'GrossProfit');
+    const sOpInc    = series(us,'OperatingIncomeLoss');
+    const sAssets   = seriesBS(us,'Assets');
+    const sLiab     = seriesBS(us,'Liabilities');
+    const sEquity   = seriesBS(us,'StockholdersEquity','StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest');
+    const sCash     = seriesBS(us,'CashAndCashEquivalentsAtCarryingValue','Cash','CashCashEquivalentsAndShortTermInvestments');
+    const sOpCF     = series(us,'NetCashProvidedByUsedInOperatingActivities');
+    const sCapex    = series(us,'PaymentsToAcquirePropertyPlantAndEquipment');
+    const sDebt     = seriesBS(us,'LongTermDebt','LongTermDebtNoncurrent');
+    const sDA       = series(us,'DepreciationDepletionAndAmortization','DepreciationAndAmortization');
+    const sShares   = seriesBS(us,'CommonStockSharesOutstanding','WeightedAverageNumberOfSharesOutstandingBasic');
+    const sCurrentA = seriesBS(us,'AssetsCurrent');
+    const sCurrentL = seriesBS(us,'LiabilitiesCurrent');
+    const sInventory= seriesBS(us,'InventoryNet','Inventories');
+    const sInterest = series(us,'InterestExpense','InterestAndDebtExpense');
+    const sEPS      = series(us,'EarningsPerShareDiluted','EarningsPerShareBasic');
+
+    // Computed ratio series
+    function computeRatio(arrA, arrB, fn, label){
+      return arrA.map(a=>{const b=arrB.find(x=>x.yr===a.yr);if(!b||!b.val)return null;const v=fn(a.val,b.val);return isFinite(v)?{yr:a.yr,val:v}:null;}).filter(Boolean).map(x=>({...x,label}));
+    }
+
+    const sEBITDA      = sOpInc.map(o=>{const d=sDA.find(x=>x.yr===o.yr);return d?{yr:o.yr,val:o.val+Math.abs(d.val)}:{yr:o.yr,val:o.val};});
+    const sFCF         = sOpCF.map(o=>{const c=sCapex.find(x=>x.yr===o.yr);return{yr:o.yr,val:c?o.val-Math.abs(c.val):o.val};});
+
+    // Profitability
+    const sROE        = computeRatio(sNetInc,sEquity,(n,e)=>n/e*100,'ROE');
+    const sROA        = computeRatio(sNetInc,sAssets,(n,a)=>n/a*100,'ROA');
+    const sROIC       = sOpInc.map(o=>{const e=sEquity.find(x=>x.yr===o.yr),d=sDebt.find(x=>x.yr===o.yr);const ic=(e?.val||0)+(d?.val||0);return ic?{yr:o.yr,val:o.val/ic*100}:null;}).filter(Boolean);
+    const sGrossM     = computeRatio(sGrossP,sRevenue,(g,r)=>g/r*100,'Gross Margin');
+    const sOpM        = computeRatio(sOpInc,sRevenue,(o,r)=>o/r*100,'Op. Margin');
+    const sNetM       = computeRatio(sNetInc,sRevenue,(n,r)=>n/r*100,'Net Margin');
+    const sEBITDAM    = computeRatio(sEBITDA,sRevenue,(e,r)=>e/r*100,'EBITDA Margin');
+    const sFCFM       = computeRatio(sFCF,sRevenue,(f,r)=>f/r*100,'FCF Margin');
+
+    // Liquidity
+    const sCurrRatio  = computeRatio(sCurrentA,sCurrentL,(a,l)=>a/l,'Current Ratio');
+    const sQuickRatio = sCurrentA.map(a=>{const l=sCurrentL.find(x=>x.yr===a.yr),inv=sInventory.find(x=>x.yr===a.yr);return l?.val?{yr:a.yr,val:(a.val-(inv?.val||0))/l.val}:null;}).filter(Boolean);
+    const sCashRatio  = computeRatio(sCash,sCurrentL,(c,l)=>c/l,'Cash Ratio');
+
+    // Leverage
+    const sDebtEq     = computeRatio(sDebt,sEquity,(d,e)=>d/e,'D/E Ratio');
+    const sNetDebt    = sDebt.map(d=>{const c=sCash.find(x=>x.yr===d.yr);return{yr:d.yr,val:d.val-(c?.val||0)};});
+    const sNetDebtEBITDA = computeRatio(sNetDebt,sEBITDA,(nd,eb)=>nd/eb,'Net Debt/EBITDA');
+    const sDebtAssets = computeRatio(sDebt,sAssets,(d,a)=>d/a*100,'Debt/Assets %');
+    const sIntCov     = computeRatio(sOpInc,sInterest,(o,i)=>o/Math.abs(i),'Interest Coverage');
+    const sEquityMult = computeRatio(sAssets,sEquity,(a,e)=>a/e,'Equity Multiplier');
+
+    // Efficiency
+    const sAssetTO    = computeRatio(sRevenue,sAssets,(r,a)=>r/a,'Asset Turnover');
+    const sRevPerShare= computeRatio(sRevenue,sShares,(r,s)=>r/s,'Revenue/Share');
+    const sFCFPerShare= computeRatio(sFCF,sShares,(f,s)=>f/s,'FCF/Share');
+
+    const pct  = v=>fmtPct(v);
+    const x2   = v=>v.toFixed(2)+'x';
+    const x1   = v=>v.toFixed(1)+'x';
+    const dlr  = v=>'$'+v.toFixed(2);
+    const cpn  = v=>v>=0?'#3fb950':'#f85149';
+    const blue = ()=>'#a5b4fc';
+
+    // Ratio table builder
+    function rtbl(title, icon, rows){
+      const allYears=[...new Set(rows.filter(r=>r.s.length).flatMap(r=>r.s.map(x=>x.yr)))].sort();
+      if(!allYears.length) return '';
+      const thS='padding:8px 12px;font-size:10px;font-weight:600;color:#8b99c4;text-transform:uppercase;letter-spacing:.05em;';
+      const tdS='padding:7px 12px;font-size:12px;';
+      const visRows=rows.filter(r=>r.s.length);
+      if(!visRows.length) return '';
+      return `<div style="margin-bottom:20px;background:#0f1422;border:1px solid rgba(30,39,243,0.2);border-radius:10px;overflow:hidden;overflow-x:auto;">
+        <div style="padding:14px 16px;font-size:11px;font-weight:700;color:#8b99c4;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid rgba(30,39,243,0.15);font-family:var(--mono);">${icon} ${title}</div>
+        <table class="sec-table">
+          <thead><tr>
+            <th style="${thS}text-align:left;">Ratio</th>
+            <th style="${thS}text-align:left;color:#4a5280;font-size:9px;max-width:200px;">Descripción</th>
+            ${allYears.map(y=>`<th style="${thS}">${y}</th>`).join('')}
+          </tr></thead>
+          <tbody>${visRows.map(row=>{
+            const cells=allYears.map(yr=>{
+              const p=row.s.find(x=>x.yr===yr);
+              const v=p?(row.fmt?row.fmt(p.val):p.val.toFixed(2)):'—';
+              const color=p&&row.color?row.color(p.val):'#e8eaf6';
+              return `<td style="${tdS}text-align:right;color:${color};">${v}</td>`;
+            }).join('');
+            return `<tr>
+              <td style="${tdS}color:#a5b4fc;font-weight:600;">${row.label}</td>
+              <td style="${tdS}color:#4a5280;font-size:10px;max-width:200px;">${row.desc}</td>
+              ${cells}
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>`;
+    }
+
+    el.innerHTML = [
+      rtbl('Rentabilidad','📈',[
+        {label:'Gross Margin',   desc:'(Gross Profit / Revenue) × 100',       s:sGrossM,    fmt:pct, color:cpn},
+        {label:'Op. Margin',     desc:'(EBIT / Revenue) × 100',               s:sOpM,       fmt:pct, color:cpn},
+        {label:'EBITDA Margin',  desc:'(EBITDA / Revenue) × 100',             s:sEBITDAM,   fmt:pct, color:cpn},
+        {label:'Net Margin',     desc:'(Net Income / Revenue) × 100',         s:sNetM,      fmt:pct, color:cpn},
+        {label:'FCF Margin',     desc:'(Free Cash Flow / Revenue) × 100',     s:sFCFM,      fmt:pct, color:cpn},
+        {label:'ROE',            desc:'(Net Income / Equity) × 100',          s:sROE,       fmt:pct, color:cpn},
+        {label:'ROA',            desc:'(Net Income / Total Assets) × 100',    s:sROA,       fmt:pct, color:cpn},
+        {label:'ROIC',           desc:'EBIT / (Equity + Debt)',               s:sROIC,      fmt:pct, color:cpn},
+      ]),
+      rtbl('Liquidez','💧',[
+        {label:'Current Ratio',  desc:'Current Assets / Current Liabilities', s:sCurrRatio,  fmt:x2, color:v=>v>=2?'#3fb950':v>=1?'#d4a017':'#f85149'},
+        {label:'Quick Ratio',    desc:'(Current Assets − Inventory) / CL',   s:sQuickRatio, fmt:x2, color:v=>v>=1?'#3fb950':'#f85149'},
+        {label:'Cash Ratio',     desc:'Cash / Current Liabilities',           s:sCashRatio,  fmt:x2, color:blue},
+      ]),
+      rtbl('Apalancamiento','⚖️',[
+        {label:'D/E Ratio',      desc:'Long-term Debt / Equity',              s:sDebtEq,      fmt:x2, color:v=>v<1?'#3fb950':v<2?'#d4a017':'#f85149'},
+        {label:'Net Debt/EBITDA',desc:'(LT Debt − Cash) / EBITDA',           s:sNetDebtEBITDA,fmt:x1,color:v=>v<2?'#3fb950':v<4?'#d4a017':'#f85149'},
+        {label:'Debt/Assets %',  desc:'Long-term Debt / Total Assets',       s:sDebtAssets,  fmt:pct, color:v=>v<30?'#3fb950':v<60?'#d4a017':'#f85149'},
+        {label:'Interest Coverage',desc:'EBIT / Interest Expense',           s:sIntCov,      fmt:x1, color:v=>v>3?'#3fb950':v>1.5?'#d4a017':'#f85149'},
+        {label:'Equity Multiplier',desc:'Total Assets / Equity',             s:sEquityMult,  fmt:x2, color:blue},
+      ]),
+      rtbl('Eficiencia','⚡',[
+        {label:'Asset Turnover', desc:'Revenue / Total Assets',               s:sAssetTO,    fmt:x2, color:blue},
+        {label:'Revenue/Share',  desc:'Revenue / Shares Outstanding',        s:sRevPerShare, fmt:dlr, color:blue},
+        {label:'EPS Diluted',    desc:'Net Income / Diluted Shares',         s:sEPS,         fmt:dlr, color:cpn},
+        {label:'FCF/Share',      desc:'Free Cash Flow / Shares Outstanding', s:sFCFPerShare, fmt:dlr, color:cpn},
+      ]),
+    ].filter(Boolean).join('');
+  }
   function renderEvents(sub){
     const filings = sub.filings?.recent;
     if(!filings){ $('secEvents').innerHTML='<div style="color:#4a5280;padding:20px;">No se encontraron filings.</div>'; return; }
