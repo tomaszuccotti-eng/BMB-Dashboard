@@ -717,6 +717,18 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 
     <!-- ══ TICKER SEARCH ══ -->
     <div style="margin-bottom:32px;">
+
+      <!-- API Key row -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:12px 16px;background:#0f1422;border:1px solid rgba(30,39,243,0.2);border-radius:8px;">
+        <span style="font-size:11px;color:#8b99c4;font-family:var(--mono);white-space:nowrap;">🔑 FMP API Key</span>
+        <input id="bFmpKeyInput" type="password" placeholder="Ingresá tu API key de financialmodelingprep.com"
+          style="flex:1;background:#0b0e1a;border:1px solid rgba(30,39,243,0.25);border-radius:6px;padding:7px 12px;font-size:12px;color:#e8eaf6;outline:none;font-family:var(--mono);transition:border-color .2s;"
+          onfocus="this.style.borderColor='#1E27F3'" onblur="this.style.borderColor='rgba(30,39,243,0.25)'"
+          oninput="localStorage.setItem('fmp_key',this.value)" />
+        <a href="https://site.financialmodelingprep.com/register" target="_blank"
+          style="font-size:11px;color:#1E27F3;font-family:var(--mono);white-space:nowrap;text-decoration:none;">Obtener key gratis →</a>
+      </div>
+
       <div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8b99c4;font-family:var(--mono);margin-bottom:12px;">Buscar empresa</div>
       <div style="display:flex;gap:10px;align-items:stretch;">
         <input id="bApiTicker" type="text" placeholder="AAPL" maxlength="10"
@@ -1724,7 +1736,19 @@ function openDetail(especie){
 // ══════════════════ BALANCE MODULE v5 ══════════════════
 (function(){
 
-  const FMP_KEY = 'Jo6pHJgmbWCPbaowdQW1p58fsf3Xl0kD';
+  // ── FMP Key helper ──
+  function getFmpKey(){
+    const inp = document.getElementById('bFmpKeyInput');
+    const saved = localStorage.getItem('fmp_key')||'';
+    if(inp && !inp.value && saved) inp.value = saved;
+    return (inp && inp.value.trim()) || saved;
+  }
+  // Pre-cargar key guardada al iniciar
+  document.addEventListener('DOMContentLoaded', function(){
+    const saved = localStorage.getItem('fmp_key')||'';
+    const inp = document.getElementById('bFmpKeyInput');
+    if(inp && saved) inp.value = saved;
+  });
   let bApiData   = [];
   let bApiIdx    = 0;
   let bApiPeriod = 'annual';
@@ -1790,7 +1814,24 @@ function openDetail(especie){
   // ════════════════════════════════════════════
   // FMP API
   // ════════════════════════════════════════════
-  // ── Debug console ──
+  // Normalize v4 financial-reports-json format into array like stable endpoint
+  function bNormalizeV4(parsed, ticker){
+    const fin = parsed.financials || [];
+    return fin.map(f => ({
+      symbol: ticker, date: f.date, period: 'FY', reportedCurrency: 'USD',
+      totalAssets: parseFloat(f['Total assets'])||0,
+      totalLiabilities: parseFloat(f['Total liabilities'])||0,
+      totalStockholdersEquity: parseFloat(f["Total shareholders' equity"])||0,
+      cashAndCashEquivalents: parseFloat(f['Cash and cash equivalents'])||0,
+      totalDebt: parseFloat(f['Long-term debt'])||0,
+      totalCurrentAssets: parseFloat(f['Total current assets'])||0,
+      totalCurrentLiabilities: parseFloat(f['Total current liabilities'])||0,
+      propertyPlantEquipmentNet: parseFloat(f['Property, plant and equipment, net'])||0,
+      goodwill: parseFloat(f['Goodwill'])||0,
+      retainedEarnings: parseFloat(f['Retained earnings (deficit)']||f['Retained earnings'])||0,
+      longTermDebt: parseFloat(f['Long-term debt'])||0,
+    }));
+  }
   function dbLog(msg, type){
     const el = document.getElementById('bDebugLog');
     if(!el) return;
@@ -1822,43 +1863,49 @@ function openDetail(especie){
     document.getElementById('bApiResults').style.display='none';
     document.getElementById('bApiPeriodTabs').style.display='none';
 
-    const url=`https://financialmodelingprep.com/stable/balance-sheet-statement?symbol=${ticker}&period=${bApiPeriod}&limit=10&apikey=${FMP_KEY}`;
+    const FMP_KEY = getFmpKey();
+    if(!FMP_KEY){
+      bShowStatus('Ingresá tu API key de Financial Modeling Prep para continuar.','err');
+      document.getElementById('bFmpKeyInput').focus();
+      return;
+    }
+
+    // Try stable endpoint first, then fallback candidates
+    const ENDPOINTS = [
+      `https://financialmodelingprep.com/stable/balance-sheet-statement?symbol=${ticker}&period=${bApiPeriod}&limit=10&apikey=${FMP_KEY}`,
+      `https://financialmodelingprep.com/stable/balance-sheet-statement?symbol=${ticker}&limit=10&apikey=${FMP_KEY}`,
+      `https://financialmodelingprep.com/api/v4/financial-reports-json?symbol=${ticker}&year=${new Date().getFullYear()-1}&period=FY&apikey=${FMP_KEY}`,
+    ];
+
+    let data = null;
+    for(const url of ENDPOINTS){
+      dbLog(`→ Probando: ${url.replace(FMP_KEY,'***')}`, 'info');
+      try{
+        const res = await fetch(url);
+        dbLog(`← HTTP ${res.status}`, res.ok?'ok':'warn');
+        const text = await res.text();
+        dbLog(`← Body: ${text.slice(0,200)}`, 'info');
+        let parsed;
+        try{ parsed = JSON.parse(text); }catch(e){ dbLog('No es JSON','err'); continue; }
+
+        if(parsed['Error Message']){ dbLog('Error: '+parsed['Error Message'],'err'); continue; }
+        if(parsed['message'] && parsed['message'].toLowerCase().includes('legacy')){ dbLog('Legacy block en este endpoint','warn'); continue; }
+        if(Array.isArray(parsed) && parsed.length){ data = parsed; break; }
+        if(parsed.financials){ data = bNormalizeV4(parsed, ticker); break; }
+      }catch(e){ dbLog('Excepción: '+e.message,'err'); }
+    }
+
+    const url = ENDPOINTS[0]; // for legacy variable refs below
     dbLog(`→ GET ${url.replace(FMP_KEY,'***KEY***')}`, 'info');
 
     try{
-      const res = await fetch(url);
-      dbLog(`← HTTP ${res.status} ${res.statusText}`, res.ok ? 'ok' : 'err');
-
-      const text = await res.text();
-      dbLog(`← Body (primeros 300 chars): ${text.slice(0,300)}`, 'info');
-
-      let data;
-      try { data = JSON.parse(text); }
-      catch(pe){ throw new Error('Respuesta no es JSON válido: '+text.slice(0,120)); }
-
-      // FMP devuelve error como objeto con "Error Message" o como array vacío
-      if(data['Error Message']){
-        dbLog(`← Error de API: ${data['Error Message']}`, 'err');
-        throw new Error('FMP: '+data['Error Message']);
-      }
-      if(data['message']){
-        dbLog(`← Mensaje de API: ${data['message']}`, 'warn');
-        throw new Error('FMP: '+data['message']);
-      }
-
-      if(!Array.isArray(data)){
-        dbLog(`← Respuesta inesperada (no es array): ${JSON.stringify(data).slice(0,200)}`, 'err');
-        throw new Error('Respuesta inesperada de FMP. Ver consola debug.');
-      }
-
-      if(!data.length){
-        dbLog(`← Array vacío para ${ticker} — ticker no existe o sin datos en FMP`, 'warn');
-        bShowStatus(`No se encontraron datos para "${ticker}". Verificá que cotice en NYSE/NASDAQ/AMEX.`,'err');
+      if(!data){
+        bShowStatus('Todos los endpoints fallaron. Ver consola debug para detalles.','err');
         document.getElementById('bWelcome').style.display='block';
         return;
       }
 
-      dbLog(`← ✓ ${data.length} períodos recibidos para ${ticker} (${data[0].date||'?'} → ${data[data.length-1].date||'?'})`, 'ok');
+      dbLog(`← ✓ ${data.length} períodos para ${ticker}`, 'ok');
       bApiData=data; bApiIdx=0;
       bRenderApi();
       bShowStatus(`✓ ${data.length} períodos cargados para ${ticker}.`,'ok');
