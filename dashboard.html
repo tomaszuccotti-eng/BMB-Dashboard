@@ -1718,390 +1718,446 @@ function openDetail(especie){
   setTimeout(()=>buildHistCharts(histRows,7),80);
 }
 
-// ══════════════════ BALANCE MODULE — 100% LOCAL ══════════════════
+// ══════════════════ BALANCE MODULE v2 — port de financial_report_generator.py ══════════════════
 (function(){
 
   // ── Estado ──
-  let bParsedData = null;
+  let bParsedData   = null;
   let bGeneratedHTML = null;
-  let bSelectedOpts = new Set(['income','balance','cashflow','charts','ratios']);
-  let bLang = 'es';
-  let bRawText = '';
+  let bSelectedOpts  = new Set(['income','balance','cashflow','charts','margins','geo']);
+  let bLang          = 'es';
 
-  // ── Utilidades de status ──
+  // ── Status ──
   function bShowStatus(msg, type){
     const el = document.getElementById('bStatusBox');
     if(!el) return;
     const cfg = {
       info: {bg:'#0d2240', color:'#58a6ff', border:'#1a3a60', icon:'ℹ'},
-      ok:   {bg:'#1a4a26', color:'#3fb950', border:'#1a4a26', icon:'✓'},
-      err:  {bg:'#4a1a1a', color:'#f85149', border:'#4a1a1a', icon:'⚠'},
-      load: {bg:'#1c1a2e', color:'#a78bfa', border:'#2d2060', icon:'⏳'}
+      ok:   {bg:'#1a4a26', color:'#3fb950', border:'#2a6a36', icon:'✓'},
+      err:  {bg:'#4a1a1a', color:'#f85149', border:'#6a2a2a', icon:'⚠'},
+      load: {bg:'#1c1a2e', color:'#a78bfa', border:'#2d2060', icon:'⏳'},
     };
     const c = cfg[type] || cfg.info;
     el.style.cssText = `display:flex;gap:8px;align-items:flex-start;background:${c.bg};color:${c.color};border:1px solid ${c.border};border-radius:6px;padding:10px 12px;font-size:12px;line-height:1.5;`;
     el.innerHTML = `<span style="flex-shrink:0">${c.icon}</span><span>${msg}</span>`;
   }
 
-  // ── Formatters ──
-  function fN(v, pre=''){
-    if(v == null || isNaN(v)) return '—';
-    const sign = v < 0 ? '-' : '';
-    const a = Math.abs(v);
-    if(a >= 1e12) return sign + pre + (a/1e12).toFixed(2) + 'T';
-    if(a >= 1e9)  return sign + pre + (a/1e9).toFixed(2) + 'B';
-    if(a >= 1e6)  return sign + pre + (a/1e6).toFixed(1) + 'M';
-    if(a >= 1e3)  return sign + pre + (a/1e3).toFixed(1) + 'K';
-    return sign + pre + Number(a).toFixed(0);
-  }
-  function fP(v){ return (v==null||isNaN(v)) ? '—' : (v*100).toFixed(1)+'%'; }
-  function fX(v){ return (v==null||isNaN(v)) ? '—' : Number(v).toFixed(1)+'x'; }
-
-  // ── Opts / Lang ──
   window.bToggleOpt = function(el){
-    const k = el.dataset.key;
-    const on = el.classList.toggle('on');
+    const k = el.dataset.key, on = el.classList.toggle('on');
     if(on){ bSelectedOpts.add(k); el.style.borderColor='#58a6ff'; el.style.background='#0d2240'; el.querySelector('div').style.color='#58a6ff'; }
     else  { bSelectedOpts.delete(k); el.style.borderColor='#30363d'; el.style.background='#0d1117'; el.querySelector('div').style.color='#e6edf3'; }
   };
   window.bSetLang = function(l){
     bLang = l;
     ['Es','En','Pt'].forEach(x => {
-      const el = document.getElementById('bLang'+x);
-      if(!el) return;
+      const el = document.getElementById('bLang'+x); if(!el) return;
       const on = x.toLowerCase() === l;
       el.style.borderColor = on ? '#58a6ff' : '#30363d';
       el.style.background  = on ? '#0d2240' : '#0d1117';
       el.style.color       = on ? '#58a6ff' : '#8b949e';
     });
   };
-  window.bSaveKey = function(v){
-    // no-op: no hay API key en modo 100% local
-  };
+  window.bSaveKey  = function(){};
   window.bToggleRaw = function(){
     const pre = document.getElementById('bRawText');
-    if(!pre) return;
-    pre.style.display = pre.style.display === 'none' ? 'block' : 'none';
+    if(pre) pre.style.display = pre.style.display === 'none' ? 'block' : 'none';
   };
 
-  // ══════════════════════════════════════════════════════════
-  // PARSER DE PDF — 100% LOCAL con pdf.js
-  // ══════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════
+  // PATRONES — port directo del Python
+  // ════════════════════════════════════════════════════════
+
+  const INCOME_PATTERNS = {
+    revenue:          ['net revenues? and financial income','total net revenues? and financial income','total net revenues?','net revenues?','total revenues?','net sales','total net sales','revenues?'],
+    gross_profit:     ['gross profit','gross margin'],
+    operating_income: ['income from operations','operating income','operating profit','\\bebit\\b'],
+    net_income:       ['net income\\b','net earnings\\b','net profit','profit for the (?:year|period)'],
+    eps_diluted:      ['diluted (?:net income )?(?:available to shareholders )?per (?:common )?share','diluted earnings per share','diluted eps'],
+    eps_basic:        ['basic (?:net income )?(?:available to shareholders )?per (?:common )?share','basic earnings per share'],
+    cost_of_revenue:  ['cost of (?:net )?revenues? and financial expenses','cost of (?:net )?revenues?','cost of goods sold','cost of sales'],
+    rd_expense:       ['research and development','product and technology development'],
+    sales_marketing:  ['sales and marketing'],
+    sga:              ['general and administrative','selling,? general and administrative'],
+    income_tax:       ['income tax (?:expense|benefit|provision)','provision for income taxes'],
+  };
+
+  const BALANCE_PATTERNS = {
+    cash:                      ['cash and cash equivalents\\b'],
+    short_term_investments:    ['short-term investments','current investments'],
+    total_current_assets:      ['total current assets'],
+    total_assets:              ['total assets\\b'],
+    total_current_liabilities: ['total current liabilities'],
+    total_liabilities:         ['total liabilities\\b'],
+    total_equity:              ['total (?:stockholders\'?|shareholders\'?|owners\'?) equity','total equity'],
+    loans_receivable:          ['loans receivable,? net'],
+    property_equipment:        ['property and equipment,? net','property, plant and equipment,? net'],
+    retained_earnings:         ['retained earnings','accumulated (?:deficit|earnings)'],
+    loans_payable:             ['loans payable and other financial liabilities'],
+  };
+
+  const CASHFLOW_PATTERNS = {
+    operating_cf: ['net cash (?:provided by|from) operating activities','cash (?:from|provided by) operations'],
+    capex:        ['investments? in property and equipment.*intangible','purchases? of property and equipment','capital expenditures?'],
+    investing_cf: ['net cash used in investing activities','net cash (?:provided by|used in) investing'],
+    financing_cf: ['net cash (?:provided by|used in) financing activities'],
+    depreciation: ['depreciation and amortization','depreciation, depletion and amortization'],
+  };
+
+  const GEO_COUNTRIES = {
+    'Brazil':        ['\\bbrazil\\b'],
+    'Mexico':        ['\\bmexico\\b','\\bméxico\\b'],
+    'Argentina':     ['\\bargentina\\b'],
+    'United States': ['\\bunited states\\b','\\bu\\.s\\.\\b'],
+    'Europe':        ['\\beurope\\b','\\bemea\\b'],
+    'China':         ['\\bchina\\b'],
+    'India':         ['\\bindia\\b'],
+    'Asia Pacific':  ['\\basia.?pacific\\b','\\bapac\\b'],
+    'Other':         ['\\bother countries?\\b','\\brest of world\\b'],
+  };
+
+  // ════════════════════════════════════════════════════════
+  // UTILIDADES — port de parse_number, extract_numbers_from_line, find_years_in_line
+  // ════════════════════════════════════════════════════════
+
+  function parseNumber(token){
+    let t = token.trim().replace(/,/g,'').replace(/\$/g,'').replace(/ /g,'');
+    if(!t || ['—','-','–',''].includes(t)) return null;
+    const neg = t.startsWith('(') && t.endsWith(')');
+    t = t.replace(/[()]/g,'');
+    const v = parseFloat(t);
+    return isNaN(v) ? null : (neg ? -v : v);
+  }
+
+  function extractNumbersFromLine(line){
+    const clean = line.replace(/\$\s*/g,'');
+    const tokens = clean.match(/\([\d,]+(?:\.\d+)?\)|\d[\d,]*(?:\.\d+)?/g) || [];
+    return tokens.map(parseNumber).filter(v => v !== null);
+  }
+
+  function findYearsInLine(line){
+    const seen = new Set(), result = [];
+    const re = /\b(20\d{2})\b/g;
+    let m;
+    while((m = re.exec(line)) !== null){
+      const yi = parseInt(m[1]);
+      if(!seen.has(yi)){ seen.add(yi); result.push(yi); }
+    }
+    return result;
+  }
+
+  function getLatest(d){
+    if(!d || !Object.keys(d).length) return null;
+    const intKeys = Object.keys(d).map(Number).filter(k => !isNaN(k) && k > 1900);
+    if(intKeys.length) return d[Math.max(...intKeys)];
+    return d[Object.keys(d)[Object.keys(d).length-1]];
+  }
+
+  function getSortedYears(dicts){
+    const yrs = new Set();
+    dicts.forEach(d => Object.keys(d).forEach(k => { const n = parseInt(k); if(!isNaN(n) && n > 1900) yrs.add(n); }));
+    return [...yrs].sort();
+  }
+
+  function yoy(d){
+    const yrs = Object.keys(d).map(Number).filter(k => k > 1900).sort();
+    if(yrs.length < 2) return '—';
+    const v1 = d[yrs[yrs.length-2]], v2 = d[yrs[yrs.length-1]];
+    if(!v1 || v1 === 0) return '—';
+    const g = (v2 - v1) / Math.abs(v1) * 100;
+    return (g >= 0 ? '+' : '') + g.toFixed(1) + '%';
+  }
+
+  function fmtB(v){ return v == null ? '—' : '$' + (v/1000).toFixed(1) + 'B'; }
+  function fmtM(v){ return v == null ? '—' : '$' + v.toLocaleString('en-US',{maximumFractionDigits:0}) + 'M'; }
+  function fmtPct(num, den){ return (!num || !den || den === 0) ? '—' : (num/den*100).toFixed(1) + '%'; }
+  function pctVal(s){ const m = s && s.match(/([\d.]+)%/); return m ? m[1] : '0'; }
+
+  // ════════════════════════════════════════════════════════
+  // EXTRACTOR — port de FinancialExtractor
+  // ════════════════════════════════════════════════════════
+
+  function detectMetadata(pages){
+    let company = '', ticker = '', fy = '';
+    const numPages = Object.keys(pages).length;
+
+    for(let pg = 1; pg <= Math.min(6, numPages); pg++){
+      const text = pages[pg] || '';
+      if(!fy){
+        let m = text.match(/fiscal year ended.*?(20\d{2})/i) || text.match(/(?:December 31|year ended)[,\s]+(20\d{2})/i);
+        if(m) fy = m[1];
+      }
+      if(!ticker){
+        let m = text.match(/\b([A-Z]{2,5})\b.*?(?:Nasdaq|NYSE)/i);
+        if(m) ticker = m[1];
+      }
+      if(!company){
+        let m = text.match(/Exact name of registrant[^\n]*\n([^\n]{5,70})/i);
+        if(m) company = m[1].trim();
+      }
+    }
+    if(!company){
+      for(let pg = 1; pg <= Math.min(3, numPages); pg++){
+        const lines = (pages[pg]||'').split('\n').slice(0, 25);
+        for(const line of lines){
+          const l = line.trim();
+          if(l.length > 6 && l.length < 70 && /^[A-Z][a-zA-Z]/.test(l)){
+            const skip = ['SECURITIES','FORM','ANNUAL','NASDAQ','UNITED STATES','WASHINGTON','COMMISSION'];
+            if(!skip.some(s => l.includes(s))){ company = l; break; }
+          }
+        }
+        if(company) break;
+      }
+    }
+    return { company, ticker, fy };
+  }
+
+  function scorePages(pages, keywords, top=6){
+    const scored = [];
+    for(const [pg, text] of Object.entries(pages)){
+      const tl = text.toLowerCase();
+      const hits = keywords.filter(kw => tl.includes(kw.toLowerCase())).length;
+      if(hits >= 2) scored.push([hits, parseInt(pg)]);
+    }
+    scored.sort((a,b) => b[0]-a[0]);
+    return scored.slice(0, top).map(x => x[1]);
+  }
+
+  function parseStatementPages(pages, pageList, patterns){
+    const results = {};
+    for(const k of Object.keys(patterns)) results[k] = {};
+    const MAX_YEARS = 4;
+
+    for(const pg of pageList){
+      const text = pages[pg] || '';
+      if(/reclassif|recast|special purpose|variable interest entity|\bSPEs?\b|securitiz/i.test(text.slice(0,800))) continue;
+
+      const lines = text.split('\n');
+
+      // Detectar años del encabezado
+      let headerYears = [];
+      for(const line of lines.slice(0, 12)){
+        const ys = findYearsInLine(line);
+        if(ys.length >= 2){ headerYears = ys.slice(0, MAX_YEARS); break; }
+      }
+      if(!headerYears.length){
+        const allYrs = findYearsInLine(text);
+        if(allYrs.length) headerYears = allYrs.slice(-MAX_YEARS);
+      }
+
+      for(const line of lines){
+        const ll = line.toLowerCase().trim();
+        for(const [metric, pats] of Object.entries(patterns)){
+          if(Object.keys(results[metric]).length >= headerYears.length && Object.keys(results[metric]).length > 0) continue;
+          for(const pat of pats){
+            const re = new RegExp('\\b' + pat + '\\b|' + pat, 'i');
+            if(re.test(ll)){
+              const nums = extractNumbersFromLine(line);
+              if(nums.length && headerYears.length){
+                const filtered = nums.filter(n => Math.abs(n) < 500000);
+                headerYears.forEach((year, i) => {
+                  if(i < filtered.length && !(year in results[metric]))
+                    results[metric][year] = filtered[i];
+                });
+              } else if(nums.length && !('latest' in results[metric])){
+                results[metric]['latest'] = nums[0];
+              }
+              break;
+            }
+          }
+        }
+      }
+    }
+    return results;
+  }
+
+  function extractGeo(pages){
+    const geoPages = scorePages(pages, ['brazil','mexico','argentina','revenue'], 5);
+    const geo = {};
+
+    for(const pg of geoPages){
+      const lines = (pages[pg]||'').split('\n');
+      for(const line of lines){
+        if(/total net revenues?/i.test(line)){
+          const nums = extractNumbersFromLine(line);
+          if(nums.length >= 4){
+            const countryOrder = ['Brazil','Mexico','Argentina','Other'];
+            countryOrder.forEach((country, i) => {
+              if(i < nums.length - 1 && !(country in geo)) geo[country] = nums[i];
+            });
+            break;
+          }
+        }
+      }
+      if(Object.keys(geo).length) break;
+    }
+
+    // Fallback: líneas por país
+    if(!Object.keys(geo).length){
+      for(const pg of geoPages){
+        const lines = (pages[pg]||'').split('\n');
+        for(const line of lines){
+          for(const [country, pats] of Object.entries(GEO_COUNTRIES)){
+            for(const pat of pats){
+              if(new RegExp('^\\s*' + pat, 'i').test(line)){
+                const nums = extractNumbersFromLine(line);
+                if(nums.length && !(country in geo)) geo[country] = nums[0];
+              }
+            }
+          }
+        }
+      }
+    }
+    return geo;
+  }
+
+  // ════════════════════════════════════════════════════════
+  // CARGA PDF con pdf.js
+  // ════════════════════════════════════════════════════════
 
   window.bLoadPdf = async function(file){
     if(!file) return;
-    bShowStatus('Leyendo PDF...', 'load');
-
-    // Update drop zone UI
-    const zone = document.getElementById('bPdfZone');
+    bShowStatus('Leyendo PDF con pdf.js...', 'load');
     document.getElementById('bPdfIcon').textContent = '⏳';
     document.getElementById('bPdfLabel').textContent = file.name;
     document.getElementById('bWelcome').style.display = 'none';
 
     try {
       const arrayBuffer = await file.arrayBuffer();
-
-      // pdf.js setup
       const pdfjs = window.pdfjsLib;
-      if(!pdfjs) throw new Error('pdf.js no cargó correctamente. Recargá la página.');
+      if(!pdfjs) throw new Error('pdf.js no cargó. Recargá la página.');
       pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
       const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-      bShowStatus(`PDF cargado — ${pdf.numPages} páginas. Extrayendo texto...`, 'load');
+      bShowStatus(`${pdf.numPages} páginas — extrayendo texto...`, 'load');
 
-      // Extraer texto de todas las páginas
-      let fullText = '';
+      // Extraer texto de cada página
+      const pages = {};
       for(let p = 1; p <= pdf.numPages; p++){
-        const page = await pdf.getPage(p);
-        const content = await page.getTextContent();
-        // Reconstruir líneas preservando posición vertical
-        const items = content.items;
-        let pageText = '';
-        let lastY = null;
-        for(const item of items){
+        const page   = await pdf.getPage(p);
+        const tc     = await page.getTextContent();
+        let pageText = '', lastY = null;
+        for(const item of tc.items){
           const y = item.transform[5];
           if(lastY !== null && Math.abs(y - lastY) > 3) pageText += '\n';
           pageText += item.str + ' ';
           lastY = y;
         }
-        fullText += pageText + '\n--- PÁGINA ' + p + ' ---\n';
+        pages[p] = pageText;
       }
 
-      bRawText = fullText;
-      document.getElementById('bRawText').textContent = fullText.slice(0, 8000) + (fullText.length > 8000 ? '\n...(truncado)' : '');
+      bShowStatus('Detectando estados financieros...', 'load');
 
-      bShowStatus('Texto extraído. Analizando estados financieros...', 'load');
+      // Metadatos
+      const meta = detectMetadata(pages);
 
-      // Parsear
-      bParsedData = bParseFinancials(fullText, file.name);
+      // Páginas relevantes por sección
+      const incPages = scorePages(pages, ['net revenues','gross profit','net income','income from operations']);
+      const balPages = scorePages(pages, ['total assets','total liabilities','total current assets','total current liabilities','total equity']);
+      const cfPages  = scorePages(pages, ['operating activities','investing activities','financing activities','capital expenditures']);
 
-      // Actualizar UI
-      zone.style.borderColor = '#3fb950';
-      zone.style.borderStyle = 'solid';
-      zone.style.background  = '#1a4a26';
+      bShowStatus('Parseando income statement, balance y cash flow...', 'load');
+
+      const income   = parseStatementPages(pages, incPages.length  ? incPages  : Object.keys(pages).map(Number), INCOME_PATTERNS);
+      const balance  = parseStatementPages(pages, balPages.length  ? balPages  : Object.keys(pages).map(Number), BALANCE_PATTERNS);
+      const cashflow = parseStatementPages(pages, cfPages.length   ? cfPages   : Object.keys(pages).map(Number), CASHFLOW_PATTERNS);
+      const geo      = extractGeo(pages);
+
+      bParsedData = {
+        company:  meta.company || file.name.replace(/\.pdf$/i,''),
+        ticker:   meta.ticker  || '',
+        fy:       meta.fy      || '',
+        filename: file.name,
+        income, balance, cashflow, geo,
+      };
+
+      // UI feedback
+      const zone = document.getElementById('bPdfZone');
+      zone.style.borderColor = '#3fb950'; zone.style.borderStyle = 'solid'; zone.style.background = '#1a4a26';
       document.getElementById('bPdfIcon').textContent  = '✓';
       document.getElementById('bPdfLabel').textContent = file.name;
       document.getElementById('bPdfLabel').style.color = '#3fb950';
 
       bRenderPreview(bParsedData);
-      bShowStatus(`✓ Datos extraídos de "${file.name}". Revisá el preview y generá el reporte.`, 'ok');
-      document.getElementById('bGenerateBtn').disabled = false;
-      document.getElementById('bGenerateBtn').style.opacity = '1';
+      bShowStatus(`✓ Datos extraídos de "${meta.company || file.name}". Generá el reporte.`, 'ok');
+      const btn = document.getElementById('bGenerateBtn');
+      btn.disabled = false; btn.style.opacity = '1';
 
-    } catch(e) {
+    } catch(e){
       console.error('[bLoadPdf]', e);
       bShowStatus('Error al leer el PDF: ' + e.message, 'err');
       document.getElementById('bPdfIcon').textContent = '❌';
     }
   };
 
-  // ══════════════════════════════════════════════════════════
-  // PARSER FINANCIERO — regex sobre texto plano del PDF
-  // Soporta: SEC 10-K/10-Q, balances argentinos GAAP, IFRS
-  // ══════════════════════════════════════════════════════════
-  function bParseFinancials(text, filename){
-    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  // ════════════════════════════════════════════════════════
+  // PREVIEW — sidebar + KPI header + IS table
+  // ════════════════════════════════════════════════════════
 
-    // ── Detectar empresa y período ──
-    const company = bExtractCompany(lines, filename);
-    const periods  = bExtractPeriods(text);
-
-    // ── Extraer números clave ──
-    // Cada función busca múltiples variantes de nombres de líneas
-    const revenue       = bFindNum(lines, ['total revenue','net revenue','net sales','ventas netas','ingresos netos','ingresos totales','total net revenues','revenues','ingresos por ventas','cifra de negocios']);
-    const grossProfit   = bFindNum(lines, ['gross profit','utilidad bruta','ganancia bruta','margen bruto','beneficio bruto']);
-    const ebitda        = bFindNum(lines, ['ebitda','earnings before interest','resultado antes de intereses e impuestos','ebit','operating income','operating profit','resultado operativo','ingreso operativo','utilidad operativa','beneficio operativo']);
-    const netIncome     = bFindNum(lines, ['net income','net earnings','net profit','utilidad neta','ganancia neta','resultado neto','beneficio neto','profit for the period','resultado del ejercicio','pérdida neta']);
-    const eps           = bFindNum(lines, ['earnings per share','basic eps','diluted eps','earning per share','ganancias por accion','resultado por accion','utilidad por accion']);
-    const totalAssets   = bFindNum(lines, ['total assets','total activo','activo total','total de activos']);
-    const totalLiab     = bFindNum(lines, ['total liabilities','total pasivo','pasivo total','total de pasivos','total liabilities and']);
-    const equity        = bFindNum(lines, ['stockholders equity','shareholders equity','total equity','patrimonio neto','patrimonio total','equity attributable','total stockholders']);
-    const cash          = bFindNum(lines, ['cash and cash equivalents','cash and equivalents','efectivo y equivalentes','disponibilidades','caja y bancos','cash at end']);
-    const totalDebt     = bFindNum(lines, ['long-term debt','long term debt','deuda de largo plazo','deuda financiera','financial debt','borrowings']);
-    const operatingCF   = bFindNum(lines, ['net cash from operating','operating activities','flujo de efectivo operativo','cash provided by operating','actividades operativas','actividades de operacion']);
-    const capex         = bFindNum(lines, ['capital expenditures','capex','purchase of property','property and equipment','adquisicion de activos','bienes de uso','inversiones en activos fijos']);
-    const depreciation  = bFindNum(lines, ['depreciation','amortization','depreciacion','amortizacion','d&a']);
-
-    // ── Calcular derivados ──
-    const grossMargin  = (revenue && grossProfit)  ? grossProfit / revenue   : null;
-    const ebitdaMargin = (revenue && ebitda)       ? ebitda / revenue        : null;
-    const netMargin    = (revenue && netIncome)     ? netIncome / revenue     : null;
-    const roe          = (equity && netIncome)      ? netIncome / equity      : null;
-    const debtToEquity = (equity && totalDebt)      ? totalDebt / equity      : null;
-    const freeCF       = (operatingCF && capex)     ? operatingCF - Math.abs(capex) : operatingCF;
-    const currentRatio = bFindNum(lines, ['current ratio','razon corriente','liquidez corriente']);
-    const ebitdaCalc   = ebitda || (netIncome && depreciation ? netIncome + depreciation : null);
-
-    // ── Detectar múltiples años ──
-    const incomeHistory = bExtractHistory(lines, text, periods, revenue, grossProfit, ebitda, netIncome, eps);
-    const balanceHistory = bExtractBalanceHistory(lines, text, periods, totalAssets, totalLiab, equity, cash, totalDebt);
-    const cashflowHistory = bExtractCFHistory(lines, text, periods, operatingCF, capex, freeCF);
-
-    // ── Ratios adicionales ──
-    const interestExpense = bFindNum(lines, ['interest expense','gastos financieros','costo financiero','intereses pagados']);
-    const ebit = bFindNum(lines, ['operating income','ebit','resultado operativo']);
-    const interestCoverage = (ebit && interestExpense && interestExpense !== 0) ? ebit / Math.abs(interestExpense) : null;
-
-    const result = {
-      company, filename,
-      periods: periods.slice(0, 4),
-      // P&L
-      revenue, grossProfit, ebitda: ebitdaCalc, netIncome, eps, depreciation,
-      grossMargin, ebitdaMargin, netMargin,
-      // Balance
-      totalAssets, totalLiab, equity, cash, totalDebt, currentRatio,
-      // CF
-      operatingCF, capex, freeCF,
-      // Derivados
-      roe, debtToEquity, interestCoverage,
-      // Histórico
-      incomeHistory, balanceHistory, cashflowHistory,
-      // raw para debug
-      _rawSample: bRawText.slice(0, 2000)
-    };
-
-    return result;
-  }
-
-  // ── Helpers del parser ──
-
-  function bExtractCompany(lines, filename){
-    // Buscar en las primeras líneas del PDF
-    for(let i = 0; i < Math.min(20, lines.length); i++){
-      const l = lines[i];
-      if(l.length > 3 && l.length < 80 && !/^(form|annual|report|fiscal|period|date|sec|edgar|\d)/i.test(l)){
-        return l.replace(/[^\w\s\.\-\,áéíóúüñÁÉÍÓÚÜÑ]/g, '').trim();
-      }
-    }
-    return filename.replace(/\.pdf$/i,'').replace(/[_-]/g,' ').trim();
-  }
-
-  function bExtractPeriods(text){
-    const periods = [];
-    // Buscar años: 2024, 2023, 2022, 2021, 2020
-    const yearRe = /\b(20(?:1[5-9]|2[0-9]))\b/g;
-    const found = new Set();
-    let m;
-    while((m = yearRe.exec(text)) !== null) found.add(parseInt(m[1]));
-    const sorted = [...found].sort((a,b) => b-a);
-    return sorted.slice(0, 4);
-  }
-
-  // Busca un número en las líneas que contengan alguno de los labels dados
-  // Retorna el primer valor encontrado (preferencia por la primera columna = año más reciente)
-  function bFindNum(lines, labels){
-    const re = new RegExp(labels.map(l => l.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|'), 'i');
-    for(const line of lines){
-      if(!re.test(line)) continue;
-      const nums = bExtractNums(line);
-      if(nums.length > 0) return nums[0];
-    }
-    return null;
-  }
-
-  // Extrae todos los números de una línea (maneja puntos y comas como separadores)
-  function bExtractNums(line){
-    // Normalizar: quitar caracteres no numéricos salvo , . - ()
-    // Detectar si usa punto como separador de miles o decimal
-    // Patrones: 1,234,567  |  1.234.567  |  1,234.56  |  (1,234)
-    const nums = [];
-    const re = /\(?([\d]{1,3}(?:[,\.][\d]{3})*(?:[,\.][\d]{1,2})?)\)?/g;
-    let m;
-    while((m = re.exec(line)) !== null){
-      let s = m[1];
-      // Determinar si la última parte es decimal
-      const isNeg = m[0].startsWith('(');
-      // Remover separadores de miles
-      if(s.includes(',') && s.includes('.')){
-        // 1,234.56 — punto decimal
-        s = s.replace(/,/g,'');
-      } else if((s.match(/,/g)||[]).length > 1){
-        // 1,234,567 — comas como miles
-        s = s.replace(/,/g,'');
-      } else if((s.match(/\./g)||[]).length > 1){
-        // 1.234.567 — puntos como miles
-        s = s.replace(/\./g,'');
-      } else if(s.includes(',') && !s.includes('.')){
-        const parts = s.split(',');
-        if(parts[1] && parts[1].length <= 2){
-          s = parts[0] + '.' + parts[1]; // coma decimal
-        } else {
-          s = s.replace(',',''); // coma como miles
-        }
-      }
-      const v = parseFloat(s);
-      if(!isNaN(v) && v >= 0){
-        nums.push(isNeg ? -v : v);
-      }
-    }
-    // Filtrar valores que parecen ser años o números de página
-    return nums.filter(n => !(n >= 1900 && n <= 2100) && n !== 0 || n === 0);
-  }
-
-  // Intenta extraer histórico del income statement buscando columnas por año
-  function bExtractHistory(lines, text, periods, r, gp, eb, ni, eps){
-    if(!periods.length) return [];
-    // Buscar todas las filas de revenue con múltiples columnas
-    const labels = ['total revenue','net revenue','net sales','ventas netas','ingresos netos','revenues'];
-    const re = new RegExp(labels.join('|'), 'i');
-    for(const line of lines){
-      if(!re.test(line)) continue;
-      const nums = bExtractNums(line);
-      if(nums.length >= 2){
-        // Tenemos múltiples años en la misma fila
-        return periods.slice(0, nums.length).map((yr, i) => {
-          // buscar gross profit, ebitda, net income para ese índice
-          const gp_i  = bFindNumAtIndex(lines, ['gross profit','utilidad bruta','ganancia bruta'], i);
-          const eb_i  = bFindNumAtIndex(lines, ['ebitda','operating income','operating profit','resultado operativo','ebit'], i);
-          const ni_i  = bFindNumAtIndex(lines, ['net income','net earnings','utilidad neta','ganancia neta','resultado neto','beneficio neto'], i);
-          const eps_i = bFindNumAtIndex(lines, ['earnings per share','basic eps','diluted eps'], i);
-          return { year: yr, revenue: nums[i], grossProfit: gp_i, ebitda: eb_i, netIncome: ni_i, eps: eps_i };
-        });
-      }
-    }
-    // Fallback: solo el dato más reciente
-    if(r != null){
-      const yr = periods[0] || new Date().getFullYear();
-      return [{ year: yr, revenue: r, grossProfit: gp, ebitda: eb, netIncome: ni, eps: eps }];
-    }
-    return [];
-  }
-
-  function bFindNumAtIndex(lines, labels, idx){
-    const re = new RegExp(labels.map(l => l.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|'), 'i');
-    for(const line of lines){
-      if(!re.test(line)) continue;
-      const nums = bExtractNums(line);
-      if(nums.length > idx) return nums[idx];
-      if(nums.length > 0) return nums[0];
-    }
-    return null;
-  }
-
-  function bExtractBalanceHistory(lines, text, periods, ta, tl, eq, ca, td){
-    if(!ta) return [];
-    const yr = periods[0] || new Date().getFullYear();
-    return [{ year: yr, totalAssets: ta, totalLiab: tl, equity: eq, cash: ca, totalDebt: td }];
-  }
-
-  function bExtractCFHistory(lines, text, periods, ocf, cx, fcf){
-    if(!ocf && !cx) return [];
-    const yr = periods[0] || new Date().getFullYear();
-    return [{ year: yr, operatingCF: ocf, capex: cx, freeCF: fcf }];
-  }
-
-  // ══════════════════════════════════════════════════════════
-  // RENDER PREVIEW — KPIs + tabla histórica
-  // ══════════════════════════════════════════════════════════
   function bRenderPreview(d){
-    if(!d) return;
+    const inc = d.income, bal = d.balance, cf = d.cashflow;
 
-    // Sidebar: datos extraídos
+    const rev   = getLatest(inc.revenue       || {});
+    const gp    = getLatest(inc.gross_profit   || {});
+    const ebit  = getLatest(inc.operating_income || {});
+    const ni    = getLatest(inc.net_income     || {});
+    const eps   = getLatest(inc.eps_diluted    || {});
+    const ocf   = getLatest(cf.operating_cf   || {});
+    const capex = getLatest(cf.capex          || {});
+    const da    = getLatest(cf.depreciation   || {});
+    const assets  = getLatest(bal.total_assets     || {});
+    const liab    = getLatest(bal.total_liabilities|| {});
+    const equity  = getLatest(bal.total_equity     || {});
+    const cash    = getLatest(bal.cash             || {});
+    const ebitda  = (ebit && da) ? ebit + da : ebit;
+    const fcf     = (ocf && capex) ? ocf + capex : ocf;  // capex es negativo en el PDF
+
+    // Sidebar summary
     const summary = document.getElementById('bParsedList');
     const summaryWrap = document.getElementById('bParsedSummary');
     if(summary){
       const items = [
-        ['Empresa', d.company || '—'],
-        ['Período', d.periods.join(', ') || '—'],
-        ['Revenue', fN(d.revenue)],
-        ['EBITDA', fN(d.ebitda)],
-        ['Net Income', fN(d.netIncome)],
-        ['Total Assets', fN(d.totalAssets)],
-        ['Equity', fN(d.equity)],
-        ['FCF', fN(d.freeCF)],
+        ['Empresa', d.company||'—'], ['Ticker', d.ticker||'—'], ['FY', d.fy||'—'],
+        ['Revenue', fmtB(rev)], ['Gross Profit', fmtB(gp)], ['EBIT', fmtB(ebit)],
+        ['EBITDA', fmtB(ebitda)], ['Net Income', fmtB(ni)], ['EPS dil.', eps!=null?'$'+eps.toFixed(2):'—'],
+        ['Op.CF', fmtB(ocf)], ['FCF', fmtB(fcf)], ['Total Assets', fmtB(assets)],
       ];
       summary.innerHTML = items.map(([k,v]) =>
         `<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid #21262d;">
-          <span style="color:#8b949e;">${k}</span>
-          <span style="color:#e6edf3;font-weight:600;">${v}</span>
+          <span style="color:#8b949e;font-size:11px;">${k}</span>
+          <span style="color:#e6edf3;font-weight:600;font-size:11px;">${v}</span>
         </div>`
       ).join('');
       summaryWrap.style.display = 'block';
     }
 
     // Header KPIs
+    const gm   = fmtPct(gp,  rev);
+    const om   = fmtPct(ebit, rev);
+    const nm   = fmtPct(ni,   rev);
+    const fcfm = fmtPct(fcf,  rev);
+    const revG = yoy(inc.revenue || {});
+    const niG  = yoy(inc.net_income || {});
+
     const kpis = [
-      ['Revenue', fN(d.revenue)],
-      ['EBITDA', fN(d.ebitda)],
-      ['Net Income', fN(d.netIncome)],
-      ['Gross Margin', fP(d.grossMargin)],
-      ['EBITDA Margin', fP(d.ebitdaMargin)],
-      ['Net Margin', fP(d.netMargin)],
-      ['Total Assets', fN(d.totalAssets)],
-      ['Equity', fN(d.equity)],
-      ['Free CF', fN(d.freeCF)],
-      ['ROE', fP(d.roe)],
-      ['D/E Ratio', fX(d.debtToEquity)],
-      ['Int. Coverage', d.interestCoverage ? fX(d.interestCoverage) : '—'],
+      ['Revenue', fmtB(rev)], ['Gross Profit', fmtB(gp)], ['EBIT', fmtB(ebit)],
+      ['EBITDA', fmtB(ebitda)], ['Net Income', fmtB(ni)], ['EPS Dil.', eps!=null?'$'+eps.toFixed(2):'—'],
+      ['Op. CF', fmtB(ocf)], ['Free CF', fmtB(fcf)], ['Total Assets', fmtB(assets)],
+      ['Equity', fmtB(equity)], ['Cash', fmtB(cash)], ['Gross Margin', gm],
     ];
 
-    const hdr = document.getElementById('bPreviewHeader');
-    hdr.innerHTML = `
-      <div style="margin-bottom:20px;">
-        <div style="font-size:24px;font-weight:800;color:#58a6ff;letter-spacing:.03em;">${d.company || '—'}</div>
-        <div style="font-size:12px;color:#8b949e;margin-top:4px;">📄 ${d.filename} &nbsp;·&nbsp; Períodos: ${d.periods.join(', ') || '—'}</div>
+    document.getElementById('bPreviewHeader').innerHTML = `
+      <div style="margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div style="font-size:22px;font-weight:800;color:#58a6ff;letter-spacing:.04em;">${d.ticker ? '<span style="background:#0d2240;border:1px solid #58a6ff;border-radius:6px;padding:4px 12px;">'+d.ticker+'</span> ' : ''}${d.company||'—'}</div>
+          <div style="font-size:12px;color:#8b949e;margin-top:6px;">📄 ${d.filename} &nbsp;·&nbsp; Fiscal Year ${d.fy||'—'}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:12px;color:#8b949e;">Revenue FY${d.fy||''}</div>
+          <div style="font-size:28px;font-weight:800;">${fmtB(rev)}</div>
+          <div style="font-size:13px;color:${revG.startsWith('+')?'#3fb950':'#f85149'};">${revG} YoY</div>
+        </div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;">
         ${kpis.map(([l,v]) => `
           <div style="background:#1c2230;border-radius:8px;padding:12px 14px;">
             <div style="font-size:10px;color:#8b949e;margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em;">${l}</div>
@@ -2109,27 +2165,29 @@ function openDetail(especie){
           </div>`).join('')}
       </div>`;
 
-    // Tabla histórica income statement
-    if(d.incomeHistory && d.incomeHistory.length){
-      const th = 'text-align:right;padding:8px 12px;font-size:10px;font-weight:600;color:#8b949e;text-transform:uppercase;border-bottom:1px solid #30363d;background:#1c2230;';
-      const td = 'text-align:right;padding:8px 12px;border-bottom:1px solid #30363d;color:#e6edf3;font-family:monospace;font-size:12px;';
-      const yrs = d.incomeHistory.map(x => x.year);
+    // Tabla histórica IS
+    const allDicts = [...Object.values(inc), ...Object.values(bal), ...Object.values(cf)];
+    const years = getSortedYears(allDicts);
+    if(years.length){
+      const thS = 'text-align:right;padding:8px 12px;font-size:10px;font-weight:600;color:#8b949e;text-transform:uppercase;border-bottom:1px solid #30363d;background:#1c2230;letter-spacing:.05em;';
+      const tdS = 'text-align:right;padding:8px 12px;border-bottom:1px solid #30363d;color:#e6edf3;font-family:monospace;font-size:12px;';
       const rows = [
-        ['Revenue',     d.incomeHistory.map(x => fN(x.revenue))],
-        ['Gross Profit',d.incomeHistory.map(x => fN(x.grossProfit))],
-        ['EBITDA',      d.incomeHistory.map(x => fN(x.ebitda))],
-        ['Net Income',  d.incomeHistory.map(x => fN(x.netIncome))],
-        ['EPS',         d.incomeHistory.map(x => x.eps != null ? '$'+Number(x.eps).toFixed(2) : '—')],
+        ['Revenue',          inc.revenue         ||{}],
+        ['Gross Profit',     inc.gross_profit     ||{}],
+        ['Operating Income', inc.operating_income ||{}],
+        ['Net Income',       inc.net_income       ||{}],
+        ['EPS Dil.',         inc.eps_diluted      ||{}],
       ];
-      document.getElementById('bIsTable').innerHTML =
-        `<thead><tr>
-          <th style="${th}text-align:left;">Métrica</th>
-          ${yrs.map(y => `<th style="${th}">${y}</th>`).join('')}
+      document.getElementById('bIsTable').innerHTML = `
+        <thead><tr>
+          <th style="${thS}text-align:left;">Métrica</th>
+          ${years.map(y=>`<th style="${thS}">${y}</th>`).join('')}
         </tr></thead>
         <tbody>
-          ${rows.map(([n, vals]) =>
-            `<tr><td style="${td}text-align:left;color:#8b949e;font-family:monospace;">${n}</td>
-            ${vals.map(v => `<td style="${td}">${v}</td>`).join('')}</tr>`
+          ${rows.map(([n,d]) =>
+            `<tr><td style="${tdS}text-align:left;color:#8b949e;">${n}</td>
+             ${years.map(y => `<td style="${tdS}">${y in d && d[y]!=null ? (n==='EPS Dil.'?'$'+Number(d[y]).toFixed(2):fmtM(d[y])) : '—'}</td>`).join('')}
+             </tr>`
           ).join('')}
         </tbody>`;
       document.getElementById('bIsTableWrap').style.display = 'block';
@@ -2138,196 +2196,334 @@ function openDetail(especie){
     document.getElementById('bPreviewSection').style.display = 'block';
   }
 
-  // ══════════════════════════════════════════════════════════
-  // GENERAR REPORTE HTML — 100% LOCAL con Chart.js
-  // ══════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════
+  // BUILD HTML — port de build_html()
+  // ════════════════════════════════════════════════════════
+
   window.bGenerateReport = function(){
-    if(!bParsedData){
-      bShowStatus('Primero subí un PDF.', 'err');
-      return;
-    }
+    if(!bParsedData){ bShowStatus('Primero subí un PDF.', 'err'); return; }
     const btn = document.getElementById('bGenerateBtn');
-    btn.disabled = true;
-    btn.innerHTML = '⏳ Generando reporte...';
-    bShowStatus('Construyendo reporte...', 'load');
+    btn.disabled = true; btn.innerHTML = '⏳ Generando reporte...';
+    bShowStatus('Construyendo reporte HTML...', 'load');
 
     try {
-      const d = bParsedData;
-      const langMap = { es:'es', en:'en', pt:'pt' };
-      const L = {
-        es: {
-          title: 'Reporte Financiero', company: 'Empresa', period: 'Período',
-          income: 'Estado de Resultados', balance: 'Balance General', cashflow: 'Flujo de Caja',
-          ratios: 'Ratios Financieros', charts: 'Evolución Histórica',
-          rev: 'Revenue', gp: 'Gross Profit', ebitda: 'EBITDA', ni: 'Net Income', eps: 'EPS',
-          ta: 'Activo Total', tl: 'Pasivo Total', eq: 'Patrimonio', cash: 'Caja', debt: 'Deuda',
-          ocf: 'CF Operativo', capex: 'CAPEX', fcf: 'Free CF',
-          gm: 'Margen Bruto', em: 'Margen EBITDA', nm: 'Margen Neto',
-          roe: 'ROE', de: 'D/E Ratio', ic: 'Cobertura de Int.',
-          src: 'Fuente: PDF cargado localmente',
-          disc: 'Este reporte es generado automáticamente a partir del PDF proporcionado. No constituye asesoramiento de inversión.'
-        },
-        en: {
-          title: 'Financial Report', company: 'Company', period: 'Period',
-          income: 'Income Statement', balance: 'Balance Sheet', cashflow: 'Cash Flow',
-          ratios: 'Financial Ratios', charts: 'Historical Trends',
-          rev: 'Revenue', gp: 'Gross Profit', ebitda: 'EBITDA', ni: 'Net Income', eps: 'EPS',
-          ta: 'Total Assets', tl: 'Total Liabilities', eq: 'Equity', cash: 'Cash', debt: 'Debt',
-          ocf: 'Operating CF', capex: 'CAPEX', fcf: 'Free CF',
-          gm: 'Gross Margin', em: 'EBITDA Margin', nm: 'Net Margin',
-          roe: 'ROE', de: 'D/E Ratio', ic: 'Interest Coverage',
-          src: 'Source: Locally loaded PDF',
-          disc: 'This report is automatically generated from the provided PDF. Not investment advice.'
-        },
-        pt: {
-          title: 'Relatório Financeiro', company: 'Empresa', period: 'Período',
-          income: 'Demonstração de Resultados', balance: 'Balanço Patrimonial', cashflow: 'Fluxo de Caixa',
-          ratios: 'Indicadores Financeiros', charts: 'Evolução Histórica',
-          rev: 'Receita', gp: 'Lucro Bruto', ebitda: 'EBITDA', ni: 'Lucro Líquido', eps: 'LPA',
-          ta: 'Ativo Total', tl: 'Passivo Total', eq: 'Patrimônio', cash: 'Caixa', debt: 'Dívida',
-          ocf: 'FC Operacional', capex: 'CAPEX', fcf: 'FC Livre',
-          gm: 'Margem Bruta', em: 'Margem EBITDA', nm: 'Margem Líquida',
-          roe: 'ROE', de: 'D/P Ratio', ic: 'Cobertura Juros',
-          src: 'Fonte: PDF carregado localmente',
-          disc: 'Este relatório é gerado automaticamente a partir do PDF fornecido. Não constitui assessoria de investimento.'
-        }
-      }[bLang] || L.es;
+      const d    = bParsedData;
+      const inc  = d.income, bal = d.balance, cf = d.cashflow, geo = d.geo||{};
+      const fy   = d.fy || String(new Date().getFullYear()-1);
+      const today= new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'short',year:'numeric'});
 
-      // ── Construir HTML del reporte ──
-      const ih = d.incomeHistory || [];
-      const bh = d.balanceHistory || [];
-      const ch = d.cashflowHistory || [];
+      // ── KPIs ──
+      const rev   = getLatest(inc.revenue         ||{});
+      const gp    = getLatest(inc.gross_profit     ||{});
+      const ebit  = getLatest(inc.operating_income ||{});
+      const ni    = getLatest(inc.net_income       ||{});
+      const eps   = getLatest(inc.eps_diluted      ||{});
+      const ocf   = getLatest(cf.operating_cf      ||{});
+      const capex = getLatest(cf.capex             ||{});
+      const da    = getLatest(cf.depreciation      ||{});
+      const assets  = getLatest(bal.total_assets        ||{});
+      const liab    = getLatest(bal.total_liabilities   ||{});
+      const equity  = getLatest(bal.total_equity        ||{});
+      const cash    = getLatest(bal.cash                ||{});
+      const fcf     = (ocf && capex) ? ocf + capex : ocf;
+      const ebitda  = (ebit && da)   ? ebit + da   : ebit;
 
-      // Chart data
-      const chartLabels = JSON.stringify(ih.map(x => x.year));
-      const chartRevs   = JSON.stringify(ih.map(x => x.revenue   ? +(x.revenue/1e6).toFixed(1)   : null));
-      const chartEbitda = JSON.stringify(ih.map(x => x.ebitda    ? +(x.ebitda/1e6).toFixed(1)    : null));
-      const chartNI     = JSON.stringify(ih.map(x => x.netIncome ? +(x.netIncome/1e6).toFixed(1) : null));
-      const chartEPS    = JSON.stringify(ih.map(x => x.eps ?? null));
+      const gm   = fmtPct(gp, rev);
+      const om   = fmtPct(ebit, rev);
+      const nm   = fmtPct(ni, rev);
+      const fcfm = fmtPct(fcf, rev);
+      const revG = yoy(inc.revenue    ||{});
+      const niG  = yoy(inc.net_income ||{});
+      const revColor = revG.startsWith('+') ? 'var(--green)' : 'var(--red)';
 
-      function row(label, value, bold=false){
-        return `<tr style="${bold?'font-weight:700;':''}" >
-          <td style="padding:8px 14px;border-bottom:1px solid #21262d;color:#8b949e;font-size:13px;">${label}</td>
-          <td style="padding:8px 14px;border-bottom:1px solid #21262d;text-align:right;color:#e6edf3;font-family:'Courier New',monospace;font-size:13px;">${value}</td>
-        </tr>`;
+      // ── Chart series ──
+      const allDicts = [...Object.values(inc),...Object.values(bal),...Object.values(cf)];
+      const years  = getSortedYears(allDicts);
+      const labels = JSON.stringify(years.map(String));
+
+      function series(obj, yrs){ return yrs.map(y => (y in obj && obj[y]!=null) ? Math.round(obj[y]) : null); }
+      function seriesF(obj, yrs){ return yrs.map(y => (y in obj && obj[y]!=null) ? obj[y] : null); }
+
+      const sRev  = series(inc.revenue         ||{}, years);
+      const sEbit = series(inc.operating_income||{}, years);
+      const sNi   = series(inc.net_income      ||{}, years);
+      const sEps  = seriesF(inc.eps_diluted    ||{}, years);
+      const sOcf  = series(cf.operating_cf     ||{}, years);
+      const sGp   = series(inc.gross_profit    ||{}, years);
+
+      const sGm = years.map((_,i) => (sGp[i]&&sRev[i]) ? +(sGp[i]/sRev[i]*100).toFixed(1) : null);
+      const sOm = years.map((_,i) => (sEbit[i]&&sRev[i]) ? +(sEbit[i]/sRev[i]*100).toFixed(1) : null);
+      const sNm = years.map((_,i) => (sNi[i]&&sRev[i]) ? +(sNi[i]/sRev[i]*100).toFixed(1) : null);
+
+      function jarr(a){ return '['+a.map(v=>v==null?'null':v).join(',')+']'; }
+
+      // ── IS table ──
+      const isRows = [
+        ['Revenue',          inc.revenue         ||{}],
+        ['Gross Profit',     inc.gross_profit     ||{}],
+        ['Operating Income', inc.operating_income ||{}],
+        ['Net Income',       inc.net_income       ||{}],
+        ['EPS Diluido',      inc.eps_diluted      ||{}],
+      ];
+      const thYears = years.map(y=>`<th>${y}</th>`).join('');
+      const tbody = isRows.map(([lbl,obj]) => {
+        const cells = years.map(y => `<td>${y in obj && obj[y]!=null ? (lbl==='EPS Diluido'?'$'+Number(obj[y]).toFixed(2):fmtM(obj[y])) : '—'}</td>`).join('');
+        return `<tr><td>${lbl}</td>${cells}</tr>`;
+      }).join('');
+
+      // ── Balance rows ──
+      function brow(lbl, key, cls=''){
+        const v = getLatest(bal[key]||{}); return `<tr><td>${lbl}</td><td class="${cls}">${fmtM(v)}</td></tr>`;
       }
-      function section(title, content){
-        if(!bSelectedOpts.has(content._key) && content._key) return '';
-        return `
-          <div style="margin-bottom:28px;">
-            <h2 style="font-size:14px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#58a6ff;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #30363d;">${title}</h2>
-            ${content.html}
-          </div>`;
+      function crow(lbl, key, cls=''){
+        const v = getLatest(cf[key]||{}); return `<tr><td>${lbl}</td><td class="${cls}">${fmtM(v)}</td></tr>`;
       }
 
-      const incomeHTML = `<table style="width:100%;border-collapse:collapse;">
-        ${row(L.rev,       fN(d.revenue))}
-        ${row(L.gp,        fN(d.grossProfit))}
-        ${row(L.ebitda,    fN(d.ebitda))}
-        ${row(L.ni,        fN(d.netIncome), true)}
-        ${row(L.eps,       d.eps != null ? '$'+Number(d.eps).toFixed(2) : '—')}
-      </table>`;
-
-      const balanceHTML = `<table style="width:100%;border-collapse:collapse;">
-        ${row(L.ta,   fN(d.totalAssets))}
-        ${row(L.tl,   fN(d.totalLiab))}
-        ${row(L.eq,   fN(d.equity), true)}
-        ${row(L.cash, fN(d.cash))}
-        ${row(L.debt, fN(d.totalDebt))}
-      </table>`;
-
-      const cfHTML = `<table style="width:100%;border-collapse:collapse;">
-        ${row(L.ocf,  fN(d.operatingCF))}
-        ${row(L.capex,d.capex != null ? fN(-Math.abs(d.capex)) : '—')}
-        ${row(L.fcf,  fN(d.freeCF), true)}
-      </table>`;
-
-      const ratiosHTML = `
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;">
-          ${[[L.gm, fP(d.grossMargin)],[L.em, fP(d.ebitdaMargin)],[L.nm, fP(d.netMargin)],[L.roe, fP(d.roe)],[L.de, fX(d.debtToEquity)],[L.ic, d.interestCoverage ? fX(d.interestCoverage) : '—']].map(([l,v]) =>
-            `<div style="background:#1c2230;border-radius:8px;padding:14px;">
-              <div style="font-size:10px;color:#8b949e;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;">${l}</div>
-              <div style="font-size:22px;font-weight:700;color:#e6edf3;">${v}</div>
-            </div>`).join('')}
+      // ── Margin progress bars ──
+      function pbar(lbl, pctStr, color){
+        const val = pctVal(pctStr);
+        return `<div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+            <span style="font-size:13px;color:var(--muted);">${lbl}</span>
+            <span style="font-size:13px;font-weight:700;color:${color};">${pctStr}</span>
+          </div>
+          <div class="prog-bar"><div class="prog-fill" style="width:${val}%;background:${color};"></div></div>
         </div>`;
+      }
 
-      const histTableHTML = ih.length > 1 ? `
-        <div style="overflow-x:auto;margin-bottom:20px;">
-          <table style="width:100%;border-collapse:collapse;font-size:12px;">
-            <thead><tr>
-              <th style="padding:8px 12px;text-align:left;color:#8b949e;border-bottom:1px solid #30363d;background:#1c2230;">Métrica</th>
-              ${ih.map(x=>`<th style="padding:8px 12px;text-align:right;color:#8b949e;border-bottom:1px solid #30363d;background:#1c2230;">${x.year}</th>`).join('')}
-            </tr></thead>
-            <tbody>
-              ${[[L.rev, ih.map(x=>fN(x.revenue))],[L.gp, ih.map(x=>fN(x.grossProfit))],[L.ebitda, ih.map(x=>fN(x.ebitda))],[L.ni, ih.map(x=>fN(x.netIncome))],[L.eps, ih.map(x=>x.eps!=null?'$'+Number(x.eps).toFixed(2):'—')]].map(([n,vals])=>
-                `<tr><td style="padding:8px 12px;border-bottom:1px solid #21262d;color:#8b949e;">${n}</td>${vals.map(v=>`<td style="padding:8px 12px;border-bottom:1px solid #21262d;text-align:right;color:#e6edf3;font-family:monospace;">${v}</td>`).join('')}</tr>`
-              ).join('')}
-            </tbody>
-          </table>
-        </div>` : '';
+      // ── Geo bars ──
+      const geoColors = ['#58a6ff','#3fb950','#d4a017','#f0883e','#8b949e','#a371f7','#f85149'];
+      const geoTotal = Object.values(geo).reduce((a,b)=>a+b, 0) || 1;
+      const geoHtml = Object.entries(geo)
+        .sort((a,b)=>b[1]-a[1])
+        .map(([country, val], i) => {
+          const pct = (val/geoTotal*100).toFixed(0);
+          const color = geoColors[i % geoColors.length];
+          return `<div class="seg-row">
+            <div class="seg-label">${country}</div>
+            <div class="seg-bar"><div class="seg-fill" style="width:${pct}%;background:${color};"></div></div>
+            <div class="seg-pct" style="color:${color};">${pct}%</div>
+          </div>`;
+        }).join('');
 
-      const chartsHTML = ih.length >= 1 ? `
-        <div style="margin-bottom:20px;">${histTableHTML}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-          <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:16px;">
-            <div style="font-size:11px;color:#8b949e;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em;">${L.rev} & ${L.ebitda} (M)</div>
-            <canvas id="bChartRev" height="200"></canvas>
-          </div>
-          <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:16px;">
-            <div style="font-size:11px;color:#8b949e;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em;">${L.ni} & ${L.eps}</div>
-            <canvas id="bChartNI" height="200"></canvas>
-          </div>
-        </div>` : '<div style="color:#8b949e;font-size:13px;">No hay suficientes datos históricos para graficar.</div>';
-
+      // ════════════════════════════════════════════════════
+      // HTML OUTPUT — fiel al CSS del Python original
+      // ════════════════════════════════════════════════════
       const html = `<!DOCTYPE html>
-<html lang="${bLang}">
+<html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${L.title} — ${d.company}</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"><\/script>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>${d.ticker||d.company} — Deep Research | ${today}</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"><\/script>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:#0d1117;color:#e6edf3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;padding:32px;max-width:1100px;margin:0 auto;}
-  h1{font-size:28px;font-weight:800;color:#58a6ff;margin-bottom:4px}
-  .meta{font-size:12px;color:#8b949e;margin-bottom:32px}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-  @media(max-width:700px){.grid{grid-template-columns:1fr}}
-  .card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px}
-  .disc{font-size:10px;color:#484f58;margin-top:32px;padding-top:16px;border-top:1px solid #21262d;line-height:1.6}
+:root{--bg:#0d1117;--card:#161b22;--card2:#1c2230;--border:#30363d;--text:#e6edf3;--muted:#8b949e;
+  --green:#3fb950;--green-dim:#1a4a26;--red:#f85149;--red-dim:#4a1a1a;
+  --gold:#d4a017;--gold-dim:#3a2a05;--blue:#58a6ff;--blue-dim:#0d2240;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;line-height:1.5;}
+.wrap{max-width:1200px;margin:0 auto;padding:24px 20px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;}
+.ct{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:12px;}
+.header{background:linear-gradient(135deg,#161b22 0%,#1a2332 100%);border:1px solid var(--border);border-radius:12px;padding:28px 32px;margin-bottom:20px;}
+.badge{background:var(--blue-dim);color:var(--blue);font-size:22px;font-weight:800;padding:8px 16px;border-radius:8px;border:1px solid var(--blue);letter-spacing:.05em;display:inline-block;}
+.kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(138px,1fr));gap:12px;margin-bottom:20px;}
+.kc{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 16px;}
+.kl{font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em;}
+.kv{font-size:20px;font-weight:700;}
+.ks{font-size:11px;color:var(--muted);margin-top:2px;}
+.up{color:var(--green);} .down{color:var(--red);} .neu{color:var(--gold);}
+.sh{font-size:16px;font-weight:700;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead tr{background:var(--card2);}
+th{text-align:right;padding:9px 12px;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);}
+th:first-child{text-align:left;}
+td{text-align:right;padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text);}
+td:first-child{text-align:left;color:var(--muted);font-weight:500;}
+tr:last-child td{border-bottom:none;}
+tr:hover{background:rgba(255,255,255,.02);}
+.tg{color:var(--green);font-weight:600;} .tr{color:var(--red);font-weight:600;} .tgo{color:var(--gold);font-weight:600;}
+.prog-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:4px;}
+.prog-fill{height:100%;border-radius:3px;}
+.seg-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.seg-label{font-size:12px;color:var(--muted);min-width:120px;}
+.seg-bar{flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden;}
+.seg-fill{height:100%;border-radius:4px;}
+.seg-pct{font-size:12px;font-weight:700;min-width:40px;text-align:right;}
+.cw{position:relative;height:260px;}
+.tw{overflow-x:auto;}
+.wm{text-align:center;padding:20px;font-size:11px;color:var(--muted);margin-top:20px;}
+@media(max-width:768px){.g2,.g3{grid-template-columns:1fr;} .kpi-strip{grid-template-columns:repeat(2,1fr);}}
 </style>
 </head>
 <body>
-<h1>${d.company || L.title}</h1>
-<div class="meta">📄 ${d.filename} &nbsp;·&nbsp; ${L.period}: ${d.periods.join(', ') || '—'} &nbsp;·&nbsp; ${L.src}</div>
+<div class="wrap">
 
-${bSelectedOpts.has('income') ? `<div style="margin-bottom:20px;"><h2 style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#58a6ff;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #30363d;">${L.income}</h2><div class="card">${incomeHTML}</div></div>` : ''}
-
-<div class="grid" style="margin-bottom:20px;">
-  ${bSelectedOpts.has('balance') ? `<div><h2 style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#58a6ff;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #30363d;">${L.balance}</h2><div class="card">${balanceHTML}</div></div>` : ''}
-  ${bSelectedOpts.has('cashflow') ? `<div><h2 style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#58a6ff;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #30363d;">${L.cashflow}</h2><div class="card">${cfHTML}</div></div>` : ''}
+<div class="header">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;">
+    <div style="display:flex;align-items:center;gap:16px;">
+      ${d.ticker ? `<div class="badge">${d.ticker}</div>` : ''}
+      <div>
+        <div style="font-size:22px;font-weight:700;">${d.company||'—'}</div>
+        <div style="font-size:13px;color:var(--muted);">Fiscal Year ${fy} · Reporte generado ${today}</div>
+      </div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:13px;color:var(--muted);">Revenue ${fy}</div>
+      <div style="font-size:32px;font-weight:800;">${fmtB(rev)}</div>
+      <div style="font-size:14px;color:${revColor};">${revG} YoY</div>
+    </div>
+  </div>
 </div>
 
-${bSelectedOpts.has('ratios') ? `<div style="margin-bottom:20px;"><h2 style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#58a6ff;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #30363d;">${L.ratios}</h2>${ratiosHTML}</div>` : ''}
+<div class="kpi-strip">
+  <div class="kc"><div class="kl">Revenue</div><div class="kv">${fmtB(rev)}</div><div class="ks ${revG.startsWith('+')?'up':'down'}">${revG} YoY</div></div>
+  <div class="kc"><div class="kl">Gross Profit</div><div class="kv">${fmtB(gp)}</div><div class="ks">Margen ${gm}</div></div>
+  <div class="kc"><div class="kl">Op. Income (EBIT)</div><div class="kv">${fmtB(ebit)}</div><div class="ks">Margen ${om}</div></div>
+  <div class="kc"><div class="kl">EBITDA</div><div class="kv">${fmtB(ebitda)}</div></div>
+  <div class="kc"><div class="kl">Net Income</div><div class="kv">${fmtB(ni)}</div><div class="ks ${niG.startsWith('+')?'up':'down'}">${niG} YoY</div></div>
+  <div class="kc"><div class="kl">EPS Diluido</div><div class="kv">${eps!=null?'$'+eps.toFixed(2):'—'}</div></div>
+  <div class="kc"><div class="kl">Op. Cash Flow</div><div class="kv">${fmtB(ocf)}</div></div>
+  <div class="kc"><div class="kl">Free Cash Flow</div><div class="kv">${fmtB(fcf)}</div><div class="ks">Margen ${fcfm}</div></div>
+  <div class="kc"><div class="kl">Total Assets</div><div class="kv">${fmtB(assets)}</div></div>
+  <div class="kc"><div class="kl">Total Equity</div><div class="kv">${fmtB(equity)}</div></div>
+  <div class="kc"><div class="kl">Cash</div><div class="kv">${fmtB(cash)}</div></div>
+  <div class="kc"><div class="kl">Total Liabilities</div><div class="kv">${fmtB(liab)}</div></div>
+</div>
 
-${bSelectedOpts.has('charts') ? `<div style="margin-bottom:20px;"><h2 style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#58a6ff;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #30363d;">${L.charts}</h2>${chartsHTML}</div>` : ''}
+<div style="margin-bottom:20px;">
+  <div class="sh"><span>💹</span> Evolución Financiera</div>
+  <div class="g2">
+    <div class="card"><div class="ct">Revenue &amp; Operating Income (USD M)</div><div class="cw"><canvas id="cRev"></canvas></div></div>
+    <div class="card"><div class="ct">Net Income &amp; EPS Diluido</div><div class="cw"><canvas id="cEar"></canvas></div></div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="ct">Resultados Históricos (USD M)</div>
+    <div class="tw"><table><thead><tr><th>Métrica</th>${thYears}</tr></thead><tbody>${tbody}</tbody></table></div>
+  </div>
+</div>
 
-<div class="disc">${L.disc}</div>
+<div style="margin-bottom:20px;">
+  <div class="sh"><span>📊</span> Rentabilidad &amp; Márgenes</div>
+  <div class="g2">
+    <div class="card"><div class="ct">Evolución de Márgenes (%)</div><div class="cw"><canvas id="cMar"></canvas></div></div>
+    <div class="card">
+      <div class="ct">Márgenes (último año)</div>
+      <div style="display:flex;flex-direction:column;gap:12px;padding-top:4px;">
+        ${pbar('Gross Margin', gm, 'var(--green)')}
+        ${pbar('Operating Margin', om, 'var(--blue)')}
+        ${pbar('Net Margin', nm, 'var(--gold)')}
+        ${pbar('FCF Margin', fcfm, '#3fb950')}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-bottom:20px;">
+  <div class="sh"><span>🏦</span> Balance &amp; Cash Flow</div>
+  <div class="g3">
+    <div class="card">
+      <div class="ct">Balance Sheet</div>
+      <table><tbody>
+        ${brow('Total Activos','total_assets','tgo')}
+        ${brow('Cash & Equiv.','cash','tg')}
+        ${brow('Total Liabilities','total_liabilities','tr')}
+        ${brow('Total Equity','total_equity','tg')}
+        ${brow('Current Assets','total_current_assets','')}
+        ${brow('Current Liabilities','total_current_liabilities','')}
+        ${brow('Loans Receivable','loans_receivable','')}
+        ${brow('PP&E net','property_equipment','')}
+      </tbody></table>
+    </div>
+    <div class="card">
+      <div class="ct">Cash Flow Statement</div>
+      <table><tbody>
+        ${crow('Op. Cash Flow','operating_cf','tg')}
+        ${crow('Capex','capex','tr')}
+        <tr><td>Free Cash Flow</td><td class="tg">${fmtM(fcf)}</td></tr>
+        ${crow('Investing CF','investing_cf','')}
+        ${crow('Financing CF','financing_cf','')}
+        ${crow('D&A','depreciation','')}
+      </tbody></table>
+    </div>
+    <div class="card">
+      <div class="ct">Operating Cash Flow (histórico)</div>
+      <div class="cw"><canvas id="cCF"></canvas></div>
+    </div>
+  </div>
+</div>
+
+${Object.keys(geo).length ? `
+<div style="margin-bottom:20px;">
+  <div class="sh"><span>🌎</span> Revenue por Geografía</div>
+  <div class="card">${geoHtml}</div>
+</div>` : ''}
+
+<div class="wm">
+  Reporte generado por <strong>Financial Report Generator</strong> · ${today}<br>
+  Fuente: ${d.company} — Reporte Anual ${fy}<br>
+  <span style="color:#6e3737;">Este reporte no constituye asesoramiento de inversión. Solo uso educativo.</span>
+</div>
+</div>
 
 <script>
-(function(){
-  const labels=${chartLabels};
-  const revs=${chartRevs};
-  const ebs=${chartEbitda};
-  const nis=${chartNI};
-  const eps=${chartEPS};
-  const cfg={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b949e',font:{size:11}}},tooltip:{backgroundColor:'#1c2230',borderColor:'#30363d',borderWidth:1,titleColor:'#e6edf3',bodyColor:'#8b949e'}},scales:{x:{ticks:{color:'#8b949e'},grid:{color:'rgba(48,54,61,.5)'}},y:{ticks:{color:'#8b949e'},grid:{color:'rgba(48,54,61,.5)'}}}};
-  if(document.getElementById('bChartRev')){
-    new Chart(document.getElementById('bChartRev'),{type:'bar',data:{labels,datasets:[{label:'Revenue (M)',data:revs,backgroundColor:'rgba(88,166,255,.3)',borderColor:'#58a6ff',borderWidth:1.5},{label:'EBITDA (M)',data:ebs,backgroundColor:'rgba(63,185,80,.2)',borderColor:'#3fb950',borderWidth:1.5,type:'line',tension:.3}]},options:{...cfg,scales:{...cfg.scales}}});
-  }
-  if(document.getElementById('bChartNI')){
-    new Chart(document.getElementById('bChartNI'),{type:'bar',data:{labels,datasets:[{label:'Net Income (M)',data:nis,backgroundColor:'rgba(248,81,73,.2)',borderColor:'#f85149',borderWidth:1.5},{label:'EPS',data:eps,backgroundColor:'rgba(210,153,34,.2)',borderColor:'#d29922',borderWidth:1.5,type:'line',tension:.3,yAxisID:'y2'}]},options:{...cfg,scales:{...cfg.scales,y2:{position:'right',ticks:{color:'#8b949e'},grid:{display:false}}}}});
-  }
+const YRS=${labels};
+const D={plugins:{legend:{labels:{color:'#8b949e',font:{size:11}}}},scales:{x:{ticks:{color:'#8b949e',font:{size:11}},grid:{color:'#21262d'}},y:{ticks:{color:'#8b949e',font:{size:11}},grid:{color:'#21262d'}}},responsive:true,maintainAspectRatio:false};
+new Chart(document.getElementById('cRev'),{type:'bar',data:{labels:YRS,datasets:[
+  {label:'Revenue',data:${jarr(sRev)},backgroundColor:'rgba(88,166,255,.7)',borderColor:'#58a6ff',borderWidth:1},
+  {label:'Op. Income',data:${jarr(sEbit)},backgroundColor:'rgba(63,185,80,.7)',borderColor:'#3fb950',borderWidth:1}
+]},options:{...D}});
+new Chart(document.getElementById('cEar'),{type:'bar',data:{labels:YRS,datasets:[
+  {label:'Net Income',data:${jarr(sNi)},backgroundColor:'rgba(212,160,23,.7)',borderColor:'#d4a017',borderWidth:1,yAxisID:'y'},
+  {label:'EPS',data:${jarr(sEps)},type:'line',borderColor:'#f0883e',backgroundColor:'rgba(240,136,62,.1)',borderWidth:2,pointRadius:4,yAxisID:'y1'}
+]},options:{...D,scales:{x:{ticks:{color:'#8b949e',font:{size:11}},grid:{color:'#21262d'}},y:{ticks:{color:'#8b949e',font:{size:11}},grid:{color:'#21262d'},position:'left'},y1:{ticks:{color:'#f0883e',font:{size:11}},grid:{drawOnChartArea:false},position:'right'}}}});
+new Chart(document.getElementById('cMar'),{type:'line',data:{labels:YRS,datasets:[
+  {label:'Gross %',data:${jarr(sGm)},borderColor:'#3fb950',backgroundColor:'rgba(63,185,80,.08)',borderWidth:2,pointRadius:3,tension:.3,fill:true},
+  {label:'Op. %',data:${jarr(sOm)},borderColor:'#58a6ff',backgroundColor:'rgba(88,166,255,.08)',borderWidth:2,pointRadius:3,tension:.3},
+  {label:'Net %',data:${jarr(sNm)},borderColor:'#d4a017',backgroundColor:'rgba(212,160,23,.08)',borderWidth:2,pointRadius:3,tension:.3}
+]},options:{...D}});
+new Chart(document.getElementById('cCF'),{type:'bar',data:{labels:YRS,datasets:[
+  {label:'Op. CF',data:${jarr(sOcf)},backgroundColor:'rgba(63,185,80,.7)',borderColor:'#3fb950',borderWidth:1}
+]},options:{...D}});
+<\/script>
+</body>
+</html>`;
+
+      bGeneratedHTML = html;
+      document.getElementById('bReportFrame').srcdoc = html;
+      document.getElementById('bReportSection').style.display = 'block';
+      bShowStatus('✓ Reporte generado. Descargalo o abrilo en nueva pestaña.', 'ok');
+
+    } catch(e){
+      console.error('[bGenerateReport]', e);
+      bShowStatus('Error al generar: ' + e.message, 'err');
+    } finally {
+      btn.disabled = false; btn.innerHTML = '✦ Generar reporte';
+    }
+  };
+
+  // ── Output ──
+  window.bDownloadReport = function(){
+    if(!bGeneratedHTML) return;
+    const name = (bParsedData?.company||'reporte').replace(/[^a-z0-9]/gi,'_');
+    const blob = new Blob([bGeneratedHTML],{type:'text/html;charset=utf-8'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name+'_'+new Date().toISOString().slice(0,10)+'.html';
+    a.click();
+  };
+  window.bOpenInTab = function(){
+    if(!bGeneratedHTML) return;
+    const w = window.open('','_blank');
+    w.document.write(bGeneratedHTML); w.document.close();
+  };
+  window.bClearReport = function(){
+    bGeneratedHTML = null;
+    document.getElementById('bReportSection').style.display = 'none';
+  };
+
 })();
 <\/script>
 </body>
