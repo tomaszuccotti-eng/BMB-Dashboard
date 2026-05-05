@@ -2243,7 +2243,7 @@ function openDetail(especie){
         </div>
         <span style="flex:1"></span>
         <button onclick="secMinimizeChart(${cid})" title="Minimizar"
-          style="padding:2px 8px;font-size:10px;cursor:pointer;border:1px solid rgba(30,39,243,0.2);border-radius:4px;background:transparent;color:#4a5280;font-family:var(--mono);">−</button>
+          style="padding:2px 8px;font-size:10px;cursor:pointer;border:1px solid rgba(30,39,243,0.2);border-radius:4px;background:transparent;color:#4a5280;font-family:var(--mono);">-</button>
         <button onclick="secRemoveChart(${cid})" title="Eliminar"
           style="padding:2px 8px;font-size:10px;cursor:pointer;border:1px solid rgba(248,81,73,0.3);border-radius:4px;background:transparent;color:#f85149;font-family:var(--mono);">✕</button>
       </div>
@@ -2280,7 +2280,7 @@ function openDetail(especie){
     // find the minimize button and update label
     const card=$(`dashCard_${cid}`); if(!card) return;
     const minBtn=[...card.querySelectorAll('button')].find(b=>b.title==='Minimizar');
-    if(minBtn) minBtn.textContent=minimized?'−':'□';
+    if(minBtn) minBtn.textContent=minimized?'-':'□';
   };
 
   window.secRemoveChart = function(cid){
@@ -2491,12 +2491,12 @@ function openDetail(especie){
         ]),
         rtbl('Liquidez','💧',[
           {label:'Current Ratio',  desc:'Current Assets / CL',          s:sCurrR,    fmt:x2, color:v=>v>=2?'#3fb950':v>=1?'#d4a017':'#f85149'},
-          {label:'Quick Ratio',    desc:'(CA − Inventory) / CL',        s:sQuickR,   fmt:x2, color:v=>v>=1?'#3fb950':'#f85149'},
+          {label:'Quick Ratio',    desc:'(CA - Inventory) / CL',        s:sQuickR,   fmt:x2, color:v=>v>=1?'#3fb950':'#f85149'},
           {label:'Cash Ratio',     desc:'Cash / CL',                    s:sCashR,    fmt:x2, color:blue},
         ]),
         rtbl('Apalancamiento','⚖️',[
           {label:'D/E Ratio',      desc:'LT Debt / Equity',             s:sDE,       fmt:x2, color:v=>v<1?'#3fb950':v<2?'#d4a017':'#f85149'},
-          {label:'Net Debt/EBITDA',desc:'(Debt − Cash) / EBITDA',       s:sNDEBITDA, fmt:x1, color:v=>v<2?'#3fb950':v<4?'#d4a017':'#f85149'},
+          {label:'Net Debt/EBITDA',desc:'(Debt - Cash) / EBITDA',       s:sNDEBITDA, fmt:x1, color:v=>v<2?'#3fb950':v<4?'#d4a017':'#f85149'},
           {label:'Debt/Assets %',  desc:'LT Debt / Total Assets',       s:sDebtA,    fmt:pct, color:v=>v<30?'#3fb950':v<60?'#d4a017':'#f85149'},
           {label:'Interest Cov.',  desc:'EBIT / Interest Expense',      s:sIntCov,   fmt:x1, color:v=>v>3?'#3fb950':v>1.5?'#d4a017':'#f85149'},
           {label:'Equity Mult.',   desc:'Assets / Equity',              s:sEqMult,   fmt:x2, color:blue},
@@ -2725,7 +2725,7 @@ function openDetail(especie){
   window.secCmpSetOffset=function(v){_cmpPeriodOffset=parseInt(v)||0;renderCompare();};
   window.secCmpSort=function(ratioId){
     // toggle dir if same ratio
-    if(window._cmpSortRatio===ratioId){window._cmpSortDir=(window._cmpSortDir||−1)*-1;}
+    if(window._cmpSortRatio===ratioId){window._cmpSortDir=(window._cmpSortDir||-1)*-1;}
     else{window._cmpSortRatio=ratioId;window._cmpSortDir=-1;}
     // re-render with sort
     const el=$('secCompare');if(!el)return;
