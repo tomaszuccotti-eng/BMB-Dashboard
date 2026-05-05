@@ -2047,9 +2047,14 @@ function openDetail(especie){
   // ══════════════════════════════════════════════
   function _seriesAnnual(us, ...keys){
     for(const k of keys){
-      const arr=(((us[k]||{}).units||{})['USD']||((us[k]||{}).units||{})['shares']||[])
-        .filter(x=>(x.form==='10-K'||x.form==='20-F'||x.form==='10-K/A')&&x.end&&!x.start)
-        .sort((a,b)=>a.end>b.end?1:-1);
+      const all=(((us[k]||{}).units||{})['USD']||((us[k]||{}).units||{})['shares']||[]);
+      const arr=all.filter(x=>{
+        if(x.form!=='10-K'&&x.form!=='20-F'&&x.form!=='10-K/A') return false;
+        if(!x.end) return false;
+        if(!x.start) return true; // balance sheet / point-in-time
+        const days=(new Date(x.end)-new Date(x.start))/(1000*86400);
+        return days>=340&&days<=400; // flujo anual completo
+      }).sort((a,b)=>a.end>b.end?1:-1);
       const seen=new Set(),out=[];
       for(const item of arr){const yr=item.end.slice(0,4);if(!seen.has(yr)){seen.add(yr);out.push({yr,val:item.val,date:item.end});}}
       if(out.length) return out;
@@ -2200,13 +2205,19 @@ function openDetail(especie){
       }
       return null;
     }
-    // For flow items (income statement), prefer annual without start date
+    // For flow items (income statement): acepta tanto sin start como con start anual (~1 año de duración)
     function getLastFlow(...keys){
       for(const k of keys){
         const c=(us[k]||{}).units||{};
-        const arr=(c['USD']||[]).filter(x=>(x.form==='10-K'||x.form==='20-F')&&x.end&&!x.start)
-          .sort((a,b)=>a.end>b.end?1:-1);
-        if(arr.length) return arr[arr.length-1].val;
+        const all=c['USD']||[];
+        // Candidatos: 10-K o 20-F, con duración anual (con o sin start)
+        const annual=all.filter(x=>{
+          if(x.form!=='10-K'&&x.form!=='20-F'&&x.form!=='10-K/A') return false;
+          if(!x.start) return true; // sin start: ok
+          const days=(new Date(x.end)-new Date(x.start))/(1000*86400);
+          return days>=340&&days<=400; // duración ~1 año
+        }).sort((a,b)=>a.end>b.end?1:-1);
+        if(annual.length) return annual[annual.length-1].val;
       }
       return null;
     }
