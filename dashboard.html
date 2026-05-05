@@ -822,8 +822,8 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
             <div id="secLastFiling" style="font-size:11px;color:#4a5280;font-family:var(--mono);margin-top:2px;"></div>
           </div>
         </div>
-        <!-- Big KPIs -->
-        <div id="secKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;"></div>
+        <!-- Configurable KPI bar -->
+        <div id="secKpiBar" style="margin-top:4px;"></div>
       </div>
 
       <!-- Tabs -->
@@ -2004,6 +2004,7 @@ function openDetail(especie){
     renderCompanyHeader(ticker, companyName, cik, sub, facts);
     renderFinancials(facts);
     renderRatios(facts);
+    _renderKpiBar(facts);
     renderEvents(sub);
 
     $('secResults').style.display='block';
@@ -2039,45 +2040,6 @@ function openDetail(especie){
       const idx10k = filings.form.findIndex(f=>f==='10-K'||f==='20-F');
       if(idx10k>=0) $('secLastFiling').textContent = '10-K: '+filings.filingDate[idx10k];
     }
-
-    // Extract last values for big KPIs
-    const us = (facts.facts||{})['us-gaap']||{};
-
-    function getLast(...keys){
-      for(const k of keys){
-        const c=(us[k]||{}).units||{};
-        const all=c['USD']||c['shares']||[];
-        if(!all.length) continue;
-        // Prefer 10-K annual entries with full-year duration or no start date
-        const annual=all.filter(x=>{
-          if(x.form!=='10-K'&&x.form!=='20-F'&&x.form!=='10-K/A') return false;
-          if(!x.end) return false;
-          if(!x.start) return true;
-          const days=(new Date(x.end)-new Date(x.start))/(1000*86400);
-          return days>=340&&days<=400;
-        });
-        const src=annual.length?annual:all;
-        const sorted=[...src].sort((a,b)=>a.end>b.end?1:-1);
-        if(sorted.length) return {val:sorted[sorted.length-1].val, date:sorted[sorted.length-1].end};
-      }
-      return {val:null,date:null};
-    }
-
-    const revenue = getLast('Revenues','RevenueFromContractWithCustomerExcludingAssessedTax','SalesRevenueNet','RevenueNet');
-    const netInc  = getLast('NetIncomeLoss','ProfitLoss');
-    const assets  = getLast('Assets');
-    const equity  = getLast('StockholdersEquity','StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest');
-    const cash    = getLast('CashAndCashEquivalentsAtCarryingValue','Cash','CashCashEquivalentsAndShortTermInvestments');
-    const opCF    = getLast('NetCashProvidedByUsedInOperatingActivities');
-
-    $('secKpis').innerHTML = [
-      {l:'Revenue',       v:fmtB(revenue.val), cls:'blue', s:revenue.date?'FY '+revenue.date.slice(0,4):''},
-      {l:'Net Income',    v:fmtB(netInc.val),  cls:(netInc.val||0)>=0?'pos':'neg', s:''},
-      {l:'Total Assets',  v:fmtB(assets.val),  cls:'', s:''},
-      {l:'Equity',        v:fmtB(equity.val),  cls:(equity.val||0)>=0?'pos':'neg', s:''},
-      {l:'Cash',          v:fmtB(cash.val),    cls:'pos', s:''},
-      {l:'Op. Cash Flow', v:fmtB(opCF.val),    cls:(opCF.val||0)>=0?'pos':'neg', s:''},
-    ].map(k=>`<div class="sec-kpi ${k.cls}"><div class="kl">${k.l}</div><div class="kv">${k.v}</div><div class="ks">${k.s}</div></div>`).join('');
   }
 
   // ══════════════════════════════════════════════
@@ -2205,6 +2167,117 @@ function openDetail(especie){
     {id:'da',        label:'D&A',                unit:'M', field:'da',       type:'bar',  color:'#8b99c4'},
     {id:'shares',    label:'Shares Out.',        unit:'M', field:'shares',   type:'line', color:'#a5b4fc'},
   ];
+
+  // ── KPI config ──
+  const KPI_CATALOGUE = [
+    {id:'revenue',  label:'Revenue',      field:'revenue',  fmt:v=>fmtM(v)},
+    {id:'ebitda',   label:'EBITDA',       field:'ebitda',   fmt:v=>fmtM(v)},
+    {id:'netInc',   label:'Net Income',   field:'netInc',   fmt:v=>fmtM(v), color:v=>v>=0?'#3fb950':'#f85149'},
+    {id:'grossM',   label:'Gross Margin', field:'grossM',   fmt:v=>fmtPct(v), color:v=>v>=0?'#3fb950':'#f85149'},
+    {id:'netM',     label:'Net Margin',   field:'netM',     fmt:v=>fmtPct(v), color:v=>v>=0?'#3fb950':'#f85149'},
+    {id:'opM',      label:'Op. Margin',   field:'opM',      fmt:v=>fmtPct(v), color:v=>v>=0?'#3fb950':'#f85149'},
+    {id:'ebitdaM',  label:'EBITDA Margin',field:'ebitdaM',  fmt:v=>fmtPct(v), color:v=>v>=0?'#3fb950':'#f85149'},
+    {id:'opCF',     label:'Op. Cash Flow',field:'opCF',     fmt:v=>fmtM(v), color:v=>v>=0?'#3fb950':'#f85149'},
+    {id:'fcf',      label:'Free Cash Flow',field:'fcf',     fmt:v=>fmtM(v), color:v=>v>=0?'#3fb950':'#f85149'},
+    {id:'capex',    label:'Capex',        field:'capex',    fmt:v=>fmtM(Math.abs(v))},
+    {id:'cash',     label:'Cash',         field:'cash',     fmt:v=>fmtM(v), color:()=>'#3fb950'},
+    {id:'debt',     label:'LT Debt',      field:'debt',     fmt:v=>fmtM(v), color:()=>'#f85149'},
+    {id:'eps',      label:'EPS Diluted',  field:'eps',      fmt:v=>'$'+v.toFixed(2), color:v=>v>=0?'#3fb950':'#f85149'},
+    {id:'rd',       label:'R&D',          field:'rd',       fmt:v=>fmtM(v)},
+  ];
+  let _kpiActive = ['revenue','ebitda','grossM','netM','capex','fcf'];
+  let _kpiPanelOpen = false;
+
+  function _renderKpiBar(facts){
+    const el=$('secKpiBar'); if(!el||!facts) return;
+    const us=(facts.facts||{})['us-gaap']||{};
+
+    // Get last reported value (point-in-time, from annual or most recent filing)
+    function getLast(...keys){
+      for(const k of keys){
+        const c=(us[k]||{}).units||{};
+        const arr=c['USD']||c['shares']||[];
+        if(!arr.length) continue;
+        const annual=arr.filter(x=>x.form==='10-K'||x.form==='20-F'||x.form==='10-K/A');
+        const src=annual.length?annual:arr;
+        const sorted=[...src].sort((a,b)=>a.end>b.end?1:-1);
+        if(sorted.length) return sorted[sorted.length-1].val;
+      }
+      return null;
+    }
+    // For flow items (income statement): acepta tanto sin start como con start anual (~1 año de duración)
+    function getLastFlow(...keys){
+      for(const k of keys){
+        const c=(us[k]||{}).units||{};
+        const all=c['USD']||[];
+        // Candidatos: 10-K o 20-F, con duración anual (con o sin start)
+        const annual=all.filter(x=>{
+          if(x.form!=='10-K'&&x.form!=='20-F'&&x.form!=='10-K/A') return false;
+          if(!x.start) return true; // sin start: ok
+          const days=(new Date(x.end)-new Date(x.start))/(1000*86400);
+          return days>=340&&days<=400; // duración ~1 año
+        }).sort((a,b)=>a.end>b.end?1:-1);
+        if(annual.length) return annual[annual.length-1].val;
+      }
+      return null;
+    }
+
+    const revenue = getLastFlow('Revenues','RevenueFromContractWithCustomerExcludingAssessedTax','SalesRevenueNet','RevenueNet');
+    const grossP  = getLastFlow('GrossProfit');
+    const opInc   = getLastFlow('OperatingIncomeLoss');
+    const netInc  = getLastFlow('NetIncomeLoss','ProfitLoss');
+    const opCF    = getLastFlow('NetCashProvidedByUsedInOperatingActivities');
+    const capexRaw= getLastFlow('PaymentsToAcquirePropertyPlantAndEquipment','CapitalExpenditureDiscontinuedOperations');
+    const da      = getLastFlow('DepreciationDepletionAndAmortization','DepreciationAndAmortization');
+    const rd      = getLastFlow('ResearchAndDevelopmentExpense');
+    const eps     = getLastFlow('EarningsPerShareDiluted','EarningsPerShareBasic');
+    const cash    = getLast('CashAndCashEquivalentsAtCarryingValue','Cash','CashCashEquivalentsAndShortTermInvestments');
+    const debt    = getLast('LongTermDebt','LongTermDebtNoncurrent');
+
+    const ebitda  = (opInc!=null&&da!=null) ? opInc+Math.abs(da) : opInc;
+    const fcf     = (opCF!=null&&capexRaw!=null) ? opCF-Math.abs(capexRaw) : opCF;
+    const capex   = capexRaw!=null ? Math.abs(capexRaw) : null;
+    const grossM  = (revenue&&grossP!=null) ? grossP/revenue*100 : null;
+    const netM    = (revenue&&netInc!=null) ? netInc/revenue*100 : null;
+    const opM     = (revenue&&opInc!=null)  ? opInc/revenue*100  : null;
+    const ebitdaM = (revenue&&ebitda!=null) ? ebitda/revenue*100 : null;
+
+    const KPI_VALUES={revenue,ebitda,netInc,grossM,netM,opM,ebitdaM,opCF,fcf,capex,cash,debt,eps,rd};
+
+    el.innerHTML=`
+      <div style="display:flex;align-items:stretch;flex-wrap:wrap;position:relative;border-top:1px solid rgba(30,39,243,0.12);margin-top:16px;">
+        ${_kpiActive.map(kid=>{
+          const def=KPI_CATALOGUE.find(k=>k.id===kid); if(!def) return '';
+          const v=KPI_VALUES[kid]??null;
+          const disp=v!=null?def.fmt(v):'—';
+          const color=v!=null&&def.color?def.color(v):'#e8eaf6';
+          return `<div style="padding:10px 18px;border-right:1px solid rgba(30,39,243,0.1);min-width:110px;">
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#4a5280;font-family:var(--mono);margin-bottom:3px;">${def.label}</div>
+            <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:${color};">${disp}</div>
+          </div>`;
+        }).join('')}
+        <button onclick="secToggleKpiPanel()" title="Configurar KPIs"
+          style="margin-left:auto;align-self:center;padding:5px 12px;border:1px solid rgba(30,39,243,0.2);border-radius:6px;background:transparent;color:#4a5280;font-size:10px;cursor:pointer;font-family:var(--mono);margin-right:4px;white-space:nowrap;">⚙ KPIs</button>
+      </div>
+      <div id="secKpiPanel" style="display:${_kpiPanelOpen?'block':'none'};padding:12px 16px;border-top:1px solid rgba(30,39,243,0.1);background:#0b0f1e;">
+        <div style="font-size:10px;color:#4a5280;font-family:var(--mono);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;">Seleccioná los KPIs a mostrar:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${KPI_CATALOGUE.map(k=>`
+            <button onclick="secToggleKpi('${k.id}')" style="padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--mono);border:1px solid ${_kpiActive.includes(k.id)?'#1E27F3':'rgba(30,39,243,0.25)'};background:${_kpiActive.includes(k.id)?'rgba(30,39,243,0.15)':'transparent'};color:${_kpiActive.includes(k.id)?'#a5b4fc':'#4a5280'};">${k.label}</button>
+          `).join('')}
+        </div>
+      </div>`;
+  }
+
+  window.secToggleKpiPanel = function(){
+    _kpiPanelOpen=!_kpiPanelOpen;
+    const p=$('secKpiPanel'); if(p) p.style.display=_kpiPanelOpen?'block':'none';
+  };
+  window.secToggleKpi = function(kid){
+    if(_kpiActive.includes(kid)) _kpiActive=_kpiActive.filter(k=>k!==kid);
+    else _kpiActive.push(kid);
+    _renderKpiBar(_lastFacts);
+  };
 
   // ── Chart dashboard helpers ──
   function _renderOneDashChart(cid, metricId, period, xDir){
