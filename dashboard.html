@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bull Market — Dashboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -592,7 +591,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
       </div>
 
       <!-- Balances → activo -->
-      <div class="mosaic-card" onclick="enterBalances()" style="cursor:pointer;">
+      <div class="mosaic-card" onclick="enterBalancesMenu()" style="cursor:pointer;">
         <div class="mosaic-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -602,7 +601,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
           </svg>
         </div>
         <div class="mosaic-name">Balances</div>
-        <div class="mosaic-desc">Generador de reportes financieros con IA a partir de ticker o PDF.</div>
+        <div class="mosaic-desc">Balance Explorer & Excel de la Muerte — análisis financiero profundo.</div>
         <span class="mosaic-badge">DISPONIBLE</span>
       </div>
 
@@ -699,11 +698,53 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 
 <!-- ══ LEGAL DISCLAIMER FOOTER ══ -->
 <!-- ══════════════════ APP BALANCES ══════════════════ -->
+<!-- ══════════════════ BALANCES SUBMENU ══════════════════ -->
+<div id="app-balances-menu" style="display:none;min-height:100vh;background:#0b0e1a;flex-direction:column;">
+  <!-- Header -->
+  <div style="display:flex;align-items:center;padding:18px 32px;border-bottom:1px solid rgba(30,39,243,0.15);background:#0b0e1a;gap:16px;">
+    <button onclick="backToLanding()" style="padding:6px 14px;border-radius:6px;border:1px solid rgba(30,39,243,0.25);background:transparent;color:#4a5280;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);">← Inicio</button>
+    <span style="font-family:var(--display);font-size:15px;font-weight:700;color:#e8eaf6;">Balances</span>
+    <span style="font-size:10px;font-family:var(--mono);color:#1E27F3;background:rgba(30,39,243,0.1);padding:2px 10px;border-radius:10px;border:1px solid rgba(30,39,243,0.3);">ANÁLISIS FINANCIERO</span>
+  </div>
+  <!-- Cards -->
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:60px 32px;">
+    <div style="width:100%;max-width:900px;">
+      <div style="font-size:28px;font-weight:800;font-family:var(--display);color:#e8eaf6;margin-bottom:8px;">Seleccioná un módulo</div>
+      <div style="font-size:13px;color:#4a5280;font-family:var(--mono);margin-bottom:48px;">Herramientas de análisis financiero</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+        <!-- Balance Explorer -->
+        <div onclick="enterBalances()" style="background:#0f1422;border:1px solid rgba(30,39,243,0.25);border-radius:16px;padding:36px 32px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;"
+          onmouseover="this.style.borderColor='#1E27F3';this.style.background='#111828'"
+          onmouseout="this.style.borderColor='rgba(30,39,243,0.25)';this.style.background='#0f1422'">
+          <div style="width:48px;height:48px;background:rgba(30,39,243,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1E27F3" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          </div>
+          <div style="font-size:20px;font-weight:800;font-family:var(--display);color:#e8eaf6;margin-bottom:8px;">Balance Explorer</div>
+          <div style="font-size:12px;color:#4a5280;line-height:1.6;font-family:var(--mono);">Análisis de estados financieros desde SEC EDGAR. Ratios, gráficos interactivos y comparación entre empresas.</div>
+          <div style="margin-top:24px;font-size:10px;font-weight:700;color:#1E27F3;font-family:var(--mono);letter-spacing:.1em;">NYSE · NASDAQ · AMEX →</div>
+          <span style="position:absolute;top:16px;right:16px;font-size:9px;font-weight:700;color:#3fb950;background:rgba(63,185,80,0.1);border:1px solid rgba(63,185,80,0.3);padding:2px 8px;border-radius:10px;font-family:var(--mono);">DISPONIBLE</span>
+        </div>
+        <!-- Excel de la Muerte -->
+        <div style="background:#0f1422;border:1px solid rgba(30,39,243,0.12);border-radius:16px;padding:36px 32px;position:relative;overflow:hidden;opacity:0.6;">
+          <div style="width:48px;height:48px;background:rgba(30,39,243,0.06);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4a5280" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          </div>
+          <div style="font-size:20px;font-weight:800;font-family:var(--display);color:#8b99c4;margin-bottom:8px;">Excel de la Muerte</div>
+          <div style="font-size:12px;color:#4a5280;line-height:1.6;font-family:var(--mono);">Modelo financiero avanzado con proyecciones, escenarios y valuación integrada.</div>
+          <div style="margin-top:24px;font-size:10px;font-weight:700;color:#4a5280;font-family:var(--mono);letter-spacing:.1em;">EN DESARROLLO</div>
+          <span style="position:absolute;top:16px;right:16px;font-size:9px;font-weight:700;color:#4a5280;background:rgba(74,82,128,0.1);border:1px solid rgba(74,82,128,0.2);padding:2px 8px;border-radius:10px;font-family:var(--mono);">PRÓXIMAMENTE</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ APP BALANCES ══════════════════ -->
 <div id="app-balances" style="display:none;min-height:100vh;background:#0b0e1a;">
 
   <!-- Topbar -->
   <div style="background:#0f1422;border-bottom:1px solid rgba(30,39,243,0.2);padding:0 28px;display:flex;align-items:center;gap:16px;height:52px;position:sticky;top:0;z-index:50;">
-    <button onclick="backToLanding()"
+    <button onclick="backToBalancesMenu()"
       style="padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid rgba(30,39,243,0.35);border-radius:6px;background:transparent;color:#8b99c4;font-family:var(--mono);transition:all .15s;"
       onmouseover="this.style.background='#1E27F3';this.style.color='#fff';this.style.borderColor='#1E27F3';"
       onmouseout="this.style.background='transparent';this.style.color='#8b99c4';this.style.borderColor='rgba(30,39,243,0.35)';">← Volver</button>
@@ -781,12 +822,12 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
             <div id="secLastFiling" style="font-size:11px;color:#4a5280;font-family:var(--mono);margin-top:2px;"></div>
           </div>
         </div>
-        <!-- Big KPIs -->
-        <div id="secKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;"></div>
+        <!-- Configurable KPI bar -->
+        <div id="secKpiBar" style="margin-top:4px;"></div>
       </div>
 
       <!-- Tabs -->
-      <div style="display:flex;gap:0;margin-bottom:24px;border:1px solid rgba(30,39,243,0.2);border-radius:8px;overflow:hidden;width:fit-content;">
+      <div style="display:flex;gap:0;margin-bottom:24px;border:1px solid rgba(30,39,243,0.2);border-radius:8px;overflow:hidden;">
       <button id="secTabFinBtn" onclick="secShowTab('fin')"
         style="padding:10px 28px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:#1E27F3;color:#fff;font-family:var(--mono);letter-spacing:.05em;">📊 Financials</button>
       <button id="secTabRatBtn" onclick="secShowTab('rat')"
@@ -826,57 +867,6 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
       </div>
 
     </div><!-- /secResults -->
-
-    <!-- ══ PDF SECTION ══ -->
-    <div id="secPdfSection" style="margin-top:48px;padding-top:32px;border-top:1px solid rgba(30,39,243,0.12);">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-        <span style="font-size:11px;font-weight:700;color:#8b99c4;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;">Lector de PDF</span>
-        <span style="font-size:10px;color:#4a5280;font-family:var(--mono);background:#0f1422;border:1px solid rgba(30,39,243,0.2);padding:2px 8px;border-radius:4px;">10-K · SEC · IFRS · Balances locales</span>
-      </div>
-      <div style="display:grid;grid-template-columns:minmax(260px,340px) 1fr;gap:24px;align-items:start;">
-        <div>
-          <div id="bPdfZone"
-            onclick="document.getElementById('bPdfInput').click()"
-            ondragover="event.preventDefault();this.style.borderColor='#1E27F3';this.style.background='rgba(30,39,243,0.04)';"
-            ondragleave="this.style.borderColor='rgba(30,39,243,0.25)';this.style.background='transparent';"
-            ondrop="event.preventDefault();this.style.borderColor='rgba(30,39,243,0.25)';this.style.background='transparent';bLoadPdf(event.dataTransfer.files[0]);"
-            style="border:1.5px dashed rgba(30,39,243,0.3);border-radius:12px;padding:28px 20px;text-align:center;cursor:pointer;transition:all .15s;">
-            <div id="bPdfIcon" style="font-size:28px;margin-bottom:8px;">📄</div>
-            <div id="bPdfLabel" style="font-size:13px;color:#8b99c4;line-height:1.6;">Arrastrá o hacé click<br><span style="font-size:11px;color:#4a5280;">Balance anual · 10-K · Earnings · Memoria</span></div>
-            <input type="file" id="bPdfInput" accept=".pdf" style="display:none" onchange="bLoadPdf(this.files[0])">
-          </div>
-          <div id="bPdfStatusBox" style="display:none;margin-top:10px;"></div>
-          <div id="bParsedSummary" style="display:none;margin-top:12px;background:#0f1422;border:1px solid rgba(30,39,243,0.2);border-radius:8px;padding:14px;">
-            <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#8b99c4;margin-bottom:10px;font-family:var(--mono);">Datos extraídos</div>
-            <div id="bParsedList" style="display:flex;flex-direction:column;gap:4px;font-family:var(--mono);"></div>
-          </div>
-          <button id="bGenerateBtn" onclick="bGenerateReport()" disabled
-            style="width:100%;margin-top:12px;padding:11px;border-radius:8px;border:none;background:rgba(30,39,243,0.2);color:#8b99c4;font-size:13px;font-weight:700;cursor:not-allowed;font-family:var(--mono);opacity:.5;">
-            ✦ Generar reporte HTML
-          </button>
-        </div>
-        <div id="bPreviewSection" style="display:none;">
-          <div id="bPreviewHeader" style="background:#0f1422;border:1px solid rgba(30,39,243,0.25);border-radius:10px;padding:18px 20px;margin-bottom:12px;"></div>
-          <div id="bIsTableWrap" style="display:none;background:#0f1422;border:1px solid rgba(30,39,243,0.2);border-radius:10px;padding:16px;overflow-x:auto;">
-            <div style="font-size:10px;font-weight:700;color:#a5b4fc;margin-bottom:10px;text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);">Estado de Resultados</div>
-            <table id="bIsTable" style="width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono);"></table>
-          </div>
-          <button onclick="bToggleRaw()" style="margin-top:8px;padding:5px 12px;font-size:11px;border:1px solid rgba(30,39,243,0.25);border-radius:6px;background:transparent;color:#4a5280;cursor:pointer;font-family:var(--mono);">▼ Texto extraído</button>
-          <pre id="bRawText" style="display:none;margin-top:8px;background:#0f1422;border:1px solid rgba(30,39,243,0.2);border-radius:8px;padding:14px;font-size:10px;color:#8b99c4;overflow-x:auto;max-height:260px;white-space:pre-wrap;font-family:var(--mono);line-height:1.5;"></pre>
-        </div>
-      </div>
-      <div id="bReportSection" style="display:none;margin-top:20px;">
-        <div style="display:flex;gap:8px;margin-bottom:12px;">
-          <button onclick="bDownloadReport()" style="padding:7px 16px;border-radius:6px;border:1px solid #1E27F3;background:rgba(30,39,243,0.12);color:#a5b4fc;font-size:12px;cursor:pointer;font-family:var(--mono);">⬇ Descargar HTML</button>
-          <button onclick="bOpenInTab()" style="padding:7px 16px;border-radius:6px;border:1px solid rgba(30,39,243,0.3);background:#0f1422;color:#e8eaf6;font-size:12px;cursor:pointer;font-family:var(--mono);">↗ Nueva pestaña</button>
-          <button onclick="bClearReport()" style="padding:7px 16px;border-radius:6px;border:1px solid rgba(30,39,243,0.15);background:#0f1422;color:#8b99c4;font-size:12px;cursor:pointer;font-family:var(--mono);">✕ Limpiar</button>
-        </div>
-        <iframe id="bReportFrame" style="width:100%;border:1px solid rgba(30,39,243,0.2);border-radius:10px;background:#0f1422;min-height:600px;height:75vh;"></iframe>
-      </div>
-    </div>
-
-  </div>
-</div>
 
 <style>
 .sec-chip{font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;border:1px solid rgba(30,39,243,0.3);background:#0f1422;color:#8b99c4;cursor:pointer;font-family:var(--mono);transition:all .15s;}
@@ -971,8 +961,17 @@ function enterEquity(){
   if(logoEq&&LOGO_B64)logoEq.src=LOGO_B64;
   if(!DATA_EQUITY_LOADED) loadEquityData();
 }
-function enterBalances(){
+function enterBalancesMenu(){
   document.getElementById('landing').style.display='none';
+  document.getElementById('app-balances-menu').style.display='flex';
+}
+function backToBalancesMenu(){
+  document.getElementById('app-balances').style.display='none';
+  document.getElementById('app-balances-menu').style.display='flex';
+  if(window._secResetState) window._secResetState();
+}
+function enterBalances(){
+  document.getElementById('app-balances-menu').style.display='none';
   document.getElementById('app-balances').style.display='block';
 }
 function backToLanding(){
@@ -980,6 +979,7 @@ function backToLanding(){
   document.getElementById('app').style.display='none';
   document.getElementById('app-equity').style.display='none';
   document.getElementById('app-balances').style.display='none';
+  document.getElementById('app-balances-menu').style.display='none';
   document.getElementById('legal-footer').style.display='none';
   // Reset balance module state
   if(window._secResetState) window._secResetState();
@@ -2004,6 +2004,7 @@ function openDetail(especie){
     renderCompanyHeader(ticker, companyName, cik, sub, facts);
     renderFinancials(facts);
     renderRatios(facts);
+    _renderKpiBar(facts);
     renderEvents(sub);
 
     $('secResults').style.display='block';
@@ -2039,42 +2040,6 @@ function openDetail(especie){
       const idx10k = filings.form.findIndex(f=>f==='10-K'||f==='20-F');
       if(idx10k>=0) $('secLastFiling').textContent = '10-K: '+filings.filingDate[idx10k];
     }
-
-    // Extract last values for big KPIs
-    const g = facts.facts;
-    const us = g['us-gaap']||{};
-    const ifrs = g['ifrs-full']||{};
-
-    function getLast(obj, ...keys){
-      for(const k of keys){
-        const c = (obj[k]||{}).units||{};
-        const arr = c['USD']||c['shares']||[];
-        if(!arr.length) continue;
-        const annual = arr.filter(x=>x.form==='10-K'||x.form==='20-F'||x.form==='10-K/A');
-        const src = annual.length ? annual : arr;
-        const sorted = [...src].sort((a,b)=>a.end>b.end?1:-1);
-        if(sorted.length) return {val:sorted[sorted.length-1].val, date:sorted[sorted.length-1].end};
-      }
-      return {val:null,date:null};
-    }
-
-    const revenue  = getLast(us,'Revenues','RevenueFromContractWithCustomerExcludingAssessedTax','SalesRevenueNet','RevenueNet');
-    const netInc   = getLast(us,'NetIncomeLoss','ProfitLoss','NetIncomeLossAvailableToCommonStockholdersDiluted');
-    const assets   = getLast(us,'Assets');
-    const equity   = getLast(us,'StockholdersEquity','StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest');
-    const cash     = getLast(us,'CashAndCashEquivalentsAtCarryingValue','Cash','CashCashEquivalentsAndShortTermInvestments');
-    const opCF     = getLast(us,'NetCashProvidedByUsedInOperatingActivities');
-
-    const revG = null; // will compute in financials
-
-    $('secKpis').innerHTML = [
-      {l:'Revenue',          v:fmtB(revenue.val),  cls:'blue', s:revenue.date?'FY '+revenue.date.slice(0,4):''},
-      {l:'Net Income',       v:fmtB(netInc.val),   cls:(netInc.val||0)>=0?'pos':'neg', s:''},
-      {l:'Total Assets',     v:fmtB(assets.val),   cls:'', s:''},
-      {l:'Equity',           v:fmtB(equity.val),   cls:(equity.val||0)>=0?'pos':'neg', s:''},
-      {l:'Cash',             v:fmtB(cash.val),     cls:'pos', s:''},
-      {l:'Op. Cash Flow',    v:fmtB(opCF.val),     cls:(opCF.val||0)>=0?'pos':'neg', s:''},
-    ].map(k=>`<div class="sec-kpi ${k.cls}"><div class="kl">${k.l}</div><div class="kv">${k.v}</div><div class="ks">${k.s}</div></div>`).join('');
   }
 
   // ══════════════════════════════════════════════
@@ -2193,15 +2158,80 @@ function openDetail(especie){
     {id:'eps',       label:'EPS Diluted',        unit:'$', field:'eps',      type:'line', color:'#a5b4fc'},
     {id:'rd',        label:'R&D Expense',        unit:'M', field:'rd',       type:'bar',  color:'#8b5cf6'},
     {id:'sga',       label:'SG&A Expense',       unit:'M', field:'sga',      type:'bar',  color:'#f59e0b'},
+    {id:'capex',     label:'Capex',              unit:'M', field:'capex',    type:'bar',  color:'#f85149'},
+    {id:'da',        label:'D&A',                unit:'M', field:'da',       type:'bar',  color:'#8b99c4'},
+    {id:'shares',    label:'Shares Out.',        unit:'M', field:'shares',   type:'line', color:'#a5b4fc'},
   ];
 
+  // ── KPI config ──
+  const KPI_CATALOGUE = [
+    {id:'revenue',  label:'Revenue',      field:'revenue',  fmt:v=>fmtM(v)},
+    {id:'ebitda',   label:'EBITDA',       field:'ebitda',   fmt:v=>fmtM(v)},
+    {id:'netInc',   label:'Net Income',   field:'netInc',   fmt:v=>fmtM(v), color:v=>v>=0?'#3fb950':'#f85149'},
+    {id:'grossM',   label:'Gross Margin', field:'grossM',   fmt:v=>fmtPct(v), color:v=>v>=0?'#3fb950':'#f85149'},
+    {id:'netM',     label:'Net Margin',   field:'netM',     fmt:v=>fmtPct(v), color:v=>v>=0?'#3fb950':'#f85149'},
+    {id:'opM',      label:'Op. Margin',   field:'opM',      fmt:v=>fmtPct(v), color:v=>v>=0?'#3fb950':'#f85149'},
+    {id:'ebitdaM',  label:'EBITDA Margin',field:'ebitdaM',  fmt:v=>fmtPct(v), color:v=>v>=0?'#3fb950':'#f85149'},
+    {id:'opCF',     label:'Op. Cash Flow',field:'opCF',     fmt:v=>fmtM(v), color:v=>v>=0?'#3fb950':'#f85149'},
+    {id:'fcf',      label:'Free Cash Flow',field:'fcf',     fmt:v=>fmtM(v), color:v=>v>=0?'#3fb950':'#f85149'},
+    {id:'capex',    label:'Capex',        field:'capex',    fmt:v=>fmtM(Math.abs(v))},
+    {id:'cash',     label:'Cash',         field:'cash',     fmt:v=>fmtM(v), color:()=>'#3fb950'},
+    {id:'debt',     label:'LT Debt',      field:'debt',     fmt:v=>fmtM(v), color:()=>'#f85149'},
+    {id:'eps',      label:'EPS Diluted',  field:'eps',      fmt:v=>'$'+v.toFixed(2), color:v=>v>=0?'#3fb950':'#f85149'},
+    {id:'rd',       label:'R&D',          field:'rd',       fmt:v=>fmtM(v)},
+  ];
+  let _kpiActive = ['revenue','ebitda','grossM','netM','capex','fcf'];
+  let _kpiPanelOpen = false;
+
+  function _renderKpiBar(facts){
+    const el=$('secKpiBar'); if(!el||!facts) return;
+    const us=(facts.facts||{})['us-gaap']||{};
+    const S=_buildAllSeries(us,false);
+    // get last available value for each kpi
+    function lastVal(field){const s=S[field]||[];return s.length?s[s.length-1].val:null;}
+    el.innerHTML=`
+      <div style="display:flex;align-items:center;gap:0;flex-wrap:wrap;position:relative;">
+        ${_kpiActive.map(kid=>{
+          const def=KPI_CATALOGUE.find(k=>k.id===kid); if(!def) return '';
+          const v=lastVal(def.field);
+          const disp=v!=null?def.fmt(v):'N/A';
+          const color=v!=null&&def.color?def.color(v):'#e8eaf6';
+          return `<div style="padding:12px 20px;border-right:1px solid rgba(30,39,243,0.12);min-width:120px;">
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#4a5280;font-family:var(--mono);margin-bottom:4px;">${def.label}</div>
+            <div style="font-size:17px;font-weight:700;font-family:var(--mono);color:${color};">${disp}</div>
+          </div>`;
+        }).join('')}
+        <button onclick="secToggleKpiPanel()" title="Configurar KPIs"
+          style="margin-left:auto;padding:6px 12px;border:1px solid rgba(30,39,243,0.2);border-radius:6px;background:transparent;color:#4a5280;font-size:11px;cursor:pointer;font-family:var(--mono);white-space:nowrap;">⚙ KPIs</button>
+      </div>
+      <div id="secKpiPanel" style="display:${_kpiPanelOpen?'block':'none'};padding:14px 16px;border-top:1px solid rgba(30,39,243,0.1);background:#0b0f1e;">
+        <div style="font-size:10px;color:#4a5280;font-family:var(--mono);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em;">Seleccioná los KPIs a mostrar:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${KPI_CATALOGUE.map(k=>`
+            <button onclick="secToggleKpi('${k.id}')" style="padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--mono);border:1px solid ${_kpiActive.includes(k.id)?'#1E27F3':'rgba(30,39,243,0.25)'};background:${_kpiActive.includes(k.id)?'rgba(30,39,243,0.15)':'transparent'};color:${_kpiActive.includes(k.id)?'#a5b4fc':'#4a5280'};">${k.label}</button>
+          `).join('')}
+        </div>
+      </div>`;
+  }
+
+  window.secToggleKpiPanel = function(){
+    _kpiPanelOpen=!_kpiPanelOpen;
+    const p=$('secKpiPanel'); if(p) p.style.display=_kpiPanelOpen?'block':'none';
+  };
+  window.secToggleKpi = function(kid){
+    if(_kpiActive.includes(kid)) _kpiActive=_kpiActive.filter(k=>k!==kid);
+    else _kpiActive.push(kid);
+    _renderKpiBar(_lastFacts);
+  };
+
   // ── Chart dashboard helpers ──
-  function _renderOneDashChart(cid, metricId, period){
+  function _renderOneDashChart(cid, metricId, period, xDir){
     const meta = CHART_METRICS.find(m=>m.id===metricId)||CHART_METRICS[0];
     const us = (_lastFacts?.facts||{})['us-gaap']||{};
     const isQ = period==='quarterly';
     const S = _buildAllSeries(us, isQ);
-    const data = (S[meta.field]||[]).slice().reverse(); // newest left
+    let data = (S[meta.field]||[]);
+    if((xDir||'desc')==='desc') data=[...data].reverse();
     const labels = data.map(x=>x.yr);
     const vals   = data.map(x=> meta.unit==='M' ? +(x.val/1e6).toFixed(0) : +x.val.toFixed(2));
     const chartCfg={
@@ -2226,26 +2256,29 @@ function openDetail(especie){
     });
   }
 
-  function _buildDashCard(cid, metricId, period){
+  function _buildDashCard(cid, metricId, period, xDir){
     const meta = CHART_METRICS.find(m=>m.id===metricId)||CHART_METRICS[0];
     const metricOpts = CHART_METRICS.map(m=>`<option value="${m.id}"${m.id===metricId?' selected':''}>${m.label}</option>`).join('');
+    const dir=xDir||'desc';
     return `<div id="dashCard_${cid}" style="background:#0f1422;border:1px solid rgba(30,39,243,0.2);border-radius:10px;padding:14px;position:relative;">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:10px;flex-wrap:wrap;">
         <select onchange="secUpdateChart(${cid},'metric',this.value)"
           style="background:#131929;border:1px solid rgba(30,39,243,0.3);border-radius:5px;color:#a5b4fc;font-family:var(--mono);font-size:10px;padding:3px 7px;cursor:pointer;outline:none;font-weight:700;">
           ${metricOpts}
         </select>
         <div style="display:flex;background:#131929;border:1px solid rgba(30,39,243,0.2);border-radius:5px;overflow:hidden;">
           <button onclick="secUpdateChart(${cid},'period','annual')"
-            style="padding:3px 10px;font-size:9px;font-weight:700;cursor:pointer;border:none;background:${period==='annual'?'#1E27F3':'transparent'};color:${period==='annual'?'#fff':'#4a5280'};font-family:var(--mono);" id="dashPeriodA_${cid}">Anual</button>
+            style="padding:3px 10px;font-size:9px;font-weight:700;cursor:pointer;border:none;background:${period==='annual'?'#1E27F3':'transparent'};color:${period==='annual'?'#fff':'#4a5280'};font-family:var(--mono);">Anual</button>
           <button onclick="secUpdateChart(${cid},'period','quarterly')"
-            style="padding:3px 10px;font-size:9px;font-weight:700;cursor:pointer;border:none;background:${period==='quarterly'?'#1E27F3':'transparent'};color:${period==='quarterly'?'#fff':'#4a5280'};font-family:var(--mono);" id="dashPeriodQ_${cid}">Trim.</button>
+            style="padding:3px 10px;font-size:9px;font-weight:700;cursor:pointer;border:none;background:${period==='quarterly'?'#1E27F3':'transparent'};color:${period==='quarterly'?'#fff':'#4a5280'};font-family:var(--mono);">Trim.</button>
         </div>
+        <button onclick="secUpdateChart(${cid},'xDir','${dir==='desc'?'asc':'desc'}')" title="Cambiar dirección eje X"
+          style="padding:3px 9px;font-size:9px;font-weight:700;cursor:pointer;border:1px solid rgba(30,39,243,0.2);border-radius:5px;background:transparent;color:#4a5280;font-family:var(--mono);">${dir==='desc'?'← Asc':'Desc →'}</button>
         <span style="flex:1"></span>
         <button onclick="secMinimizeChart(${cid})" title="Minimizar"
-          style="padding:2px 8px;font-size:10px;cursor:pointer;border:1px solid rgba(30,39,243,0.2);border-radius:4px;background:transparent;color:#4a5280;font-family:var(--mono);">-</button>
+          style="padding:2px 7px;font-size:10px;cursor:pointer;border:1px solid rgba(30,39,243,0.2);border-radius:4px;background:transparent;color:#4a5280;font-family:var(--mono);">-</button>
         <button onclick="secRemoveChart(${cid})" title="Eliminar"
-          style="padding:2px 8px;font-size:10px;cursor:pointer;border:1px solid rgba(248,81,73,0.3);border-radius:4px;background:transparent;color:#f85149;font-family:var(--mono);">✕</button>
+          style="padding:2px 7px;font-size:10px;cursor:pointer;border:1px solid rgba(248,81,73,0.3);border-radius:4px;background:transparent;color:#f85149;font-family:var(--mono);">✕</button>
       </div>
       <div id="dashBody_${cid}" style="position:relative;height:200px;">
         <canvas id="dashCanvas_${cid}"></canvas>
@@ -2253,31 +2286,38 @@ function openDetail(especie){
     </div>`;
   }
 
+  function _dashGridCols(n){
+    if(n===1) return '1fr';
+    if(n===2) return '1fr 1fr';
+    return '1fr 1fr'; // 3+ = 2 cols, last card spans full if odd
+  }
+
   function _refreshDashboard(){
     const dash=$('secChartDashboard'); if(!dash) return;
-    dash.innerHTML=_chartDefs.map(c=>_buildDashCard(c.id,c.metric,c.period)).join('');
-    _chartDefs.forEach(c=>{
-      setTimeout(()=>_renderOneDashChart(c.id,c.metric,c.period),30);
-    });
+    const n=_chartDefs.length;
+    dash.style.gridTemplateColumns=_dashGridCols(n);
+    dash.innerHTML=_chartDefs.map((c,i)=>{
+      const span=(n%2!==0&&i===n-1)?'grid-column:1/-1;':'';
+      return `<div style="${span}">${_buildDashCard(c.id,c.metric,c.period,c.xDir).replace('<div id="dashCard_','<div style="height:100%" id="dashCard_')}</div>`;
+    }).join('');
+    _chartDefs.forEach(c=>{ setTimeout(()=>_renderOneDashChart(c.id,c.metric,c.period,c.xDir),30); });
   }
 
   window.secUpdateChart = function(cid, prop, val){
     const def=_chartDefs.find(c=>c.id===cid); if(!def) return;
     def[prop]=val;
-    // re-render this card only
     const card=$(`dashCard_${cid}`); if(!card) return;
-    const par=card.parentElement;
+    const wrapper=card.parentElement;
     const tempDiv=document.createElement('div');
-    tempDiv.innerHTML=_buildDashCard(cid,def.metric,def.period);
-    par.replaceChild(tempDiv.firstElementChild,card);
-    setTimeout(()=>_renderOneDashChart(cid,def.metric,def.period),30);
+    tempDiv.innerHTML=_buildDashCard(cid,def.metric,def.period,def.xDir);
+    wrapper.replaceChild(tempDiv.firstElementChild,card);
+    setTimeout(()=>_renderOneDashChart(cid,def.metric,def.period,def.xDir),30);
   };
 
   window.secMinimizeChart = function(cid){
     const body=$(`dashBody_${cid}`); if(!body) return;
     const minimized=body.style.display==='none';
     body.style.display=minimized?'':'none';
-    // find the minimize button and update label
     const card=$(`dashCard_${cid}`); if(!card) return;
     const minBtn=[...card.querySelectorAll('button')].find(b=>b.title==='Minimizar');
     if(minBtn) minBtn.textContent=minimized?'-':'□';
@@ -2286,20 +2326,15 @@ function openDetail(especie){
   window.secRemoveChart = function(cid){
     _chartDefs=_chartDefs.filter(c=>c.id!==cid);
     if(_chartInstances[cid]){_chartInstances[cid].destroy();delete _chartInstances[cid];}
-    const card=$(`dashCard_${cid}`); if(card) card.remove();
+    _refreshDashboard(); // re-render for correct grid
   };
 
   window.secAddChart = function(){
     const cid=++_chartIdSeq;
-    // Default to a metric not already in use if possible
     const used=_chartDefs.map(c=>c.metric);
     const next=CHART_METRICS.find(m=>!used.includes(m.id))||CHART_METRICS[0];
-    _chartDefs.push({id:cid,metric:next.id,period:'annual'});
-    const dash=$('secChartDashboard'); if(!dash) return;
-    const tempDiv=document.createElement('div');
-    tempDiv.innerHTML=_buildDashCard(cid,next.id,'annual');
-    dash.appendChild(tempDiv.firstElementChild);
-    setTimeout(()=>_renderOneDashChart(cid,next.id,'annual'),30);
+    _chartDefs.push({id:cid,metric:next.id,period:'annual',xDir:'desc'});
+    _refreshDashboard();
   };
 
   // ══════════════════════════════════════════════
@@ -2316,10 +2351,10 @@ function openDetail(especie){
     // Default 4 charts if none defined yet
     if(_chartDefs.length===0){
       _chartDefs=[
-        {id:++_chartIdSeq, metric:'revenue',  period:'annual'},
-        {id:++_chartIdSeq, metric:'grossM',   period:'annual'},
-        {id:++_chartIdSeq, metric:'netInc',   period:'annual'},
-        {id:++_chartIdSeq, metric:'opCF',     period:'annual'},
+        {id:++_chartIdSeq, metric:'revenue',  period:'annual', xDir:'desc'},
+        {id:++_chartIdSeq, metric:'grossM',   period:'annual', xDir:'desc'},
+        {id:++_chartIdSeq, metric:'netInc',   period:'annual', xDir:'desc'},
+        {id:++_chartIdSeq, metric:'opCF',     period:'annual', xDir:'desc'},
       ];
     }
     _refreshDashboard();
@@ -2867,105 +2902,6 @@ function openDetail(especie){
       `).join('')}`;
   }
 
-  // ══════════════════════════════════════════════
-  // PDF MODULE (se mantiene igual)
-  // ══════════════════════════════════════════════
-  let bParsedData=null, bGeneratedHTML=null;
-
-  const IP={revenue:['net revenues? and financial income','total net revenues? and financial income','total net revenues?','net revenues?','total revenues?','net sales','total net sales','revenues?'],gross_profit:['gross profit'],operating_income:['income from operations','operating income','operating profit','\\bebit\\b'],net_income:['net income\\b','net earnings\\b','net profit','profit for the (?:year|period)'],eps_diluted:['diluted (?:net income )?per (?:common )?share','diluted earnings per share','diluted eps'],depreciation:['depreciation and amortization']};
-  const BP={cash:['cash and cash equivalents\\b'],total_current_assets:['total current assets'],total_assets:['total assets\\b'],total_current_liabilities:['total current liabilities'],total_liabilities:['total liabilities\\b'],total_equity:['total (?:stockholders\'?|shareholders\'?) equity','total equity'],property_equipment:['property and equipment,? net'],retained_earnings:['retained earnings','accumulated (?:deficit|earnings)']};
-  const CP={operating_cf:['net cash (?:provided by|from) operating activities'],capex:['purchases? of property and equipment','capital expenditures?'],depreciation:['depreciation and amortization']};
-
-  function pNum(t){let s=t.trim().replace(/,/g,'').replace(/\$/g,'');if(!s)return null;const neg=s.startsWith('(')&&s.endsWith(')');s=s.replace(/[()]/g,'');const v=parseFloat(s);return isNaN(v)?null:(neg?-v:v);}
-  function eNums(line){return(line.replace(/\$\s*/g,'').match(/\([\d,]+(?:\.\d+)?\)|\d[\d,]*(?:\.\d+)?/g)||[]).map(pNum).filter(v=>v!==null);}
-  function fYears(line){const seen=new Set(),r=[];let m,re=/\b(20\d{2})\b/g;while((m=re.exec(line))!==null){const y=parseInt(m[1]);if(!seen.has(y)){seen.add(y);r.push(y);}}return r;}
-  function gLat(d){if(!d||!Object.keys(d).length)return null;const ks=Object.keys(d).map(Number).filter(k=>!isNaN(k)&&k>1900);return ks.length?d[Math.max(...ks)]:d[Object.keys(d)[0]];}
-  function gYrs(dicts){const s=new Set();dicts.forEach(d=>Object.keys(d).forEach(k=>{const n=parseInt(k);if(!isNaN(n)&&n>1900)s.add(n);}));return[...s].sort();}
-  function yoyStr(d){const ys=Object.keys(d).map(Number).filter(k=>k>1900).sort();if(ys.length<2)return'—';const v1=d[ys[ys.length-2]],v2=d[ys[ys.length-1]];if(!v1||v1===0)return'—';const g=(v2-v1)/Math.abs(v1)*100;return(g>=0?'+':'')+g.toFixed(1)+'%';}
-
-  function showPdfStatus(msg,type){
-    const el=$('bPdfStatusBox'); if(!el)return;
-    const cfg={ok:{bg:'rgba(63,185,80,0.08)',c:'#3fb950',b:'rgba(63,185,80,0.25)',i:'✓'},err:{bg:'rgba(248,81,73,0.08)',c:'#f85149',b:'rgba(248,81,73,0.25)',i:'⚠'},load:{bg:'rgba(30,39,243,0.08)',c:'#8b99c4',b:'rgba(30,39,243,0.2)',i:'⏳'}}[type]||{bg:'rgba(30,39,243,0.08)',c:'#8b99c4',b:'rgba(30,39,243,0.2)',i:'ℹ'};
-    el.style.cssText=`display:flex;gap:8px;align-items:flex-start;background:${cfg.bg};color:${cfg.c};border:1px solid ${cfg.b};border-radius:6px;padding:10px 12px;font-size:12px;font-family:var(--mono);`;
-    el.innerHTML=`<span>${cfg.i}</span><span>${msg}</span>`;
-  }
-
-  function sPages(pages,kws,top=6){const sc=[];for(const[pg,text]of Object.entries(pages)){const tl=text.toLowerCase();const hits=kws.filter(k=>tl.includes(k)).length;if(hits>=2)sc.push([hits,parseInt(pg)]);}return sc.sort((a,b)=>b[0]-a[0]).slice(0,top).map(x=>x[1]);}
-  function pPages(pages,pageList,patterns){
-    const R={};for(const k of Object.keys(patterns))R[k]={};
-    for(const pg of pageList){const text=pages[pg]||'';if(/reclassif|recast|special purpose/i.test(text.slice(0,800)))continue;const lines=text.split('\n');let hY=[];for(const ln of lines.slice(0,12)){const ys=fYears(ln);if(ys.length>=2){hY=ys.slice(0,4);break;}}if(!hY.length){const all=fYears(text);if(all.length)hY=all.slice(-4);}for(const ln of lines){const ll=ln.toLowerCase().trim();for(const[metric,pats]of Object.entries(patterns)){if(Object.keys(R[metric]).length>=hY.length&&Object.keys(R[metric]).length>0)continue;for(const pat of pats){if(new RegExp('\\b'+pat+'\\b|'+pat,'i').test(ll)){const nums=eNums(ln).filter(n=>Math.abs(n)<500000);if(nums.length&&hY.length)hY.forEach((y,i)=>{if(i<nums.length&&!(y in R[metric]))R[metric][y]=nums[i];});else if(nums.length&&!('latest' in R[metric]))R[metric]['latest']=nums[0];break;}}}}}
-    return R;
-  }
-  function dMeta(pages){
-    let company='',ticker='',fy='';const n=Object.keys(pages).length;
-    for(let pg=1;pg<=Math.min(6,n);pg++){const t=pages[pg]||'';if(!fy){let m=t.match(/fiscal year ended.*?(20\d{2})/i)||t.match(/(?:December 31|year ended)[,\s]+(20\d{2})/i);if(m)fy=m[1];}if(!ticker){let m=t.match(/\b([A-Z]{2,5})\b.*?(?:Nasdaq|NYSE)/i);if(m)ticker=m[1];}if(!company){let m=t.match(/Exact name of registrant[^\n]*\n([^\n]{5,70})/i);if(m)company=m[1].trim();}}
-    if(!company){for(let pg=1;pg<=Math.min(3,n);pg++){for(const line of(pages[pg]||'').split('\n').slice(0,25)){const l=line.trim();if(l.length>6&&l.length<70&&/^[A-Z][a-zA-Z]/.test(l)&&!['SECURITIES','FORM','ANNUAL','NASDAQ','UNITED STATES'].some(s=>l.includes(s))){company=l;break;}}if(company)break;}}
-    return{company,ticker,fy};
-  }
-
-  window.bLoadPdf = async function(file){
-    if(!file)return;
-    showPdfStatus('Leyendo PDF...','load');
-    $('bPdfIcon').textContent='⏳'; $('bPdfLabel').textContent=file.name;
-    try{
-      const ab=await file.arrayBuffer();
-      const pdfjs=window.pdfjsLib;
-      if(!pdfjs)throw new Error('pdf.js no disponible. Recargá la página.');
-      pdfjs.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-      const pdf=await pdfjs.getDocument({data:ab}).promise;
-      showPdfStatus(`${pdf.numPages} páginas — extrayendo...`,'load');
-      const pages={};
-      for(let p=1;p<=pdf.numPages;p++){const page=await pdf.getPage(p);const tc=await page.getTextContent();let t='',lY=null;for(const item of tc.items){const y=item.transform[5];if(lY!==null&&Math.abs(y-lY)>3)t+='\n';t+=item.str+' ';lY=y;}pages[p]=t;}
-      const rawEl=$('bRawText'); if(rawEl)rawEl.textContent=(Object.values(pages).join('\n')).slice(0,8000);
-      const meta=dMeta(pages);
-      const allPgs=Object.keys(pages).map(Number);
-      bParsedData={company:meta.company||file.name.replace(/\.pdf$/i,''),ticker:meta.ticker||'',fy:meta.fy||'',filename:file.name,
-        income:pPages(pages,sPages(pages,['net revenues','gross profit','net income']).length?sPages(pages,['net revenues','gross profit','net income']):allPgs,IP),
-        balance:pPages(pages,sPages(pages,['total assets','total liabilities','total equity']).length?sPages(pages,['total assets','total liabilities','total equity']):allPgs,BP),
-        cashflow:pPages(pages,sPages(pages,['operating activities','capital expenditures']).length?sPages(pages,['operating activities','capital expenditures']):allPgs,CP)};
-      const zone=$('bPdfZone');
-      zone.style.borderColor='rgba(63,185,80,0.5)';zone.style.borderStyle='solid';zone.style.background='rgba(63,185,80,0.03)';
-      $('bPdfIcon').textContent='✓'; $('bPdfLabel').textContent=file.name; $('bPdfLabel').style.color='#3fb950';
-      bRenderPdfPreview();
-      showPdfStatus('✓ '+(meta.company||file.name)+' parseado.','ok');
-      const btn=$('bGenerateBtn');btn.disabled=false;btn.style.opacity='1';btn.style.cursor='pointer';btn.style.background='#1E27F3';btn.style.color='#fff';
-    }catch(e){console.error(e);showPdfStatus('Error: '+e.message,'err');$('bPdfIcon').textContent='❌';}
-  };
-
-  function fmtNPdf(v){if(v==null||isNaN(v))return'—';const s=v<0?'-':'',a=Math.abs(v);if(a>=1e12)return s+(a/1e12).toFixed(2)+'T';if(a>=1e9)return s+(a/1e9).toFixed(2)+'B';if(a>=1e6)return s+(a/1e6).toFixed(1)+'M';if(a>=1e3)return s+(a/1e3).toFixed(1)+'K';return s+Number(a).toFixed(0);}
-  function fmtPctPdf(n,d){return(!n||!d||d===0)?'—':(n/d*100).toFixed(1)+'%';}
-
-  function bRenderPdfPreview(){
-    const d=bParsedData,inc=d.income,bal=d.balance,cf=d.cashflow;
-    const rev=gLat(inc.revenue||{}),gp=gLat(inc.gross_profit||{}),ebit=gLat(inc.operating_income||{});
-    const ni=gLat(inc.net_income||{}),da=gLat(cf.depreciation||{}),assets=gLat(bal.total_assets||{});
-    const equity=gLat(bal.total_equity||{}),ocf=gLat(cf.operating_cf||{}),capex=gLat(cf.capex||{});
-    const ebitda=(ebit&&da)?ebit+da:ebit,fcf=(ocf&&capex)?ocf+capex:ocf;
-    const sumEl=$('bParsedList');
-    if(sumEl){
-      const items=[['Empresa',d.company],['Ticker',d.ticker||'—'],['FY',d.fy||'—'],['Revenue',fmtNPdf(rev)],['EBIT',fmtNPdf(ebit)],['Net Income',fmtNPdf(ni)],['Total Assets',fmtNPdf(assets)],['FCF',fmtNPdf(fcf)]];
-      sumEl.innerHTML=items.map(([k,v])=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid rgba(30,39,243,0.1);font-size:11px;"><span style="color:#8b99c4;">${k}</span><span style="color:#e8eaf6;font-weight:600;">${v||'—'}</span></div>`).join('');
-      $('bParsedSummary').style.display='block';
-    }
-    const kpis=[['Revenue',fmtNPdf(rev)],['Gross Profit',fmtNPdf(gp)],['EBIT',fmtNPdf(ebit)],['Net Income',fmtNPdf(ni)],['Total Assets',fmtNPdf(assets)],['Equity',fmtNPdf(equity)]];
-    $('bPreviewHeader').innerHTML=`<div style="font-size:16px;font-weight:800;color:#e8eaf6;margin-bottom:10px;">${d.ticker?`<span style="background:rgba(30,39,243,0.15);border:1px solid rgba(30,39,243,0.4);border-radius:5px;padding:1px 8px;color:#a5b4fc;font-size:13px;margin-right:8px;">${d.ticker}</span>`:''}${d.company}</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;">${kpis.map(([l,v])=>`<div style="background:#131929;border:1px solid rgba(30,39,243,0.2);border-radius:6px;padding:8px 10px;"><div style="font-size:9px;color:#8b99c4;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;font-family:var(--mono);">${l}</div><div style="font-size:14px;font-weight:700;color:#e8eaf6;font-family:var(--mono);">${v}</div></div>`).join('')}</div>`;
-    const allDicts=[...Object.values(inc),...Object.values(bal),...Object.values(cf)];
-    const years=gYrs(allDicts);
-    if(years.length){
-      const thS='text-align:right;padding:6px 10px;font-size:10px;font-weight:600;color:#8b99c4;text-transform:uppercase;border-bottom:1px solid rgba(30,39,243,0.15);background:#131929;';
-      const tdS='text-align:right;padding:6px 10px;border-bottom:1px solid rgba(30,39,243,0.08);color:#e8eaf6;font-family:var(--mono);font-size:11px;';
-      const rows=[['Revenue',inc.revenue||{}],['Gross Profit',inc.gross_profit||{}],['Op. Income',inc.operating_income||{}],['Net Income',inc.net_income||{}]];
-      $('bIsTable').innerHTML=`<thead><tr><th style="${thS}text-align:left;">Métrica</th>${years.map(y=>`<th style="${thS}">${y}</th>`).join('')}</tr></thead><tbody>${rows.map(([n,obj])=>`<tr><td style="${tdS}text-align:left;color:#8b99c4;">${n}</td>${years.map(y=>`<td style="${tdS}">${y in obj&&obj[y]!=null?fmtNPdf(obj[y]):'—'}</td>`).join('')}</tr>`).join('')}</tbody>`;
-      $('bIsTableWrap').style.display='block';
-    }
-    $('bPreviewSection').style.display='block';
-  }
-
-  window.bGenerateReport=function(){showPdfStatus('Función disponible próximamente.','load');};
-  window.bDownloadReport=function(){if(!bGeneratedHTML)return;const n=(bParsedData?.company||'reporte').replace(/[^a-z0-9]/gi,'_');const b=new Blob([bGeneratedHTML],{type:'text/html;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n+'_'+new Date().toISOString().slice(0,10)+'.html';a.click();};
-  window.bOpenInTab=function(){if(!bGeneratedHTML)return;const w=window.open('','_blank');w.document.write(bGeneratedHTML);w.document.close();};
-  window.bClearReport=function(){bGeneratedHTML=null;$('bReportSection').style.display='none';};
-  window.bToggleRaw=function(){const p=$('bRawText');if(p)p.style.display=p.style.display==='none'?'block':'none';};
   window.bSetMode=function(){};window.bToggleOpt=function(){};window.bSetLang=function(){};window.bSaveKey=function(){};
 
 })();
