@@ -710,24 +710,6 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
     <span style="font-family:var(--display);font-size:15px;font-weight:700;color:#e8eaf6;">Balance Explorer</span>
     <span style="font-size:10px;font-family:var(--mono);color:#1E27F3;background:rgba(30,39,243,0.1);padding:2px 10px;border-radius:10px;border:1px solid rgba(30,39,243,0.3);">SEC EDGAR · GRATIS · SIN KEY</span>
     <div style="flex:1"></div>
-    <!-- Period toggle -->
-    <div style="display:flex;background:#131929;border:1px solid rgba(30,39,243,0.25);border-radius:6px;overflow:hidden;margin-right:12px;">
-      <button id="secPeriodAnnual" onclick="secSetPeriod('annual')"
-        style="padding:5px 14px;font-size:11px;font-weight:700;cursor:pointer;border:none;background:#1E27F3;color:#fff;font-family:var(--mono);letter-spacing:.04em;transition:all .15s;">Anual</button>
-      <button id="secPeriodQ" onclick="secSetPeriod('quarterly')"
-        style="padding:5px 14px;font-size:11px;font-weight:700;cursor:pointer;border:none;background:transparent;color:#4a5280;font-family:var(--mono);letter-spacing:.04em;transition:all .15s;">Trimestral</button>
-    </div>
-    <!-- Year range selector -->
-    <div style="display:flex;align-items:center;gap:6px;margin-right:12px;">
-      <span style="font-size:10px;color:#4a5280;font-family:var(--mono);">Años:</span>
-      <select id="secYearsSelect" onchange="secSetYears(this.value)"
-        style="background:#0f1422;border:1px solid rgba(30,39,243,0.3);border-radius:6px;color:#8b99c4;font-family:var(--mono);font-size:11px;padding:4px 8px;cursor:pointer;outline:none;">
-        <option value="3" selected>Últ. 3</option>
-        <option value="5">Últ. 5</option>
-        <option value="8">Últ. 8</option>
-        <option value="99">Todo</option>
-      </select>
-    </div>
     <span style="font-size:11px;color:#4a5280;font-family:var(--mono);">NYSE · NASDAQ · AMEX</span>
   </div>
 
@@ -737,10 +719,20 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
     <div style="margin-bottom:32px;">
       <div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8b99c4;font-family:var(--mono);margin-bottom:12px;">Buscar empresa (NYSE / NASDAQ / AMEX)</div>
       <div style="display:flex;gap:10px;align-items:stretch;margin-bottom:14px;">
-        <input id="secTicker" type="text" placeholder="AAPL" maxlength="10"
-          style="width:180px;background:#0f1422;border:1px solid rgba(30,39,243,0.4);border-radius:10px;padding:12px 18px;font-size:24px;font-weight:700;letter-spacing:.1em;color:#e8eaf6;text-transform:uppercase;outline:none;font-family:var(--mono);transition:border-color .2s;"
-          onfocus="this.style.borderColor='#1E27F3'" onblur="this.style.borderColor='rgba(30,39,243,0.4)'"
-          onkeydown="if(event.key==='Enter')secSearch()" />
+        <!-- Unified autocomplete input -->
+        <div style="position:relative;" id="secAutoWrap">
+          <input id="secTicker" type="text" placeholder="Ticker o nombre — Ej: AAPL, Apple..." maxlength="60"
+            autocomplete="off"
+            style="width:340px;background:#0f1422;border:1px solid rgba(30,39,243,0.4);border-radius:10px;padding:12px 18px 12px 44px;font-size:18px;font-weight:700;letter-spacing:.04em;color:#e8eaf6;text-transform:uppercase;outline:none;font-family:var(--mono);transition:border-color .2s;"
+            onfocus="this.style.borderColor='#1E27F3';secAutoShow()"
+            onblur="setTimeout(()=>secAutoHide(),200)"
+            oninput="secAutoFilter(this.value)"
+            onkeydown="secAutoKey(event)" />
+          <svg style="position:absolute;left:14px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:#4a5280;pointer-events:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <div id="secAutoList"
+            style="display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:#0f1422;border:1px solid rgba(30,39,243,0.4);border-radius:10px;max-height:280px;overflow-y:auto;z-index:300;box-shadow:0 12px 40px rgba(0,0,0,0.6);">
+          </div>
+        </div>
         <button onclick="secSearch()" id="secSearchBtn"
           style="padding:0 36px;border-radius:10px;border:none;background:#1E27F3;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:background .15s;"
           onmouseover="this.style.background='#2d38ff'" onmouseout="this.style.background='#1E27F3'">Buscar →</button>
@@ -759,24 +751,6 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
         <span class="sec-chip" onclick="secChip('JPM')">JPM</span>
         <span class="sec-chip" onclick="secChip('NU')">NU</span>
       </div>
-
-      <!-- Autocomplete ticker browser -->
-      <div style="margin-top:16px;">
-        <div style="font-size:10px;color:#4a5280;font-family:var(--mono);margin-bottom:8px;">Buscar ticker por nombre o símbolo:</div>
-        <div style="position:relative;max-width:480px;" id="secAutoWrap">
-          <input id="secAutoInput" type="text" placeholder="Ej: Apple, Micro, NVDA..." autocomplete="off"
-            style="width:100%;background:#0f1422;border:1px solid rgba(30,39,243,0.35);border-radius:8px;padding:9px 14px 9px 36px;font-size:13px;color:#e8eaf6;outline:none;font-family:var(--mono);transition:border-color .2s;"
-            onfocus="this.style.borderColor='#1E27F3';secAutoShow()"
-            onblur="setTimeout(()=>secAutoHide(),180)"
-            oninput="secAutoFilter(this.value)"
-            onkeydown="secAutoKey(event)" />
-          <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:#4a5280;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <div id="secAutoList"
-            style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#0f1422;border:1px solid rgba(30,39,243,0.35);border-radius:8px;max-height:260px;overflow-y:auto;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
-          </div>
-        </div>
-      </div>
-
       <!-- Status -->
       <div id="secStatus" style="display:none;margin-top:14px;"></div>
     </div>
@@ -814,45 +788,36 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
       <!-- Tabs -->
       <div style="display:flex;gap:0;margin-bottom:24px;border:1px solid rgba(30,39,243,0.2);border-radius:8px;overflow:hidden;width:fit-content;">
       <button id="secTabFinBtn" onclick="secShowTab('fin')"
-        style="padding:10px 28px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:#1E27F3;color:#fff;font-family:var(--mono);letter-spacing:.05em;">📊 Estados Financieros</button>
+        style="padding:10px 28px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:#1E27F3;color:#fff;font-family:var(--mono);letter-spacing:.05em;">📊 Financials</button>
       <button id="secTabRatBtn" onclick="secShowTab('rat')"
         style="padding:10px 28px;font-size:12px;font-weight:700;cursor:pointer;border:none;border-left:1px solid rgba(30,39,243,0.3);background:transparent;color:#4a5280;font-family:var(--mono);letter-spacing:.05em;">📐 Ratios</button>
+      <button id="secTabCmpBtn" onclick="secShowTab('cmp')"
+        style="padding:10px 28px;font-size:12px;font-weight:700;cursor:pointer;border:none;border-left:1px solid rgba(30,39,243,0.3);background:transparent;color:#4a5280;font-family:var(--mono);letter-spacing:.05em;">⚖️ Comparar</button>
       <button id="secTabEvBtn" onclick="secShowTab('ev')"
-        style="padding:10px 28px;font-size:12px;font-weight:700;cursor:pointer;border:none;border-left:1px solid rgba(30,39,243,0.3);background:transparent;color:#4a5280;font-family:var(--mono);letter-spacing:.05em;">📋 Hechos Relevantes</button>
+        style="padding:10px 28px;font-size:12px;font-weight:700;cursor:pointer;border:none;border-left:1px solid rgba(30,39,243,0.3);background:transparent;color:#4a5280;font-family:var(--mono);letter-spacing:.05em;">📋 Filings</button>
       </div>
 
       <!-- ── TAB: FINANCIALS ── -->
       <div id="secTabFin">
-
-        <!-- Charts row -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
-          <div style="background:#0f1422;border:1px solid rgba(30,39,243,0.2);border-radius:10px;padding:18px;">
-            <div style="font-size:10px;font-weight:700;color:#8b99c4;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;font-family:var(--mono);">Revenue & Net Income (M USD)</div>
-            <div style="position:relative;height:220px;"><canvas id="secChartIncome"></canvas></div>
-          </div>
-          <div style="background:#0f1422;border:1px solid rgba(30,39,243,0.2);border-radius:10px;padding:18px;">
-            <div style="font-size:10px;font-weight:700;color:#8b99c4;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;font-family:var(--mono);">Assets vs Liabilities (M USD)</div>
-            <div style="position:relative;height:220px;"><canvas id="secChartBalance"></canvas></div>
-          </div>
+        <!-- Dynamic chart dashboard -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+          <span style="font-size:11px;color:#4a5280;font-family:var(--mono);">Gráficos interactivos — podés minimizar, agregar y cambiar variable/período</span>
+          <button onclick="secAddChart()"
+            style="padding:6px 16px;border-radius:6px;border:1px solid rgba(30,39,243,0.4);background:rgba(30,39,243,0.1);color:#a5b4fc;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);">+ Agregar gráfico</button>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px;">
-          <div style="background:#0f1422;border:1px solid rgba(30,39,243,0.2);border-radius:10px;padding:18px;">
-            <div style="font-size:10px;font-weight:700;color:#8b99c4;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;font-family:var(--mono);">Márgenes (%)</div>
-            <div style="position:relative;height:220px;"><canvas id="secChartMargins"></canvas></div>
-          </div>
-          <div style="background:#0f1422;border:1px solid rgba(30,39,243,0.2);border-radius:10px;padding:18px;">
-            <div style="font-size:10px;font-weight:700;color:#8b99c4;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;font-family:var(--mono);">Operating Cash Flow (M USD)</div>
-            <div style="position:relative;height:220px;"><canvas id="secChartCF"></canvas></div>
-          </div>
-        </div>
-
-        <!-- Tables -->
+        <div id="secChartDashboard" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px;"></div>
+        <!-- Tables with annual + quarterly separate -->
         <div id="secTables"></div>
       </div>
 
       <!-- ── TAB: RATIOS ── -->
       <div id="secTabRat" style="display:none;">
         <div id="secRatios"></div>
+      </div>
+
+      <!-- ── TAB: COMPARAR ── -->
+      <div id="secTabCmp" style="display:none;">
+        <div id="secCompare"></div>
       </div>
 
       <!-- ── TAB: EVENTOS ── -->
@@ -1016,6 +981,8 @@ function backToLanding(){
   document.getElementById('app-equity').style.display='none';
   document.getElementById('app-balances').style.display='none';
   document.getElementById('legal-footer').style.display='none';
+  // Reset balance module state
+  if(window._secResetState) window._secResetState();
 }
 
 // ── CSV PARSER (fix: detecta separador, no reemplaza comas numéricas ciegamente) ──
@@ -1829,50 +1796,49 @@ function openDetail(especie){
     el.innerHTML=`<span>${cfg.i}</span><span>${msg}</span>`;
   }
 
-  window.secChip = function(t){ $('secTicker').value=t; secSearch(); };
+  window.secChip = function(t){ const el=$('secTicker'); if(el){el.value=t;} secSearch(); };
 
   // ── State ──
-  let SEC_PERIOD = 'annual';   // 'annual' | 'quarterly'
-  let SEC_YEARS  = 3;          // number of periods to show
-  let _lastFacts = null;       // cache for re-render on period/years change
-
-  window.secSetPeriod = function(p){
-    SEC_PERIOD = p;
-    $('secPeriodAnnual').style.background = p==='annual'?'#1E27F3':'transparent';
-    $('secPeriodAnnual').style.color      = p==='annual'?'#fff':'#4a5280';
-    $('secPeriodQ').style.background      = p==='quarterly'?'#1E27F3':'transparent';
-    $('secPeriodQ').style.color           = p==='quarterly'?'#fff':'#4a5280';
-    if(_lastFacts){ renderFinancials(_lastFacts); renderRatios(_lastFacts); }
-  };
-
-  window.secSetYears = function(v){
-    SEC_YEARS = parseInt(v)||3;
-    if(_lastFacts){ renderFinancials(_lastFacts); renderRatios(_lastFacts); }
-  };
-
-  // ── Autocomplete ──
-  let _secTickerList = null; // [{ticker, name}]
+  let _lastFacts = null;
+  let _lastSub   = null;
+  let _lastTicker= null;
+  let _secTickerList = null;
   let _autoIdx = -1;
+  let _chartDefs = []; // [{id, metric, period}]
+  let _chartInstances = {}; // id -> Chart instance
+  let _chartIdSeq = 0;
 
+  // Reset everything when going back to landing
+  window._secResetState = function(){
+    _lastFacts=null; _lastSub=null; _lastTicker=null;
+    _chartDefs=[]; _chartInstances={};
+    const r=$('secResults'); if(r) r.style.display='none';
+    const w=$('secWelcome'); if(w) w.style.display='block';
+    const st=$('secStatus'); if(st){st.style.display='none';}
+    const t=$('secTicker'); if(t) t.value='';
+    // destroy all charts
+    Object.values(_chartInstances).forEach(c=>{try{c.destroy();}catch(_){}});
+    _chartInstances={};
+  };
+
+  // ── Autocomplete on the unified input ──
   async function loadTickerList(){
     if(_secTickerList) return;
-    const PROXY = 'https://sec-proxy.tzuccotti.workers.dev';
+    const PROXY='https://sec-proxy.tzuccotti.workers.dev';
     try{
-      const res = await fetch(`${PROXY}?url=https://www.sec.gov/files/company_tickers_exchange.json`);
+      const res=await fetch(`${PROXY}?url=https://www.sec.gov/files/company_tickers_exchange.json`);
       if(!res.ok) throw new Error();
-      const data = await res.json();
-      if(data.data && data.fields){
-        const iT=data.fields.indexOf('ticker'), iN=data.fields.indexOf('name');
-        _secTickerList = data.data.map(r=>({ticker:(r[iT]||'').toUpperCase(), name:r[iN]||''}));
+      const data=await res.json();
+      if(data.data&&data.fields){
+        const iT=data.fields.indexOf('ticker'),iN=data.fields.indexOf('name');
+        _secTickerList=data.data.map(r=>({ticker:(r[iT]||'').toUpperCase(),name:r[iN]||''}));
       }
-    }catch(_){
-      _secTickerList = [];
-    }
+    }catch(_){ _secTickerList=[]; }
   }
 
   window.secAutoShow = async function(){
     await loadTickerList();
-    secAutoFilter($('secAutoInput').value);
+    secAutoFilter($('secTicker').value);
   };
 
   window.secAutoHide = function(){
@@ -1882,33 +1848,35 @@ function openDetail(especie){
 
   window.secAutoFilter = function(q){
     const el=$('secAutoList'); if(!el) return;
-    if(!q||q.length<1){ el.style.display='none'; return; }
-    const ql=q.toLowerCase();
-    const results = (_secTickerList||[])
-      .filter(r=>r.ticker.startsWith(ql.toUpperCase())||r.name.toLowerCase().includes(ql))
-      .slice(0,12);
-    if(!results.length){ el.style.display='none'; return; }
+    const raw=q.trim();
+    if(!raw||raw.length<1){el.style.display='none';return;}
+    const ql=raw.toLowerCase(), qu=raw.toUpperCase();
+    const results=(_secTickerList||[])
+      .filter(r=>r.ticker.startsWith(qu)||r.name.toLowerCase().includes(ql))
+      .slice(0,14);
+    if(!results.length){el.style.display='none';return;}
     _autoIdx=-1;
-    el.innerHTML = results.map((r,i)=>`
+    el.innerHTML=results.map((r,i)=>`
       <div data-idx="${i}" data-ticker="${r.ticker}"
-        style="padding:9px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(30,39,243,0.08);transition:background .1s;"
-        onmouseenter="this.style.background='rgba(30,39,243,0.1)'"
+        style="padding:9px 16px;cursor:pointer;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(30,39,243,0.08);transition:background .1s;"
+        onmouseenter="this.style.background='rgba(30,39,243,0.12)'"
         onmouseleave="this.style.background='transparent'"
         onmousedown="secAutoSelect('${r.ticker}')">
-        <span style="font-size:13px;font-weight:700;color:#a5b4fc;font-family:var(--mono);min-width:52px;">${r.ticker}</span>
+        <span style="font-size:14px;font-weight:800;color:#a5b4fc;font-family:var(--mono);min-width:60px;">${r.ticker}</span>
         <span style="font-size:11px;color:#8b99c4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.name}</span>
       </div>`).join('');
     el.style.display='block';
   };
 
   window.secAutoSelect = function(ticker){
-    $('secAutoInput').value='';
-    $('secAutoList').style.display='none';
-    $('secTicker').value=ticker;
+    const el=$('secTicker'); if(el) el.value=ticker;
+    const al=$('secAutoList'); if(al) al.style.display='none';
+    _autoIdx=-1;
     secSearch();
   };
 
   window.secAutoKey = function(e){
+    if(e.key==='Enter'&&_autoIdx<0){secAutoHide();secSearch();return;}
     const el=$('secAutoList'); if(!el||el.style.display==='none') return;
     const items=el.querySelectorAll('[data-idx]');
     if(e.key==='ArrowDown'){e.preventDefault();_autoIdx=Math.min(_autoIdx+1,items.length-1);items.forEach((it,i)=>it.style.background=i===_autoIdx?'rgba(30,39,243,0.15)':'transparent');}
@@ -1919,15 +1887,17 @@ function openDetail(especie){
 
   // ── Tabs ──
   window.secShowTab = function(tab){
-    $('secTabFin').style.display = tab==='fin'?'block':'none';
-    $('secTabRat').style.display = tab==='rat'?'block':'none';
-    $('secTabEv').style.display  = tab==='ev' ?'block':'none';
-    $('secTabFinBtn').style.background = tab==='fin'?'#1E27F3':'transparent';
-    $('secTabFinBtn').style.color      = tab==='fin'?'#fff':'#4a5280';
-    $('secTabRatBtn').style.background = tab==='rat'?'#1E27F3':'transparent';
-    $('secTabRatBtn').style.color      = tab==='rat'?'#fff':'#4a5280';
-    $('secTabEvBtn').style.background  = tab==='ev' ?'#1E27F3':'transparent';
-    $('secTabEvBtn').style.color       = tab==='ev' ?'#fff':'#4a5280';
+    ['fin','rat','cmp','ev'].forEach(t=>{
+      const d=$(`secTab${t.charAt(0).toUpperCase()+t.slice(1)}`);
+      if(d) d.style.display=tab===t?'block':'none';
+    });
+    const tabs={fin:'secTabFinBtn',rat:'secTabRatBtn',cmp:'secTabCmpBtn',ev:'secTabEvBtn'};
+    Object.entries(tabs).forEach(([t,id])=>{
+      const b=$(id); if(!b) return;
+      b.style.background=tab===t?'#1E27F3':'transparent';
+      b.style.color=tab===t?'#fff':'#4a5280';
+    });
+    if(tab==='cmp' && _lastFacts && !$('secCompare').innerHTML.trim()) renderCompare();
   };
 
   // ══════════════════════════════════════════════
@@ -2027,6 +1997,10 @@ function openDetail(especie){
 
     // ── 3. Renderizar ─────────────────────────────────────────────
     _lastFacts = facts;
+    _lastSub   = sub;
+    _lastTicker= ticker;
+    _cmpCompanies = []; // reset compare on new base company
+    $('secCompare').innerHTML = ''; // reset compare tab on new search
     renderCompanyHeader(ticker, companyName, cik, sub, facts);
     renderFinancials(facts);
     renderRatios(facts);
@@ -2104,220 +2078,341 @@ function openDetail(especie){
   }
 
   // ══════════════════════════════════════════════
+  // SHARED SERIES HELPERS
+  // ══════════════════════════════════════════════
+  function _seriesAnnual(us, ...keys){
+    for(const k of keys){
+      const arr=(((us[k]||{}).units||{})['USD']||((us[k]||{}).units||{})['shares']||[])
+        .filter(x=>(x.form==='10-K'||x.form==='20-F'||x.form==='10-K/A')&&x.end&&!x.start)
+        .sort((a,b)=>a.end>b.end?1:-1);
+      const seen=new Set(),out=[];
+      for(const item of arr){const yr=item.end.slice(0,4);if(!seen.has(yr)){seen.add(yr);out.push({yr,val:item.val,date:item.end});}}
+      if(out.length) return out;
+    }
+    return [];
+  }
+  function _seriesQ(us, ...keys){
+    for(const k of keys){
+      const arr=(((us[k]||{}).units||{})['USD']||((us[k]||{}).units||{})['shares']||[])
+        .filter(x=>(x.form==='10-Q'||x.form==='10-K')&&x.end&&x.start)
+        .filter(x=>{const d=(new Date(x.end)-new Date(x.start))/(1000*86400);return(d>=60&&d<=100)||(d>=340&&d<=380&&x.form==='10-K');})
+        .sort((a,b)=>a.end>b.end?1:-1);
+      const seen=new Set(),out=[];
+      for(const item of arr){
+        const label=`${item.end.slice(0,4)}Q${Math.ceil(parseInt(item.end.slice(5,7))/3)}`;
+        if(!seen.has(label)){seen.add(label);out.push({yr:label,val:item.val,date:item.end});}
+      }
+      if(out.length) return out;
+    }
+    return [];
+  }
+  function _seriesBSAnnual(us,...keys){
+    for(const k of keys){
+      const arr=(((us[k]||{}).units||{})['USD']||((us[k]||{}).units||{})['shares']||[])
+        .filter(x=>x.end&&!x.start&&(x.form==='10-K'||x.form==='20-F'||x.form==='10-Q'||x.form==='10-K/A'))
+        .sort((a,b)=>a.end>b.end?1:-1);
+      const seen=new Set(),out=[];
+      for(const item of arr){const yr=item.end.slice(0,4);if(!seen.has(yr)){seen.add(yr);out.push({yr,val:item.val,date:item.end});}}
+      if(out.length) return out;
+    }
+    return [];
+  }
+  function _seriesBSQ(us,...keys){
+    for(const k of keys){
+      const arr=(((us[k]||{}).units||{})['USD']||((us[k]||{}).units||{})['shares']||[])
+        .filter(x=>x.end&&!x.start&&(x.form==='10-K'||x.form==='20-F'||x.form==='10-Q'||x.form==='10-K/A'))
+        .sort((a,b)=>a.end>b.end?1:-1);
+      const seen=new Set(),out=[];
+      for(const item of arr){
+        const label=`${item.end.slice(0,4)}Q${Math.ceil(parseInt(item.end.slice(5,7))/3)}`;
+        if(!seen.has(label)){seen.add(label);out.push({yr:label,val:item.val,date:item.end});}
+      }
+      if(out.length) return out;
+    }
+    return [];
+  }
+
+  // Build all series objects for a given us-gaap namespace
+  function _buildAllSeries(us, isQ){
+    const sa = isQ ? _seriesQ : _seriesAnnual;
+    const sb = isQ ? _seriesBSQ : _seriesBSAnnual;
+    const N = isQ ? 12 : 8;
+    const sl = (fn,...k) => fn(us,...k).slice(-N);
+    const R={};
+    R.revenue   = sl(sa,'Revenues','RevenueFromContractWithCustomerExcludingAssessedTax','SalesRevenueNet','RevenueNet');
+    R.netInc    = sl(sa,'NetIncomeLoss','ProfitLoss');
+    R.grossP    = sl(sa,'GrossProfit');
+    R.opInc     = sl(sa,'OperatingIncomeLoss');
+    R.assets    = sl(sb,'Assets');
+    R.liab      = sl(sb,'Liabilities');
+    R.equity    = sl(sb,'StockholdersEquity','StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest');
+    R.cash      = sl(sb,'CashAndCashEquivalentsAtCarryingValue','Cash','CashCashEquivalentsAndShortTermInvestments');
+    R.opCF      = sl(sa,'NetCashProvidedByUsedInOperatingActivities');
+    R.capex     = sl(sa,'PaymentsToAcquirePropertyPlantAndEquipment','CapitalExpenditureDiscontinuedOperations');
+    R.eps       = sl(sa,'EarningsPerShareDiluted','EarningsPerShareBasic');
+    R.debt      = sl(sb,'LongTermDebt','LongTermDebtNoncurrent');
+    R.da        = sl(sa,'DepreciationDepletionAndAmortization','DepreciationAndAmortization');
+    R.rd        = sl(sa,'ResearchAndDevelopmentExpense');
+    R.sga       = sl(sa,'SellingGeneralAndAdministrativeExpense');
+    R.shares    = sl(sb,'CommonStockSharesOutstanding','WeightedAverageNumberOfSharesOutstandingBasic');
+    R.currentA  = sl(sb,'AssetsCurrent');
+    R.currentL  = sl(sb,'LiabilitiesCurrent');
+    R.inventory = sl(sb,'InventoryNet','Inventories');
+    R.receiv    = sl(sb,'AccountsReceivableNetCurrent');
+    R.intangib  = sl(sb,'IntangibleAssetsNetExcludingGoodwill','FiniteLivedIntangibleAssetsNet');
+    R.goodwill  = sl(sb,'Goodwill');
+    R.tax       = sl(sa,'IncomeTaxExpenseBenefit');
+    R.interest  = sl(sa,'InterestExpense','InterestAndDebtExpense');
+    // Computed
+    R.ebitda = R.opInc.map(o=>{const d=R.da.find(x=>x.yr===o.yr);return d?{yr:o.yr,val:o.val+Math.abs(d.val)}:{yr:o.yr,val:o.val};});
+    R.fcf    = R.opCF.map(o=>{const c=R.capex.find(x=>x.yr===o.yr);return{yr:o.yr,val:c?o.val-Math.abs(c.val):o.val};});
+    R.grossM = R.revenue.map(r=>{const g=R.grossP.find(x=>x.yr===r.yr);return g&&r.val?{yr:r.yr,val:g.val/r.val*100}:null;}).filter(Boolean);
+    R.opM    = R.revenue.map(r=>{const o=R.opInc.find(x=>x.yr===r.yr);return o&&r.val?{yr:r.yr,val:o.val/r.val*100}:null;}).filter(Boolean);
+    R.netM   = R.revenue.map(r=>{const n=R.netInc.find(x=>x.yr===r.yr);return n&&r.val?{yr:r.yr,val:n.val/r.val*100}:null;}).filter(Boolean);
+    R.ebitdaM= R.revenue.map(r=>{const e=R.ebitda.find(x=>x.yr===r.yr);return e&&r.val?{yr:r.yr,val:e.val/r.val*100}:null;}).filter(Boolean);
+    return R;
+  }
+
+  // ── Chart metric catalogue ──
+  const CHART_METRICS = [
+    {id:'revenue',   label:'Revenue',           unit:'M', field:'revenue',  type:'bar',  color:'#1E27F3'},
+    {id:'grossP',    label:'Gross Profit',       unit:'M', field:'grossP',   type:'bar',  color:'#a5b4fc'},
+    {id:'opInc',     label:'Op. Income',         unit:'M', field:'opInc',    type:'bar',  color:'#3fb950'},
+    {id:'ebitda',    label:'EBITDA',             unit:'M', field:'ebitda',   type:'bar',  color:'#0d9e6e'},
+    {id:'netInc',    label:'Net Income',         unit:'M', field:'netInc',   type:'bar',  color:'#22c55e'},
+    {id:'opCF',      label:'Operating CF',       unit:'M', field:'opCF',     type:'bar',  color:'#1E27F3'},
+    {id:'fcf',       label:'Free Cash Flow',     unit:'M', field:'fcf',      type:'bar',  color:'#d4a017'},
+    {id:'assets',    label:'Total Assets',       unit:'M', field:'assets',   type:'bar',  color:'#a5b4fc'},
+    {id:'equity',    label:'Equity',             unit:'M', field:'equity',   type:'bar',  color:'#3fb950'},
+    {id:'debt',      label:'LT Debt',            unit:'M', field:'debt',     type:'bar',  color:'#f85149'},
+    {id:'cash',      label:'Cash',               unit:'M', field:'cash',     type:'bar',  color:'#22c55e'},
+    {id:'grossM',    label:'Gross Margin %',     unit:'%', field:'grossM',   type:'line', color:'#3fb950'},
+    {id:'opM',       label:'Op. Margin %',       unit:'%', field:'opM',      type:'line', color:'#1E27F3'},
+    {id:'netM',      label:'Net Margin %',       unit:'%', field:'netM',     type:'line', color:'#d4a017'},
+    {id:'ebitdaM',   label:'EBITDA Margin %',    unit:'%', field:'ebitdaM',  type:'line', color:'#0d9e6e'},
+    {id:'eps',       label:'EPS Diluted',        unit:'$', field:'eps',      type:'line', color:'#a5b4fc'},
+    {id:'rd',        label:'R&D Expense',        unit:'M', field:'rd',       type:'bar',  color:'#8b5cf6'},
+    {id:'sga',       label:'SG&A Expense',       unit:'M', field:'sga',      type:'bar',  color:'#f59e0b'},
+  ];
+
+  // ── Chart dashboard helpers ──
+  function _renderOneDashChart(cid, metricId, period){
+    const meta = CHART_METRICS.find(m=>m.id===metricId)||CHART_METRICS[0];
+    const us = (_lastFacts?.facts||{})['us-gaap']||{};
+    const isQ = period==='quarterly';
+    const S = _buildAllSeries(us, isQ);
+    const data = (S[meta.field]||[]).slice().reverse(); // newest left
+    const labels = data.map(x=>x.yr);
+    const vals   = data.map(x=> meta.unit==='M' ? +(x.val/1e6).toFixed(0) : +x.val.toFixed(2));
+    const chartCfg={
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#131929',borderColor:'rgba(30,39,243,0.3)',borderWidth:1,titleColor:'#e8eaf6',bodyColor:'#8b99c4',callbacks:{label:c=>`${meta.label}: ${meta.unit==='M'?'$'+c.raw.toLocaleString()+'M':meta.unit==='%'?c.raw.toFixed(1)+'%':'$'+c.raw.toFixed(2)}`}}},
+      scales:{x:{ticks:{color:'#8b99c4',font:{size:9}},grid:{color:'rgba(30,39,243,0.06)'}},y:{ticks:{color:'#8b99c4',font:{size:9}},grid:{color:'rgba(30,39,243,0.06)'}}}
+    };
+    const canvas=document.getElementById(`dashCanvas_${cid}`); if(!canvas) return;
+    if(_chartInstances[cid]){_chartInstances[cid].destroy();}
+    _chartInstances[cid]=new Chart(canvas,{
+      type: meta.type,
+      data:{labels,datasets:[{
+        label:meta.label, data:vals,
+        backgroundColor: meta.type==='bar'?meta.color+'99':meta.color+'22',
+        borderColor: meta.color,
+        borderWidth: meta.type==='bar'?1:2,
+        pointRadius: meta.type==='line'?3:0,
+        fill: meta.type==='line',
+        tension:.3
+      }]},
+      options: chartCfg
+    });
+  }
+
+  function _buildDashCard(cid, metricId, period){
+    const meta = CHART_METRICS.find(m=>m.id===metricId)||CHART_METRICS[0];
+    const metricOpts = CHART_METRICS.map(m=>`<option value="${m.id}"${m.id===metricId?' selected':''}>${m.label}</option>`).join('');
+    return `<div id="dashCard_${cid}" style="background:#0f1422;border:1px solid rgba(30,39,243,0.2);border-radius:10px;padding:14px;position:relative;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+        <select onchange="secUpdateChart(${cid},'metric',this.value)"
+          style="background:#131929;border:1px solid rgba(30,39,243,0.3);border-radius:5px;color:#a5b4fc;font-family:var(--mono);font-size:10px;padding:3px 7px;cursor:pointer;outline:none;font-weight:700;">
+          ${metricOpts}
+        </select>
+        <div style="display:flex;background:#131929;border:1px solid rgba(30,39,243,0.2);border-radius:5px;overflow:hidden;">
+          <button onclick="secUpdateChart(${cid},'period','annual')"
+            style="padding:3px 10px;font-size:9px;font-weight:700;cursor:pointer;border:none;background:${period==='annual'?'#1E27F3':'transparent'};color:${period==='annual'?'#fff':'#4a5280'};font-family:var(--mono);" id="dashPeriodA_${cid}">Anual</button>
+          <button onclick="secUpdateChart(${cid},'period','quarterly')"
+            style="padding:3px 10px;font-size:9px;font-weight:700;cursor:pointer;border:none;background:${period==='quarterly'?'#1E27F3':'transparent'};color:${period==='quarterly'?'#fff':'#4a5280'};font-family:var(--mono);" id="dashPeriodQ_${cid}">Trim.</button>
+        </div>
+        <span style="flex:1"></span>
+        <button onclick="secMinimizeChart(${cid})" title="Minimizar"
+          style="padding:2px 8px;font-size:10px;cursor:pointer;border:1px solid rgba(30,39,243,0.2);border-radius:4px;background:transparent;color:#4a5280;font-family:var(--mono);">−</button>
+        <button onclick="secRemoveChart(${cid})" title="Eliminar"
+          style="padding:2px 8px;font-size:10px;cursor:pointer;border:1px solid rgba(248,81,73,0.3);border-radius:4px;background:transparent;color:#f85149;font-family:var(--mono);">✕</button>
+      </div>
+      <div id="dashBody_${cid}" style="position:relative;height:200px;">
+        <canvas id="dashCanvas_${cid}"></canvas>
+      </div>
+    </div>`;
+  }
+
+  function _refreshDashboard(){
+    const dash=$('secChartDashboard'); if(!dash) return;
+    dash.innerHTML=_chartDefs.map(c=>_buildDashCard(c.id,c.metric,c.period)).join('');
+    _chartDefs.forEach(c=>{
+      setTimeout(()=>_renderOneDashChart(c.id,c.metric,c.period),30);
+    });
+  }
+
+  window.secUpdateChart = function(cid, prop, val){
+    const def=_chartDefs.find(c=>c.id===cid); if(!def) return;
+    def[prop]=val;
+    // re-render this card only
+    const card=$(`dashCard_${cid}`); if(!card) return;
+    const par=card.parentElement;
+    const tempDiv=document.createElement('div');
+    tempDiv.innerHTML=_buildDashCard(cid,def.metric,def.period);
+    par.replaceChild(tempDiv.firstElementChild,card);
+    setTimeout(()=>_renderOneDashChart(cid,def.metric,def.period),30);
+  };
+
+  window.secMinimizeChart = function(cid){
+    const body=$(`dashBody_${cid}`); if(!body) return;
+    const minimized=body.style.display==='none';
+    body.style.display=minimized?'':'none';
+    // find the minimize button and update label
+    const card=$(`dashCard_${cid}`); if(!card) return;
+    const minBtn=[...card.querySelectorAll('button')].find(b=>b.title==='Minimizar');
+    if(minBtn) minBtn.textContent=minimized?'−':'□';
+  };
+
+  window.secRemoveChart = function(cid){
+    _chartDefs=_chartDefs.filter(c=>c.id!==cid);
+    if(_chartInstances[cid]){_chartInstances[cid].destroy();delete _chartInstances[cid];}
+    const card=$(`dashCard_${cid}`); if(card) card.remove();
+  };
+
+  window.secAddChart = function(){
+    const cid=++_chartIdSeq;
+    // Default to a metric not already in use if possible
+    const used=_chartDefs.map(c=>c.metric);
+    const next=CHART_METRICS.find(m=>!used.includes(m.id))||CHART_METRICS[0];
+    _chartDefs.push({id:cid,metric:next.id,period:'annual'});
+    const dash=$('secChartDashboard'); if(!dash) return;
+    const tempDiv=document.createElement('div');
+    tempDiv.innerHTML=_buildDashCard(cid,next.id,'annual');
+    dash.appendChild(tempDiv.firstElementChild);
+    setTimeout(()=>_renderOneDashChart(cid,next.id,'annual'),30);
+  };
+
+  // ══════════════════════════════════════════════
   // RENDER FINANCIALS + CHARTS
   // ══════════════════════════════════════════════
   function renderFinancials(facts){
     const us = facts.facts['us-gaap']||{};
-    const isQ = SEC_PERIOD === 'quarterly';
 
-    // Helper: extract time series (annual or quarterly)
-    function series(obj, ...keys){
-      for(const k of keys){
-        const c = (obj[k]||{}).units||{};
-        let arr;
-        if(isQ){
-          // quarterly: 10-Q entries with start+end (duration = quarter)
-          arr = (c['USD']||c['shares']||[])
-            .filter(x=>(x.form==='10-Q'||x.form==='10-K') && x.end && x.start)
-            .filter(x=>{
-              // keep entries spanning ~1 quarter (60-100 days) or ~1 year for 10-K
-              const days = (new Date(x.end)-new Date(x.start))/(1000*86400);
-              return (days>=60&&days<=100)||(days>=340&&days<=380&&x.form==='10-K');
-            })
-            .sort((a,b)=>a.end>b.end?1:-1);
-        } else {
-          // annual: 10-K entries without start (point-in-time) or with full-year duration
-          arr = (c['USD']||c['shares']||[])
-            .filter(x=>(x.form==='10-K'||x.form==='20-F'||x.form==='10-K/A') && x.end && !x.start)
-            .sort((a,b)=>a.end>b.end?1:-1);
-        }
-        // dedupe by period label
-        const seen=new Set(), out=[];
-        for(const item of arr){
-          const label = isQ
-            ? `${item.end.slice(0,4)}Q${Math.ceil(parseInt(item.end.slice(5,7))/3)}`
-            : item.end.slice(0,4);
-          if(!seen.has(label)){seen.add(label);out.push({yr:label, val:item.val, date:item.end});}
-        }
-        if(out.length) return out.slice(-Math.min(SEC_YEARS*(isQ?4:1), isQ?20:8));
-      }
-      return [];
+    // ── Initial chart dashboard ──
+    // Destroy old chart instances
+    Object.values(_chartInstances).forEach(c=>{try{c.destroy();}catch(_){}});
+    _chartInstances={};
+
+    // Default 4 charts if none defined yet
+    if(_chartDefs.length===0){
+      _chartDefs=[
+        {id:++_chartIdSeq, metric:'revenue',  period:'annual'},
+        {id:++_chartIdSeq, metric:'grossM',   period:'annual'},
+        {id:++_chartIdSeq, metric:'netInc',   period:'annual'},
+        {id:++_chartIdSeq, metric:'opCF',     period:'annual'},
+      ];
     }
+    _refreshDashboard();
 
-    // Balance sheet: point-in-time (use period-end regardless of form)
-    function seriesBS(obj, ...keys){
-      for(const k of keys){
-        const c = (obj[k]||{}).units||{};
-        const arr = (c['USD']||c['shares']||[])
-          .filter(x=>x.end && !x.start && (x.form==='10-K'||x.form==='20-F'||x.form==='10-Q'||x.form==='10-K/A'))
-          .sort((a,b)=>a.end>b.end?1:-1);
-        const seen=new Set(), out=[];
-        for(const item of arr){
-          const label = isQ
-            ? `${item.end.slice(0,4)}Q${Math.ceil(parseInt(item.end.slice(5,7))/3)}`
-            : item.end.slice(0,4);
-          if(!seen.has(label)){seen.add(label);out.push({yr:label,val:item.val,date:item.end});}
-        }
-        if(out.length) return out.slice(-Math.min(SEC_YEARS*(isQ?4:1), isQ?20:8));
-      }
-      return [];
-    }
-
-    const sRevenue  = series(us,'Revenues','RevenueFromContractWithCustomerExcludingAssessedTax','SalesRevenueNet','RevenueNet');
-    const sNetInc   = series(us,'NetIncomeLoss','ProfitLoss');
-    const sGrossP   = series(us,'GrossProfit');
-    const sOpInc    = series(us,'OperatingIncomeLoss');
-    const sAssets   = seriesBS(us,'Assets');
-    const sLiab     = seriesBS(us,'Liabilities');
-    const sEquity   = seriesBS(us,'StockholdersEquity','StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest');
-    const sCash     = seriesBS(us,'CashAndCashEquivalentsAtCarryingValue','Cash','CashCashEquivalentsAndShortTermInvestments');
-    const sOpCF     = series(us,'NetCashProvidedByUsedInOperatingActivities');
-    const sCapex    = series(us,'PaymentsToAcquirePropertyPlantAndEquipment','CapitalExpenditureDiscontinuedOperations');
-    const sEPS      = series(us,'EarningsPerShareDiluted','EarningsPerShareBasic');
-    const sDebt     = seriesBS(us,'LongTermDebt','LongTermDebtNoncurrent');
-    const sDA       = series(us,'DepreciationDepletionAndAmortization','DepreciationAndAmortization');
-    const sRD       = series(us,'ResearchAndDevelopmentExpense');
-    const sSGA      = series(us,'SellingGeneralAndAdministrativeExpense');
-    const sShares   = seriesBS(us,'CommonStockSharesOutstanding','WeightedAverageNumberOfSharesOutstandingBasic');
-    const sCurrentA = seriesBS(us,'AssetsCurrent');
-    const sCurrentL = seriesBS(us,'LiabilitiesCurrent');
-    const sInventory= seriesBS(us,'InventoryNet','Inventories');
-    const sReceiv   = seriesBS(us,'AccountsReceivableNetCurrent');
-    const sIntangib = seriesBS(us,'IntangibleAssetsNetExcludingGoodwill','FiniteLivedIntangibleAssetsNet');
-    const sGoodwill = seriesBS(us,'Goodwill');
-    const sTax      = series(us,'IncomeTaxExpenseBenefit');
-    const sInterest = series(us,'InterestExpense','InterestAndDebtExpense');
-
-    // Computed series
-    const sGrossM = sRevenue.map(r=>{const g=sGrossP.find(x=>x.yr===r.yr);return g&&r.val?{yr:r.yr,val:g.val/r.val*100}:null;}).filter(Boolean);
-    const sNetM   = sRevenue.map(r=>{const n=sNetInc.find(x=>x.yr===r.yr);return n&&r.val?{yr:r.yr,val:n.val/r.val*100}:null;}).filter(Boolean);
-    const sOpM    = sRevenue.map(r=>{const o=sOpInc.find(x=>x.yr===r.yr);return o&&r.val?{yr:r.yr,val:o.val/r.val*100}:null;}).filter(Boolean);
-    const sEBITDA = sOpInc.map(o=>{const d=sDA.find(x=>x.yr===o.yr);return d?{yr:o.yr,val:o.val+Math.abs(d.val)}:{yr:o.yr,val:o.val};});
-    const sFCF    = sOpCF.map(o=>{const c=sCapex.find(x=>x.yr===o.yr);return{yr:o.yr,val:c?o.val-Math.abs(c.val):o.val};});
-
-    // ── Charts ──
-    const chartCfg = {
-      responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{labels:{color:'#8b99c4',font:{size:11},boxWidth:12}},tooltip:{backgroundColor:'#131929',borderColor:'rgba(30,39,243,0.3)',borderWidth:1,titleColor:'#e8eaf6',bodyColor:'#8b99c4'}},
-      scales:{x:{ticks:{color:'#8b99c4',font:{size:10}},grid:{color:'rgba(30,39,243,0.08)'}},y:{ticks:{color:'#8b99c4',font:{size:10}},grid:{color:'rgba(30,39,243,0.08)'}}}
-    };
-
-    function toM(arr){ return arr.map(x=>+(x.val/1e6).toFixed(0)); }
-    function labels(arr){ return arr.map(x=>x.yr); }
-
-    // Destroy old charts
-    ['secChartIncome','secChartBalance','secChartMargins','secChartCF'].forEach(id=>{
-      const el=$(id); if(el&&el._chart){el._chart.destroy();el._chart=null;}
-    });
-
-    function mkChart(id, config){
-      const el=$(id); if(!el)return;
-      if(el._chart){el._chart.destroy();}
-      el._chart = new Chart(el, config);
-    }
-
-    mkChart('secChartIncome',{type:'bar',data:{
-      labels: labels(sRevenue),
-      datasets:[
-        {label:'Revenue',data:toM(sRevenue),backgroundColor:'rgba(30,39,243,0.6)',borderColor:'#1E27F3',borderWidth:1},
-        {label:'Gross Profit',data:toM(sGrossP.filter(x=>sRevenue.find(r=>r.yr===x.yr))),backgroundColor:'rgba(165,180,252,0.4)',borderColor:'#a5b4fc',borderWidth:1},
-        {label:'Net Income',data:toM(sNetInc.filter(x=>sRevenue.find(r=>r.yr===x.yr))),backgroundColor:'rgba(63,185,80,0.5)',borderColor:'#3fb950',borderWidth:1},
-      ]
-    },options:{...chartCfg}});
-
-    mkChart('secChartBalance',{type:'bar',data:{
-      labels: labels(sAssets),
-      datasets:[
-        {label:'Total Assets',data:toM(sAssets),backgroundColor:'rgba(165,180,252,0.5)',borderColor:'#a5b4fc',borderWidth:1},
-        {label:'Total Liabilities',data:toM(sLiab.filter(x=>sAssets.find(r=>r.yr===x.yr))),backgroundColor:'rgba(248,81,73,0.4)',borderColor:'#f85149',borderWidth:1},
-        {label:'Equity',data:toM(sEquity.filter(x=>sAssets.find(r=>r.yr===x.yr))),backgroundColor:'rgba(63,185,80,0.4)',borderColor:'#3fb950',borderWidth:1},
-      ]
-    },options:{...chartCfg}});
-
-    mkChart('secChartMargins',{type:'line',data:{
-      labels: labels(sGrossM),
-      datasets:[
-        {label:'Gross Margin',data:sGrossM.map(x=>+x.val.toFixed(1)),borderColor:'#3fb950',backgroundColor:'rgba(63,185,80,0.08)',borderWidth:2,pointRadius:3,tension:.3,fill:true},
-        {label:'Op. Margin', data:sOpM.filter(x=>sGrossM.find(r=>r.yr===x.yr)).map(x=>+x.val.toFixed(1)),borderColor:'#1E27F3',backgroundColor:'rgba(30,39,243,0.08)',borderWidth:2,pointRadius:3,tension:.3},
-        {label:'Net Margin', data:sNetM.filter(x=>sGrossM.find(r=>r.yr===x.yr)).map(x=>+x.val.toFixed(1)),borderColor:'#d4a017',backgroundColor:'rgba(212,160,23,0.08)',borderWidth:2,pointRadius:3,tension:.3},
-      ]
-    },options:{...chartCfg}});
-
-    mkChart('secChartCF',{type:'bar',data:{
-      labels: labels(sOpCF),
-      datasets:[
-        {label:'Op. Cash Flow',data:toM(sOpCF),backgroundColor:'rgba(30,39,243,0.6)',borderColor:'#1E27F3',borderWidth:1},
-        {label:'Free Cash Flow',data:toM(sFCF.filter(x=>sOpCF.find(r=>r.yr===x.yr))),backgroundColor:'rgba(212,160,23,0.5)',borderColor:'#d4a017',borderWidth:1},
-      ]
-    },options:{...chartCfg}});
-
-    // ── Tables ──
-    function tbl(title, rows){
-      const allYears = [...new Set(rows.flatMap(r=>r.series.map(x=>x.yr)))].sort();
+    // ── Table builder (sticky first col, newest-left) ──
+    function tbl(title, rows, isQ){
+      const allYears=[...new Set(rows.filter(r=>r.series.length).flatMap(r=>r.series.map(x=>x.yr)))].sort().reverse(); // newest first
       if(!allYears.length) return '';
-      const thS='padding:8px 12px;font-size:10px;font-weight:600;color:#8b99c4;text-transform:uppercase;letter-spacing:.05em;';
-      const tdS='padding:7px 12px;font-size:12px;';
-      return `<div style="margin-bottom:20px;background:#0f1422;border:1px solid rgba(30,39,243,0.2);border-radius:10px;overflow:hidden;overflow-x:auto;">
-        <div style="padding:14px 16px;font-size:11px;font-weight:700;color:#8b99c4;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid rgba(30,39,243,0.15);font-family:var(--mono);">${title}</div>
-        <table class="sec-table">
-          <thead><tr><th style="${thS}text-align:left;">Métrica</th>${allYears.map(y=>`<th style="${thS}">${y}</th>`).join('')}</tr></thead>
-          <tbody>${rows.map(row=>{
-            const cells = allYears.map(yr=>{
-              const p = row.series.find(x=>x.yr===yr);
-              const v = p ? (row.fmt ? row.fmt(p.val) : fmtM(p.val)) : '—';
-              const color = p && row.colorFn ? row.colorFn(p.val) : '#e8eaf6';
-              return `<td style="${tdS}text-align:right;color:${color};">${v}</td>`;
+      const visRows=rows.filter(r=>r.series.length);
+      if(!visRows.length) return '';
+      // Col widths
+      const colW=86;
+      return `<div style="margin-bottom:20px;background:#0f1422;border:1px solid rgba(30,39,243,0.2);border-radius:10px;overflow:hidden;">
+        <div style="padding:14px 16px;font-size:11px;font-weight:700;color:#8b99c4;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid rgba(30,39,243,0.15);font-family:var(--mono);display:flex;align-items:center;gap:10px;">
+          ${title}
+          <span style="font-size:9px;font-weight:500;color:#4a5280;background:#131929;padding:2px 8px;border-radius:10px;border:1px solid rgba(30,39,243,0.15);">${isQ?'TRIMESTRAL':'ANUAL'}</span>
+        </div>
+        <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+          <colgroup><col style="width:180px;min-width:180px;">${allYears.map(()=>`<col style="width:${colW}px;min-width:${colW}px;">`).join('')}</colgroup>
+          <thead><tr>
+            <th style="position:sticky;left:0;z-index:5;background:#131929;padding:8px 14px;font-size:10px;font-weight:600;color:#8b99c4;text-transform:uppercase;letter-spacing:.05em;text-align:left;border-bottom:1px solid rgba(30,39,243,0.15);white-space:nowrap;">Métrica</th>
+            ${allYears.map(y=>`<th style="background:#131929;padding:8px 10px;font-size:10px;font-weight:600;color:#8b99c4;text-transform:uppercase;letter-spacing:.05em;text-align:right;border-bottom:1px solid rgba(30,39,243,0.15);white-space:nowrap;">${y}</th>`).join('')}
+          </tr></thead>
+          <tbody>${visRows.map(row=>{
+            const cells=allYears.map(yr=>{
+              const p=row.series.find(x=>x.yr===yr);
+              const v=p?(row.fmt?row.fmt(p.val):fmtM(p.val)):'—';
+              const color=p&&row.colorFn?row.colorFn(p.val):'#e8eaf6';
+              return `<td style="padding:7px 10px;font-size:11px;text-align:right;color:${color};white-space:nowrap;border-bottom:1px solid rgba(30,39,243,0.07);font-family:var(--mono);">${v}</td>`;
             }).join('');
-            return `<tr><td style="${tdS}color:#8b99c4;">${row.label}</td>${cells}</tr>`;
+            return `<tr>
+              <td style="position:sticky;left:0;z-index:4;background:#0f1422;padding:7px 14px;font-size:11px;color:#8b99c4;white-space:nowrap;border-bottom:1px solid rgba(30,39,243,0.07);font-family:var(--mono);">${row.label}</td>
+              ${cells}
+            </tr>`;
           }).join('')}</tbody>
         </table>
+        </div>
       </div>`;
     }
 
-    const colorPosNeg = v => v>=0?'#3fb950':'#f85149';
-    const colorPct = v => v>=0?'#3fb950':'#f85149';
+    const cpn = v=>v>=0?'#3fb950':'#f85149';
+    const pct  = v=>fmtPct(v);
 
-    $('secTables').innerHTML = [
-      tbl('📊 Income Statement', [
-        {label:'Revenue',             series:sRevenue},
-        {label:'Gross Profit',        series:sGrossP},
-        {label:'Operating Income',    series:sOpInc,   colorFn:colorPosNeg},
-        {label:'EBITDA',              series:sEBITDA,  colorFn:colorPosNeg},
-        {label:'Net Income',          series:sNetInc,  colorFn:colorPosNeg},
-        {label:'EPS Diluted',         series:sEPS,     fmt:v=>'$'+v.toFixed(2), colorFn:colorPosNeg},
-        {label:'R&D Expense',         series:sRD},
-        {label:'SG&A Expense',        series:sSGA},
-        {label:'D&A',                 series:sDA},
-        {label:'Tax Expense',         series:sTax},
-        {label:'Interest Expense',    series:sInterest},
-      ].filter(r=>r.series.length>0)),
-      tbl('📐 Márgenes', [
-        {label:'Gross Margin %',      series:sGrossM,  fmt:v=>fmtPct(v), colorFn:colorPct},
-        {label:'Op. Margin %',        series:sOpM,     fmt:v=>fmtPct(v), colorFn:colorPct},
-        {label:'Net Margin %',        series:sNetM,    fmt:v=>fmtPct(v), colorFn:colorPct},
-        {label:'EBITDA Margin %',     series:sRevenue.map(r=>{const e=sEBITDA.find(x=>x.yr===r.yr);return e&&r.val?{yr:r.yr,val:e.val/r.val*100}:null;}).filter(Boolean), fmt:v=>fmtPct(v), colorFn:colorPct},
-      ].filter(r=>r.series.length>0)),
-      tbl('🏦 Balance Sheet', [
-        {label:'Cash & Equivalents',   series:sCash,       colorFn:()=>'#3fb950'},
-        {label:'Accounts Receivable',  series:sReceiv},
-        {label:'Inventories',          series:sInventory},
-        {label:'Current Assets',       series:sCurrentA},
-        {label:'Total Assets',         series:sAssets},
-        {label:'Current Liabilities',  series:sCurrentL,   colorFn:()=>'#f85149'},
-        {label:'Long-term Debt',       series:sDebt,       colorFn:()=>'#f85149'},
-        {label:'Total Liabilities',    series:sLiab,       colorFn:()=>'#f85149'},
-        {label:'Equity',               series:sEquity,     colorFn:colorPosNeg},
-        {label:'Goodwill',             series:sGoodwill},
-        {label:'Intangibles',          series:sIntangib},
-        {label:'Shares Outstanding',   series:sShares,     fmt:v=>v>=1e9?(v/1e9).toFixed(2)+'B':v>=1e6?(v/1e6).toFixed(0)+'M':v.toFixed(0)},
-      ].filter(r=>r.series.length>0)),
-      tbl('💸 Cash Flow', [
-        {label:'Operating CF',    series:sOpCF,   colorFn:colorPosNeg},
-        {label:'Capex',           series:sCapex,  fmt:v=>fmtM(-Math.abs(v))},
-        {label:'Free Cash Flow',  series:sFCF,    colorFn:colorPosNeg},
-        {label:'D&A (CF)',        series:sDA},
-      ].filter(r=>r.series.length>0)),
-    ].join('');
+    // Build annual series
+    const A = _buildAllSeries(us, false);
+    // Build quarterly series
+    const Q = _buildAllSeries(us, true);
+
+    function makeTables(S, isQ){
+      return [
+        tbl('📊 Income Statement', [
+          {label:'Revenue',           series:S.revenue},
+          {label:'Gross Profit',      series:S.grossP},
+          {label:'Op. Income (EBIT)', series:S.opInc,    colorFn:cpn},
+          {label:'EBITDA',            series:S.ebitda,   colorFn:cpn},
+          {label:'Net Income',        series:S.netInc,   colorFn:cpn},
+          {label:'EPS Diluted',       series:S.eps,      fmt:v=>'$'+v.toFixed(2), colorFn:cpn},
+          {label:'R&D',               series:S.rd},
+          {label:'SG&A',              series:S.sga},
+          {label:'D&A',               series:S.da},
+          {label:'Tax Expense',       series:S.tax},
+          {label:'Interest Expense',  series:S.interest},
+        ].filter(r=>r.series.length), isQ),
+        tbl('📐 Márgenes', [
+          {label:'Gross Margin %',    series:S.grossM,   fmt:pct, colorFn:cpn},
+          {label:'Op. Margin %',      series:S.opM,      fmt:pct, colorFn:cpn},
+          {label:'EBITDA Margin %',   series:S.ebitdaM,  fmt:pct, colorFn:cpn},
+          {label:'Net Margin %',      series:S.netM,     fmt:pct, colorFn:cpn},
+        ].filter(r=>r.series.length), isQ),
+        tbl('🏦 Balance Sheet', [
+          {label:'Cash',              series:S.cash,     colorFn:()=>'#3fb950'},
+          {label:'Receivables',       series:S.receiv},
+          {label:'Inventories',       series:S.inventory},
+          {label:'Current Assets',    series:S.currentA},
+          {label:'Total Assets',      series:S.assets},
+          {label:'Current Liab.',     series:S.currentL, colorFn:()=>'#f85149'},
+          {label:'LT Debt',           series:S.debt,     colorFn:()=>'#f85149'},
+          {label:'Total Liab.',       series:S.liab,     colorFn:()=>'#f85149'},
+          {label:'Equity',            series:S.equity,   colorFn:cpn},
+          {label:'Goodwill',          series:S.goodwill},
+          {label:'Intangibles',       series:S.intangib},
+          {label:'Shares Out.',       series:S.shares,   fmt:v=>v>=1e9?(v/1e9).toFixed(2)+'B':v>=1e6?(v/1e6).toFixed(0)+'M':v.toFixed(0)},
+        ].filter(r=>r.series.length), isQ),
+        tbl('💸 Cash Flow', [
+          {label:'Operating CF',      series:S.opCF,     colorFn:cpn},
+          {label:'Capex',             series:S.capex,    fmt:v=>fmtM(-Math.abs(v))},
+          {label:'Free Cash Flow',    series:S.fcf,      colorFn:cpn},
+        ].filter(r=>r.series.length), isQ),
+      ].join('');
+    }
+
+    $('secTables').innerHTML = makeTables(A,false) + '<div style="margin:28px 0 16px;border-top:1px solid rgba(30,39,243,0.12);padding-top:24px;font-size:11px;font-weight:700;color:#4a5280;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;">Datos Trimestrales</div>' + makeTables(Q,true);
   }
 
   // ══════════════════════════════════════════════
@@ -2326,166 +2421,383 @@ function openDetail(especie){
   function renderRatios(facts){
     const el=$('secRatios'); if(!el) return;
     const us = facts.facts['us-gaap']||{};
-    const isQ = SEC_PERIOD === 'quarterly';
 
-    function series(obj,...keys){
-      for(const k of keys){
-        const c=(obj[k]||{}).units||{};
-        let arr;
-        if(isQ){
-          arr=(c['USD']||c['shares']||[]).filter(x=>(x.form==='10-Q'||x.form==='10-K')&&x.end&&x.start).filter(x=>{const d=(new Date(x.end)-new Date(x.start))/(1000*86400);return(d>=60&&d<=100)||(d>=340&&d<=380&&x.form==='10-K');}).sort((a,b)=>a.end>b.end?1:-1);
-        } else {
-          arr=(c['USD']||c['shares']||[]).filter(x=>(x.form==='10-K'||x.form==='20-F'||x.form==='10-K/A')&&x.end&&!x.start).sort((a,b)=>a.end>b.end?1:-1);
-        }
-        const seen=new Set(),out=[];
-        for(const item of arr){
-          const label=isQ?`${item.end.slice(0,4)}Q${Math.ceil(parseInt(item.end.slice(5,7))/3)}`:item.end.slice(0,4);
-          if(!seen.has(label)){seen.add(label);out.push({yr:label,val:item.val,date:item.end});}
-        }
-        if(out.length) return out.slice(-Math.min(SEC_YEARS*(isQ?4:1),isQ?20:8));
+    function buildRatioHTML(S, isQ){
+      function cr(arrA,arrB,fn){return arrA.map(a=>{const b=arrB.find(x=>x.yr===a.yr);if(!b||!b.val)return null;const v=fn(a.val,b.val);return isFinite(v)?{yr:a.yr,val:v}:null;}).filter(Boolean);}
+      const ebitda=S.opInc.map(o=>{const d=S.da.find(x=>x.yr===o.yr);return d?{yr:o.yr,val:o.val+Math.abs(d.val)}:{yr:o.yr,val:o.val};});
+      const fcf=S.opCF.map(o=>{const c=S.capex.find(x=>x.yr===o.yr);return{yr:o.yr,val:c?o.val-Math.abs(c.val):o.val};});
+      const netDebt=S.debt.map(d=>{const c=S.cash.find(x=>x.yr===d.yr);return{yr:d.yr,val:d.val-(c?.val||0)};});
+      const sROE=cr(S.netInc,S.equity,(n,e)=>n/e*100);
+      const sROA=cr(S.netInc,S.assets,(n,a)=>n/a*100);
+      const sROIC=S.opInc.map(o=>{const e=S.equity.find(x=>x.yr===o.yr),d=S.debt.find(x=>x.yr===o.yr);const ic=(e?.val||0)+(d?.val||0);return ic?{yr:o.yr,val:o.val/ic*100}:null;}).filter(Boolean);
+      const sGrossM=cr(S.grossP,S.revenue,(g,r)=>g/r*100);
+      const sOpM=cr(S.opInc,S.revenue,(o,r)=>o/r*100);
+      const sNetM=cr(S.netInc,S.revenue,(n,r)=>n/r*100);
+      const sEBITDAM=cr(ebitda,S.revenue,(e,r)=>e/r*100);
+      const sFCFM=cr(fcf,S.revenue,(f,r)=>f/r*100);
+      const sCurrR=cr(S.currentA,S.currentL,(a,l)=>a/l);
+      const sQuickR=S.currentA.map(a=>{const l=S.currentL.find(x=>x.yr===a.yr),inv=S.inventory.find(x=>x.yr===a.yr);return l?.val?{yr:a.yr,val:(a.val-(inv?.val||0))/l.val}:null;}).filter(Boolean);
+      const sCashR=cr(S.cash,S.currentL,(c,l)=>c/l);
+      const sDE=cr(S.debt,S.equity,(d,e)=>d/e);
+      const sNDEBITDA=cr(netDebt,ebitda,(nd,eb)=>nd/eb);
+      const sDebtA=cr(S.debt,S.assets,(d,a)=>d/a*100);
+      const sIntCov=cr(S.opInc,S.interest,(o,i)=>o/Math.abs(i));
+      const sEqMult=cr(S.assets,S.equity,(a,e)=>a/e);
+      const sAssetTO=cr(S.revenue,S.assets,(r,a)=>r/a);
+      const sRevPS=cr(S.revenue,S.shares,(r,s)=>r/s);
+      const sFCFPS=cr(fcf,S.shares,(f,s)=>f/s);
+
+      const pct=v=>fmtPct(v), x2=v=>v.toFixed(2)+'x', x1=v=>v.toFixed(1)+'x', dlr=v=>'$'+v.toFixed(2);
+      const cpn=v=>v>=0?'#3fb950':'#f85149', blue=()=>'#a5b4fc';
+
+      function rtbl(title, icon, rows){
+        const allYears=[...new Set(rows.filter(r=>r.s.length).flatMap(r=>r.s.map(x=>x.yr)))].sort().reverse();
+        if(!allYears.length) return '';
+        const visRows=rows.filter(r=>r.s.length);
+        if(!visRows.length) return '';
+        const colW=86;
+        return `<div style="margin-bottom:20px;background:#0f1422;border:1px solid rgba(30,39,243,0.2);border-radius:10px;overflow:hidden;">
+          <div style="padding:14px 16px;font-size:11px;font-weight:700;color:#8b99c4;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid rgba(30,39,243,0.15);font-family:var(--mono);display:flex;align-items:center;gap:10px;">
+            ${icon} ${title}
+            <span style="font-size:9px;font-weight:500;color:#4a5280;background:#131929;padding:2px 8px;border-radius:10px;border:1px solid rgba(30,39,243,0.15);">${isQ?'TRIMESTRAL':'ANUAL'}</span>
+          </div>
+          <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+            <colgroup><col style="width:160px;min-width:160px;"><col style="width:220px;min-width:180px;">${allYears.map(()=>`<col style="width:${colW}px;min-width:${colW}px;">`).join('')}</colgroup>
+            <thead><tr>
+              <th style="position:sticky;left:0;z-index:5;background:#131929;padding:8px 12px;font-size:10px;font-weight:600;color:#8b99c4;text-align:left;border-bottom:1px solid rgba(30,39,243,0.15);white-space:nowrap;">Ratio</th>
+              <th style="background:#131929;padding:8px 10px;font-size:9px;color:#4a5280;text-align:left;border-bottom:1px solid rgba(30,39,243,0.15);">Descripción</th>
+              ${allYears.map(y=>`<th style="background:#131929;padding:8px 10px;font-size:10px;font-weight:600;color:#8b99c4;text-align:right;border-bottom:1px solid rgba(30,39,243,0.15);white-space:nowrap;">${y}</th>`).join('')}
+            </tr></thead>
+            <tbody>${visRows.map(row=>{
+              const cells=allYears.map(yr=>{const p=row.s.find(x=>x.yr===yr);const v=p?(row.fmt?row.fmt(p.val):p.val.toFixed(2)):'—';const color=p&&row.color?row.color(p.val):'#e8eaf6';return `<td style="padding:7px 10px;font-size:11px;text-align:right;color:${color};white-space:nowrap;border-bottom:1px solid rgba(30,39,243,0.07);font-family:var(--mono);">${v}</td>`;}).join('');
+              return `<tr><td style="position:sticky;left:0;z-index:4;background:#0f1422;padding:7px 12px;font-size:11px;color:#a5b4fc;font-weight:600;white-space:nowrap;border-bottom:1px solid rgba(30,39,243,0.07);font-family:var(--mono);">${row.label}</td><td style="padding:7px 10px;font-size:10px;color:#4a5280;border-bottom:1px solid rgba(30,39,243,0.07);font-family:var(--mono);">${row.desc}</td>${cells}</tr>`;
+            }).join('')}</tbody>
+          </table>
+          </div>
+        </div>`;
       }
-      return [];
-    }
-    function seriesBS(obj,...keys){
-      for(const k of keys){
-        const c=(obj[k]||{}).units||{};
-        const arr=(c['USD']||c['shares']||[]).filter(x=>x.end&&!x.start&&(x.form==='10-K'||x.form==='20-F'||x.form==='10-Q'||x.form==='10-K/A')).sort((a,b)=>a.end>b.end?1:-1);
-        const seen=new Set(),out=[];
-        for(const item of arr){
-          const label=isQ?`${item.end.slice(0,4)}Q${Math.ceil(parseInt(item.end.slice(5,7))/3)}`:item.end.slice(0,4);
-          if(!seen.has(label)){seen.add(label);out.push({yr:label,val:item.val,date:item.end});}
-        }
-        if(out.length) return out.slice(-Math.min(SEC_YEARS*(isQ?4:1),isQ?20:8));
-      }
-      return [];
-    }
 
-    const sRevenue  = series(us,'Revenues','RevenueFromContractWithCustomerExcludingAssessedTax','SalesRevenueNet','RevenueNet');
-    const sNetInc   = series(us,'NetIncomeLoss','ProfitLoss');
-    const sGrossP   = series(us,'GrossProfit');
-    const sOpInc    = series(us,'OperatingIncomeLoss');
-    const sAssets   = seriesBS(us,'Assets');
-    const sLiab     = seriesBS(us,'Liabilities');
-    const sEquity   = seriesBS(us,'StockholdersEquity','StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest');
-    const sCash     = seriesBS(us,'CashAndCashEquivalentsAtCarryingValue','Cash','CashCashEquivalentsAndShortTermInvestments');
-    const sOpCF     = series(us,'NetCashProvidedByUsedInOperatingActivities');
-    const sCapex    = series(us,'PaymentsToAcquirePropertyPlantAndEquipment');
-    const sDebt     = seriesBS(us,'LongTermDebt','LongTermDebtNoncurrent');
-    const sDA       = series(us,'DepreciationDepletionAndAmortization','DepreciationAndAmortization');
-    const sShares   = seriesBS(us,'CommonStockSharesOutstanding','WeightedAverageNumberOfSharesOutstandingBasic');
-    const sCurrentA = seriesBS(us,'AssetsCurrent');
-    const sCurrentL = seriesBS(us,'LiabilitiesCurrent');
-    const sInventory= seriesBS(us,'InventoryNet','Inventories');
-    const sInterest = series(us,'InterestExpense','InterestAndDebtExpense');
-    const sEPS      = series(us,'EarningsPerShareDiluted','EarningsPerShareBasic');
-
-    // Computed ratio series
-    function computeRatio(arrA, arrB, fn, label){
-      return arrA.map(a=>{const b=arrB.find(x=>x.yr===a.yr);if(!b||!b.val)return null;const v=fn(a.val,b.val);return isFinite(v)?{yr:a.yr,val:v}:null;}).filter(Boolean).map(x=>({...x,label}));
+      return [
+        rtbl('Rentabilidad','📈',[
+          {label:'Gross Margin',   desc:'Gross Profit / Revenue',        s:sGrossM,   fmt:pct, color:cpn},
+          {label:'Op. Margin',     desc:'EBIT / Revenue',                s:sOpM,      fmt:pct, color:cpn},
+          {label:'EBITDA Margin',  desc:'EBITDA / Revenue',              s:sEBITDAM,  fmt:pct, color:cpn},
+          {label:'Net Margin',     desc:'Net Income / Revenue',          s:sNetM,     fmt:pct, color:cpn},
+          {label:'FCF Margin',     desc:'FCF / Revenue',                 s:sFCFM,     fmt:pct, color:cpn},
+          {label:'ROE',            desc:'Net Income / Equity',           s:sROE,      fmt:pct, color:cpn},
+          {label:'ROA',            desc:'Net Income / Assets',           s:sROA,      fmt:pct, color:cpn},
+          {label:'ROIC',           desc:'EBIT / (Equity + Debt)',        s:sROIC,     fmt:pct, color:cpn},
+        ]),
+        rtbl('Liquidez','💧',[
+          {label:'Current Ratio',  desc:'Current Assets / CL',          s:sCurrR,    fmt:x2, color:v=>v>=2?'#3fb950':v>=1?'#d4a017':'#f85149'},
+          {label:'Quick Ratio',    desc:'(CA − Inventory) / CL',        s:sQuickR,   fmt:x2, color:v=>v>=1?'#3fb950':'#f85149'},
+          {label:'Cash Ratio',     desc:'Cash / CL',                    s:sCashR,    fmt:x2, color:blue},
+        ]),
+        rtbl('Apalancamiento','⚖️',[
+          {label:'D/E Ratio',      desc:'LT Debt / Equity',             s:sDE,       fmt:x2, color:v=>v<1?'#3fb950':v<2?'#d4a017':'#f85149'},
+          {label:'Net Debt/EBITDA',desc:'(Debt − Cash) / EBITDA',       s:sNDEBITDA, fmt:x1, color:v=>v<2?'#3fb950':v<4?'#d4a017':'#f85149'},
+          {label:'Debt/Assets %',  desc:'LT Debt / Total Assets',       s:sDebtA,    fmt:pct, color:v=>v<30?'#3fb950':v<60?'#d4a017':'#f85149'},
+          {label:'Interest Cov.',  desc:'EBIT / Interest Expense',      s:sIntCov,   fmt:x1, color:v=>v>3?'#3fb950':v>1.5?'#d4a017':'#f85149'},
+          {label:'Equity Mult.',   desc:'Assets / Equity',              s:sEqMult,   fmt:x2, color:blue},
+        ]),
+        rtbl('Eficiencia','⚡',[
+          {label:'Asset Turnover', desc:'Revenue / Assets',             s:sAssetTO,  fmt:x2, color:blue},
+          {label:'Revenue/Share',  desc:'Revenue / Shares',             s:sRevPS,    fmt:dlr, color:blue},
+          {label:'EPS Diluted',    desc:'Net Income / Shares',          s:S.eps,     fmt:dlr, color:cpn},
+          {label:'FCF/Share',      desc:'FCF / Shares',                 s:sFCFPS,    fmt:dlr, color:cpn},
+        ]),
+      ].filter(Boolean).join('');
     }
 
-    const sEBITDA      = sOpInc.map(o=>{const d=sDA.find(x=>x.yr===o.yr);return d?{yr:o.yr,val:o.val+Math.abs(d.val)}:{yr:o.yr,val:o.val};});
-    const sFCF         = sOpCF.map(o=>{const c=sCapex.find(x=>x.yr===o.yr);return{yr:o.yr,val:c?o.val-Math.abs(c.val):o.val};});
-
-    // Profitability
-    const sROE        = computeRatio(sNetInc,sEquity,(n,e)=>n/e*100,'ROE');
-    const sROA        = computeRatio(sNetInc,sAssets,(n,a)=>n/a*100,'ROA');
-    const sROIC       = sOpInc.map(o=>{const e=sEquity.find(x=>x.yr===o.yr),d=sDebt.find(x=>x.yr===o.yr);const ic=(e?.val||0)+(d?.val||0);return ic?{yr:o.yr,val:o.val/ic*100}:null;}).filter(Boolean);
-    const sGrossM     = computeRatio(sGrossP,sRevenue,(g,r)=>g/r*100,'Gross Margin');
-    const sOpM        = computeRatio(sOpInc,sRevenue,(o,r)=>o/r*100,'Op. Margin');
-    const sNetM       = computeRatio(sNetInc,sRevenue,(n,r)=>n/r*100,'Net Margin');
-    const sEBITDAM    = computeRatio(sEBITDA,sRevenue,(e,r)=>e/r*100,'EBITDA Margin');
-    const sFCFM       = computeRatio(sFCF,sRevenue,(f,r)=>f/r*100,'FCF Margin');
-
-    // Liquidity
-    const sCurrRatio  = computeRatio(sCurrentA,sCurrentL,(a,l)=>a/l,'Current Ratio');
-    const sQuickRatio = sCurrentA.map(a=>{const l=sCurrentL.find(x=>x.yr===a.yr),inv=sInventory.find(x=>x.yr===a.yr);return l?.val?{yr:a.yr,val:(a.val-(inv?.val||0))/l.val}:null;}).filter(Boolean);
-    const sCashRatio  = computeRatio(sCash,sCurrentL,(c,l)=>c/l,'Cash Ratio');
-
-    // Leverage
-    const sDebtEq     = computeRatio(sDebt,sEquity,(d,e)=>d/e,'D/E Ratio');
-    const sNetDebt    = sDebt.map(d=>{const c=sCash.find(x=>x.yr===d.yr);return{yr:d.yr,val:d.val-(c?.val||0)};});
-    const sNetDebtEBITDA = computeRatio(sNetDebt,sEBITDA,(nd,eb)=>nd/eb,'Net Debt/EBITDA');
-    const sDebtAssets = computeRatio(sDebt,sAssets,(d,a)=>d/a*100,'Debt/Assets %');
-    const sIntCov     = computeRatio(sOpInc,sInterest,(o,i)=>o/Math.abs(i),'Interest Coverage');
-    const sEquityMult = computeRatio(sAssets,sEquity,(a,e)=>a/e,'Equity Multiplier');
-
-    // Efficiency
-    const sAssetTO    = computeRatio(sRevenue,sAssets,(r,a)=>r/a,'Asset Turnover');
-    const sRevPerShare= computeRatio(sRevenue,sShares,(r,s)=>r/s,'Revenue/Share');
-    const sFCFPerShare= computeRatio(sFCF,sShares,(f,s)=>f/s,'FCF/Share');
-
-    const pct  = v=>fmtPct(v);
-    const x2   = v=>v.toFixed(2)+'x';
-    const x1   = v=>v.toFixed(1)+'x';
-    const dlr  = v=>'$'+v.toFixed(2);
-    const cpn  = v=>v>=0?'#3fb950':'#f85149';
-    const blue = ()=>'#a5b4fc';
-
-    // Ratio table builder
-    function rtbl(title, icon, rows){
-      const allYears=[...new Set(rows.filter(r=>r.s.length).flatMap(r=>r.s.map(x=>x.yr)))].sort();
-      if(!allYears.length) return '';
-      const thS='padding:8px 12px;font-size:10px;font-weight:600;color:#8b99c4;text-transform:uppercase;letter-spacing:.05em;';
-      const tdS='padding:7px 12px;font-size:12px;';
-      const visRows=rows.filter(r=>r.s.length);
-      if(!visRows.length) return '';
-      return `<div style="margin-bottom:20px;background:#0f1422;border:1px solid rgba(30,39,243,0.2);border-radius:10px;overflow:hidden;overflow-x:auto;">
-        <div style="padding:14px 16px;font-size:11px;font-weight:700;color:#8b99c4;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid rgba(30,39,243,0.15);font-family:var(--mono);">${icon} ${title}</div>
-        <table class="sec-table">
-          <thead><tr>
-            <th style="${thS}text-align:left;">Ratio</th>
-            <th style="${thS}text-align:left;color:#4a5280;font-size:9px;max-width:200px;">Descripción</th>
-            ${allYears.map(y=>`<th style="${thS}">${y}</th>`).join('')}
-          </tr></thead>
-          <tbody>${visRows.map(row=>{
-            const cells=allYears.map(yr=>{
-              const p=row.s.find(x=>x.yr===yr);
-              const v=p?(row.fmt?row.fmt(p.val):p.val.toFixed(2)):'—';
-              const color=p&&row.color?row.color(p.val):'#e8eaf6';
-              return `<td style="${tdS}text-align:right;color:${color};">${v}</td>`;
-            }).join('');
-            return `<tr>
-              <td style="${tdS}color:#a5b4fc;font-weight:600;">${row.label}</td>
-              <td style="${tdS}color:#4a5280;font-size:10px;max-width:200px;">${row.desc}</td>
-              ${cells}
-            </tr>`;
-          }).join('')}</tbody>
-        </table>
-      </div>`;
-    }
-
-    el.innerHTML = [
-      rtbl('Rentabilidad','📈',[
-        {label:'Gross Margin',   desc:'(Gross Profit / Revenue) × 100',       s:sGrossM,    fmt:pct, color:cpn},
-        {label:'Op. Margin',     desc:'(EBIT / Revenue) × 100',               s:sOpM,       fmt:pct, color:cpn},
-        {label:'EBITDA Margin',  desc:'(EBITDA / Revenue) × 100',             s:sEBITDAM,   fmt:pct, color:cpn},
-        {label:'Net Margin',     desc:'(Net Income / Revenue) × 100',         s:sNetM,      fmt:pct, color:cpn},
-        {label:'FCF Margin',     desc:'(Free Cash Flow / Revenue) × 100',     s:sFCFM,      fmt:pct, color:cpn},
-        {label:'ROE',            desc:'(Net Income / Equity) × 100',          s:sROE,       fmt:pct, color:cpn},
-        {label:'ROA',            desc:'(Net Income / Total Assets) × 100',    s:sROA,       fmt:pct, color:cpn},
-        {label:'ROIC',           desc:'EBIT / (Equity + Debt)',               s:sROIC,      fmt:pct, color:cpn},
-      ]),
-      rtbl('Liquidez','💧',[
-        {label:'Current Ratio',  desc:'Current Assets / Current Liabilities', s:sCurrRatio,  fmt:x2, color:v=>v>=2?'#3fb950':v>=1?'#d4a017':'#f85149'},
-        {label:'Quick Ratio',    desc:'(Current Assets − Inventory) / CL',   s:sQuickRatio, fmt:x2, color:v=>v>=1?'#3fb950':'#f85149'},
-        {label:'Cash Ratio',     desc:'Cash / Current Liabilities',           s:sCashRatio,  fmt:x2, color:blue},
-      ]),
-      rtbl('Apalancamiento','⚖️',[
-        {label:'D/E Ratio',      desc:'Long-term Debt / Equity',              s:sDebtEq,      fmt:x2, color:v=>v<1?'#3fb950':v<2?'#d4a017':'#f85149'},
-        {label:'Net Debt/EBITDA',desc:'(LT Debt − Cash) / EBITDA',           s:sNetDebtEBITDA,fmt:x1,color:v=>v<2?'#3fb950':v<4?'#d4a017':'#f85149'},
-        {label:'Debt/Assets %',  desc:'Long-term Debt / Total Assets',       s:sDebtAssets,  fmt:pct, color:v=>v<30?'#3fb950':v<60?'#d4a017':'#f85149'},
-        {label:'Interest Coverage',desc:'EBIT / Interest Expense',           s:sIntCov,      fmt:x1, color:v=>v>3?'#3fb950':v>1.5?'#d4a017':'#f85149'},
-        {label:'Equity Multiplier',desc:'Total Assets / Equity',             s:sEquityMult,  fmt:x2, color:blue},
-      ]),
-      rtbl('Eficiencia','⚡',[
-        {label:'Asset Turnover', desc:'Revenue / Total Assets',               s:sAssetTO,    fmt:x2, color:blue},
-        {label:'Revenue/Share',  desc:'Revenue / Shares Outstanding',        s:sRevPerShare, fmt:dlr, color:blue},
-        {label:'EPS Diluted',    desc:'Net Income / Diluted Shares',         s:sEPS,         fmt:dlr, color:cpn},
-        {label:'FCF/Share',      desc:'Free Cash Flow / Shares Outstanding', s:sFCFPerShare, fmt:dlr, color:cpn},
-      ]),
-    ].filter(Boolean).join('');
+    const A=_buildAllSeries(us,false);
+    const Q=_buildAllSeries(us,true);
+    el.innerHTML = buildRatioHTML(A,false) +
+      '<div style="margin:28px 0 16px;border-top:1px solid rgba(30,39,243,0.12);padding-top:24px;font-size:11px;font-weight:700;color:#4a5280;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;">Ratios Trimestrales</div>' +
+      buildRatioHTML(Q,true);
   }
+
+  // ══════════════════════════════════════════════
+  // RENDER COMPARE
+  // ══════════════════════════════════════════════
+  let _cmpCompanies = []; // [{ticker, name, facts}]
+  let _cmpPeriod = 'quarterly';
+  let _cmpPeriodOffset = 0; // 0 = latest, 1 = previous, etc.
+
+  function renderCompare(){
+    const el=$('secCompare'); if(!el) return;
+    // Ensure base company is in list
+    if(_lastFacts&&_lastTicker){
+      if(!_cmpCompanies.find(c=>c.ticker===_lastTicker)){
+        _cmpCompanies=[{ticker:_lastTicker,name:$('secCompanyName')?.textContent||_lastTicker,facts:_lastFacts},..._cmpCompanies];
+      }
+    }
+    _renderCmpUI();
+  }
+
+  function _renderCmpUI(){
+    const el=$('secCompare'); if(!el) return;
+    const companies=_cmpCompanies;
+    const RATIO_DEFS=[
+      {id:'grossM',   label:'Gross Margin %', fmt:v=>fmtPct(v), color:v=>v>=40?'#3fb950':v>=20?'#d4a017':'#f85149', high:true},
+      {id:'opM',      label:'Op. Margin %',   fmt:v=>fmtPct(v), color:v=>v>=15?'#3fb950':v>=5?'#d4a017':'#f85149',  high:true},
+      {id:'ebitdaM',  label:'EBITDA Margin %',fmt:v=>fmtPct(v), color:v=>v>=20?'#3fb950':v>=10?'#d4a017':'#f85149', high:true},
+      {id:'netM',     label:'Net Margin %',   fmt:v=>fmtPct(v), color:v=>v>=10?'#3fb950':v>=0?'#d4a017':'#f85149',  high:true},
+      {id:'roe',      label:'ROE %',          fmt:v=>fmtPct(v), color:v=>v>=15?'#3fb950':v>=0?'#d4a017':'#f85149',  high:true},
+      {id:'roa',      label:'ROA %',          fmt:v=>fmtPct(v), color:v=>v>=5?'#3fb950':v>=0?'#d4a017':'#f85149',   high:true},
+      {id:'currR',    label:'Current Ratio',  fmt:v=>v.toFixed(2)+'x', color:v=>v>=2?'#3fb950':v>=1?'#d4a017':'#f85149', high:true},
+      {id:'quickR',   label:'Quick Ratio',    fmt:v=>v.toFixed(2)+'x', color:v=>v>=1?'#3fb950':'#f85149', high:true},
+      {id:'de',       label:'D/E Ratio',      fmt:v=>v.toFixed(2)+'x', color:v=>v<1?'#3fb950':v<2?'#d4a017':'#f85149', high:false},
+      {id:'ndEBITDA', label:'Net Debt/EBITDA',fmt:v=>v.toFixed(1)+'x', color:v=>v<2?'#3fb950':v<4?'#d4a017':'#f85149', high:false},
+      {id:'intCov',   label:'Interest Cov.',  fmt:v=>v.toFixed(1)+'x', color:v=>v>3?'#3fb950':v>1.5?'#d4a017':'#f85149', high:true},
+      {id:'assetTO',  label:'Asset Turnover', fmt:v=>v.toFixed(2)+'x', color:()=>'#a5b4fc', high:true},
+      {id:'eps',      label:'EPS Diluted',    fmt:v=>'$'+v.toFixed(2), color:v=>v>=0?'#3fb950':'#f85149', high:true},
+    ];
+
+    // Compute ratios for a company at a specific period offset
+    function getCompanyRatios(facts, isQ, offset){
+      const us=(facts.facts||{})['us-gaap']||{};
+      const S=_buildAllSeries(us,isQ);
+      // Get period list sorted newest first
+      const periods=[...new Set([...S.revenue,...S.assets].map(x=>x.yr))].sort().reverse();
+      const yr=periods[offset]||periods[0];
+      if(!yr) return {};
+      function v(series){const p=series.find(x=>x.yr===yr);return p?p.val:null;}
+      const rev=v(S.revenue),gp=v(S.grossP),opI=v(S.opInc),ni=v(S.netInc),
+            eq=v(S.equity),ast=v(S.assets),cas=v(S.cash),dbt=v(S.debt),
+            cl=v(S.currentL),ca=v(S.currentA),inv=v(S.inventory),
+            int=v(S.interest),eps=v(S.eps),shr=v(S.shares),
+            ocf=v(S.opCF),cap=v(S.capex);
+      const da=v(S.da);
+      const ebitda=opI&&da?opI+Math.abs(da):opI;
+      const fcf=ocf&&cap?ocf-Math.abs(cap):ocf;
+      return {
+        yr,
+        grossM: rev&&gp   ? gp/rev*100   : null,
+        opM:    rev&&opI  ? opI/rev*100  : null,
+        ebitdaM:rev&&ebitda?ebitda/rev*100:null,
+        netM:   rev&&ni   ? ni/rev*100   : null,
+        roe:    eq&&ni    ? ni/eq*100    : null,
+        roa:    ast&&ni   ? ni/ast*100   : null,
+        currR:  ca&&cl    ? ca/cl        : null,
+        quickR: ca&&cl    ? (ca-(inv||0))/cl : null,
+        de:     eq&&dbt   ? dbt/eq       : null,
+        ndEBITDA:ebitda   ? (dbt-(cas||0))/ebitda : null,
+        intCov: int&&opI  ? opI/Math.abs(int) : null,
+        assetTO:ast&&rev  ? rev/ast      : null,
+        eps,
+      };
+    }
+
+    // Compute all ratios
+    const isQ=_cmpPeriod==='quarterly';
+    const companyData=companies.map(c=>({
+      ...c,
+      ratios: c.facts ? getCompanyRatios(c.facts,isQ,_cmpPeriodOffset) : {}
+    }));
+
+    // Sort state
+    let _sortRatio=null, _sortDir=-1; // -1 = desc
+
+    function buildTable(){
+      const base=companyData[0];
+      const periods=base?.facts ? [...new Set([
+        ..._buildAllSeries((base.facts.facts||{})['us-gaap']||{},isQ).revenue.map(x=>x.yr),
+        ..._buildAllSeries((base.facts.facts||{})['us-gaap']||{},isQ).assets.map(x=>x.yr),
+      ]).values()].sort().reverse() : [];
+
+      const offsetOpts=periods.slice(0,8).map((p,i)=>`<option value="${i}"${i===_cmpPeriodOffset?' selected':''}>${i===0?'Último: '+p:p}</option>`).join('');
+
+      const sortedCompanies=_sortRatio
+        ? [...companyData].sort((a,b)=>{
+            const va=a.ratios[_sortRatio]??-Infinity, vb=b.ratios[_sortRatio]??-Infinity;
+            return (va-vb)*_sortDir;
+          })
+        : companyData;
+
+      const thS='background:#131929;padding:9px 12px;font-size:10px;font-weight:700;color:#8b99c4;text-transform:uppercase;letter-spacing:.05em;text-align:right;border-bottom:1px solid rgba(30,39,243,0.18);white-space:nowrap;cursor:pointer;user-select:none;';
+      const sortArrow=id=>_sortRatio===id?(_sortDir===-1?' ▼':' ▲'):'';
+
+      el.innerHTML=`
+        <!-- Controls -->
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px;">
+          <div style="display:flex;background:#131929;border:1px solid rgba(30,39,243,0.25);border-radius:6px;overflow:hidden;">
+            <button onclick="secCmpSetPeriod('annual')" style="padding:5px 14px;font-size:11px;font-weight:700;cursor:pointer;border:none;background:${!isQ?'#1E27F3':'transparent'};color:${!isQ?'#fff':'#4a5280'};font-family:var(--mono);">Anual</button>
+            <button onclick="secCmpSetPeriod('quarterly')" style="padding:5px 14px;font-size:11px;font-weight:700;cursor:pointer;border:none;background:${isQ?'#1E27F3':'transparent'};color:${isQ?'#fff':'#4a5280'};font-family:var(--mono);">Trimestral</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:10px;color:#4a5280;font-family:var(--mono);">Período:</span>
+            <select onchange="secCmpSetOffset(this.value)" style="background:#0f1422;border:1px solid rgba(30,39,243,0.3);border-radius:6px;color:#8b99c4;font-family:var(--mono);font-size:11px;padding:4px 8px;cursor:pointer;outline:none;">${offsetOpts}</select>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;margin-left:auto;position:relative;">
+            <input id="cmpAddInput" type="text" placeholder="Agregar ticker..." maxlength="60" autocomplete="off"
+              style="background:#0f1422;border:1px solid rgba(30,39,243,0.35);border-radius:7px;padding:6px 12px 6px 30px;font-size:12px;color:#e8eaf6;font-family:var(--mono);outline:none;width:200px;"
+              onfocus="this.style.borderColor='#1E27F3';cmpAutoShow()"
+              onblur="setTimeout(cmpAutoHide,180)"
+              oninput="cmpAutoFilter(this.value)"
+              onkeydown="cmpAutoKey(event)" />
+            <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:12px;height:12px;color:#4a5280;pointer-events:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <div id="cmpAutoList" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:50px;background:#0f1422;border:1px solid rgba(30,39,243,0.35);border-radius:8px;max-height:220px;overflow-y:auto;z-index:300;box-shadow:0 8px 32px rgba(0,0,0,0.6);"></div>
+            <button onclick="secCmpAddTicker()" style="padding:6px 14px;border-radius:7px;border:1px solid rgba(30,39,243,0.4);background:rgba(30,39,243,0.1);color:#a5b4fc;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);white-space:nowrap;">+ Agregar</button>
+          </div>
+        </div>
+
+        <!-- Compare table -->
+        <div style="background:#0f1422;border:1px solid rgba(30,39,243,0.2);border-radius:10px;overflow:hidden;">
+          <div style="padding:14px 16px;font-size:11px;font-weight:700;color:#8b99c4;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid rgba(30,39,243,0.15);font-family:var(--mono);">
+            Comparación de Ratios — ${isQ?'Trimestral':'Anual'}
+          </div>
+          <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;table-layout:auto;">
+            <thead><tr>
+              <th style="position:sticky;left:0;z-index:5;${thS}text-align:left;min-width:140px;">Empresa</th>
+              <th style="${thS}text-align:left;min-width:60px;">Ticker</th>
+              <th style="${thS}">Período</th>
+              ${RATIO_DEFS.map(r=>`<th style="${thS}" onclick="secCmpSort('${r.id}')" title="${r.label}">${r.label.replace(' %','')}<span style="color:#1E27F3;">${sortArrow(r.id)}</span></th>`).join('')}
+              <th style="${thS}">Quitar</th>
+            </tr></thead>
+            <tbody>
+              ${sortedCompanies.map((c,ci)=>{
+                const rat=c.ratios||{};
+                const isBase=ci===0&&!_sortRatio;
+                return `<tr style="${isBase?'background:rgba(30,39,243,0.06);':''}">
+                  <td style="position:sticky;left:0;z-index:4;background:${isBase?'rgba(30,39,243,0.06)':'#0f1422'};padding:9px 14px;font-size:12px;font-weight:600;color:#e8eaf6;border-bottom:1px solid rgba(30,39,243,0.08);white-space:nowrap;font-family:var(--mono);">
+                    ${c.name||c.ticker}${isBase?' <span style="font-size:9px;color:#1E27F3;background:rgba(30,39,243,0.15);padding:1px 6px;border-radius:8px;margin-left:4px;">base</span>':''}
+                  </td>
+                  <td style="padding:9px 12px;font-size:12px;color:#a5b4fc;font-weight:700;border-bottom:1px solid rgba(30,39,243,0.08);font-family:var(--mono);">${c.ticker}</td>
+                  <td style="padding:9px 12px;font-size:11px;color:#4a5280;border-bottom:1px solid rgba(30,39,243,0.08);font-family:var(--mono);text-align:right;">${rat.yr||'—'}</td>
+                  ${RATIO_DEFS.map(r=>{
+                    const val=rat[r.id];
+                    const disp=val!=null?r.fmt(val):'—';
+                    const color=val!=null?r.color(val):'#4a5280';
+                    return `<td style="padding:9px 12px;font-size:12px;color:${color};border-bottom:1px solid rgba(30,39,243,0.08);text-align:right;font-family:var(--mono);white-space:nowrap;">${disp}</td>`;
+                  }).join('')}
+                  <td style="padding:9px 12px;border-bottom:1px solid rgba(30,39,243,0.08);text-align:center;">
+                    ${ci===0?'<span style="font-size:10px;color:#4a5280;">—</span>':
+                      `<button onclick="secCmpRemove('${c.ticker}')" style="padding:2px 8px;font-size:10px;cursor:pointer;border:1px solid rgba(248,81,73,0.3);border-radius:4px;background:transparent;color:#f85149;font-family:var(--mono);">✕</button>`}
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+          </div>
+        </div>
+        ${companies.length===0?'<div style="color:#4a5280;padding:40px;text-align:center;font-family:var(--mono);font-size:12px;">Buscá una empresa primero.</div>':''}
+        <div id="cmpStatus" style="display:none;margin-top:12px;"></div>
+      `;
+    }
+
+    buildTable();
+
+    // ── Compare autocomplete ──
+    let _cmpAutoIdx=-1;
+    window.cmpAutoShow=async function(){await loadTickerList();cmpAutoFilter($('cmpAddInput')?.value||'');};
+    window.cmpAutoHide=function(){const e=$('cmpAutoList');if(e)e.style.display='none';_cmpAutoIdx=-1;};
+    window.cmpAutoFilter=function(q){
+      const el=$('cmpAutoList');if(!el)return;
+      const raw=q.trim();if(!raw){el.style.display='none';return;}
+      const ql=raw.toLowerCase(),qu=raw.toUpperCase();
+      const res=(_secTickerList||[]).filter(r=>r.ticker.startsWith(qu)||r.name.toLowerCase().includes(ql)).slice(0,10);
+      if(!res.length){el.style.display='none';return;}
+      _cmpAutoIdx=-1;
+      el.innerHTML=res.map((r,i)=>`<div data-idx="${i}" data-ticker="${r.ticker}"
+        style="padding:7px 12px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(30,39,243,0.08);"
+        onmouseenter="this.style.background='rgba(30,39,243,0.12)'" onmouseleave="this.style.background='transparent'"
+        onmousedown="cmpAutoSel('${r.ticker}')">
+        <span style="font-size:12px;font-weight:700;color:#a5b4fc;font-family:var(--mono);min-width:50px;">${r.ticker}</span>
+        <span style="font-size:10px;color:#8b99c4;">${r.name}</span>
+      </div>`).join('');
+      el.style.display='block';
+    };
+    window.cmpAutoSel=function(t){const i=$('cmpAddInput');if(i)i.value=t;const el=$('cmpAutoList');if(el)el.style.display='none';secCmpAddTicker();};
+    window.cmpAutoKey=function(e){
+      const el=$('cmpAutoList');if(!el||el.style.display==='none')return;
+      const items=el.querySelectorAll('[data-idx]');
+      if(e.key==='ArrowDown'){e.preventDefault();_cmpAutoIdx=Math.min(_cmpAutoIdx+1,items.length-1);items.forEach((it,i)=>it.style.background=i===_cmpAutoIdx?'rgba(30,39,243,0.15)':'transparent');}
+      else if(e.key==='ArrowUp'){e.preventDefault();_cmpAutoIdx=Math.max(_cmpAutoIdx-1,0);items.forEach((it,i)=>it.style.background=i===_cmpAutoIdx?'rgba(30,39,243,0.15)':'transparent');}
+      else if(e.key==='Enter'&&_cmpAutoIdx>=0){const t=items[_cmpAutoIdx].dataset.ticker;cmpAutoSel(t);}
+      else if(e.key==='Enter'){secCmpAddTicker();}
+      else if(e.key==='Escape'){cmpAutoHide();}
+    };
+  }
+
+  window.secCmpSetPeriod=function(p){_cmpPeriod=p;_cmpPeriodOffset=0;renderCompare();};
+  window.secCmpSetOffset=function(v){_cmpPeriodOffset=parseInt(v)||0;renderCompare();};
+  window.secCmpSort=function(ratioId){
+    // toggle dir if same ratio
+    if(window._cmpSortRatio===ratioId){window._cmpSortDir=(window._cmpSortDir||−1)*-1;}
+    else{window._cmpSortRatio=ratioId;window._cmpSortDir=-1;}
+    // re-render with sort
+    const el=$('secCompare');if(!el)return;
+    const companies=_cmpCompanies;
+    const isQ=_cmpPeriod==='quarterly';
+    const dir=window._cmpSortDir;
+    _cmpCompanies=[..._cmpCompanies].sort((a,b)=>{
+      const getR=c=>{
+        const us=(c.facts?.facts||{})['us-gaap']||{};
+        const S=_buildAllSeries(us,isQ);
+        const r=_cmpCompanies.find(x=>x.ticker===c.ticker);
+        if(!r||!r.facts) return null;
+        const rat=getCompanyRatios2(r.facts,isQ,_cmpPeriodOffset);
+        return rat[ratioId]??null;
+      };
+      // Use precomputed if available
+      const va=a.ratios?.[ratioId]??-Infinity, vb=b.ratios?.[ratioId]??-Infinity;
+      return (va-vb)*dir;
+    });
+    renderCompare();
+    window._cmpSortRatio=ratioId;
+  };
+
+  function getCompanyRatios2(facts,isQ,offset){
+    const us=(facts.facts||{})['us-gaap']||{};
+    const S=_buildAllSeries(us,isQ);
+    const periods=[...new Set([...S.revenue,...S.assets].map(x=>x.yr))].sort().reverse();
+    const yr=periods[offset]||periods[0];if(!yr)return{};
+    function v(s){const p=s.find(x=>x.yr===yr);return p?p.val:null;}
+    const rev=v(S.revenue),gp=v(S.grossP),opI=v(S.opInc),ni=v(S.netInc),
+          eq=v(S.equity),ast=v(S.assets),cas=v(S.cash),dbt=v(S.debt),
+          cl=v(S.currentL),ca=v(S.currentA),inv=v(S.inventory),
+          int=v(S.interest),eps=v(S.eps);
+    const da=v(S.da),ocf=v(S.opCF),cap=v(S.capex);
+    const ebitda=opI&&da?opI+Math.abs(da):opI;
+    return{yr,grossM:rev&&gp?gp/rev*100:null,opM:rev&&opI?opI/rev*100:null,ebitdaM:rev&&ebitda?ebitda/rev*100:null,netM:rev&&ni?ni/rev*100:null,roe:eq&&ni?ni/eq*100:null,roa:ast&&ni?ni/ast*100:null,currR:ca&&cl?ca/cl:null,quickR:ca&&cl?(ca-(inv||0))/cl:null,de:eq&&dbt?dbt/eq:null,ndEBITDA:ebitda?(dbt-(cas||0))/ebitda:null,intCov:int&&opI?opI/Math.abs(int):null,assetTO:ast&&rev?rev/ast:null,eps};
+  }
+
+  window.secCmpRemove=function(ticker){
+    _cmpCompanies=_cmpCompanies.filter(c=>c.ticker!==ticker);
+    renderCompare();
+  };
+
+  window.secCmpAddTicker=async function(){
+    const input=$('cmpAddInput');
+    const ticker=(input?.value||'').trim().toUpperCase();
+    if(!ticker){return;}
+    if(_cmpCompanies.find(c=>c.ticker===ticker)){input.value='';return;}
+    const statusEl=$('cmpStatus');
+    if(statusEl){statusEl.style.display='flex';statusEl.style.cssText='display:flex;gap:8px;align-items:center;background:rgba(30,39,243,0.08);color:#8b99c4;border:1px solid rgba(30,39,243,0.2);border-radius:6px;padding:8px 12px;font-size:12px;font-family:var(--mono);margin-top:12px;';statusEl.innerHTML=`⏳ Cargando ${ticker}...`;}
+    const PROXY='https://sec-proxy.tzuccotti.workers.dev';
+    try{
+      await loadTickerList();
+      const entry=(_secTickerList||[]).find(r=>r.ticker===ticker);
+      if(!entry&&(_secTickerList||[]).length>0) throw new Error(`${ticker} no encontrado en SEC EDGAR`);
+      // Resolve CIK
+      const tdRes=await fetch(`${PROXY}?url=https://www.sec.gov/files/company_tickers.json`);
+      const tdData=await tdRes.json();
+      let cik=null,name=entry?.name||ticker;
+      for(const e of Object.values(tdData)){if((e.ticker||'').toUpperCase()===ticker){cik=String(e.cik_str).padStart(10,'0');name=e.title||name;break;}}
+      if(!cik) throw new Error(`CIK no encontrado para ${ticker}`);
+      const factsRes=await fetch(`${PROXY}?url=https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`);
+      if(!factsRes.ok) throw new Error(`Error HTTP ${factsRes.status}`);
+      const facts=await factsRes.json();
+      _cmpCompanies.push({ticker,name,facts});
+      if(input) input.value='';
+      renderCompare();
+    }catch(e){
+      if(statusEl){statusEl.innerHTML=`⚠ ${e.message}`;}
+    }
+  };
+
   function renderEvents(sub){
     const filings = sub.filings?.recent;
     if(!filings){ $('secEvents').innerHTML='<div style="color:#4a5280;padding:20px;">No se encontraron filings.</div>'; return; }
