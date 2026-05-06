@@ -3315,8 +3315,14 @@ function renderEquity(){
     try{
       const res=await fetch(SHEET_URL_EXCEL);
       const text=await res.text();
-      const raw=parseCSV(text).map(normalizeRow);
+      console.log("[EXCEL] CSV inicio:", text.substring(0,300));
+      const parsed=parseCSV(text);
+      console.log("[EXCEL] Filas:", parsed.length, "Keys:", parsed.length>0?Object.keys(parsed[0]).join("|"):"vacío");
+      if(parsed.length>0) console.log("[EXCEL] Row0:", JSON.stringify(parsed[0]));
+      const raw=parsed.map(normalizeRow);
+      console.log("[EXCEL] Keys norm:", raw.length>0?Object.keys(raw[0]).join("|"):"");
       window.EXCEL_DATA=deduplicateExcel(raw);
+      console.log("[EXCEL] Dedup:", window.EXCEL_DATA.length);
       window.EXCEL_DATA_LOADED=true;
       // Fecha más reciente para el topbar
       const dates=raw.map(r=>(r['fecha_carga']||'').trim()).filter(Boolean).sort();
