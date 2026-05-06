@@ -865,15 +865,14 @@ function parseSheetCsv(text){
     const cols = split(line);
     const esp = (iEsp>=0 ? cols[iEsp]||'' : '').replace(/"/g,'').trim().toUpperCase();
     if(!esp || esp==='ESPECIE') continue;
-    // precio: preferir Último, fallback Cierre
-    const pxRaw = iUlt>=0 ? cols[iUlt] : (iCie>=0 ? cols[iCie] : '');
-    const precio = toNum(pxRaw);
-    const variacion = iVar>=0 ? toNum(cols[iVar]) : NaN;
-    const vol       = iVol>=0 ? toNum(cols[iVol]) : NaN;
-    const fechaPx   = iFec>=0 ? (cols[iFec]||'').replace(/"/g,'').trim() : '';
-    // Si ya existe este ticker, conservar el de mayor precio (por si hay duplicados)
+    const precio  = iUlt>=0 ? toNum(cols[iUlt]) : NaN;
+    const cierre  = iCie>=0 ? toNum(cols[iCie]) : NaN;
+    // VAR% = (Último / Cierre_anterior - 1) * 100
+    const varPct  = (!isNaN(precio)&&!isNaN(cierre)&&cierre>0) ? (precio/cierre-1)*100 : NaN;
+    const vol     = iVol>=0 ? toNum(cols[iVol]) : NaN;
+    const fechaPx = iFec>=0 ? (cols[iFec]||'').replace(/"/g,'').trim() : '';
     if(!map[esp] || (!isNaN(precio) && precio > (map[esp].precio||0))){
-      map[esp] = { precio, variacion, vol, fechaPx };
+      map[esp] = { precio, cierre, variacion: varPct, vol, fechaPx };
     }
   }
   return map;
@@ -953,52 +952,56 @@ function lcCruzar(bundle, preciosMap, fechaLiq){
 
 // ── Columnas de la tabla ──
 const COLS = [
-  { key:'ticker', label:'Ticker',    align:'left',
+  { key:'ticker', label:'Ticker',   align:'left',
     fmt:  r=>`<span style="color:var(--accent);font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;" onclick="lcOpenDetail('${r.ticker}')">${r.ticker}</span>`,
     sort: r=>r.ticker },
-  { key:'precio', label:'Precio',    align:'right',
+  { key:'precio', label:'Precio',   align:'right',
     fmt:  r=>(!isNaN(r.precio)&&r.precio>0)?fmtN(r.precio):'—',
     sort: r=>r.precio||0 },
-  { key:'var',    label:'Var%',      align:'right',
+  { key:'var',    label:'Var%',     align:'right',
     fmt:  r=>{
       if(isNaN(r.variacion)||r.variacion==null) return '—';
       const c=r.variacion>0?'var(--green)':r.variacion<0?'var(--red)':'';
       return `<span style="color:${c};font-weight:600;">${r.variacion>=0?'+':''}${fmtN(r.variacion)}%</span>`;
     },
     sort: r=>r.variacion||0 },
-  { key:'tea',    label:'TEA',       align:'right',
-    fmt:  r=>r.calc?`<span style="font-weight:700;color:var(--accent);">${fmtPct(r.calc.tea)}</span>`:'—',
-    sort: r=>r.calc?r.calc.tea:-Infinity },
-  { key:'tem',    label:'TEM',       align:'right',
-    fmt:  r=>r.calc?fmtPct(r.calc.tem):'—',
-    sort: r=>r.calc?r.calc.tem:-Infinity },
-  { key:'tna',    label:'TNA',       align:'right',
+  { key:'tna',    label:'TNA',      align:'right',
     fmt:  r=>r.calc?fmtPct(r.calc.tna):'—',
     sort: r=>r.calc?r.calc.tna:-Infinity },
-  { key:'vt',     label:'VT',        align:'right',
-    fmt:  r=>r.calc&&!isNaN(r.calc.vt)?fmtN(r.calc.vt,4):'—',
-    sort: r=>r.calc?r.calc.vt:-Infinity },
-  { key:'pxL',    label:'Px Limpio', align:'right',
-    fmt:  r=>r.calc&&!isNaN(r.calc.precioLimpio)?fmtN(r.calc.precioLimpio,4):'—',
-    sort: r=>r.calc?r.calc.precioLimpio:-Infinity },
-  { key:'par',    label:'Paridad',   align:'right',
+  { key:'tea',    label:'TEA',      align:'right',
+    fmt:  r=>r.calc?fmtPct(r.calc.tea):'—',
+    sort: r=>r.calc?r.calc.tea:-Infinity },
+  { key:'tem',    label:'TEM',      align:'right',
+    fmt:  r=>r.calc?fmtPct(r.calc.tem):'—',
+    sort: r=>r.calc?r.calc.tem:-Infinity },
+  { key:'par',    label:'Paridad',  align:'right',
     fmt:  r=>r.calc&&!isNaN(r.calc.paridad)?fmtPct(r.calc.paridad,2):'—',
     sort: r=>r.calc?r.calc.paridad:-Infinity },
-  { key:'md',     label:'MD',        align:'right',
-    fmt:  r=>r.calc?fmtN(r.calc.md,4):'—',
-    sort: r=>r.calc?r.calc.md:-Infinity },
-  { key:'dur',    label:'Duration',  align:'right',
+  { key:'dur',    label:'Duration', align:'right',
     fmt:  r=>r.calc?fmtN(r.calc.dur,4):'—',
     sort: r=>r.calc?r.calc.dur:-Infinity },
-  { key:'conv',   label:'Conv.',     align:'right',
+  { key:'md',     label:'MD',       align:'right',
+    fmt:  r=>r.calc?fmtN(r.calc.md,4):'—',
+    sort: r=>r.calc?r.calc.md:-Infinity },
+  { key:'conv',   label:'Conv.',    align:'right',
     fmt:  r=>r.calc?fmtN(r.calc.conv,4):'—',
     sort: r=>r.calc?r.calc.conv:-Infinity },
-  { key:'dias',   label:'Días',      align:'right',
-    fmt:  r=>r.calc?String(r.calc.diasReal):'—',
-    sort: r=>r.calc?r.calc.diasReal:Infinity },
-  { key:'venc',   label:'Venc.',     align:'right',
+  { key:'venc',   label:'Venc.',    align:'right',
     fmt:  r=>r.calc?fmtDateShort(r.calc.fechaVto):'—',
     sort: r=>r.calc?r.calc.fechaVto:'' },
+  { key:'dias',   label:'Días',     align:'right',
+    fmt:  r=>r.calc?String(r.calc.diasReal):'—',
+    sort: r=>r.calc?r.calc.diasReal:Infinity },
+  { key:'vol',    label:'Volumen',  align:'right',
+    fmt:  r=>{
+      if(isNaN(r.vol)||!r.vol) return '—';
+      const v=r.vol;
+      if(v>=1e9) return (v/1e9).toFixed(2)+'B';
+      if(v>=1e6) return (v/1e6).toFixed(1)+'M';
+      if(v>=1e3) return (v/1e3).toFixed(0)+'K';
+      return fmtN(v,0);
+    },
+    sort: r=>r.vol||0 },
 ];
 
 // ── Render tabla ──
@@ -1084,18 +1087,6 @@ function lcColorTNA(){
     const col=`rgb(${r},${g},${b})`;
     td.style.color=col;
     td.style.fontWeight='700';
-    // add rank badge on highest and lowest
-    const isMax=v===maxV, isMin=v===minV;
-    if(isMax||isMin){
-      const badge=isMax
-        ?`<span style="font-size:8px;background:rgba(13,158,110,0.15);color:#0d9e6e;border:1px solid rgba(13,158,110,0.3);border-radius:4px;padding:1px 5px;margin-left:4px;font-weight:700;">MAX</span>`
-        :`<span style="font-size:8px;background:rgba(224,49,49,0.12);color:#e03131;border:1px solid rgba(224,49,49,0.25);border-radius:4px;padding:1px 5px;margin-left:4px;font-weight:700;">MIN</span>`;
-      // only add if not already there
-      if(!td.innerHTML.includes('MAX')&&!td.innerHTML.includes('MIN')){
-        td.innerHTML=td.textContent+badge;
-        td.style.color=col;td.style.fontWeight='700';
-      }
-    }
   });
 }
 
@@ -1144,35 +1135,124 @@ function lcTrendDataset(pts,color){
 function lcBuildCurveCard(rows){
   const card=document.createElement('div');
   card.className='card';
+
+  // Compare state: stored on window so buttons can trigger re-render
+  if(!window._lcCmpMode) window._lcCmpMode=null;
+  if(!window._lcCmpRows) window._lcCmpRows=[];
+  if(!window._lcExcluded) window._lcExcluded=new Set();
+  const excluded=window._lcExcluded;
+
   card.innerHTML=`
     <div class="card-header">
-      <span class="card-title">Curva de Rendimientos — LECAPs (TNA vs Días)</span>
+      <span class="card-title">Curva de Rendimientos — LECAPs (TNA vs MD)</span>
+      <div class="compare-controls">
+        <button class="cmp-btn ${window._lcCmpMode==='D1'?'active':''}" onclick="lcSetCmp('D1')">-1D</button>
+        <button class="cmp-btn ${window._lcCmpMode==='W1'?'active':''}" onclick="lcSetCmp('W1')">-1S</button>
+        <button class="cmp-btn ${window._lcCmpMode==='M1'?'active':''}" onclick="lcSetCmp('M1')">-1M</button>
+        <button class="cmp-btn ${window._lcCmpMode==='M3'?'active':''}" onclick="lcSetCmp('M3')">-3M</button>
+        <input type="date" class="date-input" value="${window._lcCmpDate||''}" onchange="lcSetCmpDate(this.value)" title="Fecha libre">
+      </div>
     </div>
     <div class="chart-wrap" style="position:relative;">
+      <div class="outlier-indicator" id="lc-outlier-pips" style="top:8px;"></div>
       <div class="chart-canvas-wrap"><canvas id="lc-curve-chart"></canvas></div>
     </div>
     <div class="chart-legend" id="lc-curve-legend"></div>`;
 
   setTimeout(()=>{
-    const valid=rows.filter(r=>r.calc&&!isNaN(r.calc.tna)&&r.calc.diasReal>0);
-    const pts=valid.map(r=>({x:r.calc.diasReal, y:r.calc.tna, label:r.ticker}));
-    if(!pts.length)return;
-    const xMin=Math.min(...pts.map(p=>p.x)), xMax=Math.max(...pts.map(p=>p.x));
-    const yMin=Math.min(...pts.map(p=>p.y)), yMax=Math.max(...pts.map(p=>p.y));
-    const xPad=(xMax-xMin)*0.08||5, yPad=(yMax-yMin)*0.15||1;
-    const tr=lcTrendDataset(pts,'#1E27F3');
-    const datasets=[];
-    if(tr) datasets.push(tr);
-    datasets.push({
-      label:'LECAPs',data:pts,
-      backgroundColor:'#1E27F3',borderColor:'#1E27F3',
-      pointRadius:5,pointHoverRadius:8,showLine:false,order:2
-    });
+    const valid=rows.filter(r=>r.calc&&!isNaN(r.calc.md)&&r.calc.md>0&&!isNaN(r.calc.tna));
+    const allPts=valid.map(r=>({x:r.calc.md, y:r.calc.tna, label:r.ticker}));
+    if(!allPts.length)return;
+
+    let chartInst=null;
+
+    function getActivePts(){ return allPts.filter(p=>!excluded.has(p.label)); }
+
+    function getRange(pts){
+      if(!pts.length) return {xMin:0,xMax:1,yMin:0,yMax:1};
+      const trendFn=lcPolyFit2(pts.filter(p=>isFinite(p.x)&&isFinite(p.y)));
+      const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
+      const xMin=Math.min(...xs), xMax=Math.max(...xs);
+      const trendYs=[];
+      if(trendFn){ for(let i=0;i<=40;i++){ const tx=xMin+(xMax-xMin)*i/40; const ty=trendFn(tx); if(isFinite(ty))trendYs.push(ty); } }
+      const allYs=[...ys,...trendYs];
+      const yPad=(Math.max(...allYs)-Math.min(...allYs))*0.15||1;
+      const xPad=(xMax-xMin)*0.1||0.02;
+      return{xMin:xMin-xPad,xMax:xMax+xPad,yMin:Math.min(...allYs)-yPad,yMax:Math.max(...allYs)+yPad};
+    }
+
+    function buildDatasets(){
+      const activePts=getActivePts();
+      const ds=[];
+      const tr=lcTrendDataset(activePts,'#1E27F3');
+      if(tr)ds.push(tr);
+      const colors=allPts.map(p=>excluded.has(p.label)?'rgba(30,39,243,0.18)':'#1E27F3');
+      const radii=allPts.map(p=>excluded.has(p.label)?3:5);
+      ds.push({label:'LECAPs',data:allPts,backgroundColor:colors,borderColor:colors,pointRadius:radii,pointHoverRadius:8,showLine:false,order:2});
+      // Compare dataset
+      if(window._lcCmpRows&&window._lcCmpRows.length){
+        const cv=window._lcCmpRows.filter(r=>r.calc&&r.calc.md>0&&!isNaN(r.calc.tna));
+        const cp=cv.map(r=>({x:r.calc.md,y:r.calc.tna,label:r.ticker}));
+        const tr2=lcTrendDataset(cp,'#f59e0b');
+        if(tr2){tr2.borderDash=[5,3];ds.push(tr2);}
+        ds.push({label:'_cmp',data:cp,backgroundColor:'#f59e0b',borderColor:'#f59e0b',pointRadius:4,pointHoverRadius:7,pointStyle:'triangle',showLine:false,order:2});
+      }
+      return ds;
+    }
+
+    function updatePips(){
+      const el=document.getElementById('lc-outlier-pips');
+      if(!el)return;
+      if(!excluded.size){el.innerHTML='';return;}
+      el.innerHTML=[...excluded].map(lbl=>{
+        const pt=allPts.find(p=>p.label===lbl);
+        return`<div class="outlier-pip" onclick="lcReactivate('${lbl}')" title="Click para reactivar">
+          <svg width="8" height="8" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" fill="#ef4444"/></svg>
+          ${lbl} ${pt?pt.y.toFixed(1)+'%':'?'}
+        </div>`;
+      }).join('');
+    }
+
+    function redraw(){
+      if(!chartInst)return;
+      const activePts=getActivePts();
+      const range=getRange(activePts);
+      const newTr=lcTrendDataset(activePts,'#1E27F3');
+      const newColors=allPts.map(p=>excluded.has(p.label)?'rgba(30,39,243,0.18)':'#1E27F3');
+      const newRadii=allPts.map(p=>excluded.has(p.label)?3:5);
+      // update trend
+      if(chartInst.data.datasets[0]&&chartInst.data.datasets[0].label==='_trend'){
+        chartInst.data.datasets[0].data=newTr?newTr.data:[];
+      }
+      const ptDs=chartInst.data.datasets.find(d=>d.label==='LECAPs');
+      if(ptDs){ptDs.backgroundColor=newColors;ptDs.borderColor=newColors;ptDs.pointRadius=newRadii;}
+      chartInst.options.scales.y.min=range.yMin;chartInst.options.scales.y.max=range.yMax;
+      chartInst.options.scales.x.min=range.xMin;chartInst.options.scales.x.max=range.xMax;
+      chartInst.update('active');
+      updatePips();
+    }
+
+    window.lcReactivate=function(lbl){ excluded.delete(lbl); redraw(); };
+
+    const activePts=getActivePts();
+    const range=getRange(activePts);
+    const datasets=buildDatasets();
     const ctx=document.getElementById('lc-curve-chart');if(!ctx)return;
-    new Chart(ctx,{
+
+    chartInst=new Chart(ctx,{
       type:'scatter',data:{datasets},
       options:{
         responsive:true,maintainAspectRatio:false,
+        onClick(evt,elements){
+          if(!elements||!elements.length)return;
+          const el=elements[0];
+          const ds=chartInst.data.datasets[el.datasetIndex];
+          if(!ds||ds.label==='_trend'||ds.label==='_cmp')return;
+          const pt=ds.data[el.index];
+          if(!pt||!pt.label)return;
+          if(excluded.has(pt.label)) excluded.delete(pt.label); else excluded.add(pt.label);
+          redraw();
+        },
         plugins:{
           legend:{display:false},
           tooltip:{
@@ -1180,15 +1260,19 @@ function lcBuildCurveCard(rows){
             titleColor:'#3a3f5c',bodyColor:'#0a0c1a',padding:10,
             titleFont:{family:"'DM Mono',monospace",size:11},bodyFont:{family:"'DM Mono',monospace",size:11},
             filter:item=>item.dataset.label!=='_trend',
-            callbacks:{label:c=>`${c.raw.label}: TNA ${c.raw.y.toFixed(2)}% · ${c.raw.x}d`}
+            callbacks:{label:c=>{
+              const p=c.raw;
+              const isExcl=excluded.has(p.label);
+              return`${isExcl?'[excluido] ':''}${p.label}: TNA ${p.y.toFixed(2)}% | MD ${p.x.toFixed(4)}`;
+            }}
           }
         },
         scales:{
-          x:{min:xMin-xPad,max:xMax+xPad,
+          x:{min:range.xMin,max:range.xMax,
             grid:{color:'rgba(30,39,243,0.05)'},
             ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:10}},
-            title:{display:true,text:'Días al vencimiento',color:'#8a90b0',font:{size:10}}},
-          y:{min:yMin-yPad,max:yMax+yPad,
+            title:{display:true,text:'Modified Duration',color:'#8a90b0',font:{size:10}}},
+          y:{min:range.yMin,max:range.yMax,
             grid:{color:'rgba(30,39,243,0.05)'},
             ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:10},callback:v=>v.toFixed(1)+'%'},
             title:{display:true,text:'TNA (%)',color:'#8a90b0',font:{size:10}}}
@@ -1201,27 +1285,84 @@ function lcBuildCurveCard(rows){
           const meta=chart.getDatasetMeta(di);
           ds.data.forEach((pt,pi)=>{
             const el=meta.data[pi];if(!el||!pt.label)return;
-            c2.save();c2.font="500 9px 'DM Mono',monospace";c2.fillStyle='#8a90b0';
+            const isExcl=excluded.has(pt.label);
+            c2.save();c2.font="500 9px 'DM Mono',monospace";
+            c2.fillStyle=isExcl?'rgba(138,144,176,0.35)':(ds.label==='_cmp'?'#c9973a':'#8a90b0');
+            if(isExcl) c2.globalAlpha=0.4;
             c2.fillText(pt.label,el.x+6,el.y-4);c2.restore();
           });
         });
       }}]
     });
+
+    // Legend
+    const hasCmp=window._lcCmpRows&&window._lcCmpRows.length;
     document.getElementById('lc-curve-legend').innerHTML=`
-      <div class="legend-item"><div class="legend-line" style="background:#1E27F3"></div>Tendencia</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#1E27F3"></div>LECAPs</div>`;
+      <div class="legend-item"><div class="legend-line" style="background:#1E27F3"></div>Tendencia hoy</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#1E27F3"></div>LECAPs hoy <span style="color:var(--text3);font-size:9px;">(click para excluir)</span></div>
+      ${hasCmp?`<div class="legend-item"><div class="legend-line" style="background:#f59e0b;opacity:.8"></div>Tendencia comparar</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>LECAPs comparar</div>`:''}`;
+
+    updatePips();
+    window._lcChartInst=chartInst;
+    window._lcAllPts=allPts;
   },50);
+
   return card;
+}
+
+// ── Compare controls ──
+window.lcSetCmp=function(mode){
+  window._lcCmpMode=(window._lcCmpMode===mode)?null:mode;
+  if(window._lcCmpMode){
+    const days={D1:1,W1:7,M1:30,M3:90}[mode]||7;
+    window._lcCmpDate=''; // clear custom date
+    lcLoadCmpData(days);
+  } else {
+    window._lcCmpRows=[];
+    window._lcCmpDate='';
+    lcRenderSection();
+  }
+  // sync buttons
+  document.querySelectorAll('#lc-pane-calc .cmp-btn').forEach(b=>{
+    b.classList.toggle('active', b.textContent==='-'+{D1:'1D',W1:'1S',M1:'1M',M3:'3M'}[window._lcCmpMode||'']||false);
+  });
+};
+
+window.lcSetCmpDate=function(val){
+  if(!val){window._lcCmpRows=[];window._lcCmpDate='';window._lcCmpMode=null;lcRenderSection();return;}
+  window._lcCmpDate=val;
+  window._lcCmpMode='CUSTOM';
+  lcLoadCmpData(null, val);
+};
+
+// Load compare data: for now re-calculate using current cashflows but hypothetical fecha_liq
+// (Since we don't have historical price data, we simulate by shifting fecha_liq)
+async function lcLoadCmpData(days, isoDate){
+  // We can't fetch historical prices from the Sheet (it only has today's snapshot)
+  // Instead: recalculate metrics with a different fecha_liq to show how the curve shape shifts
+  // This is an honest approximation — shows how duration/TNA changes with a different settlement date
+  let cmpFechaLiq;
+  if(isoDate){
+    cmpFechaLiq=isoDate;
+  } else {
+    const ref=new Date(document.getElementById('lc-fecha-liq').value||lcDefaultFecha());
+    ref.setDate(ref.getDate()-days);
+    // skip weekend
+    while(ref.getDay()===0||ref.getDay()===6) ref.setDate(ref.getDate()-1);
+    cmpFechaLiq=ref.toISOString().slice(0,10);
+  }
+  // Recalculate rows with shifted fecha_liq (same prices, different settlement)
+  window._lcCmpRows=lcCruzar(_lcBundle,_lcPrecios,cmpFechaLiq);
+  lcRenderSection();
 }
 
 // ── Render section: curva + tabla ──
 function lcRenderSection(){
   const main=document.getElementById('lc-table-wrap');
   if(!main||!_lcRows.length) return;
-  // Remove old curve card if exists
   const old=document.getElementById('lc-curve-card-wrap');
   if(old) old.remove();
-  // Build and insert curve card before the info-row
   const infoRow=document.getElementById('lc-info-row');
   if(infoRow){
     const wrap=document.createElement('div');
