@@ -659,6 +659,33 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
         </div>
       </div>
     </div>
+
+    <!-- ── SECCIÓN: Google Sheet Cotizaciones ── -->
+    <div style="margin-top:48px;padding-top:32px;border-top:1px solid var(--border);">
+      <div style="font-family:var(--display);font-size:20px;font-weight:800;color:var(--text);margin-bottom:6px;">Google Sheet · Precios</div>
+      <div style="font-size:12px;color:var(--text3);font-family:var(--mono);margin-bottom:20px;">Hoja 1 — Especie · Apertura · Máximo · Mínimo · Último · Fecha · Volumen · Cierre</div>
+      <div id="sheet-cot-status" style="display:none;margin-bottom:16px;"></div>
+      <button onclick="testSheetCotizaciones()"
+        style="padding:12px 28px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--mono);margin-bottom:28px;"
+        onmouseover="this.style.background='var(--accent2)'" onmouseout="this.style.background='var(--accent)'">
+        ▶ Testear Sheet
+      </button>
+      <div id="sheet-cot-results" style="display:none;">
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+          <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--text2);font-family:var(--mono);">Últimas filas cargadas</span>
+            <span id="sheet-cot-count" style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;"></span>
+          </div>
+          <div style="overflow-x:auto;">
+            <table id="sheet-cot-table" style="width:100%;border-collapse:collapse;font-size:11px;font-family:var(--mono);">
+              <thead id="sheet-cot-thead"></thead>
+              <tbody id="sheet-cot-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -1235,6 +1262,88 @@ function previewCSV(nombre){
   contentEl.textContent=lineas.join('\n')+(lineas.length===10?'\n...(truncado)':'');
   previewEl.style.display='block';
   previewEl.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// ── TEST GOOGLE SHEET COTIZACIONES ──
+const SHEET_COT_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vQAQTxefw1DIhUYs5GvmOe31a-ADH-WfajzoSmGQH-Eb59K7RpFv2qLBzHpJmmoye60DG8R8oaEoAW3/pub?output=csv';
+const SHEET_COT_COLS=['Especie','Apertura','Máximo','Mínimo','Último','Fecha','Volumen','Cierre'];
+
+async function testSheetCotizaciones(){
+  const statusEl=document.getElementById('sheet-cot-status');
+  const resultsEl=document.getElementById('sheet-cot-results');
+  const countEl=document.getElementById('sheet-cot-count');
+  const thead=document.getElementById('sheet-cot-thead');
+  const tbody=document.getElementById('sheet-cot-tbody');
+
+  statusEl.style.display='flex';
+  statusEl.style.cssText='display:flex;gap:8px;align-items:center;background:rgba(30,39,243,0.08);color:#8a90b0;border:1px solid rgba(30,39,243,0.2);border-radius:8px;padding:12px 16px;font-size:12px;font-family:var(--mono);margin-bottom:16px;';
+  statusEl.innerHTML='<div class="spinner"></div> Conectando con el Sheet...';
+  resultsEl.style.display='none';
+
+  try {
+    const t0=performance.now();
+    const res=await fetch(SHEET_COT_URL);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const text=await res.text();
+    const ms=Math.round(performance.now()-t0);
+
+    // Parse CSV
+    const lines=text.trim().split('\n');
+    const headers=lines[0].split(',').map(h=>h.trim().replace(/"/g,''));
+    const rows=lines.slice(1).filter(l=>l.trim()).map(l=>{
+      const vals=[];let cur='',inQ=false;
+      for(const c of l){
+        if(c==='"'){inQ=!inQ;}
+        else if(c===','&&!inQ){vals.push(cur.trim());cur='';}
+        else cur+=c;
+      }
+      vals.push(cur.trim());
+      return vals;
+    });
+
+    // Validar columnas esperadas
+    const missing=SHEET_COT_COLS.filter(c=>!headers.includes(c));
+    const totalRows=rows.length;
+
+    // Status
+    statusEl.style.cssText='display:flex;gap:8px;align-items:center;background:rgba(13,158,110,0.08);color:var(--green);border:1px solid rgba(13,158,110,0.25);border-radius:8px;padding:12px 16px;font-size:12px;font-family:var(--mono);margin-bottom:16px;';
+    statusEl.innerHTML=`✓ Conexión exitosa · ${totalRows} filas · ${ms}ms`+(missing.length?` · ⚠ cols faltantes: ${missing.join(', ')}`:'');
+
+    countEl.textContent=`${totalRows} filas · mostrando últimas 15`;
+
+    // Render tabla — columnas en orden esperado
+    const colIdx=SHEET_COT_COLS.map(c=>headers.indexOf(c));
+    const thStyle='padding:9px 12px;text-align:left;font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border);white-space:nowrap;';
+    const tdStyle='padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text2);white-space:nowrap;';
+    const tdNumStyle='padding:8px 12px;border-bottom:1px solid var(--border);color:var(--accent);text-align:right;white-space:nowrap;';
+    const tdTickStyle='padding:8px 12px;border-bottom:1px solid var(--border);color:var(--accent);font-weight:700;white-space:nowrap;';
+
+    thead.innerHTML=`<tr>${SHEET_COT_COLS.map(c=>`<th style="${thStyle}">${c}</th>`).join('')}</tr>`;
+
+    // Últimas 15 filas, más reciente primero
+    const display=[...rows].reverse().slice(0,15);
+    tbody.innerHTML=display.map(row=>{
+      return`<tr onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''">${colIdx.map((ci,i)=>{
+        const val=ci>=0?(row[ci]||'—'):'—';
+        const isNum=[1,2,3,4,7].includes(i);
+        const isVol=i===6;
+        const isTicker=i===0;
+        const isDate=i===5;
+        let disp=val;
+        if(isNum){ const n=parseFloat(val); disp=isNaN(n)?val:n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:3}); }
+        if(isVol){ const n=parseFloat(val); disp=isNaN(n)?val:n>=1e9?(n/1e9).toFixed(1)+'B':n>=1e6?(n/1e6).toFixed(1)+'M':n.toLocaleString('es-AR'); }
+        const st=isTicker?tdTickStyle:(isNum||isVol)?tdNumStyle:(isDate?`${tdStyle}color:var(--text3);`:tdStyle);
+        return`<td style="${st}">${disp}</td>`;
+      }).join('')}</tr>`;
+    }).join('');
+
+    resultsEl.style.display='block';
+    resultsEl.scrollIntoView({behavior:'smooth',block:'nearest'});
+
+  } catch(e){
+    statusEl.style.cssText='display:flex;gap:8px;align-items:center;background:rgba(224,49,49,0.08);color:var(--red);border:1px solid rgba(224,49,49,0.25);border-radius:8px;padding:12px 16px;font-size:12px;font-family:var(--mono);margin-bottom:16px;';
+    statusEl.innerHTML=`✗ Error: ${e.message}`;
+  }
 }
 
 // ── CSV PARSER (fix: detecta separador, no reemplaza comas numéricas ciegamente) ──
