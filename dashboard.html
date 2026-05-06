@@ -3379,8 +3379,9 @@ function renderEquity(){
     // Header del sector
     const hdr=document.createElement('div');
     hdr.style.cssText='display:flex;align-items:center;gap:12px;margin-bottom:12px;';
+    const sectorLabel=sector.replace(/_+/g,' ').trim();
     hdr.innerHTML=`
-      <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#1E27F3;font-family:var(--mono);">${sector}</span>
+      <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#1E27F3;font-family:var(--mono);">${sectorLabel}</span>
       <span style="font-size:10px;color:#4a5280;font-family:var(--mono);">${rows.length} empresa${rows.length!==1?'s':''}</span>`;
     wrap.appendChild(hdr);
 
@@ -3394,6 +3395,23 @@ function renderEquity(){
       {key:'Fecha Balance', label:'Ult. Balance'},
       ...RATIOS.map(r=>({key:r.key,label:r.short})),
     ];
+
+    // ── Color helpers para ratios ──
+    function ratioColor(key, val){
+      const v=parseFloat(val);
+      if(isNaN(v)||val===''||val===null||val===undefined)return null;
+      const G='#00B050', A='#BF8F00', R='#C00000';
+      if(key==='Deuda N. / Patrimonio N.') return v<=1.5?G:v<=2.5?A:R;
+      if(key==='Deuda B. / Activo')        return v<=30?G:v<=50?A:R;
+      if(key==='Deuda N. / EBITDA')        return v<=5?G:v<=10?A:R;
+      if(key==='Ingresos Operativos / Deuda') return v>10?G:v>5?A:R;
+      if(key==='Deuda Fin. CP / EBITDA')   return v<=0?G:v<=2?A:R;
+      return null;
+    }
+
+    // anchos fijos: Ticker 70 | Empresa flex | Score 72 | Balance 100 | 5 ratios 90 c/u
+    const thStyle=(align,w)=>`padding:9px 12px;text-align:${align};font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:#6b7299;background:#0d1020;border-bottom:1px solid rgba(30,39,243,0.15);font-family:'DM Mono',monospace;white-space:nowrap;cursor:pointer;user-select:none;${w?'width:'+w+';':''}`;
+    const tdBase=(align,extra)=>`padding:8px 12px;text-align:${align};font-family:'DM Mono',monospace;font-size:11px;border-bottom:1px solid rgba(30,39,243,0.07);white-space:nowrap;${extra||''}`;
 
     function renderRows(){
       const sk=_excelSortKeys[sectorId];
@@ -3410,13 +3428,15 @@ function renderEquity(){
       // thead
       const thead=card.querySelector('thead tr');
       if(thead){
-        thead.innerHTML=cols.map(c=>{
-          let cls='';
-          if(_excelSortKeys[sectorId]===c.key) cls=_excelSortDirs[sectorId]===1?'sorted-asc':'sorted-desc';
-          return`<th class="${cls}" style="background:#0d1020;color:#4a5280;">${c.label}</th>`;
+        const aligns=['left','left','right','right','right','right','right','right','right'];
+        const widths=['70px','','72px','100px','90px','90px','90px','90px','90px'];
+        thead.innerHTML=cols.map((c,i)=>{
+          let arrow='';
+          if(_excelSortKeys[sectorId]===c.key) arrow=_excelSortDirs[sectorId]===1?' ▲':' ▼';
+          else arrow=' <span style="opacity:.35">⇅</span>';
+          return`<th style="${thStyle(aligns[i],widths[i])}">${c.label}${arrow}</th>`;
         }).join('');
         thead.querySelectorAll('th').forEach((th,i)=>{
-          th.style.cursor='pointer';th.style.userSelect='none';
           th.onclick=()=>{
             if(_excelSortKeys[sectorId]===cols[i].key){_excelSortDirs[sectorId]*=-1;}
             else{_excelSortKeys[sectorId]=cols[i].key;_excelSortDirs[sectorId]=1;}
@@ -3434,40 +3454,36 @@ function renderEquity(){
         const scBg=scoreBg(r['Score']);
         const fb=(r['Fecha Balance']||'').trim().substring(0,10)||'—';
         const ticker=(r['Ticker']||'').trim().toUpperCase();
+        const ratiosCells=RATIOS.map(rat=>{
+          const raw=r[rat.key];
+          const color=ratioColor(rat.key,raw);
+          const display=fmtR(raw);
+          const style=tdBase('right', color?`color:${color};font-weight:600;`:'color:#7a82a8;');
+          return`<td style="${style}">${display}</td>`;
+        }).join('');
         return`<tr style="cursor:pointer;" onclick="openExcelDetail('${ticker}')"
           onmouseover="this.style.background='rgba(30,39,243,0.06)'" onmouseout="this.style.background='transparent'">
-          <td style="color:#a5b4fc;font-weight:700;text-align:left;">${ticker}</td>
-          <td style="color:#8b99c4;text-align:left;">${r['Empresa']||'—'}</td>
-          <td>
-            <span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:var(--mono);color:${scColor};background:${scBg};border:1px solid ${scColor}33;">
-              ${sc}
-            </span>
+          <td style="${tdBase('left','color:#a5b4fc;font-weight:700;')}">${ticker}</td>
+          <td style="${tdBase('left','color:#c8cfe8;')}">${r['Empresa']||'—'}</td>
+          <td style="${tdBase('right','')}">
+            <span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:'DM Mono',monospace;color:${scColor};background:${scBg};border:1px solid ${scColor}33;">${sc}</span>
           </td>
-          <td style="color:#4a5280;">${fb}</td>
-          ${RATIOS.map(rat=>`<td>${fmtR(r[rat.key])}</td>`).join('')}
+          <td style="${tdBase('right','color:#6b7299;')}">${fb}</td>
+          ${ratiosCells}
         </tr>`;
       }).join('');
     }
 
-    const theadHtml=cols.map(c=>`<th style="background:#0d1020;color:#4a5280;cursor:pointer;user-select:none;">${c.label}</th>`).join('');
+    const aligns0=['left','left','right','right','right','right','right','right','right'];
+    const widths0=['70px','','72px','100px','90px','90px','90px','90px','90px'];
+    const theadHtml=cols.map((c,i)=>`<th style="${thStyle(aligns0[i],widths0[i])}">${c.label} <span style="opacity:.35">⇅</span></th>`).join('');
     card.innerHTML=`
       <div style="overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;">
+        <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
           <thead><tr>${theadHtml}</tr></thead>
           <tbody></tbody>
         </table>
       </div>`;
-    // Aplicar estilos de data-table a las celdas
-    card.querySelectorAll('th,td').forEach(el=>{
-      el.style.padding='8px 12px';
-      el.style.borderBottom='1px solid rgba(30,39,243,0.08)';
-      el.style.fontFamily="'DM Mono',monospace";
-      el.style.fontSize='11px';
-      el.style.textAlign='right';
-      el.style.whiteSpace='nowrap';
-      el.style.color=el.tagName==='TH'?'#4a5280':'#8b99c4';
-    });
-    // first-child styles handled inline in row rendering
 
     renderRows();
     wrap.appendChild(card);
