@@ -748,6 +748,16 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 
   </div>
 
+  <!-- ── LECAP Detail Overlay ── -->
+  <div id="lc-detail-view" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:200;overflow-y:auto;flex-direction:column;">
+    <div style="background:var(--bg);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:10;box-shadow:0 1px 8px rgba(30,39,243,0.06);">
+      <button onclick="lcCloseDetail()" class="back-btn">← Volver</button>
+      <div id="lc-detail-ticker" style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--accent);">—</div>
+      <div id="lc-detail-meta" style="font-size:11px;color:var(--text3);font-family:var(--mono);">—</div>
+    </div>
+    <div id="lc-detail-body" style="max-width:1100px;margin:0 auto;padding:24px 24px 60px;width:100%;"></div>
+  </div>
+
 </div>
 
 <script>
@@ -944,7 +954,7 @@ function lcCruzar(bundle, preciosMap, fechaLiq){
 // ── Columnas de la tabla ──
 const COLS = [
   { key:'ticker', label:'Ticker',    align:'left',
-    fmt:  r=>`<span style="color:var(--accent);font-weight:700;font-size:12px;">${r.ticker}</span>`,
+    fmt:  r=>`<span style="color:var(--accent);font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;" onclick="lcOpenDetail('${r.ticker}')">${r.ticker}</span>`,
     sort: r=>r.ticker },
   { key:'precio', label:'Precio',    align:'right',
     fmt:  r=>(!isNaN(r.precio)&&r.precio>0)?fmtN(r.precio):'—',
@@ -1026,6 +1036,67 @@ function lcRender(){
   const sinPx=_lcRows.filter(r=>isNaN(r.precio)||!r.precio).length;
   const el=document.getElementById('lc-stats-txt');
   if(el) el.textContent=`${total} instrumentos · ${conCalc} con precio · ${sinPx} sin cotización`;
+  lcColorTNA();
+  lcRenderSection();
+}
+
+// Color ranking on TNA column: best (green) → worst (red)
+function lcColorTNA(){
+  const tbody=document.getElementById('lc-tbody');
+  if(!tbody) return;
+  // TNA is COLS index 6 (0-based): ticker,precio,var,tea,tem,tna → index 5
+  const tnaColIdx = COLS.findIndex(c=>c.key==='tna');
+  if(tnaColIdx<0) return;
+  const rows=[...tbody.querySelectorAll('tr')];
+  // collect valid TNA values
+  const vals=rows.map(tr=>{
+    const td=tr.querySelectorAll('td')[tnaColIdx];
+    if(!td) return null;
+    const txt=td.textContent.replace('%','').replace(',','.').trim();
+    const v=parseFloat(txt);
+    return isNaN(v)?null:v;
+  });
+  const valid=vals.filter(v=>v!==null);
+  if(valid.length<2) return;
+  const minV=Math.min(...valid), maxV=Math.max(...valid);
+  const range=maxV-minV||1;
+  rows.forEach((tr,i)=>{
+    const v=vals[i];
+    const td=tr.querySelectorAll('td')[tnaColIdx];
+    if(!td||v===null) return;
+    // t: 0 = min (red), 1 = max (green)
+    const t=(v-minV)/range;
+    // interpolate: red #e03131 → yellow #d97706 → green #0d9e6e
+    let r,g,b;
+    if(t<0.5){
+      // red → yellow
+      const u=t*2;
+      r=Math.round(224+(217-224)*u);
+      g=Math.round(49+(119-49)*u);
+      b=Math.round(49+(6-49)*u);
+    } else {
+      // yellow → green
+      const u=(t-0.5)*2;
+      r=Math.round(217+(13-217)*u);
+      g=Math.round(119+(158-119)*u);
+      b=Math.round(6+(110-6)*u);
+    }
+    const col=`rgb(${r},${g},${b})`;
+    td.style.color=col;
+    td.style.fontWeight='700';
+    // add rank badge on highest and lowest
+    const isMax=v===maxV, isMin=v===minV;
+    if(isMax||isMin){
+      const badge=isMax
+        ?`<span style="font-size:8px;background:rgba(13,158,110,0.15);color:#0d9e6e;border:1px solid rgba(13,158,110,0.3);border-radius:4px;padding:1px 5px;margin-left:4px;font-weight:700;">MAX</span>`
+        :`<span style="font-size:8px;background:rgba(224,49,49,0.12);color:#e03131;border:1px solid rgba(224,49,49,0.25);border-radius:4px;padding:1px 5px;margin-left:4px;font-weight:700;">MIN</span>`;
+      // only add if not already there
+      if(!td.innerHTML.includes('MAX')&&!td.innerHTML.includes('MIN')){
+        td.innerHTML=td.textContent+badge;
+        td.style.color=col;td.style.fontWeight='700';
+      }
+    }
+  });
 }
 
 window.lcSort=function(key){
@@ -1039,6 +1110,127 @@ window.lcRecalcAll=function(){
   _lcRows=lcCruzar(_lcBundle,_lcPrecios,fechaLiq);
   lcRender();
 };
+
+
+// ── Poly fit cuadrático (igual que Renta Fija) ──
+function lcPolyFit2(pts){
+  const p=pts.filter(pt=>isFinite(pt.x)&&isFinite(pt.y));
+  if(p.length<3)return null;
+  const N=p.length;
+  let S0=N,S1=0,S2=0,S3=0,S4=0,T0=0,T1=0,T2=0;
+  p.forEach(({x,y})=>{S1+=x;S2+=x*x;S3+=x*x*x;S4+=x*x*x*x;T0+=y;T1+=x*y;T2+=x*x*y;});
+  const A=[[S0,S1,S2],[S1,S2,S3],[S2,S3,S4]],B=[T0,T1,T2];
+  for(let col=0;col<3;col++){
+    let mr=col;
+    for(let r=col+1;r<3;r++)if(Math.abs(A[r][col])>Math.abs(A[mr][col]))mr=r;
+    [A[col],A[mr]]=[A[mr],A[col]];[B[col],B[mr]]=[B[mr],B[col]];
+    for(let r=col+1;r<3;r++){const f=A[r][col]/A[col][col];for(let k=col;k<3;k++)A[r][k]-=f*A[col][k];B[r]-=f*B[col];}
+  }
+  const c=[0,0,0];
+  for(let i=2;i>=0;i--){let s=B[i];for(let j=i+1;j<3;j++)s-=A[i][j]*c[j];c[i]=s/A[i][i];}
+  const[cc,b,a]=c;return x=>a*x*x+b*x+cc;
+}
+function lcTrendDataset(pts,color){
+  if(!pts||pts.length<3)return null;
+  const fn=lcPolyFit2(pts);if(!fn)return null;
+  const xMin=Math.min(...pts.map(p=>p.x)),xMax=Math.max(...pts.map(p=>p.x));
+  const tPts=[];
+  for(let i=0;i<=80;i++){const x=xMin+(xMax-xMin)*i/80;tPts.push({x,y:fn(x)});}
+  return{label:'_trend',data:tPts,borderColor:color,backgroundColor:'transparent',borderWidth:2,
+    pointRadius:0,pointHoverRadius:0,showLine:true,tension:0,fill:false,order:1};
+}
+
+// ── Curve card: TNA vs Días (scatter + trend, igual a Renta Fija) ──
+function lcBuildCurveCard(rows){
+  const card=document.createElement('div');
+  card.className='card';
+  card.innerHTML=`
+    <div class="card-header">
+      <span class="card-title">Curva de Rendimientos — LECAPs (TNA vs Días)</span>
+    </div>
+    <div class="chart-wrap" style="position:relative;">
+      <div class="chart-canvas-wrap"><canvas id="lc-curve-chart"></canvas></div>
+    </div>
+    <div class="chart-legend" id="lc-curve-legend"></div>`;
+
+  setTimeout(()=>{
+    const valid=rows.filter(r=>r.calc&&!isNaN(r.calc.tna)&&r.calc.diasReal>0);
+    const pts=valid.map(r=>({x:r.calc.diasReal, y:r.calc.tna, label:r.ticker}));
+    if(!pts.length)return;
+    const xMin=Math.min(...pts.map(p=>p.x)), xMax=Math.max(...pts.map(p=>p.x));
+    const yMin=Math.min(...pts.map(p=>p.y)), yMax=Math.max(...pts.map(p=>p.y));
+    const xPad=(xMax-xMin)*0.08||5, yPad=(yMax-yMin)*0.15||1;
+    const tr=lcTrendDataset(pts,'#1E27F3');
+    const datasets=[];
+    if(tr) datasets.push(tr);
+    datasets.push({
+      label:'LECAPs',data:pts,
+      backgroundColor:'#1E27F3',borderColor:'#1E27F3',
+      pointRadius:5,pointHoverRadius:8,showLine:false,order:2
+    });
+    const ctx=document.getElementById('lc-curve-chart');if(!ctx)return;
+    new Chart(ctx,{
+      type:'scatter',data:{datasets},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            backgroundColor:'#fff',borderColor:'rgba(30,39,243,0.2)',borderWidth:1,
+            titleColor:'#3a3f5c',bodyColor:'#0a0c1a',padding:10,
+            titleFont:{family:"'DM Mono',monospace",size:11},bodyFont:{family:"'DM Mono',monospace",size:11},
+            filter:item=>item.dataset.label!=='_trend',
+            callbacks:{label:c=>`${c.raw.label}: TNA ${c.raw.y.toFixed(2)}% · ${c.raw.x}d`}
+          }
+        },
+        scales:{
+          x:{min:xMin-xPad,max:xMax+xPad,
+            grid:{color:'rgba(30,39,243,0.05)'},
+            ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:10}},
+            title:{display:true,text:'Días al vencimiento',color:'#8a90b0',font:{size:10}}},
+          y:{min:yMin-yPad,max:yMax+yPad,
+            grid:{color:'rgba(30,39,243,0.05)'},
+            ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:10},callback:v=>v.toFixed(1)+'%'},
+            title:{display:true,text:'TNA (%)',color:'#8a90b0',font:{size:10}}}
+        }
+      },
+      plugins:[{id:'lc-labels',afterDraw(chart){
+        const c2=chart.ctx;
+        chart.data.datasets.forEach((ds,di)=>{
+          if(ds.label==='_trend')return;
+          const meta=chart.getDatasetMeta(di);
+          ds.data.forEach((pt,pi)=>{
+            const el=meta.data[pi];if(!el||!pt.label)return;
+            c2.save();c2.font="500 9px 'DM Mono',monospace";c2.fillStyle='#8a90b0';
+            c2.fillText(pt.label,el.x+6,el.y-4);c2.restore();
+          });
+        });
+      }}]
+    });
+    document.getElementById('lc-curve-legend').innerHTML=`
+      <div class="legend-item"><div class="legend-line" style="background:#1E27F3"></div>Tendencia</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#1E27F3"></div>LECAPs</div>`;
+  },50);
+  return card;
+}
+
+// ── Render section: curva + tabla ──
+function lcRenderSection(){
+  const main=document.getElementById('lc-table-wrap');
+  if(!main||!_lcRows.length) return;
+  // Remove old curve card if exists
+  const old=document.getElementById('lc-curve-card-wrap');
+  if(old) old.remove();
+  // Build and insert curve card before the info-row
+  const infoRow=document.getElementById('lc-info-row');
+  if(infoRow){
+    const wrap=document.createElement('div');
+    wrap.id='lc-curve-card-wrap';
+    wrap.style.marginBottom='16px';
+    wrap.appendChild(lcBuildCurveCard(_lcRows));
+    main.insertBefore(wrap,infoRow);
+  }
+}
 
 // ── Carga principal ──
 window.lcLoad=async function(){
@@ -1096,6 +1288,157 @@ window.lcLoad=async function(){
 };
 
 function lcSetMsg(m){ const el=document.getElementById('lc-load-msg'); if(el) el.textContent=m; }
+
+
+// ── LECAP Detail ──
+window.lcOpenDetail = function(ticker){
+  const row = _lcRows.find(r=>r.ticker===ticker);
+  if(!row) return;
+  const dv=document.getElementById('lc-detail-view');
+  dv.style.display='flex';
+  dv.style.flexDirection='column';
+  document.getElementById('lc-detail-ticker').textContent=ticker;
+  const fechaLiq=document.getElementById('lc-fecha-liq').value||lcDefaultFecha();
+  const meta=row.calc
+    ?`LECAP · Venc. ${fmtDateShort(row.calc.fechaVto)} · ${row.calc.diasReal} días · Precio ${fmtN(row.precio)}`
+    :'Sin datos de cálculo';
+  document.getElementById('lc-detail-meta').textContent=meta;
+  lcBuildDetailBody(row, ticker, fechaLiq);
+};
+
+window.lcCloseDetail = function(){
+  document.getElementById('lc-detail-view').style.display='none';
+};
+
+function lcBuildDetailBody(row, ticker, fechaLiq){
+  const body=document.getElementById('lc-detail-body');
+  body.innerHTML='';
+  const c=row.calc;
+
+  // ── Stat grid ──
+  const stats=c?[
+    {label:'TNA',    value:fmtPct(c.tna,2),    hi:true},
+    {label:'TEA',    value:fmtPct(c.tea,2),    hi:false},
+    {label:'TEM',    value:fmtPct(c.tem,2),    hi:false},
+    {label:'Precio', value:fmtN(row.precio),   hi:false},
+    {label:'VT',     value:fmtN(c.vt,4),       hi:false},
+    {label:'Px Limpio',value:fmtN(c.precioLimpio,4),hi:false},
+    {label:'Paridad',value:fmtPct(c.paridad,2),hi:false},
+    {label:'MD',     value:fmtN(c.md,4),       hi:false},
+    {label:'Duration',value:fmtN(c.dur,4),     hi:false},
+    {label:'Conv.',  value:fmtN(c.conv,4),     hi:false},
+    {label:'Días',   value:c.diasReal+'',       hi:false},
+    {label:'Var%',   value:fmtN(row.variacion)+'%',hi:false},
+  ]:[];
+
+  const grid=document.createElement('div');
+  grid.className='detail-grid';
+  stats.forEach(s=>{
+    grid.innerHTML+=`<div class="stat-card">
+      <div class="stat-label">${s.label}</div>
+      <div class="stat-value ${s.hi?'pos':''}">${s.value}</div>
+    </div>`;
+  });
+  body.appendChild(grid);
+
+  // ── Two-column: hist price chart + cashflow bar ──
+  const twoCol=document.createElement('div');
+  twoCol.className='grid-2';
+  twoCol.style.marginTop='16px';
+
+  // Hist price chart (precio histórico desde _lcPrecios historico — no disponible directamente,
+  // usamos los datos que tenemos en _lcRows para mostrar datos del dia; 
+  // como el Sheet solo tiene el último snapshot, hacemos un chart mínimo del flujo)
+  const cashflowCard=document.createElement('div');
+  cashflowCard.className='card';
+  cashflowCard.style.marginBottom='0';
+  cashflowCard.innerHTML=`
+    <div class="card-header"><span class="card-title">Cashflow — c/100 VN</span></div>
+    <div class="chart-wrap"><div class="chart-canvas-wrap" style="height:200px"><canvas id="lc-cf-chart"></canvas></div></div>`;
+
+  const metricsCard=document.createElement('div');
+  metricsCard.className='card';
+  metricsCard.style.marginBottom='0';
+  metricsCard.innerHTML=`
+    <div class="card-header"><span class="card-title">Métricas al ${fechaLiq}</span></div>
+    <div class="chart-wrap"><div class="chart-canvas-wrap" style="height:200px"><canvas id="lc-met-chart"></canvas></div></div>`;
+
+  twoCol.appendChild(cashflowCard);
+  twoCol.appendChild(metricsCard);
+  body.appendChild(twoCol);
+
+  setTimeout(()=>{
+    // Cashflow bar chart
+    if(c){
+      const cfCtx=document.getElementById('lc-cf-chart');
+      if(cfCtx){
+        const cfLabels=['Precio pagado','Flujo al vto.','Ganancia'];
+        const cfVals=[row.precio, c.flujoVto, c.flujoVto - row.precio];
+        const cfColors=['rgba(30,39,243,0.7)','rgba(13,158,110,0.7)','rgba(13,158,110,0.9)'];
+        new Chart(cfCtx,{
+          type:'bar',
+          data:{labels:cfLabels,datasets:[{
+            data:cfVals,backgroundColor:cfColors,borderColor:cfColors.map(c=>c.replace('0.7','1').replace('0.9','1')),
+            borderWidth:1,borderRadius:4
+          }]},
+          options:{
+            responsive:true,maintainAspectRatio:false,
+            plugins:{legend:{display:false},
+              tooltip:{
+                backgroundColor:'#fff',borderColor:'rgba(30,39,243,0.2)',borderWidth:1,
+                titleColor:'#3a3f5c',bodyColor:'#0a0c1a',padding:10,
+                titleFont:{family:"'DM Mono',monospace",size:11},bodyFont:{family:"'DM Mono',monospace",size:11},
+                callbacks:{label:c=>`$${c.raw.toFixed(4)}`}
+              }
+            },
+            scales:{
+              x:{grid:{display:false},ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:10}}},
+              y:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:10},callback:v=>'$'+v.toFixed(1)}}
+            }
+          }
+        });
+      }
+    }
+
+    // Métricas radar / bar comparativo con otras LECAPs
+    const metCtx=document.getElementById('lc-met-chart');
+    if(metCtx&&c){
+      const otherRows=_lcRows.filter(r=>r.ticker!==ticker&&r.calc);
+      const avgTNA= otherRows.length ? otherRows.reduce((a,r)=>a+r.calc.tna,0)/otherRows.length : c.tna;
+      const avgMD = otherRows.length ? otherRows.reduce((a,r)=>a+r.calc.md,0)/otherRows.length  : c.md;
+      new Chart(metCtx,{
+        type:'bar',
+        data:{
+          labels:['TNA %','TEM %','MD × 10'],
+          datasets:[
+            {label:ticker,
+             data:[c.tna, c.tem, c.md*10],
+             backgroundColor:'rgba(30,39,243,0.75)',borderColor:'#1E27F3',borderWidth:1,borderRadius:4},
+            {label:'Promedio',
+             data:[avgTNA, otherRows.length?otherRows.reduce((a,r)=>a+r.calc.tem,0)/otherRows.length:c.tem, avgMD*10],
+             backgroundColor:'rgba(139,153,196,0.35)',borderColor:'#8b99c4',borderWidth:1,borderRadius:4}
+          ]
+        },
+        options:{
+          responsive:true,maintainAspectRatio:false,
+          plugins:{
+            legend:{display:true,labels:{color:'#3a3f5c',font:{family:"'DM Mono',monospace",size:10},boxWidth:10}},
+            tooltip:{
+              backgroundColor:'#fff',borderColor:'rgba(30,39,243,0.2)',borderWidth:1,
+              titleColor:'#3a3f5c',bodyColor:'#0a0c1a',padding:10,
+              titleFont:{family:"'DM Mono',monospace",size:11},bodyFont:{family:"'DM Mono',monospace",size:11},
+              callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toFixed(2)}${c.label.includes('%')?'%':''}`}
+            }
+          },
+          scales:{
+            x:{grid:{display:false},ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:10}}},
+            y:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:10}}}
+          }
+        }
+      });
+    }
+  },80);
+}
 
 // ── Auto-load al entrar al módulo ──
 const _orig=window.enterTest;
