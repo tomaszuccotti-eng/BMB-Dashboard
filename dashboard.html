@@ -1144,7 +1144,13 @@ function parseCSV(text){
       obj[h]=v;
     });
     return obj;
-  }).filter(r=>r.especie&&r.especie!=='especie'&&r.especie!=='');
+  });
+  // Si tiene columna especie (Renta Fija/Variable), filtrar por ella
+  // Si no (Excel de la Muerte y otros), devolver todas las filas no vacías
+  if(headers.includes('especie')){
+    return rows.filter(r=>r.especie&&r.especie!=='especie'&&r.especie!=='');
+  }
+  return rows.filter(r=>Object.values(r).some(v=>v!==''));
 }
 
 function n(val){
