@@ -620,64 +620,127 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
   </div>
 </div>
 
-<!-- ══════════════════ APP TEST ══════════════════ -->
+<!-- ══════════════════ APP TEST → LECAP CALCULATOR ══════════════════ -->
 <div id="app-test" style="display:none;min-height:100vh;flex-direction:column;background:var(--bg);">
+
+  <!-- Header -->
   <div class="header">
     <div class="header-left">
       <div class="logo" onclick="backToLanding()" style="gap:0;">
         <img id="bm-logo-test" src="" alt="Bull Market" style="height:28px;width:auto;margin-right:10px;mix-blend-mode:multiply;">
-        <span style="font-size:11px;font-family:var(--mono);color:var(--text3);font-weight:400;">— TEST WORKER</span>
+        <span style="font-size:11px;font-family:var(--mono);color:var(--text3);font-weight:400;">— LECAP CALCULATOR</span>
       </div>
+      <div class="header-date" id="lc-header-date">—</div>
     </div>
-    <div class="header-right"><div class="status-dot"></div></div>
+    <div class="header-right">
+      <div class="status-dot" id="lc-status-dot" style="background:var(--red);box-shadow:0 0 6px var(--red);"></div>
+      <div class="plazo-toggle">
+        <button class="plazo-btn active" id="lc-btn-ci"   onclick="lcSetPlazo('C.I.')">C.I.</button>
+        <button class="plazo-btn"        id="lc-btn-24hs" onclick="lcSetPlazo('24Hs.')">24Hs.</button>
+      </div>
+      <button onclick="lcLoad()" id="lc-reload-btn"
+        style="padding:5px 14px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--mono);transition:all .15s;"
+        onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='transparent'">
+        ↻ Actualizar
+      </button>
+    </div>
   </div>
-  <div style="max-width:800px;margin:0 auto;padding:40px 28px;width:100%;">
-    <div style="margin-bottom:32px;">
-      <div style="font-family:var(--display);font-size:28px;font-weight:800;color:var(--text);margin-bottom:8px;">Test de conexión</div>
-      <div style="font-size:13px;color:var(--text3);font-family:var(--mono);">Cloudflare Worker → Google Drive → CSVs</div>
+
+  <!-- Internal tabs -->
+  <div class="tabs-bar">
+    <div class="tab active" id="lc-tab-calc" onclick="lcShowTab('calc',this)">LECAPs</div>
+    <div class="tab" id="lc-tab-diag" onclick="lcShowTab('diag',this)">⚙ Diagnóstico</div>
+  </div>
+
+  <!-- ══ TAB: CALCULADORA ══ -->
+  <div id="lc-pane-calc" class="main" style="padding:0;">
+
+    <!-- Banner de estado carga -->
+    <div id="lc-load-banner" style="display:flex;align-items:center;justify-content:center;gap:12px;padding:60px 24px;flex-direction:column;">
+      <div class="spinner"></div>
+      <div style="font-size:12px;font-family:var(--mono);color:var(--text3);" id="lc-load-msg">Cargando datos...</div>
     </div>
-    <div id="test-status" style="display:none;margin-bottom:24px;"></div>
-    <button onclick="runTest()"
-      style="padding:12px 28px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--mono);margin-bottom:32px;"
-      onmouseover="this.style.background='var(--accent2)'" onmouseout="this.style.background='var(--accent)'">
-      ▶ Ejecutar test
-    </button>
-    <div id="test-results" style="display:none;">
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
-        <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:space-between;">
-          <span style="font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--text2);font-family:var(--mono);">CSVs leídos</span>
-          <span id="test-count" style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;"></span>
+
+    <!-- Error banner -->
+    <div id="lc-error-banner" style="display:none;margin:24px;background:rgba(224,49,49,0.08);border:1px solid rgba(224,49,49,0.25);border-radius:8px;padding:14px 18px;font-size:12px;font-family:var(--mono);color:var(--red);"></div>
+
+    <!-- Tabla principal -->
+    <div id="lc-table-wrap" style="display:none;overflow-x:auto;padding:16px 24px 32px;">
+
+      <!-- Info row: fecha + stats -->
+      <div id="lc-info-row" style="display:flex;align-items:center;gap:20px;margin-bottom:14px;flex-wrap:wrap;">
+        <span id="lc-stats-txt" style="font-size:11px;font-family:var(--mono);color:var(--text3);"></span>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+          <label style="font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">Fecha liq.</label>
+          <input type="date" id="lc-fecha-liq"
+            style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;font-family:var(--mono);padding:4px 8px;outline:none;cursor:pointer;"
+            onchange="lcRecalcAll()" />
         </div>
-        <div id="test-list" style="padding:8px 0;"></div>
       </div>
-      <div id="test-preview" style="margin-top:20px;display:none;">
+
+      <table id="lc-table" style="width:100%;border-collapse:collapse;font-size:11px;font-family:var(--mono);min-width:900px;">
+        <thead id="lc-thead"></thead>
+        <tbody id="lc-tbody"></tbody>
+      </table>
+
+      <div style="margin-top:10px;font-size:9px;font-family:var(--mono);color:var(--text3);line-height:1.6;">
+        * VT = Valor Técnico a fecha liq. · Px L = Precio Limpio · Par = Paridad · MD = Modified Duration · Conv = Convexidad · Base 30/360 según prospecto LECAP
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══ TAB: DIAGNÓSTICO ══ -->
+  <div id="lc-pane-diag" style="display:none;max-width:800px;margin:0 auto;padding:40px 28px;width:100%;">
+
+    <div style="font-family:var(--display);font-size:20px;font-weight:800;color:var(--text);margin-bottom:4px;">Diagnóstico de conexión</div>
+    <div style="font-size:12px;color:var(--text3);font-family:var(--mono);margin-bottom:28px;">Worker de cashflows · Google Sheet de cotizaciones</div>
+
+    <!-- Worker test -->
+    <div style="margin-bottom:40px;">
+      <div style="font-size:12px;font-weight:700;font-family:var(--mono);color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:14px;">① Worker · Cashflows CSV</div>
+      <div id="test-status" style="display:none;margin-bottom:16px;"></div>
+      <button onclick="runTest()"
+        style="padding:10px 22px;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);margin-bottom:20px;transition:all .15s;"
+        onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='transparent'">
+        ▶ Testear Worker
+      </button>
+      <div id="test-results" style="display:none;">
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
-          <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg3);">
-            <span id="test-preview-title" style="font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--text2);font-family:var(--mono);"></span>
+          <div style="padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--text2);font-family:var(--mono);">CSVs disponibles</span>
+            <span id="test-count" style="font-size:10px;font-family:var(--mono);color:var(--accent);font-weight:700;"></span>
           </div>
-          <pre id="test-preview-content" style="padding:16px;font-size:11px;font-family:var(--mono);color:var(--text2);overflow-x:auto;margin:0;white-space:pre-wrap;line-height:1.6;"></pre>
+          <div id="test-list" style="padding:6px 0;max-height:260px;overflow-y:auto;"></div>
+        </div>
+        <div id="test-preview" style="margin-top:16px;display:none;">
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+            <div style="padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg3);">
+              <span id="test-preview-title" style="font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--text2);font-family:var(--mono);"></span>
+            </div>
+            <pre id="test-preview-content" style="padding:14px;font-size:10px;font-family:var(--mono);color:var(--text2);overflow-x:auto;margin:0;white-space:pre-wrap;line-height:1.6;"></pre>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- ── SECCIÓN: Google Sheet Cotizaciones ── -->
-    <div style="margin-top:48px;padding-top:32px;border-top:1px solid var(--border);">
-      <div style="font-family:var(--display);font-size:20px;font-weight:800;color:var(--text);margin-bottom:6px;">Google Sheet · Precios</div>
-      <div style="font-size:12px;color:var(--text3);font-family:var(--mono);margin-bottom:20px;">Hoja 1 — Especie · Apertura · Máximo · Mínimo · Último · Fecha · Volumen · Cierre</div>
-      <div id="sheet-cot-status" style="display:none;margin-bottom:16px;"></div>
+    <!-- Sheet test -->
+    <div>
+      <div style="font-size:12px;font-weight:700;font-family:var(--mono);color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:14px;">② Google Sheet · Cotizaciones</div>
+      <div id="sheet-cot-status" style="display:none;margin-bottom:14px;"></div>
       <button onclick="testSheetCotizaciones()"
-        style="padding:12px 28px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--mono);margin-bottom:28px;"
-        onmouseover="this.style.background='var(--accent2)'" onmouseout="this.style.background='var(--accent)'">
+        style="padding:10px 22px;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);margin-bottom:20px;transition:all .15s;"
+        onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='transparent'">
         ▶ Testear Sheet
       </button>
       <div id="sheet-cot-results" style="display:none;">
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
-          <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:space-between;">
-            <span style="font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--text2);font-family:var(--mono);">Últimas filas cargadas</span>
-            <span id="sheet-cot-count" style="font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700;"></span>
+          <div style="padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--text2);font-family:var(--mono);">Últimas filas</span>
+            <span id="sheet-cot-count" style="font-size:10px;font-family:var(--mono);color:var(--accent);font-weight:700;"></span>
           </div>
           <div style="overflow-x:auto;">
-            <table id="sheet-cot-table" style="width:100%;border-collapse:collapse;font-size:11px;font-family:var(--mono);">
+            <table id="sheet-cot-table" style="width:100%;border-collapse:collapse;font-size:10px;font-family:var(--mono);">
               <thead id="sheet-cot-thead"></thead>
               <tbody id="sheet-cot-tbody"></tbody>
             </table>
@@ -687,7 +750,433 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
     </div>
 
   </div>
+
 </div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// LECAP CALCULATOR ENGINE  v2
+// Estructura real del Worker CSV (dos filas de headers):
+//   Línea 0: grupo (Cupón, Fecha de pago, Amortización, ...)
+//   Línea 1: sub-header (#, Efectiva, Amort(vn), ValRes, TasaInt, Int(vn), Amort, Int, Total, ...)
+//   Línea 2+: datos
+//   Columnas de datos:
+//     [0] # cupón
+//     [1] Fecha efectiva (ISO 8601)
+//     [2] Amortización % (del VN)  e.g. "100.00%"
+//     [3] Valor residual tras pago  e.g. "0.00%"
+//     [4] Tasa de interés (TEM original)  e.g. "2.35%"
+//     [5] Interés (vn) total acumulado  e.g. "32.04%"
+//     [6] Amortización c/100 VN  e.g. 100.00
+//     [7] Interés c/100 VN  e.g. 32.04
+//     [8] Total c/100 VN  ← FLUJO FINAL  e.g. 132.04
+//     [9..11] Flujo simulado (para 1.000.000 VN) — no lo usamos
+// ══════════════════════════════════════════════════════════════════
+
+(function(){
+
+const LC_WORKER = 'https://cashflows.tzuccotti.workers.dev';
+const LC_SHEET  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQAQTxefw1DIhUYs5GvmOe31a-ADH-WfajzoSmGQH-Eb59K7RpFv2qLBzHpJmmoye60DG8R8oaEoAW3/pub?output=csv';
+
+let _lcBundle  = null;
+let _lcPrecios = [];
+let _lcRows    = [];
+let _sortKey   = 'dias';
+let _sortDir   = 1;
+
+// ── Tab switcher ──
+window.lcShowTab = function(tab, el){
+  document.getElementById('lc-pane-calc').style.display = tab==='calc' ? '' : 'none';
+  document.getElementById('lc-pane-diag').style.display = tab==='diag' ? 'block' : 'none';
+  document.querySelectorAll('#app-test .tab').forEach(t=>t.classList.remove('active'));
+  if(el) el.classList.add('active');
+};
+
+window.lcSetPlazo = function(p){
+  document.getElementById('lc-btn-ci').classList.toggle('active',   p==='C.I.');
+  document.getElementById('lc-btn-24hs').classList.toggle('active', p==='24Hs.');
+  lcRecalcAll();
+};
+
+// ── Helpers numéricos ──
+function toNum(v){
+  if(v===null||v===undefined||v==='') return NaN;
+  // quitar % y espacios, convertir coma decimal
+  return parseFloat(String(v).replace('%','').replace(',','.').trim());
+}
+function fmtN(v, dec=2){
+  if(isNaN(v)||v==null) return '—';
+  return v.toLocaleString('es-AR',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+}
+function fmtPct(v, dec=2){ return isNaN(v)||v==null?'—':fmtN(v,dec)+'%'; }
+function fmtDateShort(s){
+  if(!s) return '—';
+  const d = new Date(s+'T12:00:00');
+  if(isNaN(d)) return s;
+  const mn=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  return `${d.getDate()} ${mn[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+// ── Parser específico del Worker: dos filas de headers ──
+function parseWorkerCsv(text){
+  const lines = text.trim().split('\n').filter(l=>l.trim());
+  // líneas 0 y 1 son los dos headers → datos desde línea 2
+  if(lines.length < 3) return null;
+  const dataLines = lines.slice(2);
+  return dataLines.map(line=>{
+    const cols = line.split(',').map(c=>c.trim());
+    return {
+      // col[1]: fecha ISO → limpiar timezone
+      fechaPago : cols[1] ? cols[1].replace('T00:00:00.000Z','').trim() : '',
+      // col[4]: TEM original (ej "2.35%")
+      temOrigPct: toNum(cols[4]),
+      // col[7]: interés c/100 VN (no usado directamente pero disponible)
+      interes100: toNum(cols[7]),
+      // col[8]: Total c/100 VN = flujo final
+      total100  : toNum(cols[8]),
+    };
+  }).filter(r=>r.fechaPago && !isNaN(r.total100) && r.total100>0);
+}
+
+// ── Parser CSV genérico (Sheet de precios, tiene 1 fila de header) ──
+function parseCsvSheet(text){
+  const lines = text.trim().split('\n');
+  if(!lines.length) return [];
+  const sep = lines[0].includes(';') ? ';' : ',';
+  function splitLine(line){
+    const vals=[]; let cur='', inQ=false;
+    for(const c of line){
+      if(c==='"'){inQ=!inQ;}
+      else if(c===sep&&!inQ){vals.push(cur.trim());cur='';}
+      else cur+=c;
+    }
+    vals.push(cur.trim());
+    return vals;
+  }
+  const headers = splitLine(lines[0]).map(h=>h.replace(/"/g,'').trim());
+  return lines.slice(1).filter(l=>l.trim()).map(l=>{
+    const vals=splitLine(l);
+    const obj={};
+    headers.forEach((h,i)=>{ obj[h]=(vals[i]||'').replace(/"/g,'').trim(); });
+    return obj;
+  });
+}
+
+// ── Fecha de liquidación default (T+1 hábil) ──
+function lcDefaultFecha(){
+  const d = new Date();
+  d.setDate(d.getDate()+1);
+  while(d.getDay()===0||d.getDay()===6) d.setDate(d.getDate()+1);
+  return d.toISOString().slice(0,10);
+}
+
+// ── Motor de cálculo LECAP ──
+// Convención del prospecto: capitalización mensual, base 30/360
+// El CSV de la Sec. de Finanzas ya nos da:
+//   - fechaPago (ISO): fecha de vencimiento exacta
+//   - total100: flujo final por cada $100 VN (100 + interés total acumulado)
+//   - temOrigPct: TEM de emisión original (para calcular VT)
+//
+// PRECIO LIMPIO para LECAP:
+//   precio_sucio = precio de mercado (lo que cotiza)
+//   VT(liq) = total100 / (1 + temOrig/100)^(dias_a_vto/30)
+//            = valor capitalizado de los $100 originales hasta la fecha de liq
+//   precio_limpio = precio_sucio / VT * 100
+//   paridad = precio_limpio (ya que el VT es la base 100 de la LECAP)
+//
+// Por convención del mercado local, las LECAPs cotizan en precio sucio
+// pero el "clean price" se normaliza contra el VT técnico.
+
+function calcLecap(cf, precioDirty, fechaLiqStr){
+  const liq = new Date(fechaLiqStr + 'T12:00:00');
+  const vto = new Date(cf.fechaPago   + 'T12:00:00');
+
+  const diasReal = Math.round((vto - liq) / 86400000);
+  if(diasReal <= 0) return null;
+
+  const flujoVto  = cf.total100;    // pago al vto por c/$100 VN
+  const temOrig   = cf.temOrigPct;  // TEM original en %
+
+  // ── VT a fecha de liquidación ──
+  // VT = flujoVto / (1 + temOrig/100)^(diasReal/30)
+  const mesesRest  = diasReal / 30;
+  const vt = (!isNaN(temOrig) && temOrig > 0)
+    ? flujoVto / Math.pow(1 + temOrig/100, mesesRest)
+    : null;
+
+  // ── Precio limpio ──
+  // precio_limpio = precio_dirty / VT * 100
+  const precioLimpio = (vt && vt > 0) ? (precioDirty / vt * 100) : precioDirty;
+
+  // ── Paridad ──
+  // Paridad = precio_limpio (ya es relativo a la base 100 del VT)
+  const paridad = precioLimpio;
+
+  // ── Tasas implícitas (desde precio dirty de mercado) ──
+  // Base: flujoVto / precioDirty es el "factor de retorno total"
+  const factor = flujoVto / precioDirty;
+
+  // TEA (días reales, anualización 365)
+  const tea = (Math.pow(factor, 365/diasReal) - 1) * 100;
+
+  // TEM equivalente al precio de mercado
+  const tem = (Math.pow(factor, 30/diasReal)  - 1) * 100;
+
+  // TNA lineal
+  const tna = (factor - 1) * (365/diasReal) * 100;
+
+  // ── Duration Macaulay (bullet, base 30/360 según prospecto) ──
+  // Para un bono bullet de cupón cero, Duration = plazo al vencimiento
+  const dur = mesesRest / 12;  // en años, base 30/360
+
+  // ── Modified Duration ──
+  // MD = Dur / (1 + TEM_mercado/100)
+  const md = dur / (1 + tem/100);
+
+  // ── Convexidad (bullet cero cupón, base 30/360) ──
+  // Conv = D_mac^2 / (1 + TEM)^2
+  const conv = (dur * dur) / Math.pow(1 + tem/100, 2);
+
+  return {
+    flujoVto,
+    vt:          vt     != null ? vt     : NaN,
+    precioLimpio,
+    paridad,
+    tea, tem, tna,
+    diasReal,
+    dur,         // Macaulay duration (años, 30/360)
+    md,          // Modified Duration
+    conv,        // Convexidad
+    fechaVto: cf.fechaPago,
+  };
+}
+
+// ── Cruzar bundle + precios → calcular ──
+function lcCruzar(bundle, precios, plazo, fechaLiq){
+  const tickers = bundle._index || Object.keys(bundle).filter(k=>k!=='_index');
+  return tickers.map(ticker=>{
+    const csvTxt = bundle[ticker];
+    const cfs    = csvTxt ? parseWorkerCsv(csvTxt) : null;
+
+    // Para LECAP bullet: tomamos el único flujo del CSV (siempre 1 row de datos)
+    const cf = cfs && cfs.length > 0 ? cfs[cfs.length-1] : null;
+
+    // Precio: buscar por especie + plazo (C.I. o 24Hs.)
+    const pxRow = precios.find(p=>{
+      const esp = (p.Especie||p.especie||'').trim().toUpperCase();
+      const pl  = (p.Plazo||p.plazo||'').trim();
+      return esp === ticker.toUpperCase() && pl === plazo;
+    });
+
+    const precio   = pxRow ? toNum(pxRow['Último']||pxRow['Ultimo']||pxRow['Cierre']||pxRow['cierre']) : NaN;
+    const variacion= pxRow ? toNum(pxRow['Variación']||pxRow['Variacion']||pxRow['variacion']) : NaN;
+    const vol      = pxRow ? toNum(pxRow['Volumen']||pxRow['volumen']) : NaN;
+    const fechaPx  = pxRow ? (pxRow['Fecha']||pxRow['fecha']||'') : '';
+
+    const calc = (cf && !isNaN(precio) && precio>0)
+      ? calcLecap(cf, precio, fechaLiq)
+      : null;
+
+    return { ticker, precio, variacion, vol, fechaPx, calc };
+  });
+}
+
+// ── Definición de columnas de la tabla ──
+const COLS = [
+  { key:'ticker',  label:'Ticker',   align:'left',
+    fmt: r=>`<span style="color:var(--accent);font-weight:700;font-size:12px;">${r.ticker}</span>`,
+    sort: r=>r.ticker },
+
+  { key:'precio',  label:'Precio',   align:'right',
+    fmt: r=>r.precio>0?fmtN(r.precio):'—',
+    sort: r=>r.precio||0 },
+
+  { key:'var',     label:'Var%',     align:'right',
+    fmt: r=>{
+      if(isNaN(r.variacion)||r.variacion==null) return '—';
+      const cls=r.variacion>0?'color:var(--green)':r.variacion<0?'color:var(--red)':'';
+      return `<span style="${cls};font-weight:600;">${r.variacion>=0?'+':''}${fmtN(r.variacion)}%</span>`;
+    },
+    sort: r=>r.variacion||0 },
+
+  { key:'tea',     label:'TEA',      align:'right',
+    fmt: r=>r.calc?`<b style="color:var(--accent);">${fmtPct(r.calc.tea)}</b>`:'—',
+    sort: r=>r.calc?r.calc.tea:-Infinity },
+
+  { key:'tem',     label:'TEM',      align:'right',
+    fmt: r=>r.calc?fmtPct(r.calc.tem):'—',
+    sort: r=>r.calc?r.calc.tem:-Infinity },
+
+  { key:'tna',     label:'TNA',      align:'right',
+    fmt: r=>r.calc?fmtPct(r.calc.tna):'—',
+    sort: r=>r.calc?r.calc.tna:-Infinity },
+
+  { key:'vt',      label:'VT',       align:'right',
+    fmt: r=>r.calc&&!isNaN(r.calc.vt)?fmtN(r.calc.vt,4):'—',
+    sort: r=>r.calc?r.calc.vt:-Infinity },
+
+  { key:'pxL',     label:'Px Limpio',align:'right',
+    fmt: r=>r.calc?fmtN(r.calc.precioLimpio,4):'—',
+    sort: r=>r.calc?r.calc.precioLimpio:-Infinity },
+
+  { key:'par',     label:'Paridad',  align:'right',
+    fmt: r=>r.calc?fmtPct(r.calc.paridad,2):'—',
+    sort: r=>r.calc?r.calc.paridad:-Infinity },
+
+  { key:'md',      label:'MD',       align:'right',
+    fmt: r=>r.calc?fmtN(r.calc.md,4):'—',
+    sort: r=>r.calc?r.calc.md:-Infinity },
+
+  { key:'dur',     label:'Duration', align:'right',
+    fmt: r=>r.calc?fmtN(r.calc.dur,4):'—',
+    sort: r=>r.calc?r.calc.dur:-Infinity },
+
+  { key:'conv',    label:'Conv.',    align:'right',
+    fmt: r=>r.calc?fmtN(r.calc.conv,4):'—',
+    sort: r=>r.calc?r.calc.conv:-Infinity },
+
+  { key:'dias',    label:'Días',     align:'right',
+    fmt: r=>r.calc?r.calc.diasReal:'—',
+    sort: r=>r.calc?r.calc.diasReal:Infinity },
+
+  { key:'venc',    label:'Venc.',    align:'right',
+    fmt: r=>r.calc?fmtDateShort(r.calc.fechaVto):'—',
+    sort: r=>r.calc?r.calc.fechaVto:'' },
+];
+
+// ── Render tabla ──
+function lcRender(){
+  const thead=document.getElementById('lc-thead');
+  const tbody=document.getElementById('lc-tbody');
+  if(!thead||!tbody) return;
+
+  const rows=_lcRows;
+
+  // Sort
+  const sorted=[...rows].sort((a,b)=>{
+    const col=COLS.find(c=>c.key===_sortKey);
+    if(!col) return 0;
+    const va=col.sort(a), vb=col.sort(b);
+    if(typeof va==='string') return va.localeCompare(vb)*_sortDir;
+    return ((va??-Infinity)-(vb??-Infinity))*_sortDir;
+  });
+
+  // Header
+  const thS='padding:9px 12px;font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text3);background:var(--bg2);border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;transition:color .15s;';
+  thead.innerHTML=`<tr>${COLS.map(c=>{
+    const active=_sortKey===c.key;
+    const arrow=active?(_sortDir===1?' ▲':' ▼'):'';
+    const ta=c.align==='right'?'text-align:right;':'text-align:left;';
+    const hl=active?'color:var(--accent);':'';
+    return`<th style="${thS}${ta}${hl}" onclick="lcSort('${c.key}')">${c.label}${arrow}</th>`;
+  }).join('')}</tr>`;
+
+  // Body
+  const tdS='padding:8px 12px;border-bottom:1px solid var(--border);white-space:nowrap;font-variant-numeric:tabular-nums;';
+  tbody.innerHTML=sorted.map(r=>{
+    const dim=!r.calc?'opacity:.4;':'';
+    return`<tr style="${dim}" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''">
+      ${COLS.map(c=>{
+        const ta=c.align==='right'?'text-align:right;':'';
+        return`<td style="${tdS}${ta}">${c.fmt(r)}</td>`;
+      }).join('')}
+    </tr>`;
+  }).join('');
+
+  // Stats
+  const conCalc=rows.filter(r=>r.calc).length;
+  const sinPx=rows.filter(r=>!r.precio||isNaN(r.precio)).length;
+  document.getElementById('lc-stats-txt').textContent=
+    `${rows.length} instrumentos · ${conCalc} con precio · ${sinPx} sin cotización`;
+}
+
+window.lcSort=function(key){
+  if(_sortKey===key) _sortDir*=-1; else {_sortKey=key;_sortDir=1;}
+  lcRender();
+};
+
+window.lcRecalcAll=function(){
+  const plazo=document.getElementById('lc-btn-24hs').classList.contains('active')?'24Hs.':'C.I.';
+  const fechaLiq=document.getElementById('lc-fecha-liq').value||lcDefaultFecha();
+  if(!_lcBundle||!_lcPrecios.length) return;
+  _lcRows=lcCruzar(_lcBundle,_lcPrecios,plazo,fechaLiq);
+  lcRender();
+};
+
+// ── Carga principal ──
+window.lcLoad=async function(){
+  document.getElementById('lc-load-banner').style.display='flex';
+  document.getElementById('lc-table-wrap').style.display='none';
+  document.getElementById('lc-error-banner').style.display='none';
+  const dot=document.getElementById('lc-status-dot');
+  dot.style.background='var(--yellow)';
+  dot.style.boxShadow='0 0 6px var(--yellow)';
+  lcSetLoadMsg('Conectando con Worker de cashflows...');
+
+  try{
+    // 1. Worker (cashflows bundle)
+    const t0=performance.now();
+    const rW=await fetch(LC_WORKER);
+    if(!rW.ok) throw new Error(`Worker HTTP ${rW.status}`);
+    _lcBundle=await rW.json();
+    const msW=Math.round(performance.now()-t0);
+    lcSetLoadMsg(`Worker OK · ${(bundle=>bundle._index?bundle._index.length:Object.keys(bundle).filter(k=>k!=='_index').length)(_lcBundle)} LECAPs · ${msW}ms · Cargando precios...`);
+
+    // 2. Sheet (precios)
+    const t1=performance.now();
+    const rS=await fetch(LC_SHEET);
+    if(!rS.ok) throw new Error(`Sheet HTTP ${rS.status}`);
+    const txt=await rS.text();
+    _lcPrecios=parseCsvSheet(txt);
+    const msS=Math.round(performance.now()-t1);
+    lcSetLoadMsg(`Precios OK · ${_lcPrecios.length} filas · ${msS}ms · Calculando...`);
+
+    // 3. Fecha liq default
+    const fi=document.getElementById('lc-fecha-liq');
+    if(!fi.value) fi.value=lcDefaultFecha();
+
+    // 4. Header date
+    const fechas=_lcPrecios.map(p=>p['Fecha']||p['fecha']||'').filter(Boolean).sort();
+    if(fechas.length){
+      document.getElementById('lc-header-date').textContent=fmtDateShort(fechas[fechas.length-1].substring(0,10));
+    }
+
+    // 5. Calcular (default 24Hs)
+    const plazo=document.getElementById('lc-btn-24hs').classList.contains('active')?'24Hs.':'C.I.';
+    _lcRows=lcCruzar(_lcBundle,_lcPrecios,plazo,fi.value);
+
+    // 6. Mostrar
+    document.getElementById('lc-load-banner').style.display='none';
+    document.getElementById('lc-table-wrap').style.display='block';
+    dot.style.background='var(--green)';
+    dot.style.boxShadow='0 0 6px var(--green)';
+    lcRender();
+
+  }catch(e){
+    document.getElementById('lc-load-banner').style.display='none';
+    const eb=document.getElementById('lc-error-banner');
+    eb.style.display='block';
+    eb.innerHTML=`<b>✗ Error:</b> ${e.message}<br><span style="font-size:10px;color:var(--text3);">Revisá la pestaña Diagnóstico para más detalles.</span>`;
+    const dot=document.getElementById('lc-status-dot');
+    dot.style.background='var(--red)';
+    dot.style.boxShadow='0 0 6px var(--red)';
+  }
+};
+
+function lcSetLoadMsg(msg){
+  const el=document.getElementById('lc-load-msg');
+  if(el) el.textContent=msg;
+}
+
+// ── Auto-load al entrar ──
+const _origEnterTest=window.enterTest;
+window.enterTest=function(){
+  if(_origEnterTest) _origEnterTest();
+  setTimeout(()=>{ if(!_lcBundle) lcLoad(); },100);
+};
+
+})(); // fin IIFE LECAP Calculator v2
+</script>
 
 <!-- ══════════════════ APP ══════════════════ -->
 <div id="app">
