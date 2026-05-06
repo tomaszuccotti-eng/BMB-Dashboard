@@ -634,10 +634,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
     </div>
     <div class="header-right">
       <div class="status-dot" id="lc-status-dot" style="background:var(--red);box-shadow:0 0 6px var(--red);"></div>
-      <div class="plazo-toggle">
-        <button class="plazo-btn active" id="lc-btn-ci"   onclick="lcSetPlazo('C.I.')">C.I.</button>
-        <button class="plazo-btn"        id="lc-btn-24hs" onclick="lcSetPlazo('24Hs.')">24Hs.</button>
-      </div>
+
       <button onclick="lcLoad()" id="lc-reload-btn"
         style="padding:5px 14px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--mono);transition:all .15s;"
         onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='transparent'">
@@ -754,35 +751,21 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 </div>
 
 <script>
-// ══════════════════════════════════════════════════════════════════
-// LECAP CALCULATOR ENGINE  v2
-// Estructura real del Worker CSV (dos filas de headers):
-//   Línea 0: grupo (Cupón, Fecha de pago, Amortización, ...)
-//   Línea 1: sub-header (#, Efectiva, Amort(vn), ValRes, TasaInt, Int(vn), Amort, Int, Total, ...)
-//   Línea 2+: datos
-//   Columnas de datos:
-//     [0] # cupón
-//     [1] Fecha efectiva (ISO 8601)
-//     [2] Amortización % (del VN)  e.g. "100.00%"
-//     [3] Valor residual tras pago  e.g. "0.00%"
-//     [4] Tasa de interés (TEM original)  e.g. "2.35%"
-//     [5] Interés (vn) total acumulado  e.g. "32.04%"
-//     [6] Amortización c/100 VN  e.g. 100.00
-//     [7] Interés c/100 VN  e.g. 32.04
-//     [8] Total c/100 VN  ← FLUJO FINAL  e.g. 132.04
-//     [9..11] Flujo simulado (para 1.000.000 VN) — no lo usamos
-// ══════════════════════════════════════════════════════════════════
-
 (function(){
+// ══════════════════════════════════════════════════════════════════
+// LECAP CALCULATOR ENGINE  v3
+// Fix: Sheet no tiene columna Plazo → buscar solo por Especie
+// Fix: eliminar toda lógica C.I./24Hs del módulo LECAP
+// ══════════════════════════════════════════════════════════════════
 
 const LC_WORKER = 'https://cashflows.tzuccotti.workers.dev';
 const LC_SHEET  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQAQTxefw1DIhUYs5GvmOe31a-ADH-WfajzoSmGQH-Eb59K7RpFv2qLBzHpJmmoye60DG8R8oaEoAW3/pub?output=csv';
 
 let _lcBundle  = null;
-let _lcPrecios = [];
+let _lcPrecios = {};   // map: TICKER → { precio, variacion, vol, fechaPx }
 let _lcRows    = [];
 let _sortKey   = 'dias';
-let _sortDir   = 1;
+let _sortDir   =  1;
 
 // ── Tab switcher ──
 window.lcShowTab = function(tab, el){
@@ -792,77 +775,101 @@ window.lcShowTab = function(tab, el){
   if(el) el.classList.add('active');
 };
 
-window.lcSetPlazo = function(p){
-  document.getElementById('lc-btn-ci').classList.toggle('active',   p==='C.I.');
-  document.getElementById('lc-btn-24hs').classList.toggle('active', p==='24Hs.');
-  lcRecalcAll();
-};
-
 // ── Helpers numéricos ──
 function toNum(v){
   if(v===null||v===undefined||v==='') return NaN;
-  // quitar % y espacios, convertir coma decimal
-  return parseFloat(String(v).replace('%','').replace(',','.').trim());
+  // quitar % y espacios, normalizar separador decimal
+  const s = String(v).replace('%','').trim();
+  // si tiene punto y coma: "1.234,56" → "1234.56"
+  if(/\d\.\d{3},/.test(s)) return parseFloat(s.replace(/\./g,'').replace(',','.'));
+  // si solo tiene coma decimal: "132,04"
+  if(/^\-?\d+,\d+$/.test(s)) return parseFloat(s.replace(',','.'));
+  return parseFloat(s);
 }
 function fmtN(v, dec=2){
   if(isNaN(v)||v==null) return '—';
   return v.toLocaleString('es-AR',{minimumFractionDigits:dec,maximumFractionDigits:dec});
 }
-function fmtPct(v, dec=2){ return isNaN(v)||v==null?'—':fmtN(v,dec)+'%'; }
+function fmtPct(v, dec=2){ return isNaN(v)||v==null ? '—' : fmtN(v,dec)+'%'; }
 function fmtDateShort(s){
   if(!s) return '—';
-  const d = new Date(s+'T12:00:00');
-  if(isNaN(d)) return s;
+  const clean = s.replace('T00:00:00.000Z','').replace('T12:00:00','').trim();
+  const [y,m,d] = clean.split('-');
+  if(!y||!m||!d) return s;
   const mn=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  return `${d.getDate()} ${mn[d.getMonth()]} ${d.getFullYear()}`;
+  return `${parseInt(d)} ${mn[parseInt(m)-1]} ${y}`;
 }
 
-// ── Parser específico del Worker: dos filas de headers ──
+// ── Parser Worker CSV (2 filas de headers, datos desde línea 3) ──
+// Columnas relevantes (índice base 0):
+//   [1] Fecha efectiva (ISO)
+//   [4] Tasa de interés = TEM original (ej "2.35%")
+//   [8] Total c/100 VN  = flujo final   (ej 132.04)
 function parseWorkerCsv(text){
+  if(!text||!text.trim()) return null;
   const lines = text.trim().split('\n').filter(l=>l.trim());
-  // líneas 0 y 1 son los dos headers → datos desde línea 2
-  if(lines.length < 3) return null;
+  if(lines.length < 3) return null;          // necesita ≥ 2 headers + 1 dato
   const dataLines = lines.slice(2);
-  return dataLines.map(line=>{
+  const result = [];
+  for(const line of dataLines){
     const cols = line.split(',').map(c=>c.trim());
-    return {
-      // col[1]: fecha ISO → limpiar timezone
-      fechaPago : cols[1] ? cols[1].replace('T00:00:00.000Z','').trim() : '',
-      // col[4]: TEM original (ej "2.35%")
-      temOrigPct: toNum(cols[4]),
-      // col[7]: interés c/100 VN (no usado directamente pero disponible)
-      interes100: toNum(cols[7]),
-      // col[8]: Total c/100 VN = flujo final
-      total100  : toNum(cols[8]),
-    };
-  }).filter(r=>r.fechaPago && !isNaN(r.total100) && r.total100>0);
+    if(cols.length < 9) continue;
+    const fechaPago = cols[1].replace('T00:00:00.000Z','').trim();
+    const temOrigPct = toNum(cols[4]);        // TEM original con signo %
+    const total100  = toNum(cols[8]);         // flujo final c/100 VN
+    if(!fechaPago || isNaN(total100) || total100 <= 0) continue;
+    result.push({ fechaPago, temOrigPct, total100 });
+  }
+  return result.length ? result : null;
 }
 
-// ── Parser CSV genérico (Sheet de precios, tiene 1 fila de header) ──
-function parseCsvSheet(text){
+// ── Parser Sheet CSV (1 fila de header, sin columna Plazo) ──
+// Devuelve un map: TICKER_UPPER → { precio, variacion, vol, fechaPx }
+function parseSheetCsv(text){
   const lines = text.trim().split('\n');
-  if(!lines.length) return [];
+  if(lines.length < 2) return {};
+  // Detectar separador
   const sep = lines[0].includes(';') ? ';' : ',';
-  function splitLine(line){
-    const vals=[]; let cur='', inQ=false;
+  function split(line){
+    const v=[]; let cur='', inQ=false;
     for(const c of line){
       if(c==='"'){inQ=!inQ;}
-      else if(c===sep&&!inQ){vals.push(cur.trim());cur='';}
+      else if(c===sep&&!inQ){v.push(cur.trim());cur='';}
       else cur+=c;
     }
-    vals.push(cur.trim());
-    return vals;
+    v.push(cur.trim());
+    return v;
   }
-  const headers = splitLine(lines[0]).map(h=>h.replace(/"/g,'').trim());
-  return lines.slice(1).filter(l=>l.trim()).map(l=>{
-    const vals=splitLine(l);
-    const obj={};
-    headers.forEach((h,i)=>{ obj[h]=(vals[i]||'').replace(/"/g,'').trim(); });
-    return obj;
-  });
+  const headers = split(lines[0]).map(h=>h.replace(/"/g,'').trim());
+  // índices de columnas clave (flexible ante variaciones ortográficas)
+  const iEsp = headers.findIndex(h=>/especie/i.test(h));
+  const iUlt = headers.findIndex(h=>/ltim|ltimo|ltima|Ultimo|Ültimo/i.test(h)||h==='Último');
+  const iVar = headers.findIndex(h=>/variaci/i.test(h));
+  const iVol = headers.findIndex(h=>/volumen/i.test(h));
+  const iFec = headers.findIndex(h=>/fecha/i.test(h));
+  const iCie = headers.findIndex(h=>/cierre/i.test(h));
+
+  const map = {};
+  for(const line of lines.slice(1)){
+    if(!line.trim()) continue;
+    const cols = split(line);
+    const esp = (iEsp>=0 ? cols[iEsp]||'' : '').replace(/"/g,'').trim().toUpperCase();
+    if(!esp || esp==='ESPECIE') continue;
+    // precio: preferir Último, fallback Cierre
+    const pxRaw = iUlt>=0 ? cols[iUlt] : (iCie>=0 ? cols[iCie] : '');
+    const precio = toNum(pxRaw);
+    const variacion = iVar>=0 ? toNum(cols[iVar]) : NaN;
+    const vol       = iVol>=0 ? toNum(cols[iVol]) : NaN;
+    const fechaPx   = iFec>=0 ? (cols[iFec]||'').replace(/"/g,'').trim() : '';
+    // Si ya existe este ticker, conservar el de mayor precio (por si hay duplicados)
+    if(!map[esp] || (!isNaN(precio) && precio > (map[esp].precio||0))){
+      map[esp] = { precio, variacion, vol, fechaPx };
+    }
+  }
+  return map;
 }
 
-// ── Fecha de liquidación default (T+1 hábil) ──
+// ── Fecha de liquidación default: T+1 hábil ──
 function lcDefaultFecha(){
   const d = new Date();
   d.setDate(d.getDate()+1);
@@ -871,176 +878,116 @@ function lcDefaultFecha(){
 }
 
 // ── Motor de cálculo LECAP ──
-// Convención del prospecto: capitalización mensual, base 30/360
-// El CSV de la Sec. de Finanzas ya nos da:
-//   - fechaPago (ISO): fecha de vencimiento exacta
-//   - total100: flujo final por cada $100 VN (100 + interés total acumulado)
-//   - temOrigPct: TEM de emisión original (para calcular VT)
-//
-// PRECIO LIMPIO para LECAP:
-//   precio_sucio = precio de mercado (lo que cotiza)
-//   VT(liq) = total100 / (1 + temOrig/100)^(dias_a_vto/30)
-//            = valor capitalizado de los $100 originales hasta la fecha de liq
-//   precio_limpio = precio_sucio / VT * 100
-//   paridad = precio_limpio (ya que el VT es la base 100 de la LECAP)
-//
-// Por convención del mercado local, las LECAPs cotizan en precio sucio
-// pero el "clean price" se normaliza contra el VT técnico.
-
+// Prospecto: capitalización mensual base 30/360
+// El CSV de la Sec. de Finanzas da TEM original y flujo final c/100 VN
 function calcLecap(cf, precioDirty, fechaLiqStr){
   const liq = new Date(fechaLiqStr + 'T12:00:00');
   const vto = new Date(cf.fechaPago   + 'T12:00:00');
+  if(isNaN(liq)||isNaN(vto)) return null;
 
   const diasReal = Math.round((vto - liq) / 86400000);
   if(diasReal <= 0) return null;
+  if(isNaN(precioDirty)||precioDirty<=0) return null;
 
-  const flujoVto  = cf.total100;    // pago al vto por c/$100 VN
-  const temOrig   = cf.temOrigPct;  // TEM original en %
+  const flujoVto = cf.total100;
+  const temOrig  = cf.temOrigPct;   // TEM original en %
 
-  // ── VT a fecha de liquidación ──
-  // VT = flujoVto / (1 + temOrig/100)^(diasReal/30)
-  const mesesRest  = diasReal / 30;
+  // VT a fecha liq: retroceder el flujo final con la TEM original
+  // VT = flujoVto / (1 + temOrig/100)^(dias/30)
+  const mesesRest = diasReal / 30;
   const vt = (!isNaN(temOrig) && temOrig > 0)
     ? flujoVto / Math.pow(1 + temOrig/100, mesesRest)
-    : null;
+    : NaN;
 
-  // ── Precio limpio ──
-  // precio_limpio = precio_dirty / VT * 100
-  const precioLimpio = (vt && vt > 0) ? (precioDirty / vt * 100) : precioDirty;
+  // Precio limpio = precio_dirty / VT * 100
+  const precioLimpio = (!isNaN(vt) && vt > 0) ? (precioDirty / vt * 100) : NaN;
 
-  // ── Paridad ──
   // Paridad = precio_limpio (ya es relativo a la base 100 del VT)
   const paridad = precioLimpio;
 
-  // ── Tasas implícitas (desde precio dirty de mercado) ──
-  // Base: flujoVto / precioDirty es el "factor de retorno total"
+  // Tasas implícitas al precio de mercado
   const factor = flujoVto / precioDirty;
+  const tea    = (Math.pow(factor, 365/diasReal) - 1) * 100;
+  const tem    = (Math.pow(factor, 30/diasReal)  - 1) * 100;
+  const tna    = (factor - 1) * (365/diasReal)        * 100;
 
-  // TEA (días reales, anualización 365)
-  const tea = (Math.pow(factor, 365/diasReal) - 1) * 100;
+  // Duration Macaulay (bullet, base 30/360)
+  const dur  = mesesRest / 12;                          // años
+  const md   = dur / (1 + tem/100);                     // modified duration
+  const conv = (dur * dur) / Math.pow(1 + tem/100, 2); // convexidad
 
-  // TEM equivalente al precio de mercado
-  const tem = (Math.pow(factor, 30/diasReal)  - 1) * 100;
-
-  // TNA lineal
-  const tna = (factor - 1) * (365/diasReal) * 100;
-
-  // ── Duration Macaulay (bullet, base 30/360 según prospecto) ──
-  // Para un bono bullet de cupón cero, Duration = plazo al vencimiento
-  const dur = mesesRest / 12;  // en años, base 30/360
-
-  // ── Modified Duration ──
-  // MD = Dur / (1 + TEM_mercado/100)
-  const md = dur / (1 + tem/100);
-
-  // ── Convexidad (bullet cero cupón, base 30/360) ──
-  // Conv = D_mac^2 / (1 + TEM)^2
-  const conv = (dur * dur) / Math.pow(1 + tem/100, 2);
-
-  return {
-    flujoVto,
-    vt:          vt     != null ? vt     : NaN,
-    precioLimpio,
-    paridad,
-    tea, tem, tna,
-    diasReal,
-    dur,         // Macaulay duration (años, 30/360)
-    md,          // Modified Duration
-    conv,        // Convexidad
-    fechaVto: cf.fechaPago,
-  };
+  return { flujoVto, vt, precioLimpio, paridad, tea, tem, tna, diasReal, dur, md, conv, fechaVto: cf.fechaPago };
 }
 
-// ── Cruzar bundle + precios → calcular ──
-function lcCruzar(bundle, precios, plazo, fechaLiq){
+// ── Cruzar bundle + mapa de precios → calcular ──
+function lcCruzar(bundle, preciosMap, fechaLiq){
   const tickers = bundle._index || Object.keys(bundle).filter(k=>k!=='_index');
   return tickers.map(ticker=>{
     const csvTxt = bundle[ticker];
     const cfs    = csvTxt ? parseWorkerCsv(csvTxt) : null;
+    const cf     = cfs && cfs.length ? cfs[cfs.length-1] : null;   // único flujo LECAP
 
-    // Para LECAP bullet: tomamos el único flujo del CSV (siempre 1 row de datos)
-    const cf = cfs && cfs.length > 0 ? cfs[cfs.length-1] : null;
+    const pxData  = preciosMap[ticker.toUpperCase()] || null;
+    const precio  = pxData ? pxData.precio    : NaN;
+    const varPct  = pxData ? pxData.variacion : NaN;
+    const fechaPx = pxData ? pxData.fechaPx   : '';
+    const vol     = pxData ? pxData.vol       : NaN;
 
-    // Precio: buscar por especie + plazo (C.I. o 24Hs.)
-    const pxRow = precios.find(p=>{
-      const esp = (p.Especie||p.especie||'').trim().toUpperCase();
-      const pl  = (p.Plazo||p.plazo||'').trim();
-      return esp === ticker.toUpperCase() && pl === plazo;
-    });
-
-    const precio   = pxRow ? toNum(pxRow['Último']||pxRow['Ultimo']||pxRow['Cierre']||pxRow['cierre']) : NaN;
-    const variacion= pxRow ? toNum(pxRow['Variación']||pxRow['Variacion']||pxRow['variacion']) : NaN;
-    const vol      = pxRow ? toNum(pxRow['Volumen']||pxRow['volumen']) : NaN;
-    const fechaPx  = pxRow ? (pxRow['Fecha']||pxRow['fecha']||'') : '';
-
-    const calc = (cf && !isNaN(precio) && precio>0)
+    const calc = (cf && !isNaN(precio) && precio > 0)
       ? calcLecap(cf, precio, fechaLiq)
       : null;
 
-    return { ticker, precio, variacion, vol, fechaPx, calc };
+    return { ticker, precio, variacion:varPct, vol, fechaPx, calc };
   });
 }
 
-// ── Definición de columnas de la tabla ──
+// ── Columnas de la tabla ──
 const COLS = [
-  { key:'ticker',  label:'Ticker',   align:'left',
-    fmt: r=>`<span style="color:var(--accent);font-weight:700;font-size:12px;">${r.ticker}</span>`,
+  { key:'ticker', label:'Ticker',    align:'left',
+    fmt:  r=>`<span style="color:var(--accent);font-weight:700;font-size:12px;">${r.ticker}</span>`,
     sort: r=>r.ticker },
-
-  { key:'precio',  label:'Precio',   align:'right',
-    fmt: r=>r.precio>0?fmtN(r.precio):'—',
+  { key:'precio', label:'Precio',    align:'right',
+    fmt:  r=>(!isNaN(r.precio)&&r.precio>0)?fmtN(r.precio):'—',
     sort: r=>r.precio||0 },
-
-  { key:'var',     label:'Var%',     align:'right',
-    fmt: r=>{
+  { key:'var',    label:'Var%',      align:'right',
+    fmt:  r=>{
       if(isNaN(r.variacion)||r.variacion==null) return '—';
-      const cls=r.variacion>0?'color:var(--green)':r.variacion<0?'color:var(--red)':'';
-      return `<span style="${cls};font-weight:600;">${r.variacion>=0?'+':''}${fmtN(r.variacion)}%</span>`;
+      const c=r.variacion>0?'var(--green)':r.variacion<0?'var(--red)':'';
+      return `<span style="color:${c};font-weight:600;">${r.variacion>=0?'+':''}${fmtN(r.variacion)}%</span>`;
     },
     sort: r=>r.variacion||0 },
-
-  { key:'tea',     label:'TEA',      align:'right',
-    fmt: r=>r.calc?`<b style="color:var(--accent);">${fmtPct(r.calc.tea)}</b>`:'—',
+  { key:'tea',    label:'TEA',       align:'right',
+    fmt:  r=>r.calc?`<span style="font-weight:700;color:var(--accent);">${fmtPct(r.calc.tea)}</span>`:'—',
     sort: r=>r.calc?r.calc.tea:-Infinity },
-
-  { key:'tem',     label:'TEM',      align:'right',
-    fmt: r=>r.calc?fmtPct(r.calc.tem):'—',
+  { key:'tem',    label:'TEM',       align:'right',
+    fmt:  r=>r.calc?fmtPct(r.calc.tem):'—',
     sort: r=>r.calc?r.calc.tem:-Infinity },
-
-  { key:'tna',     label:'TNA',      align:'right',
-    fmt: r=>r.calc?fmtPct(r.calc.tna):'—',
+  { key:'tna',    label:'TNA',       align:'right',
+    fmt:  r=>r.calc?fmtPct(r.calc.tna):'—',
     sort: r=>r.calc?r.calc.tna:-Infinity },
-
-  { key:'vt',      label:'VT',       align:'right',
-    fmt: r=>r.calc&&!isNaN(r.calc.vt)?fmtN(r.calc.vt,4):'—',
+  { key:'vt',     label:'VT',        align:'right',
+    fmt:  r=>r.calc&&!isNaN(r.calc.vt)?fmtN(r.calc.vt,4):'—',
     sort: r=>r.calc?r.calc.vt:-Infinity },
-
-  { key:'pxL',     label:'Px Limpio',align:'right',
-    fmt: r=>r.calc?fmtN(r.calc.precioLimpio,4):'—',
+  { key:'pxL',    label:'Px Limpio', align:'right',
+    fmt:  r=>r.calc&&!isNaN(r.calc.precioLimpio)?fmtN(r.calc.precioLimpio,4):'—',
     sort: r=>r.calc?r.calc.precioLimpio:-Infinity },
-
-  { key:'par',     label:'Paridad',  align:'right',
-    fmt: r=>r.calc?fmtPct(r.calc.paridad,2):'—',
+  { key:'par',    label:'Paridad',   align:'right',
+    fmt:  r=>r.calc&&!isNaN(r.calc.paridad)?fmtPct(r.calc.paridad,2):'—',
     sort: r=>r.calc?r.calc.paridad:-Infinity },
-
-  { key:'md',      label:'MD',       align:'right',
-    fmt: r=>r.calc?fmtN(r.calc.md,4):'—',
+  { key:'md',     label:'MD',        align:'right',
+    fmt:  r=>r.calc?fmtN(r.calc.md,4):'—',
     sort: r=>r.calc?r.calc.md:-Infinity },
-
-  { key:'dur',     label:'Duration', align:'right',
-    fmt: r=>r.calc?fmtN(r.calc.dur,4):'—',
+  { key:'dur',    label:'Duration',  align:'right',
+    fmt:  r=>r.calc?fmtN(r.calc.dur,4):'—',
     sort: r=>r.calc?r.calc.dur:-Infinity },
-
-  { key:'conv',    label:'Conv.',    align:'right',
-    fmt: r=>r.calc?fmtN(r.calc.conv,4):'—',
+  { key:'conv',   label:'Conv.',     align:'right',
+    fmt:  r=>r.calc?fmtN(r.calc.conv,4):'—',
     sort: r=>r.calc?r.calc.conv:-Infinity },
-
-  { key:'dias',    label:'Días',     align:'right',
-    fmt: r=>r.calc?r.calc.diasReal:'—',
+  { key:'dias',   label:'Días',      align:'right',
+    fmt:  r=>r.calc?String(r.calc.diasReal):'—',
     sort: r=>r.calc?r.calc.diasReal:Infinity },
-
-  { key:'venc',    label:'Venc.',    align:'right',
-    fmt: r=>r.calc?fmtDateShort(r.calc.fechaVto):'—',
+  { key:'venc',   label:'Venc.',     align:'right',
+    fmt:  r=>r.calc?fmtDateShort(r.calc.fechaVto):'—',
     sort: r=>r.calc?r.calc.fechaVto:'' },
 ];
 
@@ -1050,18 +997,14 @@ function lcRender(){
   const tbody=document.getElementById('lc-tbody');
   if(!thead||!tbody) return;
 
-  const rows=_lcRows;
-
-  // Sort
-  const sorted=[...rows].sort((a,b)=>{
+  const sorted=[..._lcRows].sort((a,b)=>{
     const col=COLS.find(c=>c.key===_sortKey);
     if(!col) return 0;
     const va=col.sort(a), vb=col.sort(b);
     if(typeof va==='string') return va.localeCompare(vb)*_sortDir;
-    return ((va??-Infinity)-(vb??-Infinity))*_sortDir;
+    return ((isNaN(va)?-Infinity:va) - (isNaN(vb)?-Infinity:vb)) * _sortDir;
   });
 
-  // Header
   const thS='padding:9px 12px;font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text3);background:var(--bg2);border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;transition:color .15s;';
   thead.innerHTML=`<tr>${COLS.map(c=>{
     const active=_sortKey===c.key;
@@ -1071,111 +1014,97 @@ function lcRender(){
     return`<th style="${thS}${ta}${hl}" onclick="lcSort('${c.key}')">${c.label}${arrow}</th>`;
   }).join('')}</tr>`;
 
-  // Body
-  const tdS='padding:8px 12px;border-bottom:1px solid var(--border);white-space:nowrap;font-variant-numeric:tabular-nums;';
+  const tdS='padding:8px 12px;border-bottom:1px solid var(--border);white-space:nowrap;font-variant-numeric:tabular-nums;font-size:11px;';
   tbody.innerHTML=sorted.map(r=>{
     const dim=!r.calc?'opacity:.4;':'';
     return`<tr style="${dim}" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''">
-      ${COLS.map(c=>{
-        const ta=c.align==='right'?'text-align:right;':'';
-        return`<td style="${tdS}${ta}">${c.fmt(r)}</td>`;
-      }).join('')}
+      ${COLS.map(c=>`<td style="${tdS}${c.align==='right'?'text-align:right;':''}">${c.fmt(r)}</td>`).join('')}
     </tr>`;
   }).join('');
 
-  // Stats
-  const conCalc=rows.filter(r=>r.calc).length;
-  const sinPx=rows.filter(r=>!r.precio||isNaN(r.precio)).length;
-  document.getElementById('lc-stats-txt').textContent=
-    `${rows.length} instrumentos · ${conCalc} con precio · ${sinPx} sin cotización`;
+  const total=_lcRows.length, conCalc=_lcRows.filter(r=>r.calc).length;
+  const sinPx=_lcRows.filter(r=>isNaN(r.precio)||!r.precio).length;
+  const el=document.getElementById('lc-stats-txt');
+  if(el) el.textContent=`${total} instrumentos · ${conCalc} con precio · ${sinPx} sin cotización`;
 }
 
 window.lcSort=function(key){
-  if(_sortKey===key) _sortDir*=-1; else {_sortKey=key;_sortDir=1;}
+  if(_sortKey===key) _sortDir*=-1; else{_sortKey=key;_sortDir=1;}
   lcRender();
 };
 
 window.lcRecalcAll=function(){
-  const plazo=document.getElementById('lc-btn-24hs').classList.contains('active')?'24Hs.':'C.I.';
   const fechaLiq=document.getElementById('lc-fecha-liq').value||lcDefaultFecha();
-  if(!_lcBundle||!_lcPrecios.length) return;
-  _lcRows=lcCruzar(_lcBundle,_lcPrecios,plazo,fechaLiq);
+  if(!_lcBundle||!Object.keys(_lcPrecios).length) return;
+  _lcRows=lcCruzar(_lcBundle,_lcPrecios,fechaLiq);
   lcRender();
 };
 
 // ── Carga principal ──
 window.lcLoad=async function(){
-  document.getElementById('lc-load-banner').style.display='flex';
-  document.getElementById('lc-table-wrap').style.display='none';
-  document.getElementById('lc-error-banner').style.display='none';
-  const dot=document.getElementById('lc-status-dot');
-  dot.style.background='var(--yellow)';
-  dot.style.boxShadow='0 0 6px var(--yellow)';
-  lcSetLoadMsg('Conectando con Worker de cashflows...');
+  const banner=document.getElementById('lc-load-banner');
+  const wrap  =document.getElementById('lc-table-wrap');
+  const errB  =document.getElementById('lc-error-banner');
+  const dot   =document.getElementById('lc-status-dot');
+  banner.style.display='flex'; wrap.style.display='none'; errB.style.display='none';
+  dot.style.cssText='width:6px;height:6px;border-radius:50%;background:var(--yellow);box-shadow:0 0 6px var(--yellow);animation:pulse 2s infinite;';
+  lcSetMsg('Conectando con Worker de cashflows...');
 
   try{
-    // 1. Worker (cashflows bundle)
+    // 1. Worker
     const t0=performance.now();
     const rW=await fetch(LC_WORKER);
     if(!rW.ok) throw new Error(`Worker HTTP ${rW.status}`);
     _lcBundle=await rW.json();
-    const msW=Math.round(performance.now()-t0);
-    lcSetLoadMsg(`Worker OK · ${(bundle=>bundle._index?bundle._index.length:Object.keys(bundle).filter(k=>k!=='_index').length)(_lcBundle)} LECAPs · ${msW}ms · Cargando precios...`);
+    const n=((_lcBundle._index)||Object.keys(_lcBundle).filter(k=>k!=='_index')).length;
+    lcSetMsg(`Worker OK · ${n} LECAPs · ${Math.round(performance.now()-t0)}ms · Cargando precios...`);
 
-    // 2. Sheet (precios)
+    // 2. Sheet de precios
     const t1=performance.now();
     const rS=await fetch(LC_SHEET);
     if(!rS.ok) throw new Error(`Sheet HTTP ${rS.status}`);
     const txt=await rS.text();
-    _lcPrecios=parseCsvSheet(txt);
-    const msS=Math.round(performance.now()-t1);
-    lcSetLoadMsg(`Precios OK · ${_lcPrecios.length} filas · ${msS}ms · Calculando...`);
+    _lcPrecios=parseSheetCsv(txt);
+    const nPx=Object.keys(_lcPrecios).length;
+    lcSetMsg(`Precios OK · ${nPx} especies · ${Math.round(performance.now()-t1)}ms · Calculando...`);
 
-    // 3. Fecha liq default
+    // 3. Fecha liq
     const fi=document.getElementById('lc-fecha-liq');
     if(!fi.value) fi.value=lcDefaultFecha();
 
-    // 4. Header date
-    const fechas=_lcPrecios.map(p=>p['Fecha']||p['fecha']||'').filter(Boolean).sort();
+    // 4. Header date (fecha más reciente del Sheet)
+    const fechas=Object.values(_lcPrecios).map(p=>p.fechaPx).filter(Boolean).sort();
     if(fechas.length){
-      document.getElementById('lc-header-date').textContent=fmtDateShort(fechas[fechas.length-1].substring(0,10));
+      const hd=document.getElementById('lc-header-date');
+      if(hd) hd.textContent=fmtDateShort(fechas[fechas.length-1].substring(0,10));
     }
 
-    // 5. Calcular (default 24Hs)
-    const plazo=document.getElementById('lc-btn-24hs').classList.contains('active')?'24Hs.':'C.I.';
-    _lcRows=lcCruzar(_lcBundle,_lcPrecios,plazo,fi.value);
+    // 5. Calcular
+    _lcRows=lcCruzar(_lcBundle,_lcPrecios,fi.value);
 
     // 6. Mostrar
-    document.getElementById('lc-load-banner').style.display='none';
-    document.getElementById('lc-table-wrap').style.display='block';
-    dot.style.background='var(--green)';
-    dot.style.boxShadow='0 0 6px var(--green)';
+    banner.style.display='none'; wrap.style.display='block';
+    dot.style.cssText='width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s infinite;';
     lcRender();
 
   }catch(e){
-    document.getElementById('lc-load-banner').style.display='none';
-    const eb=document.getElementById('lc-error-banner');
-    eb.style.display='block';
-    eb.innerHTML=`<b>✗ Error:</b> ${e.message}<br><span style="font-size:10px;color:var(--text3);">Revisá la pestaña Diagnóstico para más detalles.</span>`;
-    const dot=document.getElementById('lc-status-dot');
-    dot.style.background='var(--red)';
-    dot.style.boxShadow='0 0 6px var(--red)';
+    banner.style.display='none';
+    errB.style.display='block';
+    errB.innerHTML=`<b>✗ Error:</b> ${e.message} &nbsp;<span style="font-size:10px;color:var(--text3);">· Revisá la pestaña Diagnóstico</span>`;
+    dot.style.cssText='width:6px;height:6px;border-radius:50%;background:var(--red);box-shadow:0 0 6px var(--red);animation:pulse 2s infinite;';
   }
 };
 
-function lcSetLoadMsg(msg){
-  const el=document.getElementById('lc-load-msg');
-  if(el) el.textContent=msg;
-}
+function lcSetMsg(m){ const el=document.getElementById('lc-load-msg'); if(el) el.textContent=m; }
 
-// ── Auto-load al entrar ──
-const _origEnterTest=window.enterTest;
+// ── Auto-load al entrar al módulo ──
+const _orig=window.enterTest;
 window.enterTest=function(){
-  if(_origEnterTest) _origEnterTest();
+  if(_orig) _orig();
   setTimeout(()=>{ if(!_lcBundle) lcLoad(); },100);
 };
 
-})(); // fin IIFE LECAP Calculator v2
+})(); // fin LECAP Calculator v3
 </script>
 
 <!-- ══════════════════ APP ══════════════════ -->
