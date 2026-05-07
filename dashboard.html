@@ -2422,52 +2422,41 @@ function lcBuildDetailBody(row, ticker, fechaLiq){
 } // fin lcBuildDetailBody
 
 // ══════════════════════════════════════════════════════════════════
-// BONCAP CALCULATOR ENGINE  v2
+// BONCAP CALCULATOR ENGINE  v3
 // Metodología según prospecto Secretaría de Finanzas:
 //   Base 30/360 · TEM capitalizable mensualmente · bullet al vencimiento
 //
-//   El Worker devuelve para BONCAP el mismo formato CSV que LECAP:
-//     col[1] = fecha_pago (= fecha vencimiento, único flujo bullet)
+//   Mismo CSV del Worker que LECAP:
+//     col[1] = fecha_pago (= vencimiento, único flujo bullet)
 //     col[4] = TEM original (%)
-//     col[8] = flujo final c/100 VN  = 100 × (1+TEM)^(meses_totales)
+//     col[8] = flujo final c/100 VN
 //
-//   La fecha de emisión la obtenemos del metadata del bundle (_emision map)
-//   o la inferimos desde el flujo: fechaEmi = hoy - meses implícitos
-//   Si no la tenemos, usamos el VT directamente desde el flujo y la TEM:
-//     VT_liq = flujoVto / (1+TEM)^(mesesRestantes)
-//     IC     = VT_liq - 100
-//     PxL    = Dirty - IC
-//     TEM_impl = (flujoVto/Dirty)^(1/mesesRestantes) - 1  ← YTM base 30/360
+//   NO necesitamos fecha de emisión — igual que LECAP:
+//     VT_liq  = flujoVto / (1+TEM)^(mesesRestantes)   ← descuento desde vto
+//     IC      = VT_liq - 100
+//     PxL     = Dirty - IC
+//     TEM_impl= (flujoVto/Dirty)^(1/mesesRestantes) - 1
+//     TEA_impl= (1+TEM_impl)^12 - 1
+//     TNA_impl= TEM_impl × 12
 // ══════════════════════════════════════════════════════════════════
 
 let _bcRows   = [];
 let _bcSortKey= 'dias';
 let _bcSortDir= 1;
 let _bcLoaded = false;
-let _bcLoading= false;  // guard anti-loop
+let _bcLoading= false;
 
-// ── Parser BONCAP: mismo formato que LECAP, reutilizar parseWorkerCsv ──
-// Para BONCAP bullet: hay un solo flujo (el vencimiento)
-// col[1]=fechaPago(=vto), col[4]=TEM%, col[8]=flujoFinal
-// La fecha de emisión viene en bundle._emision[ticker] si el Worker la provee,
-// o la calculamos de forma inversa desde el flujoFinal y la TEM.
+// ── Reutiliza exactamente el mismo parser que LECAP ──
 function bcGetCashflow(bundle, ticker){
   const csvTxt = bundle[ticker];
   if(!csvTxt) return null;
-  // Reusar exactamente el mismo parser de LECAP
   const cfs = parseWorkerCsv(csvTxt);
   if(!cfs||!cfs.length) return null;
-  // Para BONCAP bullet tomamos el último flujo (único pago al vencimiento)
-  const cf = cfs[cfs.length-1];
-  // Obtener fecha de emisión desde metadata del bundle
-  const emiMap = bundle._emision || bundle._emisiones || {};
-  const fechaEmi = emiMap[ticker] || emiMap[ticker.toUpperCase()] || null;
-  return { fechaVto: cf.fechaPago, fechaEmi, temPct: cf.temOrigPct, flujo100: cf.total100 };
+  const cf = cfs[cfs.length-1]; // único flujo bullet
+  return { fechaVto: cf.fechaPago, temPct: cf.temOrigPct, flujo100: cf.total100 };
 }
 
 // ── Motor de cálculo BONCAP ──
-// Prospecto: base 30/360 estricta
-// Si tenemos fechaEmi → VT exacto; si no → VT por descuento desde flujo
 function bcCalc(cf, precioDirty, fechaLiqStr){
   const liq = new Date(fechaLiqStr+'T12:00:00');
   const vto = new Date(cf.fechaVto +'T12:00:00');
@@ -2477,45 +2466,27 @@ function bcCalc(cf, precioDirty, fechaLiqStr){
   if(diasVtoLiq<=0) return null;
   if(isNaN(precioDirty)||precioDirty<=0) return null;
 
-  const tem      = cf.temPct/100;          // TEM prospecto decimal
-  const flujoVto = cf.flujo100;            // pago al vencimiento c/100VN
+  const tem      = cf.temPct/100;
+  const flujoVto = cf.flujo100;
   if(isNaN(tem)||tem<=0||isNaN(flujoVto)||flujoVto<=0) return null;
 
-  const mesesLiqVto = diasVtoLiq/30;       // meses restantes base 30/360
+  const mesesLiqVto = diasVtoLiq/30;  // base 30/360
 
-  // VT a fecha liq:
-  //   Con emisión: VT = 100 × (1+TEM)^(mesesEmiLiq)
-  //   Sin emisión: VT = flujoVto / (1+TEM)^(mesesLiqVto)  ← equivalente
-  let vt, mesesEmiLiq=NaN;
-  if(cf.fechaEmi){
-    const emi = new Date(cf.fechaEmi+'T12:00:00');
-    if(!isNaN(emi)){
-      const diasEmiLiq = Math.round((liq-emi)/86400000);
-      if(diasEmiLiq>=0){
-        mesesEmiLiq = diasEmiLiq/30;
-        vt = 100*Math.pow(1+tem, mesesEmiLiq);
-      }
-    }
-  }
-  // Fallback: descontar el flujo con la TEM original
-  if(!vt || isNaN(vt)){
-    vt = flujoVto/Math.pow(1+tem, mesesLiqVto);
-    mesesEmiLiq = NaN; // no lo tenemos exacto
-  }
-
-  const ic = vt - 100;                     // interés corrido
+  // VT a fecha liq — descuento del flujo con TEM (igual que LECAP)
+  const vt = flujoVto / Math.pow(1+tem, mesesLiqVto);
+  const ic = vt - 100;
   const precioLimpio = precioDirty - ic;
   if(precioLimpio<=0) return null;
 
   const paridad = (precioLimpio/vt)*100;
 
-  // TEM implícita (YTM desde liq, base 30/360)
+  // TEM implícita al precio dirty (YTM base 30/360)
   const temImpl = Math.pow(flujoVto/precioDirty, 1/mesesLiqVto) - 1;
   if(isNaN(temImpl)||!isFinite(temImpl)) return null;
   const teaImpl = Math.pow(1+temImpl, 12) - 1;
   const tnaImpl = temImpl*12;
 
-  // Duration (Macaulay, bono bullet, base 30/360)
+  // Duration Macaulay bullet
   const dur  = mesesLiqVto/12;
   const md   = dur/(1+temImpl);
   const conv = (dur*dur)/Math.pow(1+temImpl,2);
@@ -2526,11 +2497,9 @@ function bcCalc(cf, precioDirty, fechaLiqStr){
     temImpl: temImpl*100,
     teaImpl: teaImpl*100,
     tnaImpl: tnaImpl*100,
-    diasVtoLiq, mesesLiqVto, mesesEmiLiq,
+    diasVtoLiq, mesesLiqVto,
     dur, md, conv,
-    fechaVto: cf.fechaVto,
-    fechaEmi: cf.fechaEmi||null,
-    sinEmision: !cf.fechaEmi   // flag para mostrar aviso en UI
+    fechaVto: cf.fechaVto
   };
 }
 
@@ -2538,25 +2507,19 @@ function bcCalc(cf, precioDirty, fechaLiqStr){
 function bcCruzar(bundle, preciosMap, fechaLiq){
   const allTickers = bundle._index||Object.keys(bundle).filter(k=>!k.startsWith('_'));
   const tipos = bundle._tipos||{};
-
-  // Filtrar solo BONCAPs — si no hay metadata de tipos, mostrar error en lugar de
-  // mezclar con LECAPs (devolver array vacío para que el error sea visible)
   const tickers = Object.keys(tipos).length
     ? allTickers.filter(t=>(tipos[t]||'').toLowerCase()==='boncap')
     : [];
 
   return tickers.map(ticker=>{
     const cf = bcGetCashflow(bundle, ticker);
-
     const pxEntry = preciosMap[ticker.toUpperCase()]||preciosMap[ticker]||null;
     const pxData  = pxEntry&&pxEntry.latest ? pxEntry.latest : pxEntry;
     const precio  = pxData ? pxData.precio   : NaN;
     const varPct  = pxData ? pxData.variacion: NaN;
     const fechaPx = pxData ? pxData.fechaPx  : '';
     const vol     = pxData ? pxData.vol      : NaN;
-
     const calc = (cf&&!isNaN(precio)&&precio>0) ? bcCalc(cf, precio, fechaLiq) : null;
-
     return { ticker, precio, variacion:varPct, vol, fechaPx, calc, _cf:cf };
   });
 }
@@ -3065,7 +3028,7 @@ function bcBuildDetailBody(row,ticker){
             <td style="padding:7px 8px;text-align:right;color:var(--text3);">100%</td>
           </tr>
           <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding:7px 8px;color:var(--text2);">VT a fecha liq. <span style="color:var(--text3);font-size:9px;">100×(1+TEM)^${fmtN(c.mesesEmiLiq,2)}m</span></td>
+            <td style="padding:7px 8px;color:var(--text2);">VT a fecha liq. <span style="color:var(--text3);font-size:9px;">flujoVto / (1+TEM)^${fmtN(c.mesesLiqVto,2)}m</span></td>
             <td style="padding:7px 8px;text-align:right;">${fmtN(c.vt,4)}</td>
             <td style="padding:7px 8px;text-align:right;color:var(--text3);">${fmtN(c.vt/row.precio*100,2)}%</td>
           </tr>
@@ -3080,7 +3043,7 @@ function bcBuildDetailBody(row,ticker){
             <td style="padding:7px 8px;text-align:right;color:var(--text3);">Paridad ${fmtPct(c.paridad,2)}</td>
           </tr>
           <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding:7px 8px;color:var(--text2);">Flujo al vto. <span style="color:var(--text3);font-size:9px;">100×(1+TEM)^${fmtN(c.mesesLiqVto+c.mesesEmiLiq,2)}m tot.</span></td>
+            <td style="padding:7px 8px;color:var(--text2);">Flujo al vto. <span style="color:var(--text3);font-size:9px;">100×(1+TEM)^meses_totales</span></td>
             <td style="padding:7px 8px;text-align:right;font-weight:600;">${fmtN(c.flujoVto,4)}</td>
             <td style="padding:7px 8px;text-align:right;color:var(--text3);">${fmtN(c.flujoVto/row.precio*100,2)}%</td>
           </tr>
