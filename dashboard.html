@@ -1508,7 +1508,7 @@ window.lcOpenDetail = function(ticker){
   document.getElementById('lc-detail-ticker').textContent=ticker;
   const fechaLiq=document.getElementById('lc-fecha-liq').value||lcDefaultFecha();
   const meta=row.calc
-    ?`LECAP · Venc. ${fmtDateShort(row.calc.fechaVto)} · ${row.calc.diasReal} días · Precio ${fmtN(row.precio)}`
+    ?'LECAP · Venc. '+fmtDateShort(row.calc.fechaVto)+' · '+row.calc.diasReal+' días'
     :'Sin datos de cálculo';
   document.getElementById('lc-detail-meta').textContent=meta;
   lcBuildDetailBody(row, ticker, fechaLiq);
@@ -1518,144 +1518,212 @@ window.lcCloseDetail = function(){
   document.getElementById('lc-detail-view').style.display='none';
 };
 
+// Parse cashflow CSV into row objects for the table
+function lcParseCFTable(csvTxt){
+  if(!csvTxt) return [];
+  const lines = csvTxt.trim().split('
+');
+  if(lines.length < 3) return [];
+  const result = [];
+  for(const line of lines.slice(2)){
+    const cols = line.split(',').map(c=>c.trim());
+    if(cols.length < 9) continue;
+    result.push({
+      cupon:       parseFloat(cols[0])||1,
+      fechaPago:   cols[1].replace('T00:00:00.000Z','').trim(),
+      amortVN:     cols[2],   // e.g. "100.00%"
+      valResidual: cols[3],   // e.g. "0.00%"
+      tasaInteres: cols[4],   // e.g. "2.10%"
+      interesVN:   cols[5],   // e.g. "2.95%"
+      amort100:    parseFloat(cols[6])||0,
+      interes100:  parseFloat(cols[7])||0,
+      total100:    parseFloat(cols[8])||0,
+      temOrigPct:  parseFloat((cols[4]||'').replace('%','').trim())||0,
+    });
+  }
+  return result;
+}
+
 function lcBuildDetailBody(row, ticker, fechaLiq){
-  const body=document.getElementById('lc-detail-body');
-  body.innerHTML='';
-  const c=row.calc;
+  const body = document.getElementById('lc-detail-body');
+  body.innerHTML = '';
 
-  // ── Stat grid ──
-  const stats=c?[
-    {label:'TNA',    value:fmtPct(c.tna,2),    hi:true},
-    {label:'TEA',    value:fmtPct(c.tea,2),    hi:false},
-    {label:'TEM',    value:fmtPct(c.tem,2),    hi:false},
-    {label:'Precio', value:fmtN(row.precio),   hi:false},
-    {label:'VT',     value:fmtN(c.vt,4),       hi:false},
-    {label:'Px Limpio',value:fmtN(c.precioLimpio,4),hi:false},
-    {label:'Paridad',value:fmtPct(c.paridad,2),hi:false},
-    {label:'MD',     value:fmtN(c.md,4),       hi:false},
-    {label:'Duration',value:fmtN(c.dur,4),     hi:false},
-    {label:'Conv.',  value:fmtN(c.conv,4),     hi:false},
-    {label:'Días',   value:c.diasReal+'',       hi:false},
-    {label:'Var%',   value:fmtN(row.variacion)+'%',hi:false},
-  ]:[];
+  const cfRows = lcParseCFTable(_lcBundle&&_lcBundle[ticker]?_lcBundle[ticker]:'');
+  const baseCalc = row.calc;
 
-  const grid=document.createElement('div');
-  grid.className='detail-grid';
-  stats.forEach(s=>{
-    grid.innerHTML+=`<div class="stat-card">
-      <div class="stat-label">${s.label}</div>
-      <div class="stat-value ${s.hi?'pos':''}">${s.value}</div>
-    </div>`;
-  });
-  body.appendChild(grid);
+  // ── Mutable edit state (closure-local) ──
+  let editPrecio = null; // null = real price
+  let editCalc   = baseCalc;
 
-  // ── Two-column: hist price chart + cashflow bar ──
-  const twoCol=document.createElement('div');
-  twoCol.className='grid-2';
-  twoCol.style.marginTop='16px';
+  const getP  = ()=> editPrecio !== null ? editPrecio : row.precio;
+  const getC  = ()=> editCalc;
+  const isEd  = ()=> editPrecio !== null;
 
-  // Hist price chart (precio histórico desde _lcPrecios historico — no disponible directamente,
-  // usamos los datos que tenemos en _lcRows para mostrar datos del dia; 
-  // como el Sheet solo tiene el último snapshot, hacemos un chart mínimo del flujo)
-  const cashflowCard=document.createElement('div');
-  cashflowCard.className='card';
-  cashflowCard.style.marginBottom='0';
-  cashflowCard.innerHTML=`
-    <div class="card-header"><span class="card-title">Cashflow — c/100 VN</span></div>
-    <div class="chart-wrap"><div class="chart-canvas-wrap" style="height:200px"><canvas id="lc-cf-chart"></canvas></div></div>`;
+  const thS = 'padding:8px 12px;text-align:right;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);white-space:nowrap;background:var(--bg2);';
+  const tdS = 'padding:8px 12px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;';
 
-  const metricsCard=document.createElement('div');
-  metricsCard.className='card';
-  metricsCard.style.marginBottom='0';
-  metricsCard.innerHTML=`
-    <div class="card-header"><span class="card-title">Métricas al ${fechaLiq}</span></div>
-    <div class="chart-wrap"><div class="chart-canvas-wrap" style="height:200px"><canvas id="lc-met-chart"></canvas></div></div>`;
+  function renderAll(){
+    body.innerHTML = '';
+    const pc  = getP();
+    const cc  = getC();
+    const ed  = isEd();
+    const var_ = row.variacion;
 
-  twoCol.appendChild(cashflowCard);
-  twoCol.appendChild(metricsCard);
-  body.appendChild(twoCol);
+    const varColor = (!isNaN(var_)&&var_>0)?'var(--green)':(!isNaN(var_)&&var_<0)?'var(--red)':'var(--text3)';
+    const varStr   = (!isNaN(var_)&&var_!=null)?((var_>=0?'+':'')+fmtN(var_,2)+'%'):'—';
+    const accentStyle = 'color:var(--accent);text-decoration:underline;text-underline-offset:3px;';
 
-  setTimeout(()=>{
-    // Cashflow bar chart
-    if(c){
-      const cfCtx=document.getElementById('lc-cf-chart');
-      if(cfCtx){
-        const cfLabels=['Precio pagado','Flujo al vto.','Ganancia'];
-        const cfVals=[row.precio, c.flujoVto, c.flujoVto - row.precio];
-        const cfColors=['rgba(30,39,243,0.7)','rgba(13,158,110,0.7)','rgba(13,158,110,0.9)'];
-        new Chart(cfCtx,{
-          type:'bar',
-          data:{labels:cfLabels,datasets:[{
-            data:cfVals,backgroundColor:cfColors,borderColor:cfColors.map(c=>c.replace('0.7','1').replace('0.9','1')),
-            borderWidth:1,borderRadius:4
-          }]},
-          options:{
-            responsive:true,maintainAspectRatio:false,
-            plugins:{legend:{display:false},
-              tooltip:{
-                backgroundColor:'#fff',borderColor:'rgba(30,39,243,0.2)',borderWidth:1,
-                titleColor:'#3a3f5c',bodyColor:'#0a0c1a',padding:10,
-                titleFont:{family:"'DM Mono',monospace",size:11},bodyFont:{family:"'DM Mono',monospace",size:11},
-                callbacks:{label:c=>`$${c.raw.toFixed(4)}`}
-              }
-            },
-            scales:{
-              x:{grid:{display:false},ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:10}}},
-              y:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:10},callback:v=>'$'+v.toFixed(1)}}
-            }
+    // ─── HERO ───
+    const hero = document.createElement('div');
+    hero.style.cssText = 'padding:20px 24px 16px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;';
+    hero.innerHTML = `
+      <div style="display:flex;align-items:flex-start;gap:40px;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;">Precio</div>
+          <div style="display:flex;align-items:baseline;gap:10px;">
+            <input id="lc-px-inp" type="number" step="0.01" min="0.01"
+              value="${fmtN(pc,2).replace(/\./g,'').replace(',','.')}"
+              style="font-size:38px;font-weight:800;font-family:var(--mono);
+                     color:${ed?'var(--accent)':'var(--text)'};
+                     background:transparent;border:none;outline:none;
+                     border-bottom:2px solid ${ed?'var(--accent)':'var(--border)'};
+                     width:160px;padding:0 2px;
+                     -moz-appearance:textfield;"
+              title="Editá el precio para recalcular" />
+            <span style="font-size:14px;color:${varColor};font-weight:700;font-family:var(--mono);">${varStr}</span>
+            ${ed?'<button id="lc-px-reset" style="font-size:9px;padding:2px 8px;border-radius:10px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;font-family:var(--mono);font-weight:700;">✕ reset</button>':''}
+          </div>
+          ${ed?'<div style="font-size:9px;color:var(--accent);font-family:var(--mono);margin-top:3px;">⚠ precio editado — valores estimados</div>':''}
+        </div>
+        <div>
+          <div style="font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;">TNA</div>
+          <div style="font-size:34px;font-weight:800;font-family:var(--mono);${ed?accentStyle:'color:var(--text);'}">${cc?fmtPct(cc.tna,2):'—'}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;">TEM</div>
+          <div style="font-size:28px;font-weight:700;font-family:var(--mono);${ed?accentStyle:'color:var(--text2);'}">${cc?fmtPct(cc.tem,2):'—'}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;">Volumen</div>
+          <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--text2);">${(!isNaN(row.vol)&&row.vol)?row.vol.toLocaleString('es-AR',{maximumFractionDigits:0}):'—'}</div>
+        </div>
+      </div>`;
+    body.appendChild(hero);
+
+    // ─── BODY: left metrics + right cashflow ───
+    const splitRow = document.createElement('div');
+    splitRow.style.cssText = 'display:grid;grid-template-columns:260px 1fr;flex:1;min-height:0;overflow:hidden;';
+
+    // LEFT metrics table
+    const metrics = cc ? [
+      ['Precio',        fmtN(pc,4),              ed],
+      ['Precio Limpio', fmtN(cc.precioLimpio,4), ed],
+      ['Paridad',       fmtPct(cc.paridad,2),    ed],
+      ['TNA',           fmtPct(cc.tna,2),        ed],
+      ['TEA',           fmtPct(cc.tea,2),        ed],
+      ['TEM',           fmtPct(cc.tem,2),        ed],
+      ['Vencimiento',   fmtDateShort(cc.fechaVto), false],
+      ['Días',          String(cc.diasReal),     false],
+      ['Duration',      fmtN(cc.dur,4),          ed],
+      ['Mod. Duration', fmtN(cc.md,4),           ed],
+      ['Valor Técnico', fmtN(cc.vt,4),           false],
+      ['Convexidad',    fmtN(cc.conv,4),         ed],
+      ['Flujo al Vto.', fmtN(cc.flujoVto,4),    false],
+      ['Volumen',       (!isNaN(row.vol)&&row.vol)?row.vol.toLocaleString('es-AR',{maximumFractionDigits:0}):'—', false],
+    ] : [];
+
+    const leftDiv = document.createElement('div');
+    leftDiv.style.cssText = 'border-right:1px solid var(--border);overflow-y:auto;';
+    leftDiv.innerHTML = `
+      <div style="padding:8px 16px;font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);font-family:var(--mono);border-bottom:1px solid var(--border);background:var(--bg2);sticky top:0;">
+        Métricas · ${fechaLiq}
+      </div>
+      ${metrics.map(([lbl,val,dotted])=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 16px;border-bottom:1px solid var(--border);"
+             onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''">
+          <span style="font-size:11px;color:var(--text3);font-family:var(--mono);">${lbl}</span>
+          <span style="font-size:12px;font-weight:600;font-family:var(--mono);${dotted?accentStyle:'color:var(--text);'}">${val}</span>
+        </div>`).join('')}`;
+    splitRow.appendChild(leftDiv);
+
+    // RIGHT cashflow table
+    const rightDiv = document.createElement('div');
+    rightDiv.style.cssText = 'overflow:auto;';
+    const past = cfRows.filter(r=>r.fechaPago<=fechaLiq);
+    const fut  = cfRows.filter(r=>r.fechaPago>fechaLiq);
+    const allCF = [...past,...fut];
+    rightDiv.innerHTML = `
+      <div style="padding:8px 16px;font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);font-family:var(--mono);border-bottom:1px solid var(--border);background:var(--bg2);">
+        Cashflow — ${ticker}
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:var(--mono);">
+        <thead>
+          <tr>
+            <th style="${thS}text-align:center;min-width:50px;">Cupón #</th>
+            <th style="${thS}text-align:left;min-width:110px;">Fecha efectiva</th>
+            <th style="${thS}min-width:90px;">Amort. VN</th>
+            <th style="${thS}min-width:90px;">Val. residual</th>
+            <th style="${thS}min-width:90px;">Tasa interés</th>
+            <th style="${thS}min-width:80px;">Interés VN</th>
+            <th style="${thS}min-width:90px;">Amort c/100</th>
+            <th style="${thS}min-width:90px;">Interés c/100</th>
+            <th style="${thS}min-width:90px;color:var(--accent);">Total c/100</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${allCF.length?allCF.map(cfr=>{
+            const isPast = cfr.fechaPago <= fechaLiq;
+            return `<tr style="border-bottom:1px solid var(--border);${isPast?'opacity:.4;background:var(--bg2);':''}"
+                        onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='${isPast?'var(--bg2)':''}' ">
+              <td style="${tdS}text-align:center;color:var(--text3);">${Math.round(cfr.cupon)}</td>
+              <td style="${tdS}text-align:left;font-weight:600;color:var(--text);">${fmtDateShort(cfr.fechaPago)}</td>
+              <td style="${tdS}">${cfr.amortVN}</td>
+              <td style="${tdS}">${cfr.valResidual}</td>
+              <td style="${tdS}font-weight:600;">${cfr.tasaInteres}</td>
+              <td style="${tdS}">${cfr.interesVN}</td>
+              <td style="${tdS}">${fmtN(cfr.amort100,2)}</td>
+              <td style="${tdS}">${fmtN(cfr.interes100,2)}</td>
+              <td style="${tdS}color:var(--accent);font-weight:700;">${fmtN(cfr.total100,2)}</td>
+            </tr>`;
+          }).join(''):`<tr><td colspan="9" style="padding:32px;text-align:center;color:var(--text3);">Sin datos de cashflow</td></tr>`}
+        </tbody>
+      </table>`;
+    splitRow.appendChild(rightDiv);
+    body.appendChild(splitRow);
+
+    // ── Wire input ──
+    const inp = document.getElementById('lc-px-inp');
+    if(inp){
+      inp.addEventListener('change', function(){
+        const v = parseFloat(this.value.replace(',','.'));
+        if(!isNaN(v) && v > 0){
+          if(Math.abs(v - row.precio) < 0.0001){ editPrecio=null; editCalc=baseCalc; }
+          else {
+            editPrecio = v;
+            const lastCF = cfRows.length ? cfRows[cfRows.length-1] : null;
+            editCalc = lastCF ? calcLecap({fechaPago:lastCF.fechaPago, temOrigPct:lastCF.temOrigPct, total100:lastCF.total100}, v, fechaLiq) : null;
           }
-        });
-      }
-    }
-
-    // Métricas radar / bar comparativo con otras LECAPs
-    const metCtx=document.getElementById('lc-met-chart');
-    if(metCtx&&c){
-      const otherRows=_lcRows.filter(r=>r.ticker!==ticker&&r.calc);
-      const avgTNA= otherRows.length ? otherRows.reduce((a,r)=>a+r.calc.tna,0)/otherRows.length : c.tna;
-      const avgMD = otherRows.length ? otherRows.reduce((a,r)=>a+r.calc.md,0)/otherRows.length  : c.md;
-      new Chart(metCtx,{
-        type:'bar',
-        data:{
-          labels:['TNA %','TEM %','MD × 10'],
-          datasets:[
-            {label:ticker,
-             data:[c.tna, c.tem, c.md*10],
-             backgroundColor:'rgba(30,39,243,0.75)',borderColor:'#1E27F3',borderWidth:1,borderRadius:4},
-            {label:'Promedio',
-             data:[avgTNA, otherRows.length?otherRows.reduce((a,r)=>a+r.calc.tem,0)/otherRows.length:c.tem, avgMD*10],
-             backgroundColor:'rgba(139,153,196,0.35)',borderColor:'#8b99c4',borderWidth:1,borderRadius:4}
-          ]
-        },
-        options:{
-          responsive:true,maintainAspectRatio:false,
-          plugins:{
-            legend:{display:true,labels:{color:'#3a3f5c',font:{family:"'DM Mono',monospace",size:10},boxWidth:10}},
-            tooltip:{
-              backgroundColor:'#fff',borderColor:'rgba(30,39,243,0.2)',borderWidth:1,
-              titleColor:'#3a3f5c',bodyColor:'#0a0c1a',padding:10,
-              titleFont:{family:"'DM Mono',monospace",size:11},bodyFont:{family:"'DM Mono',monospace",size:11},
-              callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toFixed(2)}${c.label.includes('%')?'%':''}`}
-            }
-          },
-          scales:{
-            x:{grid:{display:false},ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:10}}},
-            y:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:10}}}
-          }
+          renderAll();
         }
       });
+      inp.style.removeProperty('-moz-appearance'); // keep spinner hidden via CSS class
     }
-  },80);
+    const rst = document.getElementById('lc-px-reset');
+    if(rst) rst.onclick = ()=>{ editPrecio=null; editCalc=baseCalc; renderAll(); };
+  }
+
+  renderAll();
 }
+
+
 
 // ── Auto-load: carga inmediata al entrar, sin necesidad de botón ──
 const _orig=window.enterTest;
 window.enterTest=function(){
   if(_orig) _orig();
-  setTimeout(lcLoad, 100);  // siempre recarga al entrar
+  setTimeout(lcLoad, 100);
 };
 
-// También cargar al inicio si el módulo ya está visible
 (function(){
   const observer=new MutationObserver(()=>{
     const el=document.getElementById('app-test');
