@@ -835,6 +835,18 @@ function parseWorkerCsv(text){
 
 // ── Parser Sheet CSV (1 fila de header, sin columna Plazo) ──
 // Devuelve un map: TICKER_UPPER → { precio, variacion, vol, fechaPx }
+// Normalize any date string to YYYY-MM-DD
+function lcNormalizeFecha(s){
+  if(!s) return '';
+  const t = s.trim();
+  // DD/MM/YYYY or DD/MM/YYYY HH:MM:SS
+  if(t.length>=10 && t[2]==='/' && t[5]==='/'){
+    return t.substring(6,10)+'-'+t.substring(3,5)+'-'+t.substring(0,2);
+  }
+  // YYYY-MM-DD (ISO)
+  return t.substring(0,10);
+}
+
 function parseSheetCsv(text){
   const lines = text.trim().split('\n');
   if(lines.length < 2) return {};
@@ -872,13 +884,13 @@ function parseSheetCsv(text){
       ? (precio/apertura-1)*100 : NaN;
     const vol    = iVol>=0 ? toNum(cols[iVol]) : NaN;
     const rawFec = iFec>=0 ? (cols[iFec]||'').replace(/"/g,'').trim() : '';
-    // normalize fecha to YYYY-MM-DD
-    const fechaKey = rawFec.substring(0,10);
+    // normalize fecha to YYYY-MM-DD (handles DD/MM/YYYY and YYYY-MM-DD)
+    const fechaKey = lcNormalizeFecha(rawFec);
     const row = { precio, apertura, cierre, variacion:varPct, vol, fechaPx:rawFec };
     if(!map[esp]) map[esp]={ latest:null, byDate:{} };
     if(fechaKey) map[esp].byDate[fechaKey]=row;
     // keep the row with the most recent fecha as "latest"
-    if(!map[esp].latest || fechaKey > (map[esp].latest.fechaPx||'').substring(0,10)){
+    if(!map[esp].latest || fechaKey > lcNormalizeFecha(map[esp].latest.fechaPx||'')){
       map[esp].latest = row;
     }
   }
@@ -985,9 +997,11 @@ const COLS = [
     sort: r=>r.precio||0 },
   { key:'var',    label:'Var%',     align:'right',
     fmt:  r=>{
-      if(isNaN(r.variacion)||r.variacion==null) return '—';
-      const c=r.variacion>0?'var(--green)':r.variacion<0?'var(--red)':'';
-      return `<span style="color:${c};font-weight:600;">${r.variacion>=0?'+':''}${fmtN(r.variacion)}%</span>`;
+      if(isNaN(r.variacion)||r.variacion==null) return '<span style="color:var(--text3);">—</span>';
+      const pos=r.variacion>0, neg=r.variacion<0;
+      const col=pos?'var(--green)':neg?'var(--red)':'var(--text3)';
+      const sign=pos?'▲':neg?'▼':'●';
+      return `<span style="color:${col};font-weight:700;font-size:11px;" title="${r.variacion>=0?'+':''}${fmtN(r.variacion)}%">${sign} ${fmtN(Math.abs(r.variacion),2)}%</span>`;
     },
     sort: r=>r.variacion||0 },
   { key:'tna',    label:'TNA',      align:'right',
