@@ -2715,33 +2715,34 @@ function bcShow() {
   errB.style.display   = 'none';
   wrap.style.display   = 'block';
 
-  var html = '<p style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:12px;">'
-    + tickers.length + ' tickers BONCAP encontrados en _tipos</p>'
-    + '<table style="border-collapse:collapse;font-family:var(--mono);font-size:11px;">'
-    + '<thead><tr>'
-    + '<th style="padding:6px 14px;text-align:left;border-bottom:1px solid var(--border);color:var(--text3);">Ticker</th>'
-    + '<th style="padding:6px 14px;text-align:right;border-bottom:1px solid var(--border);color:var(--text3);">Precio (Sheet)</th>'
-    + '</tr></thead><tbody>';
+  // Usar bc-thead y bc-tbody que ya existen en el HTML
+  var thead = document.getElementById('bc-thead');
+  var tbody = document.getElementById('bc-tbody');
+  var stats = document.getElementById('bc-stats-txt');
 
-  tickers.forEach(function(t) {
-    var entry = _lcPrecios[t.toUpperCase()] || _lcPrecios[t] || null;
-    var px    = entry && entry.latest ? entry.latest : entry;
-    var precio = px ? px.precio : NaN;
-    html += '<tr>'
-      + '<td style="padding:6px 14px;color:var(--accent);font-weight:700;">' + t + '</td>'
-      + '<td style="padding:6px 14px;text-align:right;">' + (isNaN(precio) ? '— sin precio' : precio) + '</td>'
-      + '</tr>';
-  });
-
-  html += '</tbody></table>';
+  if (stats) stats.textContent = tickers.length + ' tickers BONCAP en _tipos';
 
   if (!tickers.length) {
-    var tiposVals = [...new Set(Object.values(tipos))].join(', ') || '(ninguno)';
-    html = '<p style="font-family:var(--mono);font-size:11px;color:var(--red);">No se encontraron BONCAPs en _tipos.<br>Tipos presentes: <b>' + tiposVals + '</b></p>';
+    var tiposVals = Object.values(tipos).filter(function(v,i,a){return a.indexOf(v)===i;}).join(', ') || '(ninguno)';
+    if (thead) thead.innerHTML = '';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="2" style="padding:14px;font-family:var(--mono);font-size:11px;color:var(--red);">No se encontraron BONCAPs. Tipos presentes: <b>' + tiposVals + '</b></td></tr>';
+    return;
   }
 
-  document.getElementById('bc-info-row').innerHTML = '';
-  document.getElementById('bc-table-wrap').innerHTML = html;
+  if (thead) thead.innerHTML = '<tr>'
+    + '<th style="padding:8px 14px;text-align:left;font-size:10px;font-family:var(--mono);color:var(--text3);border-bottom:1px solid var(--border);">Ticker</th>'
+    + '<th style="padding:8px 14px;text-align:right;font-size:10px;font-family:var(--mono);color:var(--text3);border-bottom:1px solid var(--border);">Precio (Sheet)</th>'
+    + '</tr>';
+
+  if (tbody) tbody.innerHTML = tickers.map(function(t) {
+    var entry  = _lcPrecios[t.toUpperCase()] || _lcPrecios[t] || null;
+    var px     = entry && entry.latest ? entry.latest : entry;
+    var precio = px ? px.precio : NaN;
+    return '<tr>'
+      + '<td style="padding:8px 14px;font-family:var(--mono);font-size:11px;color:var(--accent);font-weight:700;">' + t + '</td>'
+      + '<td style="padding:8px 14px;font-family:var(--mono);font-size:11px;text-align:right;">' + (isNaN(precio) ? '— sin precio' : precio) + '</td>'
+      + '</tr>';
+  }).join('');
 }
 
 // ── lcShowTab llama a bcShow cuando corresponde ──
