@@ -838,7 +838,6 @@ function parseWorkerCsv(text){
 function parseSheetCsv(text){
   const lines = text.trim().split('\n');
   if(lines.length < 2) return {};
-  // Detectar separador
   const sep = lines[0].includes(';') ? ';' : ',';
   function split(line){
     const v=[]; let cur='', inQ=false;
@@ -851,31 +850,55 @@ function parseSheetCsv(text){
     return v;
   }
   const headers = split(lines[0]).map(h=>h.replace(/"/g,'').trim());
-  // índices de columnas clave (flexible ante variaciones ortográficas)
   const iEsp = headers.findIndex(h=>/especie/i.test(h));
   const iUlt = headers.findIndex(h=>/ltim|ltimo|ltima|Ultimo|Ültimo/i.test(h)||h==='Último');
-  const iVar = headers.findIndex(h=>/variaci/i.test(h));
+  const iApe = headers.findIndex(h=>/apertura/i.test(h));
+  const iCie = headers.findIndex(h=>/cierre/i.test(h));
   const iVol = headers.findIndex(h=>/volumen/i.test(h));
   const iFec = headers.findIndex(h=>/fecha/i.test(h));
-  const iCie = headers.findIndex(h=>/cierre/i.test(h));
 
+  // map: TICKER → { latest: {precio,variacion,vol,fechaPx}, byDate: {'YYYY-MM-DD': row} }
   const map = {};
   for(const line of lines.slice(1)){
     if(!line.trim()) continue;
     const cols = split(line);
-    const esp = (iEsp>=0 ? cols[iEsp]||'' : '').replace(/"/g,'').trim().toUpperCase();
-    if(!esp || esp==='ESPECIE') continue;
-    const precio  = iUlt>=0 ? toNum(cols[iUlt]) : NaN;
-    const cierre  = iCie>=0 ? toNum(cols[iCie]) : NaN;
-    // VAR% = (Último / Cierre_anterior - 1) * 100
-    const varPct  = (!isNaN(precio)&&!isNaN(cierre)&&cierre>0) ? (precio/cierre-1)*100 : NaN;
-    const vol     = iVol>=0 ? toNum(cols[iVol]) : NaN;
-    const fechaPx = iFec>=0 ? (cols[iFec]||'').replace(/"/g,'').trim() : '';
-    if(!map[esp] || (!isNaN(precio) && precio > (map[esp].precio||0))){
-      map[esp] = { precio, cierre, variacion: varPct, vol, fechaPx };
+    const esp = (iEsp>=0?cols[iEsp]:'').replace(/"/g,'').trim().toUpperCase();
+    if(!esp||esp==='ESPECIE') continue;
+    const precio   = iUlt>=0 ? toNum(cols[iUlt]) : NaN;
+    const apertura = iApe>=0 ? toNum(cols[iApe]) : NaN;
+    const cierre   = iCie>=0 ? toNum(cols[iCie]) : NaN;
+    // VAR% = (Último - Apertura) / Apertura × 100  (mismo día)
+    const varPct = (!isNaN(precio)&&!isNaN(apertura)&&apertura>0)
+      ? (precio/apertura-1)*100 : NaN;
+    const vol    = iVol>=0 ? toNum(cols[iVol]) : NaN;
+    const rawFec = iFec>=0 ? (cols[iFec]||'').replace(/"/g,'').trim() : '';
+    // normalize fecha to YYYY-MM-DD
+    const fechaKey = rawFec.substring(0,10);
+    const row = { precio, apertura, cierre, variacion:varPct, vol, fechaPx:rawFec };
+    if(!map[esp]) map[esp]={ latest:null, byDate:{} };
+    if(fechaKey) map[esp].byDate[fechaKey]=row;
+    // keep the row with the most recent fecha as "latest"
+    if(!map[esp].latest || fechaKey > (map[esp].latest.fechaPx||'').substring(0,10)){
+      map[esp].latest = row;
     }
   }
   return map;
+}
+
+// Helper: get price map for a specific date (or nearest before it on a business day)
+// Returns same shape as old map: { TICKER: {precio, variacion, vol, fechaPx} }
+function lcGetPreciosForDate(isoDate){
+  const result={};
+  for(const [ticker, entry] of Object.entries(_lcPrecios)){
+    // Find exact date or nearest date before
+    const dates=Object.keys(entry.byDate).sort();
+    let best=null;
+    for(const d of dates){
+      if(d<=isoDate) best=d;
+    }
+    if(best) result[ticker]={ ...entry.byDate[best], fechaPx:entry.byDate[best].fechaPx||best };
+  }
+  return result;
 }
 
 // ── Fecha de liquidación default: T+1 hábil ──
@@ -936,7 +959,9 @@ function lcCruzar(bundle, preciosMap, fechaLiq){
     const cfs    = csvTxt ? parseWorkerCsv(csvTxt) : null;
     const cf     = cfs && cfs.length ? cfs[cfs.length-1] : null;   // único flujo LECAP
 
-    const pxData  = preciosMap[ticker.toUpperCase()] || null;
+    const pxEntry = preciosMap[ticker.toUpperCase()] || null;
+    // preciosMap can be the full map (with .latest) or a flat date map
+    const pxData  = pxEntry && pxEntry.latest ? pxEntry.latest : pxEntry;
     const precio  = pxData ? pxData.precio    : NaN;
     const varPct  = pxData ? pxData.variacion : NaN;
     const fechaPx = pxData ? pxData.fechaPx   : '';
@@ -1022,7 +1047,8 @@ function lcRender(){
   thead.innerHTML=`<tr>${COLS.map(c=>{
     const active=_sortKey===c.key;
     const arrow=active?(_sortDir===1?' ▲':' ▼'):'';
-    const ta=c.align==='right'?'text-align:right;':'text-align:left;';
+    // all cols right-aligned except ticker
+    const ta=c.key==='ticker'?'text-align:left;':'text-align:right;';
     const hl=active?'color:var(--accent);':'';
     return`<th style="${thS}${ta}${hl}" onclick="lcSort('${c.key}')">${c.label}${arrow}</th>`;
   }).join('')}</tr>`;
@@ -1144,7 +1170,7 @@ function lcBuildCurveCard(rows){
 
   card.innerHTML=`
     <div class="card-header">
-      <span class="card-title">Curva de Rendimientos — LECAPs (TNA vs MD)</span>
+      <span class="card-title">Curva de Rendimientos — LECAPs</span>
       <div class="compare-controls">
         <button class="cmp-btn ${window._lcCmpMode==='D1'?'active':''}" onclick="lcSetCmp('D1')">-1D</button>
         <button class="cmp-btn ${window._lcCmpMode==='W1'?'active':''}" onclick="lcSetCmp('W1')">-1S</button>
@@ -1278,18 +1304,30 @@ function lcBuildCurveCard(rows){
             title:{display:true,text:'TNA (%)',color:'#8a90b0',font:{size:10}}}
         }
       },
-      plugins:[{id:'lc-labels',afterDraw(chart){
+      plugins:[{id:'lc-labels',afterDatasetsDraw(chart){
         const c2=chart.ctx;
+        // Draw labels last so they appear above trend line
         chart.data.datasets.forEach((ds,di)=>{
           if(ds.label==='_trend')return;
           const meta=chart.getDatasetMeta(di);
           ds.data.forEach((pt,pi)=>{
             const el=meta.data[pi];if(!el||!pt.label)return;
             const isExcl=excluded.has(pt.label);
-            c2.save();c2.font="500 9px 'DM Mono',monospace";
-            c2.fillStyle=isExcl?'rgba(138,144,176,0.35)':(ds.label==='_cmp'?'#c9973a':'#8a90b0');
-            if(isExcl) c2.globalAlpha=0.4;
-            c2.fillText(pt.label,el.x+6,el.y-4);c2.restore();
+            const isCmp=ds.label==='_cmp';
+            const txtColor=isExcl?'rgba(138,144,176,0.5)':isCmp?'#b07d1a':'#3a3f5c';
+            c2.save();
+            c2.font="600 9px 'DM Mono',monospace";
+            const lx=el.x+8, ly=el.y-7;
+            const w=c2.measureText(pt.label).width;
+            // white background rect for readability
+            if(!isExcl){
+              c2.fillStyle='rgba(247,248,252,0.88)';
+              c2.fillRect(lx-2,ly-9,w+4,12);
+            }
+            c2.fillStyle=txtColor;
+            if(isExcl) c2.globalAlpha=0.45;
+            c2.fillText(pt.label,lx,ly);
+            c2.restore();
           });
         });
       }}]
@@ -1300,8 +1338,8 @@ function lcBuildCurveCard(rows){
     document.getElementById('lc-curve-legend').innerHTML=`
       <div class="legend-item"><div class="legend-line" style="background:#1E27F3"></div>Tendencia hoy</div>
       <div class="legend-item"><div class="legend-dot" style="background:#1E27F3"></div>LECAPs hoy <span style="color:var(--text3);font-size:9px;">(click para excluir)</span></div>
-      ${hasCmp?`<div class="legend-item"><div class="legend-line" style="background:#f59e0b;opacity:.8"></div>Tendencia comparar</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>LECAPs comparar</div>`:''}`;
+      ${hasCmp?`<div class="legend-item"><div class="legend-line" style="background:#f59e0b;opacity:.8"></div>Tendencia — ${window._lcCmpDate||'comparar'}</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>LECAPs — ${window._lcCmpDate||'comparar'} <span style="color:var(--text3);font-size:9px;">(solo tickers con precio ese día)</span></div>`:''}`;
 
     updatePips();
     window._lcChartInst=chartInst;
@@ -1339,22 +1377,36 @@ window.lcSetCmpDate=function(val){
 // Load compare data: for now re-calculate using current cashflows but hypothetical fecha_liq
 // (Since we don't have historical price data, we simulate by shifting fecha_liq)
 async function lcLoadCmpData(days, isoDate){
-  // We can't fetch historical prices from the Sheet (it only has today's snapshot)
-  // Instead: recalculate metrics with a different fecha_liq to show how the curve shape shifts
-  // This is an honest approximation — shows how duration/TNA changes with a different settlement date
-  let cmpFechaLiq;
+  // Use real historical prices from the Sheet's byDate map
+  // fecha_liq for compare = that historical date + 1 business day
+  let targetDate;
   if(isoDate){
-    cmpFechaLiq=isoDate;
+    targetDate=isoDate;
   } else {
+    // Go back N calendar days from today's fechaLiq, skipping weekends
     const ref=new Date(document.getElementById('lc-fecha-liq').value||lcDefaultFecha());
-    ref.setDate(ref.getDate()-days);
-    // skip weekend
-    while(ref.getDay()===0||ref.getDay()===6) ref.setDate(ref.getDate()-1);
-    cmpFechaLiq=ref.toISOString().slice(0,10);
+    let count=days;
+    while(count>0){
+      ref.setDate(ref.getDate()-1);
+      if(ref.getDay()!==0&&ref.getDay()!==6) count--;
+    }
+    targetDate=ref.toISOString().slice(0,10);
   }
-  // Recalculate rows with shifted fecha_liq (same prices, different settlement)
-  window._lcCmpRows=lcCruzar(_lcBundle,_lcPrecios,cmpFechaLiq);
+  // Build price map for that date using real historical data (byDate lookup)
+  // Passes null for tickers with no data on that date → calc will be null → no point on chart
+  const cmpPreciosMap=lcGetPreciosForDate(targetDate);
+  // fecha_liq for comparison = targetDate + 1 business day
+  const cmpLiq=lcNextBusinessDay(targetDate);
+  window._lcCmpRows=lcCruzar(_lcBundle,cmpPreciosMap,cmpLiq);
+  window._lcCmpDate=targetDate;
   lcRenderSection();
+}
+
+function lcNextBusinessDay(isoDate){
+  const d=new Date(isoDate+'T12:00:00');
+  d.setDate(d.getDate()+1);
+  while(d.getDay()===0||d.getDay()===6) d.setDate(d.getDate()+1);
+  return d.toISOString().slice(0,10);
 }
 
 // ── Render section: curva + tabla ──
@@ -1406,7 +1458,9 @@ window.lcLoad=async function(){
     if(!fi.value) fi.value=lcDefaultFecha();
 
     // 4. Header date (fecha más reciente del Sheet)
-    const fechas=Object.values(_lcPrecios).map(p=>p.fechaPx).filter(Boolean).sort();
+    const fechas=Object.values(_lcPrecios)
+      .map(p=>p.latest?p.latest.fechaPx:(p.fechaPx||''))
+      .filter(Boolean).sort();
     if(fechas.length){
       const hd=document.getElementById('lc-header-date');
       if(hd) hd.textContent=fmtDateShort(fechas[fechas.length-1].substring(0,10));
