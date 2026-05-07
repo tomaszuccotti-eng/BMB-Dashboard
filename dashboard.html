@@ -1513,46 +1513,133 @@ window.lcOpenDetail = function(ticker){
   document.getElementById('lc-detail-ticker').textContent=ticker;
   const fechaLiq=document.getElementById('lc-fecha-liq').value||lcDefaultFecha();
   const meta=row.calc
-    ?`LECAP · Venc. ${fmtDateShort(row.calc.fechaVto)} · ${row.calc.diasReal} días · Precio ${fmtN(row.precio)}`
+    ?`LECAP · Venc. ${fmtDateShort(row.calc.fechaVto)} · ${row.calc.diasReal} días`
     :'Sin datos de cálculo';
   document.getElementById('lc-detail-meta').textContent=meta;
+  // Guardar precio real del ticker para poder restaurarlo
+  window._lcDetailRealPrecio=row.precio;
+  window._lcDetailTicker=ticker;
   lcBuildDetailBody(row, ticker, fechaLiq);
 };
 
 window.lcCloseDetail = function(){
   document.getElementById('lc-detail-view').style.display='none';
+  // Limpiar estado de precio manual al salir
+  window._lcDetailManualPrecio=null;
+  window._lcDetailTicker=null;
+};
+
+// ── Recalc detalle con nuevo precio o nueva fecha liq ──
+window.lcDetailRecalc = function(){
+  const ticker=window._lcDetailTicker;
+  if(!ticker) return;
+  const row=_lcRows.find(r=>r.ticker===ticker);
+  if(!row) return;
+
+  const fechaLiq=document.getElementById('lc-detail-fecha-liq').value||lcDefaultFecha();
+  const pxInput=document.getElementById('lc-detail-precio-input');
+  const pxVal=pxInput?toNum(pxInput.value):NaN;
+  const precioEfectivo=(!isNaN(pxVal)&&pxVal>0)?pxVal:row.precio;
+
+  // Recalcular con precio y fecha liq del detalle
+  const cf=_lcBundle?parseWorkerCsv(_lcBundle[ticker]):null;
+  const cfLast=cf&&cf.length?cf[cf.length-1]:null;
+  const newCalc=cfLast?calcLecap(cfLast,precioEfectivo,fechaLiq):null;
+
+  const newRow={...row, precio:precioEfectivo, calc:newCalc,
+    _isManualPx: precioEfectivo!==row.precio };
+  window._lcDetailManualPrecio=precioEfectivo!==row.precio?precioEfectivo:null;
+
+  lcBuildDetailBody(newRow, ticker, fechaLiq);
+
+  // Restaurar el input de precio para no perder lo que escribió
+  const pxInputNew=document.getElementById('lc-detail-precio-input');
+  if(pxInputNew&&window._lcDetailManualPrecio){
+    pxInputNew.value=String(window._lcDetailManualPrecio).replace('.',',');
+  }
+  // Restaurar fecha liq
+  const flNew=document.getElementById('lc-detail-fecha-liq');
+  if(flNew) flNew.value=fechaLiq;
+};
+
+window.lcDetailResetPrecio=function(){
+  const pxInput=document.getElementById('lc-detail-precio-input');
+  if(pxInput){ pxInput.value=''; }
+  window._lcDetailManualPrecio=null;
+  lcDetailRecalc();
 };
 
 function lcBuildDetailBody(row, ticker, fechaLiq){
   const body=document.getElementById('lc-detail-body');
   body.innerHTML='';
   const c=row.calc;
+  const isManualPx=row._isManualPx||false;
+  const realPrecio=window._lcDetailRealPrecio||row.precio;
 
-  // ── [1] HEADER STRIP: stat cards compactas ──
+  // ── [0] BARRA DE CONTROLES: Fecha liq + Precio manual ──
+  const ctrlBar=document.createElement('div');
+  ctrlBar.style.cssText='display:flex;align-items:center;gap:16px;margin-bottom:16px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;flex-wrap:wrap;';
+  ctrlBar.innerHTML=`
+    <!-- Fecha liquidación -->
+    <div style="display:flex;align-items:center;gap:8px;">
+      <label style="font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);font-family:var(--mono);">Fecha liq.</label>
+      <input type="date" id="lc-detail-fecha-liq" value="${fechaLiq}"
+        style="background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:11px;font-family:var(--mono);padding:4px 8px;outline:none;cursor:pointer;"
+        onchange="lcDetailRecalc()" />
+    </div>
+    <div style="width:1px;height:20px;background:var(--border);"></div>
+    <!-- Precio manual -->
+    <div style="display:flex;align-items:center;gap:8px;">
+      <label style="font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);font-family:var(--mono);">Precio manual</label>
+      <div style="position:relative;">
+        <input type="text" id="lc-detail-precio-input"
+          value="${isManualPx?String(row.precio).replace('.',','):''}"
+          placeholder="${fmtN(realPrecio,4)}"
+          style="background:var(--bg);border:1px solid ${isManualPx?'var(--yellow)':'var(--border2)'};border-radius:5px;color:${isManualPx?'var(--yellow)':'var(--text)'};font-size:11px;font-family:var(--mono);padding:4px 32px 4px 8px;outline:none;width:110px;transition:border-color .15s;"
+          onfocus="this.style.borderColor='var(--accent)'"
+          onblur="this.style.borderColor='${isManualPx?'var(--yellow)':'var(--border2)'}'"
+          onkeydown="if(event.key==='Enter')lcDetailRecalc()"
+        />
+        ${isManualPx?`<button onclick="lcDetailResetPrecio()" title="Restaurar precio real"
+          style="position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--yellow);font-size:11px;padding:0;line-height:1;">✕</button>`:''}
+      </div>
+      <button onclick="lcDetailRecalc()"
+        style="padding:4px 12px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:10px;font-weight:600;cursor:pointer;font-family:var(--mono);transition:all .15s;"
+        onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='transparent'">
+        Calcular →
+      </button>
+      ${isManualPx?`<span style="font-size:9px;font-family:var(--mono);color:var(--yellow);font-weight:600;">⚠ precio manual · real: ${fmtN(realPrecio,4)}</span>`:''}
+    </div>`;
+  body.appendChild(ctrlBar);
+
+  // ── [1] STAT CARDS: Precio primero, TNA segundo, resto igual ──
   const stats=c?[
-    {label:'TNA',      value:fmtPct(c.tna,2),           hi:true,  accent:true},
-    {label:'TEA',      value:fmtPct(c.tea,2),           hi:false, accent:false},
-    {label:'TEM',      value:fmtPct(c.tem,2),           hi:false, accent:false},
-    {label:'Precio',   value:fmtN(row.precio),          hi:false, accent:false},
-    {label:'VT',       value:fmtN(c.vt,4),              hi:false, accent:false},
-    {label:'Px Limpio',value:fmtN(c.precioLimpio,4),    hi:false, accent:false},
-    {label:'Paridad',  value:fmtPct(c.paridad,2),       hi:false, accent:false},
-    {label:'MD',       value:fmtN(c.md,4),              hi:false, accent:false},
-    {label:'Duration', value:fmtN(c.dur,4),             hi:false, accent:false},
-    {label:'Conv.',    value:fmtN(c.conv,4),            hi:false, accent:false},
-    {label:'Días',     value:c.diasReal+'',              hi:false, accent:false},
-    {label:'Var%',     value:(isNaN(row.variacion)?'—':(row.variacion>=0?'+':'')+fmtN(row.variacion,2)+'%'), hi:false, accent:false},
+    {label:'Precio',   value:fmtN(row.precio),          accent:false, manualHi:isManualPx},
+    {label:'TNA',      value:fmtPct(c.tna,2),           accent:true},
+    {label:'TEA',      value:fmtPct(c.tea,2),           accent:false},
+    {label:'TEM',      value:fmtPct(c.tem,2),           accent:false},
+    {label:'VT',       value:fmtN(c.vt,4),              accent:false},
+    {label:'Px Limpio',value:fmtN(c.precioLimpio,4),    accent:false},
+    {label:'Paridad',  value:fmtPct(c.paridad,2),       accent:false},
+    {label:'MD',       value:fmtN(c.md,4),              accent:false},
+    {label:'Duration', value:fmtN(c.dur,4),             accent:false},
+    {label:'Conv.',    value:fmtN(c.conv,4),            accent:false},
+    {label:'Días',     value:c.diasReal+'',              accent:false},
+    {label:'Var%',     value:(isNaN(row.variacion)?'—':(row.variacion>=0?'+':'')+fmtN(row.variacion,2)+'%'), accent:false, isVar:true},
   ]:[];
 
   const grid=document.createElement('div');
   grid.style.cssText='display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:20px;';
   stats.forEach(s=>{
-    const isVar=s.label==='Var%';
-    const varVal=isVar?parseFloat((row.variacion||0)):null;
-    const varColor=isVar?(varVal>=0?'var(--green)':'var(--red)'):'';
-    grid.innerHTML+=`<div style="background:var(--bg);border:1px solid ${s.accent?'var(--accent)':'var(--border)'};border-radius:8px;padding:10px 12px;box-shadow:${s.accent?'0 0 0 1px rgba(30,39,243,0.15)':'0 1px 4px rgba(30,39,243,0.04)'};">
-      <div style="font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:${s.accent?'var(--accent)':'var(--text3)'};margin-bottom:5px;font-family:var(--mono);">${s.label}</div>
-      <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:${s.accent?'var(--accent)':isVar?varColor:'var(--text)'};">${s.value}</div>
+    const varVal=s.isVar?parseFloat((row.variacion||0)):null;
+    const varColor=s.isVar?(varVal>=0?'var(--green)':'var(--red)'):'';
+    const borderCol=s.manualHi?'var(--yellow)':s.accent?'var(--accent)':'var(--border)';
+    const labelCol=s.manualHi?'var(--yellow)':s.accent?'var(--accent)':'var(--text3)';
+    const valueCol=s.manualHi?'var(--yellow)':s.accent?'var(--accent)':s.isVar?varColor:'var(--text)';
+    const shadow=s.accent?'0 0 0 1px rgba(30,39,243,0.15)':s.manualHi?'0 0 0 1px rgba(217,119,6,0.2)':'0 1px 4px rgba(30,39,243,0.04)';
+    grid.innerHTML+=`<div style="background:var(--bg);border:1px solid ${borderCol};border-radius:8px;padding:10px 12px;box-shadow:${shadow};">
+      <div style="font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:${labelCol};margin-bottom:5px;font-family:var(--mono);">${s.label}${s.manualHi?' ✎':''}</div>
+      <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:${valueCol};">${s.value}</div>
     </div>`;
   });
   body.appendChild(grid);
