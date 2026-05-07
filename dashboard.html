@@ -623,30 +623,28 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 <!-- ══════════════════ APP TEST → LECAP CALCULATOR ══════════════════ -->
 <div id="app-test" style="display:none;min-height:100vh;flex-direction:column;background:var(--bg);">
 
-  <!-- Header -->
-  <div class="header">
-    <div class="header-left">
-      <div class="logo" onclick="backToLanding()" style="gap:0;">
-        <img id="bm-logo-test" src="" alt="Bull Market" style="height:28px;width:auto;margin-right:10px;mix-blend-mode:multiply;">
-        <span style="font-size:11px;font-family:var(--mono);color:var(--text3);font-weight:400;">— LECAP CALCULATOR</span>
+  <!-- Header + Tabs combined, sticky -->
+  <div style="position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:1px solid var(--border);box-shadow:0 1px 6px rgba(30,39,243,0.06);">
+    <div class="header" style="border-bottom:none;">
+      <div class="header-left">
+        <div class="logo" onclick="backToLanding()" style="gap:0;">
+          <img id="bm-logo-test" src="" alt="Bull Market" style="height:28px;width:auto;margin-right:10px;mix-blend-mode:multiply;">
+          <span style="font-size:11px;font-family:var(--mono);color:var(--text3);font-weight:400;">— LECAP CALCULATOR</span>
+        </div>
+        <div style="height:20px;width:1px;background:var(--border);margin:0 4px;"></div>
+        <div class="tab active" id="lc-tab-calc" onclick="lcShowTab('calc',this)" style="padding:0 14px;height:52px;display:flex;align-items:center;">LECAPs</div>
+        <div class="tab" id="lc-tab-diag" onclick="lcShowTab('diag',this)" style="padding:0 14px;height:52px;display:flex;align-items:center;">⚙ Diagnóstico</div>
+        <div class="header-date" id="lc-header-date" style="margin-left:8px;">—</div>
       </div>
-      <div class="header-date" id="lc-header-date">—</div>
+      <div class="header-right">
+        <div class="status-dot" id="lc-status-dot" style="background:var(--red);box-shadow:0 0 6px var(--red);"></div>
+        <button onclick="lcLoad()" id="lc-reload-btn"
+          style="padding:5px 14px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--mono);transition:all .15s;"
+          onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='transparent'">
+          ↻ Actualizar
+        </button>
+      </div>
     </div>
-    <div class="header-right">
-      <div class="status-dot" id="lc-status-dot" style="background:var(--red);box-shadow:0 0 6px var(--red);"></div>
-
-      <button onclick="lcLoad()" id="lc-reload-btn"
-        style="padding:5px 14px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--mono);transition:all .15s;"
-        onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='transparent'">
-        ↻ Actualizar
-      </button>
-    </div>
-  </div>
-
-  <!-- Internal tabs -->
-  <div class="tabs-bar">
-    <div class="tab active" id="lc-tab-calc" onclick="lcShowTab('calc',this)">LECAPs</div>
-    <div class="tab" id="lc-tab-diag" onclick="lcShowTab('diag',this)">⚙ Diagnóstico</div>
   </div>
 
   <!-- ══ TAB: CALCULADORA ══ -->
@@ -836,6 +834,17 @@ function parseWorkerCsv(text){
 // ── Parser Sheet CSV (1 fila de header, sin columna Plazo) ──
 // Devuelve un map: TICKER_UPPER → { precio, variacion, vol, fechaPx }
 // Normalize any date string to YYYY-MM-DD
+// Parse volume: handles "23.255.000.000" (Argentine thousand-sep) and plain numbers
+function lcParseVol(s){
+  if(!s||s.trim()==='') return NaN;
+  const t = s.trim().replace(/"/g,'');
+  // If multiple dots and no comma: treat dots as thousand separators
+  const dotCount = (t.match(/\./g)||[]).length;
+  if(dotCount > 1) return parseFloat(t.replace(/\./g,''));
+  // Single dot: could be decimal
+  return toNum(t);
+}
+
 function lcNormalizeFecha(s){
   if(!s) return '';
   const t = s.trim();
@@ -882,7 +891,7 @@ function parseSheetCsv(text){
     // VAR% = (Último - Apertura) / Apertura × 100  (mismo día)
     const varPct = (!isNaN(precio)&&!isNaN(apertura)&&apertura>0)
       ? (precio/apertura-1)*100 : NaN;
-    const vol    = iVol>=0 ? toNum(cols[iVol]) : NaN;
+    const vol    = iVol>=0 ? lcParseVol(cols[iVol]) : NaN;
     const rawFec = iFec>=0 ? (cols[iFec]||'').replace(/"/g,'').trim() : '';
     // normalize fecha to YYYY-MM-DD (handles DD/MM/YYYY and YYYY-MM-DD)
     const fechaKey = lcNormalizeFecha(rawFec);
@@ -996,13 +1005,7 @@ const COLS = [
     fmt:  r=>(!isNaN(r.precio)&&r.precio>0)?fmtN(r.precio):'—',
     sort: r=>r.precio||0 },
   { key:'var',    label:'Var%',     align:'right',
-    fmt:  r=>{
-      if(isNaN(r.variacion)||r.variacion==null) return '<span style="color:var(--text3);">—</span>';
-      const pos=r.variacion>0, neg=r.variacion<0;
-      const col=pos?'var(--green)':neg?'var(--red)':'var(--text3)';
-      const sign=pos?'▲':neg?'▼':'●';
-      return `<span style="color:${col};font-weight:700;font-size:11px;" title="${r.variacion>=0?'+':''}${fmtN(r.variacion)}%">${sign} ${fmtN(Math.abs(r.variacion),2)}%</span>`;
-    },
+    fmt:  r=>(isNaN(r.variacion)||r.variacion==null)?'—':`${r.variacion>=0?'+':''}${fmtN(r.variacion,2)}%`,
     sort: r=>r.variacion||0 },
   { key:'tna',    label:'TNA',      align:'right',
     fmt:  r=>r.calc?fmtPct(r.calc.tna):'—',
@@ -1034,11 +1037,7 @@ const COLS = [
   { key:'vol',    label:'Volumen',  align:'right',
     fmt:  r=>{
       if(isNaN(r.vol)||!r.vol) return '—';
-      const v=r.vol;
-      if(v>=1e9) return (v/1e9).toFixed(2)+'B';
-      if(v>=1e6) return (v/1e6).toFixed(1)+'M';
-      if(v>=1e3) return (v/1e3).toFixed(0)+'K';
-      return fmtN(v,0);
+      return r.vol.toLocaleString('es-AR',{maximumFractionDigits:0});
     },
     sort: r=>r.vol||0 },
 ];
@@ -1649,12 +1648,24 @@ function lcBuildDetailBody(row, ticker, fechaLiq){
   },80);
 }
 
-// ── Auto-load al entrar al módulo ──
+// ── Auto-load: carga inmediata al entrar, sin necesidad de botón ──
 const _orig=window.enterTest;
 window.enterTest=function(){
   if(_orig) _orig();
-  setTimeout(()=>{ if(!_lcBundle) lcLoad(); },100);
+  setTimeout(lcLoad, 100);  // siempre recarga al entrar
 };
+
+// También cargar al inicio si el módulo ya está visible
+(function(){
+  const observer=new MutationObserver(()=>{
+    const el=document.getElementById('app-test');
+    if(el&&el.style.display!=='none'&&!_lcBundle){
+      lcLoad();
+      observer.disconnect();
+    }
+  });
+  observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['style']});
+})();
 
 })(); // fin LECAP Calculator v3
 </script>
