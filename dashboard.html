@@ -876,8 +876,11 @@ function parseSheetCsv(text){
   const iCie = headers.findIndex(h=>/cierre/i.test(h));
   const iVol = headers.findIndex(h=>/volumen/i.test(h));
   const iFec = headers.findIndex(h=>/fecha/i.test(h));
+  const iMin = headers.findIndex(h=>/m[ií]nimo|minimo|min/i.test(h));
+  const iMax = headers.findIndex(h=>/m[áa]ximo|maximo|max/i.test(h));
+  const iVN  = headers.findIndex(h=>/nominal|vol.*n|vn/i.test(h)&&!/volumen/i.test(h));
 
-  // map: TICKER → { latest: {precio,variacion,vol,fechaPx}, byDate: {'YYYY-MM-DD': row} }
+  // map: TICKER → { latest: {precio,variacion,vol,fechaPx,...}, byDate: {'YYYY-MM-DD': row} }
   const map = {};
   for(const line of lines.slice(1)){
     if(!line.trim()) continue;
@@ -887,6 +890,9 @@ function parseSheetCsv(text){
     const precio   = iUlt>=0 ? toNum(cols[iUlt]) : NaN;
     const apertura = iApe>=0 ? toNum(cols[iApe]) : NaN;
     const cierre   = iCie>=0 ? toNum(cols[iCie]) : NaN;
+    const minVal   = iMin>=0 ? toNum(cols[iMin]) : NaN;
+    const maxVal   = iMax>=0 ? toNum(cols[iMax]) : NaN;
+    const volNom   = iVN>=0  ? lcParseVol(cols[iVN]) : NaN;
     // VAR% = (Último - Apertura) / Apertura × 100  (mismo día)
     const varPct = (!isNaN(precio)&&!isNaN(apertura)&&apertura>0)
       ? (precio/apertura-1)*100 : NaN;
@@ -894,7 +900,7 @@ function parseSheetCsv(text){
     const rawFec = iFec>=0 ? (cols[iFec]||'').replace(/"/g,'').trim() : '';
     // normalize fecha to YYYY-MM-DD (handles DD/MM/YYYY and YYYY-MM-DD)
     const fechaKey = lcNormalizeFecha(rawFec);
-    const row = { precio, apertura, cierre, variacion:varPct, vol, fechaPx:rawFec };
+    const row = { precio, apertura, cierre, minVal, maxVal, volNom, variacion:varPct, vol, fechaPx:rawFec };
     if(!map[esp]) map[esp]={ latest:null, byDate:{} };
     if(fechaKey) map[esp].byDate[fechaKey]=row;
     // keep the row with the most recent fecha as "latest"
@@ -1758,20 +1764,131 @@ function lcBuildDetailBody(row, ticker, fechaLiq){
   rowMid.appendChild(cfCard);
   body.appendChild(rowMid);
 
-  // ── [4] FILA INFERIOR: Bar chart comparativo TNA full universe ──
+  // ── [4] FILA INFERIOR: Bar chart comparativo interactivo ──
   const rowBot=document.createElement('div');
   rowBot.style.cssText='margin-bottom:16px;';
   const barCard=document.createElement('div');
   barCard.className='card';
   barCard.style.marginBottom='0';
+
+  // Métricas disponibles para el selector
+  const CMP_METRICS=[
+    {key:'tna',    label:'TNA',        fmt:v=>v.toFixed(2)+'%',   fromCalc:true},
+    {key:'tea',    label:'TEA',        fmt:v=>v.toFixed(2)+'%',   fromCalc:true},
+    {key:'tem',    label:'TEM',        fmt:v=>v.toFixed(2)+'%',   fromCalc:true},
+    {key:'paridad',label:'Paridad',    fmt:v=>v.toFixed(2)+'%',   fromCalc:true},
+    {key:'md',     label:'MD',         fmt:v=>v.toFixed(4),       fromCalc:true},
+    {key:'dur',    label:'Duration',   fmt:v=>v.toFixed(4),       fromCalc:true},
+    {key:'conv',   label:'Convexidad', fmt:v=>v.toFixed(4),       fromCalc:true},
+    {key:'diasReal',label:'Días',      fmt:v=>v.toFixed(0),       fromCalc:true},
+    {key:'vol',    label:'Volumen',    fmt:v=>{if(isNaN(v)||!v)return'—';if(v>=1e9)return(v/1e9).toFixed(2)+'B';if(v>=1e6)return(v/1e6).toFixed(2)+'M';if(v>=1e3)return(v/1e3).toFixed(1)+'K';return v.toFixed(0);}, fromCalc:false},
+  ];
+
   barCard.innerHTML=`
     <div class="card-header">
-      <span class="card-title">TNA Comparativa — Universo LECAPs</span>
-      <span style="font-size:9px;font-family:var(--mono);color:var(--text3);">ordenado por días a vencimiento</span>
+      <span class="card-title">Comparativa — Universo LECAPs</span>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">
+        ${CMP_METRICS.map(m=>`<button class="lc-cmp-metric-btn" data-metric="${m.key}"
+          onclick="lcCmpSetMetric('${m.key}','${ticker}')"
+          style="padding:3px 9px;font-size:9px;font-family:var(--mono);font-weight:600;cursor:pointer;border-radius:4px;border:1px solid ${m.key==='tna'?'var(--accent)':'var(--border2)'};background:${m.key==='tna'?'var(--accent)':'transparent'};color:${m.key==='tna'?'#fff':'var(--text2)'};transition:all .15s;">${m.label}</button>`).join('')}
+        <span style="font-size:9px;font-family:var(--mono);color:var(--text3);margin-left:4px;">orden: días a vto.</span>
+      </div>
     </div>
-    <div class="chart-wrap"><div class="chart-canvas-wrap" style="height:200px"><canvas id="lc-bar-cmp-chart"></canvas></div></div>`;
+    <div class="chart-wrap"><div class="chart-canvas-wrap" style="height:220px"><canvas id="lc-bar-cmp-chart"></canvas></div></div>`;
   rowBot.appendChild(barCard);
   body.appendChild(rowBot);
+
+  // ── [5] TABLA HISTÓRICA DE PRECIOS (Sheet) ──
+  const histPxEntry=_lcPrecios[ticker.toUpperCase()]||_lcPrecios[ticker]||null;
+  const histByDate=histPxEntry?histPxEntry.byDate:{};
+  const histPxDates=Object.keys(histByDate).sort().reverse(); // más reciente primero
+
+  const histTableCard=document.createElement('div');
+  histTableCard.className='card';
+  histTableCard.style.marginBottom='16px';
+
+  const histColDefs=[
+    {key:'fechaPx',  label:'Fecha',     fmt:(v,r)=>v||'—',               align:'left'},
+    {key:'precio',   label:'Último',    fmt:(v,r)=>isNaN(v)?'—':fmtN(v,4), align:'right', hi:true},
+    {key:'apertura', label:'Apertura',  fmt:(v,r)=>isNaN(v)?'—':fmtN(v,4), align:'right'},
+    {key:'cierre',   label:'Cierre',    fmt:(v,r)=>isNaN(v)?'—':fmtN(v,4), align:'right'},
+    {key:'minVal',   label:'Mínimo',    fmt:(v,r)=>isNaN(v)?'—':fmtN(v,4), align:'right'},
+    {key:'maxVal',   label:'Máximo',    fmt:(v,r)=>isNaN(v)?'—':fmtN(v,4), align:'right'},
+    {key:'variacion',label:'Var%',      fmt:(v,r)=>isNaN(v)?'—':(v>=0?'+':'')+fmtN(v,2)+'%', align:'right', varColor:true},
+    {key:'vol',      label:'Volumen',   fmt:(v,r)=>{if(isNaN(v)||!v)return'—';if(v>=1e9)return(v/1e9).toFixed(2)+'B';if(v>=1e6)return(v/1e6).toFixed(2)+'M';if(v>=1e3)return(v/1e3).toFixed(1)+'K';return v.toFixed(0);}, align:'right'},
+    {key:'tna_hist', label:'TNA impl.', fmt:(v,r)=>isNaN(v)?'—':fmtPct(v,2), align:'right', tnaColor:true},
+  ];
+
+  // Calculamos TNA histórica para cada fila
+  const cfForHist=_lcBundle?parseWorkerCsv(_lcBundle[ticker]):null;
+  const cfLastForHist=cfForHist&&cfForHist.length?cfForHist[cfForHist.length-1]:null;
+
+  const histRows=histPxDates.map(d=>{
+    const r={...histByDate[d]};
+    if(cfLastForHist&&!isNaN(r.precio)&&r.precio>0){
+      const liq=lcNextBusinessDay(d);
+      const calc=calcLecap(cfLastForHist,r.precio,liq);
+      r.tna_hist=calc?calc.tna:NaN;
+    } else { r.tna_hist=NaN; }
+    r.fechaPx_iso=d;
+    return r;
+  });
+
+  // Rangos de TNA para heatmap
+  const tnaVals=histRows.map(r=>r.tna_hist).filter(v=>!isNaN(v));
+  const tnaMin=tnaVals.length?Math.min(...tnaVals):0;
+  const tnaMax=tnaVals.length?Math.max(...tnaVals):1;
+  const tnaRange=tnaMax-tnaMin||1;
+
+  function tnaHeatColor(v){
+    if(isNaN(v)) return '';
+    const t=(v-tnaMin)/tnaRange;
+    let r,g,b;
+    if(t<0.5){const u=t*2;r=Math.round(224+(217-224)*u);g=Math.round(49+(119-49)*u);b=Math.round(49+(6-49)*u);}
+    else{const u=(t-0.5)*2;r=Math.round(217+(13-217)*u);g=Math.round(119+(158-119)*u);b=Math.round(6+(110-6)*u);}
+    return `rgb(${r},${g},${b})`;
+  }
+
+  const thStyle='padding:8px 12px;font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);background:var(--bg2);border-bottom:1px solid var(--border);white-space:nowrap;font-family:var(--mono);';
+  const tdBase='padding:7px 12px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;white-space:nowrap;';
+
+  if(!histPxDates.length){
+    histTableCard.innerHTML=`
+      <div class="card-header"><span class="card-title">Histórico de Precios — ${ticker}</span></div>
+      <div class="empty-msg">Sin datos históricos en el Sheet para este ticker.</div>`;
+  } else {
+    histTableCard.innerHTML=`
+      <div class="card-header">
+        <span class="card-title">Histórico de Precios — ${ticker}</span>
+        <span style="font-size:10px;font-family:var(--mono);color:var(--text3);">${histPxDates.length} registros · fuente: Google Sheet</span>
+      </div>
+      <div class="table-scroll">
+        <table class="data-table" style="min-width:700px;">
+          <thead><tr>
+            ${histColDefs.map(col=>`<th style="${thStyle}${col.align==='right'?'text-align:right;':'text-align:left;'}">${col.label}</th>`).join('')}
+          </tr></thead>
+          <tbody>
+            ${histRows.map((r,i)=>{
+              const isLatest=i===0;
+              const rowBg=isLatest?'background:rgba(30,39,243,0.04);':'';
+              return`<tr style="${rowBg}" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='${isLatest?'rgba(30,39,243,0.04)':''}'">
+                ${histColDefs.map(col=>{
+                  const v=r[col.key];
+                  const fmtd=col.fmt(v,r);
+                  let colorStyle='';
+                  if(col.hi) colorStyle=`color:var(--accent);font-weight:600;`;
+                  if(col.varColor&&!isNaN(v)) colorStyle=`color:${v>=0?'var(--green)':'var(--red)'};font-weight:600;`;
+                  if(col.tnaColor&&!isNaN(v)) colorStyle=`color:${tnaHeatColor(v)};font-weight:700;`;
+                  const latestBadge=(col.key==='fechaPx'&&isLatest)?` <span style="font-size:8px;background:rgba(30,39,243,0.1);color:var(--accent);padding:1px 5px;border-radius:8px;font-weight:700;margin-left:4px;">HOY</span>`:'';
+                  return`<td style="${tdBase}${col.align==='right'?'text-align:right;':''}${colorStyle}">${fmtd}${latestBadge}</td>`;
+                }).join('')}
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+  body.appendChild(histTableCard);
 
   // ── CHARTS ──
   setTimeout(()=>{
@@ -1917,15 +2034,35 @@ function lcBuildDetailBody(row, ticker, fechaLiq){
       });
     };
 
-    // [C] BAR CHART COMPARATIVO — universo por días
-    const barCtx=document.getElementById('lc-bar-cmp-chart');
-    if(barCtx){
+    // [C] BAR CHART COMPARATIVO — interactivo, variable seleccionable
+    const CMP_METRICS_RT=CMP_METRICS; // ya definido arriba en el scope de lcBuildDetailBody
+    window._lcCmpActiveTicker=ticker;
+    window._lcCmpActiveMetric='tna';
+    window._lcCmpChart=null;
+
+    function drawCmpChart(metricKey){
+      const barCtx=document.getElementById('lc-bar-cmp-chart');
+      if(!barCtx) return;
+      if(window._lcCmpChart){ window._lcCmpChart.destroy(); window._lcCmpChart=null; }
+
+      const metaDef=CMP_METRICS_RT.find(m=>m.key===metricKey)||CMP_METRICS_RT[0];
       const sorted=[..._lcRows.filter(r=>r.calc)].sort((a,b)=>a.calc.diasReal-b.calc.diasReal);
+
+      function getVal(r){
+        if(metaDef.fromCalc) return r.calc[metaDef.key]??NaN;
+        if(metaDef.key==='vol') return r.vol??NaN;
+        return NaN;
+      }
+
       const labels=sorted.map(r=>r.ticker);
-      const vals=sorted.map(r=>parseFloat(r.calc.tna.toFixed(4)));
+      const vals=sorted.map(r=>{ const v=getVal(r); return isNaN(v)?null:parseFloat(v); });
       const colors=sorted.map(r=>r.ticker===ticker?'#1E27F3':'rgba(30,39,243,0.22)');
       const borderColors=sorted.map(r=>r.ticker===ticker?'#1E27F3':'rgba(30,39,243,0.4)');
-      new Chart(barCtx,{
+
+      const isPercent=['tna','tea','tem','paridad'].includes(metricKey);
+      const isVol=metricKey==='vol';
+
+      window._lcCmpChart=new Chart(barCtx,{
         type:'bar',
         data:{labels,datasets:[{
           data:vals,backgroundColor:colors,borderColor:borderColors,
@@ -1937,19 +2074,39 @@ function lcBuildDetailBody(row, ticker, fechaLiq){
             tooltip:{...chartDefaults.plugins.tooltip,
               callbacks:{
                 title:ctx=>`${ctx[0].label}${ctx[0].label===ticker?' ◀ este bono':''}`,
-                label:ctx=>`TNA: ${ctx.raw.toFixed(2)}%`
+                label:ctx=>{
+                  if(ctx.raw===null) return`${metaDef.label}: —`;
+                  return`${metaDef.label}: ${metaDef.fmt(ctx.raw)}`;
+                }
               }
             }
           },
           scales:{
             x:{grid:{display:false},ticks:{color:(ctx)=>labels[ctx.index]===ticker?'#1E27F3':'#8a90b0',font:{family:monoFont,size:9}}},
-            y:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:monoFont,size:10},callback:v=>v.toFixed(1)+'%'}}
+            y:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:monoFont,size:10},
+              callback:v=>isPercent?v.toFixed(1)+'%':isVol?(v>=1e6?(v/1e6).toFixed(1)+'M':v.toFixed(0)):v}}
           }
         }
       });
     }
-  },80);
-}
+
+    window.lcCmpSetMetric=function(metricKey, tkr){
+      if(tkr!==window._lcCmpActiveTicker) return;
+      window._lcCmpActiveMetric=metricKey;
+      drawCmpChart(metricKey);
+      // update button styles
+      document.querySelectorAll('.lc-cmp-metric-btn').forEach(btn=>{
+        const isActive=btn.dataset.metric===metricKey;
+        btn.style.background=isActive?'var(--accent)':'transparent';
+        btn.style.color=isActive?'#fff':'var(--text2)';
+        btn.style.borderColor=isActive?'var(--accent)':'var(--border2)';
+      });
+    };
+
+    drawCmpChart('tna');
+
+  },80); // fin setTimeout
+} // fin lcBuildDetailBody
 
 // ── Auto-load: carga inmediata al entrar, sin necesidad de botón ──
 const _orig=window.enterTest;
