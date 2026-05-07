@@ -979,7 +979,11 @@ function calcLecap(cf, precioDirty, fechaLiqStr){
 
 // ── Cruzar bundle + mapa de precios → calcular ──
 function lcCruzar(bundle, preciosMap, fechaLiq){
-  const tickers = (bundle._index || Object.keys(bundle).filter(k => !k.startsWith('_'))).filter(t => (bundle._tipos||{})[t] === 'lecap');
+  const allTickers = bundle._index || Object.keys(bundle).filter(k=>!k.startsWith('_'));
+  const tipos = bundle._tipos || {};
+  const tickers = Object.keys(tipos).length
+    ? allTickers.filter(t => (tipos[t]||'').toLowerCase() === 'lecap')
+    : allTickers;
   return tickers.map(ticker=>{
     const csvTxt = bundle[ticker];
     const cfs    = csvTxt ? parseWorkerCsv(csvTxt) : null;
@@ -1459,7 +1463,10 @@ window.lcLoad=async function(){
     const rW=await fetch(LC_WORKER);
     if(!rW.ok) throw new Error(`Worker HTTP ${rW.status}`);
     _lcBundle=await rW.json();
-    const n=((_lcBundle._index)||Object.keys(_lcBundle).filter(k=>k!=='_index')).length;
+    const allIdx=_lcBundle._index||Object.keys(_lcBundle).filter(k=>!k.startsWith('_'));
+    const tipos2=_lcBundle._tipos||{};
+    const lecapIdx=Object.keys(tipos2).length?allIdx.filter(t=>(tipos2[t]||'').toLowerCase()==='lecap'):allIdx;
+    const n=lecapIdx.length;
     lcSetMsg(`Worker OK · ${n} LECAPs · ${Math.round(performance.now()-t0)}ms · Cargando precios...`);
 
     // 2. Sheet de precios
@@ -2901,16 +2908,20 @@ async function runTest(){
     const ms=Math.round(performance.now()-t0);
     _bundleCache=bundle;
 
-    const nombres=bundle._index||Object.keys(bundle).filter(k=>k!=='_index');
+    const nombres=bundle._index||Object.keys(bundle).filter(k=>!k.startsWith('_'));
+    const tiposMap=bundle._tipos||{};
     const total=nombres.length;
 
     // Status OK
     statusEl.style.cssText='display:flex;gap:8px;align-items:center;background:rgba(13,158,110,0.08);color:var(--green);border:1px solid rgba(13,158,110,0.25);border-radius:8px;padding:12px 16px;font-size:12px;font-family:var(--mono);margin-bottom:24px;';
-    statusEl.innerHTML=`✓ Conexión exitosa · ${total} archivos · ${ms}ms`;
+    const lecapCount=Object.keys(tiposMap).length?nombres.filter(n=>(tiposMap[n]||'').toLowerCase()==='lecap').length:0;
+    const tiposSummary=lecapCount?` · ${lecapCount} lecap`:'';
+    statusEl.innerHTML=`✓ Conexión exitosa · ${total} archivos${tiposSummary} · ${ms}ms`;
 
     // Lista de CSVs
     countEl.textContent=`${total} archivos`;
     listEl.innerHTML=nombres.map(nombre=>{
+      const tipo=(tiposMap[nombre]||'').toUpperCase();
       const contenido=bundle[nombre];
       const lineas=contenido?contenido.trim().split('\n').length:0;
       const ok=contenido&&contenido.length>0;
@@ -2921,6 +2932,7 @@ async function runTest(){
           <span style="color:${ok?'var(--green)':'var(--red)'};font-size:13px;">${ok?'✓':'✗'}</span>
           <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent);">${nombre}</span>
           <span style="font-family:var(--mono);font-size:10px;color:var(--text3);">.csv</span>
+          ${tipo?`<span style="font-size:9px;font-family:var(--mono);font-weight:700;padding:1px 7px;border-radius:10px;background:rgba(30,39,243,0.10);color:var(--accent);letter-spacing:.3px;">${tipo}</span>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:12px;">
           <span style="font-family:var(--mono);font-size:10px;color:var(--text3);">${lineas} líneas</span>
