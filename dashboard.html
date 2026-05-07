@@ -816,18 +816,8 @@ let _lcRows    = [];
 let _sortKey   = 'dias';
 let _sortDir   =  1;
 
-// ── Tab switcher ──
-window.lcShowTab = function(tab, el){
-  document.getElementById('lc-pane-calc').style.display   = tab==='calc'   ? ''      : 'none';
-  document.getElementById('lc-pane-boncap').style.display = tab==='boncap' ? 'block' : 'none';
-  document.getElementById('lc-pane-diag').style.display   = tab==='diag'   ? 'block' : 'none';
-  document.querySelectorAll('#app-test .tab').forEach(t=>t.classList.remove('active'));
-  if(el) el.classList.add('active');
-  // Solo calcular si: es boncap + bundle listo + precios listos + no cargado + no cargando
-  if(tab==='boncap' && window._lcBundle && Object.keys(_lcPrecios).length && !window._bcLoaded && !window._bcLoading){
-    bcCalcFromBundle();
-  }
-};
+// ── Tab switcher — definido en el engine BONCAP más abajo ──
+
 
 // ── Helpers numéricos ──
 function toNum(v){
@@ -1540,20 +1530,6 @@ window.lcLoad=async function(){
 
     // 5. Calcular LECAPs
     _lcRows=lcCruzar(_lcBundle,_lcPrecios,fi.value);
-
-    // 5b. Reset boncap state para esta carga fresca
-    _bcLoaded=false;
-    _bcLoading=false;
-    const bcPane=document.getElementById('lc-pane-boncap');
-    // Solo auto-calcular si el pane ya está visible (usuario ya entró al tab)
-    if(bcPane && bcPane.style.display!=='none'){
-      bcCalcFromBundle();
-    } else {
-      const bcBanner=document.getElementById('bc-load-banner');
-      const bcMsg=document.getElementById('bc-load-msg');
-      if(bcBanner) bcBanner.style.display='flex';
-      if(bcMsg) bcMsg.textContent='Datos listos — hacé click en la pestaña BONCAPs';
-    }
 
     // 6. Mostrar LECAPs
     banner.style.display='none'; wrap.style.display='block';
@@ -2421,335 +2397,296 @@ function lcBuildDetailBody(row, ticker, fechaLiq){
   },80); // fin setTimeout
 } // fin lcBuildDetailBody
 
+
 // ══════════════════════════════════════════════════════════════════
-// BONCAP CALCULATOR ENGINE  v3
-// Metodología según prospecto Secretaría de Finanzas:
-//   Base 30/360 · TEM capitalizable mensualmente · bullet al vencimiento
-//
-//   Mismo CSV del Worker que LECAP:
-//     col[1] = fecha_pago (= vencimiento, único flujo bullet)
-//     col[4] = TEM original (%)
-//     col[8] = flujo final c/100 VN
-//
-//   NO necesitamos fecha de emisión — igual que LECAP:
-//     VT_liq  = flujoVto / (1+TEM)^(mesesRestantes)   ← descuento desde vto
-//     IC      = VT_liq - 100
-//     PxL     = Dirty - IC
-//     TEM_impl= (flujoVto/Dirty)^(1/mesesRestantes) - 1
-//     TEA_impl= (1+TEM_impl)^12 - 1
-//     TNA_impl= TEM_impl × 12
+// BONCAP ENGINE — v4 (reescritura limpia)
+// Mismo CSV del Worker que LECAP. Sin guards complejos.
+// VT_liq  = flujoVto / (1+TEM)^(diasRestantes/30)
+// IC      = VT_liq − 100
+// PxL     = Dirty − IC
+// TEM_imp = (flujoVto/Dirty)^(30/diasRestantes) − 1
+// TEA_imp = (1+TEM_imp)^12 − 1
 // ══════════════════════════════════════════════════════════════════
 
-let _bcRows   = [];
-let _bcSortKey= 'dias';
-let _bcSortDir= 1;
-let _bcLoaded = false;
-let _bcLoading= false;
+// ── Estado ──
+var _bcRows = [];
+var _bcSortKey = 'dias';
+var _bcSortDir = 1;
 
-// ── Reutiliza exactamente el mismo parser que LECAP ──
-function bcGetCashflow(bundle, ticker){
-  const csvTxt = bundle[ticker];
-  if(!csvTxt) return null;
-  const cfs = parseWorkerCsv(csvTxt);
-  if(!cfs||!cfs.length) return null;
-  const cf = cfs[cfs.length-1]; // único flujo bullet
-  return { fechaVto: cf.fechaPago, temPct: cf.temOrigPct, flujo100: cf.total100 };
-}
+// ── Cálculo ──
+function bcCalc(fechaVto, temPct, flujo100, dirty, fechaLiqStr) {
+  var liq = new Date(fechaLiqStr + 'T12:00:00');
+  var vto = new Date(fechaVto    + 'T12:00:00');
+  var dias = Math.round((vto - liq) / 86400000);
+  if (dias <= 0 || isNaN(dirty) || dirty <= 0) return null;
 
-// ── Motor de cálculo BONCAP ──
-function bcCalc(cf, precioDirty, fechaLiqStr){
-  const liq = new Date(fechaLiqStr+'T12:00:00');
-  const vto = new Date(cf.fechaVto +'T12:00:00');
-  if(isNaN(liq)||isNaN(vto)) return null;
+  var tem    = temPct / 100;
+  var meses  = dias / 30;                               // base 30/360
 
-  const diasVtoLiq = Math.round((vto-liq)/86400000);
-  if(diasVtoLiq<=0) return null;
-  if(isNaN(precioDirty)||precioDirty<=0) return null;
+  var vt     = flujo100 / Math.pow(1 + tem, meses);    // VT a liq
+  var ic     = vt - 100;                               // interés corrido
+  var pxL    = dirty - ic;                             // precio limpio
+  if (pxL <= 0) return null;
 
-  const tem      = cf.temPct/100;
-  const flujoVto = cf.flujo100;
-  if(isNaN(tem)||tem<=0||isNaN(flujoVto)||flujoVto<=0) return null;
+  var paridad = (pxL / vt) * 100;
 
-  const mesesLiqVto = diasVtoLiq/30;  // base 30/360
+  // TEM implícita al precio dirty
+  var temI = Math.pow(flujo100 / dirty, 1 / meses) - 1;
+  if (!isFinite(temI)) return null;
+  var teaI = Math.pow(1 + temI, 12) - 1;
+  var tnaI = temI * 12;
 
-  // VT a fecha liq — descuento del flujo con TEM (igual que LECAP)
-  const vt = flujoVto / Math.pow(1+tem, mesesLiqVto);
-  const ic = vt - 100;
-  const precioLimpio = precioDirty - ic;
-  if(precioLimpio<=0) return null;
-
-  const paridad = (precioLimpio/vt)*100;
-
-  // TEM implícita al precio dirty (YTM base 30/360)
-  const temImpl = Math.pow(flujoVto/precioDirty, 1/mesesLiqVto) - 1;
-  if(isNaN(temImpl)||!isFinite(temImpl)) return null;
-  const teaImpl = Math.pow(1+temImpl, 12) - 1;
-  const tnaImpl = temImpl*12;
-
-  // Duration Macaulay bullet
-  const dur  = mesesLiqVto/12;
-  const md   = dur/(1+temImpl);
-  const conv = (dur*dur)/Math.pow(1+temImpl,2);
+  // Duration Macaulay (bullet)
+  var dur  = meses / 12;
+  var md   = dur / (1 + temI);
+  var conv = dur * dur / Math.pow(1 + temI, 2);
 
   return {
-    flujoVto, vt, ic, precioLimpio, paridad,
-    tem: tem*100,
-    temImpl: temImpl*100,
-    teaImpl: teaImpl*100,
-    tnaImpl: tnaImpl*100,
-    diasVtoLiq, mesesLiqVto,
-    dur, md, conv,
-    fechaVto: cf.fechaVto
+    vt: vt, ic: ic, pxL: pxL, paridad: paridad,
+    tem: temPct,
+    temI: temI * 100, teaI: teaI * 100, tnaI: tnaI * 100,
+    dur: dur, md: md, conv: conv,
+    dias: dias, meses: meses, flujo: flujo100, fechaVto: fechaVto
   };
 }
 
-// ── Cruzar bundle BONCAP + precios ──
-function bcCruzar(bundle, preciosMap, fechaLiq){
-  const allTickers = bundle._index||Object.keys(bundle).filter(k=>!k.startsWith('_'));
-  const tipos = bundle._tipos||{};
-  const tickers = Object.keys(tipos).length
-    ? allTickers.filter(t=>(tipos[t]||'').toLowerCase()==='boncap')
-    : [];
+// ── Calcular todas las filas desde el bundle ──
+function bcBuildRows(fechaLiq) {
+  var bundle = window._lcBundle;
+  if (!bundle) return [];
+  var tipos  = bundle._tipos || {};
+  var index  = bundle._index || Object.keys(bundle).filter(function(k){ return !k.startsWith('_'); });
+  var tickers = index.filter(function(t){ return (tipos[t]||'').toLowerCase() === 'boncap'; });
 
-  return tickers.map(ticker=>{
-    const cf = bcGetCashflow(bundle, ticker);
-    const pxEntry = preciosMap[ticker.toUpperCase()]||preciosMap[ticker]||null;
-    const pxData  = pxEntry&&pxEntry.latest ? pxEntry.latest : pxEntry;
-    const precio  = pxData ? pxData.precio   : NaN;
-    const varPct  = pxData ? pxData.variacion: NaN;
-    const fechaPx = pxData ? pxData.fechaPx  : '';
-    const vol     = pxData ? pxData.vol      : NaN;
-    const calc = (cf&&!isNaN(precio)&&precio>0) ? bcCalc(cf, precio, fechaLiq) : null;
-    return { ticker, precio, variacion:varPct, vol, fechaPx, calc, _cf:cf };
+  return tickers.map(function(ticker) {
+    // Parsear CSV con el mismo parser de LECAP
+    var cfs = parseWorkerCsv(bundle[ticker]);
+    var cf  = cfs && cfs.length ? cfs[cfs.length - 1] : null;
+
+    // Precio del Sheet
+    var entry = _lcPrecios[ticker.toUpperCase()] || _lcPrecios[ticker] || null;
+    var px    = entry && entry.latest ? entry.latest : entry;
+    var dirty = px ? px.precio    : NaN;
+    var vari  = px ? px.variacion : NaN;
+    var vol   = px ? px.vol       : NaN;
+
+    var calc = null;
+    if (cf && !isNaN(dirty) && dirty > 0) {
+      calc = bcCalc(cf.fechaPago, cf.temOrigPct, cf.total100, dirty, fechaLiq);
+    }
+    return { ticker: ticker, dirty: dirty, variacion: vari, vol: vol, calc: calc, _cf: cf };
   });
 }
 
-// ── Columnas BONCAP ──
-const BC_COLS=[
-  { key:'ticker',  label:'Ticker',   align:'left',
-    fmt: r=>`<span style="color:var(--accent);font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;" onclick="bcOpenDetail('${r.ticker}')">${r.ticker}</span>`,
-    sort:r=>r.ticker },
-  { key:'precio',  label:'Dirty Px', align:'right',
-    fmt: r=>(!isNaN(r.precio)&&r.precio>0)?fmtN(r.precio):'—',
-    sort:r=>r.precio||0 },
-  { key:'var',     label:'Var%',     align:'right',
-    fmt: r=>(isNaN(r.variacion)||r.variacion==null)?'—':`${r.variacion>=0?'+':''}${fmtN(r.variacion,2)}%`,
-    sort:r=>r.variacion||0 },
-  { key:'vt',      label:'VT',       align:'right',
-    fmt: r=>r.calc?fmtN(r.calc.vt,4):'—',
-    sort:r=>r.calc?r.calc.vt:-Infinity },
-  { key:'pxl',     label:'Px Limpio',align:'right',
-    fmt: r=>r.calc?fmtN(r.calc.precioLimpio,4):'—',
-    sort:r=>r.calc?r.calc.precioLimpio:-Infinity },
-  { key:'par',     label:'Paridad',  align:'right',
-    fmt: r=>r.calc&&!isNaN(r.calc.paridad)?fmtPct(r.calc.paridad,2):'—',
-    sort:r=>r.calc?r.calc.paridad:-Infinity },
-  { key:'tna',     label:'TNA',      align:'right',
-    fmt: r=>r.calc?fmtPct(r.calc.tnaImpl):'—',
-    sort:r=>r.calc?r.calc.tnaImpl:-Infinity },
-  { key:'tea',     label:'TEA',      align:'right',
-    fmt: r=>r.calc?fmtPct(r.calc.teaImpl):'—',
-    sort:r=>r.calc?r.calc.teaImpl:-Infinity },
-  { key:'tem',     label:'TEM impl.',align:'right',
-    fmt: r=>r.calc?fmtPct(r.calc.temImpl):'—',
-    sort:r=>r.calc?r.calc.temImpl:-Infinity },
-  { key:'tem0',    label:'TEM orig.',align:'right',
-    fmt: r=>r.calc?fmtPct(r.calc.tem):'—',
-    sort:r=>r.calc?r.calc.tem:-Infinity },
-  { key:'md',      label:'MD',       align:'right',
-    fmt: r=>r.calc?fmtN(r.calc.md,4):'—',
-    sort:r=>r.calc?r.calc.md:-Infinity },
-  { key:'dur',     label:'Duration', align:'right',
-    fmt: r=>r.calc?fmtN(r.calc.dur,4):'—',
-    sort:r=>r.calc?r.calc.dur:-Infinity },
-  { key:'venc',    label:'Venc.',    align:'right',
-    fmt: r=>r.calc?fmtDateShort(r.calc.fechaVto):'—',
-    sort:r=>r.calc?r.calc.fechaVto:'' },
-  { key:'dias',    label:'Días',     align:'right',
-    fmt: r=>r.calc?String(r.calc.diasVtoLiq):'—',
-    sort:r=>r.calc?r.calc.diasVtoLiq:Infinity },
-  { key:'vol',     label:'Volumen',  align:'right',
-    fmt: r=>{if(isNaN(r.vol)||!r.vol)return'—';return r.vol.toLocaleString('es-AR',{maximumFractionDigits:0});},
-    sort:r=>r.vol||0 },
+// ── Fecha liquidación por defecto (T+1 hábil) ──
+function bcDefaultFecha() {
+  var d = new Date();
+  d.setDate(d.getDate() + 1);
+  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+// ── Render tabla ──
+var BC_COLS = [
+  { key:'ticker',  label:'Ticker',    right:false, val:function(r){ return r.ticker; },
+    fmt:function(r){ return '<span style="color:var(--accent);font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:3px;" onclick="bcOpenDetail(\''+r.ticker+'\')">' + r.ticker + '</span>'; } },
+  { key:'dirty',   label:'Dirty Px',  right:true,  val:function(r){ return r.dirty||0; },
+    fmt:function(r){ return isNaN(r.dirty)||!r.dirty ? '—' : fmtN(r.dirty,2); } },
+  { key:'var',     label:'Var%',      right:true,  val:function(r){ return r.variacion||0; },
+    fmt:function(r){ return isNaN(r.variacion)||r.variacion==null ? '—' : (r.variacion>=0?'+':'')+fmtN(r.variacion,2)+'%'; } },
+  { key:'vt',      label:'VT',        right:true,  val:function(r){ return r.calc?r.calc.vt:0; },
+    fmt:function(r){ return r.calc ? fmtN(r.calc.vt,4) : '—'; } },
+  { key:'pxL',     label:'Px Limpio', right:true,  val:function(r){ return r.calc?r.calc.pxL:0; },
+    fmt:function(r){ return r.calc ? fmtN(r.calc.pxL,4) : '—'; } },
+  { key:'paridad', label:'Paridad',   right:true,  val:function(r){ return r.calc?r.calc.paridad:0; },
+    fmt:function(r){ return r.calc ? fmtPct(r.calc.paridad,2) : '—'; } },
+  { key:'tnaI',    label:'TNA',       right:true,  val:function(r){ return r.calc?r.calc.tnaI:-Infinity; },
+    fmt:function(r){ return r.calc ? fmtPct(r.calc.tnaI,2) : '—'; } },
+  { key:'teaI',    label:'TEA',       right:true,  val:function(r){ return r.calc?r.calc.teaI:-Infinity; },
+    fmt:function(r){ return r.calc ? fmtPct(r.calc.teaI,2) : '—'; } },
+  { key:'temI',    label:'TEM impl.', right:true,  val:function(r){ return r.calc?r.calc.temI:-Infinity; },
+    fmt:function(r){ return r.calc ? fmtPct(r.calc.temI,4) : '—'; } },
+  { key:'tem0',    label:'TEM orig.', right:true,  val:function(r){ return r.calc?r.calc.tem:-Infinity; },
+    fmt:function(r){ return r.calc ? fmtPct(r.calc.tem,4) : '—'; } },
+  { key:'md',      label:'MD',        right:true,  val:function(r){ return r.calc?r.calc.md:-Infinity; },
+    fmt:function(r){ return r.calc ? fmtN(r.calc.md,4) : '—'; } },
+  { key:'dur',     label:'Duration',  right:true,  val:function(r){ return r.calc?r.calc.dur:-Infinity; },
+    fmt:function(r){ return r.calc ? fmtN(r.calc.dur,4) : '—'; } },
+  { key:'venc',    label:'Venc.',     right:true,  val:function(r){ return r.calc?r.calc.fechaVto:''; },
+    fmt:function(r){ return r.calc ? fmtDateShort(r.calc.fechaVto) : '—'; } },
+  { key:'dias',    label:'Días',      right:true,  val:function(r){ return r.calc?r.calc.dias:Infinity; },
+    fmt:function(r){ return r.calc ? String(r.calc.dias) : '—'; } },
 ];
 
-// ── Render tabla BONCAP ──
-function bcRender(){
-  const thead=document.getElementById('bc-thead');
-  const tbody=document.getElementById('bc-tbody');
-  if(!thead||!tbody) return;
+function bcRenderTable() {
+  var thead = document.getElementById('bc-thead');
+  var tbody = document.getElementById('bc-tbody');
+  if (!thead || !tbody) return;
 
-  const sorted=[..._bcRows].sort((a,b)=>{
-    const col=BC_COLS.find(c=>c.key===_bcSortKey);
-    if(!col) return 0;
-    const va=col.sort(a), vb=col.sort(b);
-    if(typeof va==='string') return va.localeCompare(vb)*_bcSortDir;
-    return((isNaN(va)?-Infinity:va)-(isNaN(vb)?-Infinity:vb))*_bcSortDir;
+  // Sort
+  var sorted = _bcRows.slice().sort(function(a,b){
+    var col = null;
+    for (var i=0;i<BC_COLS.length;i++) if (BC_COLS[i].key===_bcSortKey){col=BC_COLS[i];break;}
+    if (!col) return 0;
+    var va = col.val(a), vb = col.val(b);
+    if (typeof va === 'string') return va.localeCompare(vb) * _bcSortDir;
+    va = isNaN(va) ? -Infinity : va;
+    vb = isNaN(vb) ? -Infinity : vb;
+    return (va - vb) * _bcSortDir;
   });
 
-  const thS='padding:9px 12px;font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text3);background:var(--bg2);border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;transition:color .15s;';
-  thead.innerHTML=`<tr>${BC_COLS.map(c=>{
-    const active=_bcSortKey===c.key;
-    const arrow=active?(_bcSortDir===1?' ▲':' ▼'):'';
-    const ta=c.key==='ticker'?'text-align:left;':'text-align:right;';
-    const hl=active?'color:var(--accent);':'';
-    return`<th style="${thS}${ta}${hl}" onclick="bcSort('${c.key}')">${c.label}${arrow}</th>`;
-  }).join('')}</tr>`;
+  var thS = 'padding:9px 12px;font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text3);background:var(--bg2);border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;';
+  thead.innerHTML = '<tr>' + BC_COLS.map(function(c){
+    var active = _bcSortKey === c.key;
+    var arrow  = active ? (_bcSortDir===1?' ▲':' ▼') : '';
+    var ta     = c.right ? 'text-align:right;' : 'text-align:left;';
+    var hl     = active ? 'color:var(--accent);' : '';
+    return '<th style="'+thS+ta+hl+'" onclick="bcSort(\''+c.key+'\')">' + c.label + arrow + '</th>';
+  }).join('') + '</tr>';
 
-  const tdS='padding:8px 12px;border-bottom:1px solid var(--border);white-space:nowrap;font-variant-numeric:tabular-nums;font-size:11px;';
-  tbody.innerHTML=sorted.map(r=>{
-    const dim=!r.calc?'opacity:.4;':'';
-    return`<tr style="${dim}" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''">
-      ${BC_COLS.map(c=>`<td style="${tdS}${c.align==='right'?'text-align:right;':''}">${c.fmt(r)}</td>`).join('')}
-    </tr>`;
+  var tdS = 'padding:8px 12px;border-bottom:1px solid var(--border);white-space:nowrap;font-variant-numeric:tabular-nums;font-size:11px;';
+  tbody.innerHTML = sorted.map(function(r){
+    var dim = r.calc ? '' : 'opacity:.4;';
+    return '<tr style="'+dim+'" onmouseover="this.style.background=\'var(--accent-light)\'" onmouseout="this.style.background=\'\'">'
+      + BC_COLS.map(function(c){
+          return '<td style="'+tdS+(c.right?'text-align:right;':'')+'">' + c.fmt(r) + '</td>';
+        }).join('')
+      + '</tr>';
   }).join('');
 
-  const total=_bcRows.length, conCalc=_bcRows.filter(r=>r.calc).length;
-  const el=document.getElementById('bc-stats-txt');
-  if(el) el.textContent=`${total} BONCAPs · ${conCalc} con precio · metodología 30/360 prospecto`;
+  // Stats
+  var el = document.getElementById('bc-stats-txt');
+  if (el) {
+    var total = _bcRows.length, conCalc = _bcRows.filter(function(r){return r.calc;}).length;
+    el.textContent = total + ' BONCAPs · ' + conCalc + ' con precio · base 30/360';
+  }
 
-  bcColorTNA();
-  // NO llamar bcRenderCurve() acá — la curva se construye por separado con bcBuildCurveSection()
+  // TNA heatmap
+  bcHeatTNA();
 }
 
-// ── TNA color heatmap ──
-function bcColorTNA(){
-  const tbody=document.getElementById('bc-tbody');if(!tbody)return;
-  const tnaIdx=BC_COLS.findIndex(c=>c.key==='tna');if(tnaIdx<0)return;
-  const rows=[...tbody.querySelectorAll('tr')];
-  const vals=rows.map(tr=>{
-    const td=tr.querySelectorAll('td')[tnaIdx];if(!td)return null;
-    const v=parseFloat(td.textContent.replace('%','').replace(',','.').trim());
-    return isNaN(v)?null:v;
+function bcHeatTNA() {
+  var tbody = document.getElementById('bc-tbody'); if (!tbody) return;
+  var tnaIdx = 0; for (var i=0;i<BC_COLS.length;i++) if(BC_COLS[i].key==='tnaI'){tnaIdx=i;break;}
+  var rows = Array.from(tbody.querySelectorAll('tr'));
+  var vals = rows.map(function(tr){
+    var td = tr.querySelectorAll('td')[tnaIdx]; if(!td) return null;
+    var v = parseFloat(td.textContent.replace('%','').replace(',','.'));
+    return isNaN(v) ? null : v;
   });
-  const valid=vals.filter(v=>v!==null);
-  if(valid.length<2)return;
-  const minV=Math.min(...valid),maxV=Math.max(...valid),range=maxV-minV||1;
-  rows.forEach((tr,i)=>{
-    const v=vals[i];const td=tr.querySelectorAll('td')[tnaIdx];
-    if(!td||v===null)return;
-    const t=(v-minV)/range;
-    let r,g,b;
-    if(t<0.5){const u=t*2;r=Math.round(224+(217-224)*u);g=Math.round(49+(119-49)*u);b=Math.round(49+(6-49)*u);}
-    else{const u=(t-0.5)*2;r=Math.round(217+(13-217)*u);g=Math.round(119+(158-119)*u);b=Math.round(6+(110-6)*u);}
-    td.style.color=`rgb(${r},${g},${b})`;td.style.fontWeight='700';
+  var valid = vals.filter(function(v){return v!==null;});
+  if (valid.length < 2) return;
+  var minV = Math.min.apply(null,valid), maxV = Math.max.apply(null,valid), range = maxV-minV||1;
+  rows.forEach(function(tr,i){
+    var v=vals[i]; var td=tr.querySelectorAll('td')[tnaIdx];
+    if(!td||v===null) return;
+    var t=(v-minV)/range; var r,g,b;
+    if(t<0.5){var u=t*2;r=Math.round(224+(217-224)*u);g=Math.round(49+(119-49)*u);b=Math.round(49+(6-49)*u);}
+    else{var u=(t-0.5)*2;r=Math.round(217+(13-217)*u);g=Math.round(119+(158-119)*u);b=Math.round(6+(110-6)*u);}
+    td.style.color='rgb('+r+','+g+','+b+')'; td.style.fontWeight='700';
   });
 }
 
-window.bcSort=function(key){
-  if(_bcSortKey===key) _bcSortDir*=-1; else{_bcSortKey=key;_bcSortDir=1;}
-  bcRender();
+window.bcSort = function(key) {
+  if (_bcSortKey===key) _bcSortDir*=-1; else {_bcSortKey=key;_bcSortDir=1;}
+  bcRenderTable();
 };
 
-window.bcRecalcAll=function(){
-  const fechaLiq=document.getElementById('bc-fecha-liq').value||lcDefaultFecha();
-  if(!window._lcBundle||!Object.keys(_lcPrecios).length) return;
-  _bcRows=bcCruzar(window._lcBundle,_lcPrecios,fechaLiq);
-  bcRender();
-  // Destruir y reconstruir curva para que refleje nueva fecha liq
-  if(_bcCurveChart){_bcCurveChart.destroy();_bcCurveChart=null;}
-  setTimeout(bcRenderCurve,30);
+window.bcRecalcAll = function() {
+  var fi = document.getElementById('bc-fecha-liq');
+  var fechaLiq = (fi&&fi.value) ? fi.value : bcDefaultFecha();
+  _bcRows = bcBuildRows(fechaLiq);
+  bcRenderTable();
+  bcRenderCurve();
 };
 
 // ── Curva TNA vs MD ──
-let _bcCurveChart=null;
-let _bcCmpMode=null, _bcCmpRows=[], _bcCmpDate='';
-let _bcExcluded=new Set();
+var _bcChart = null;
+var _bcExcl  = new Set();
 
-function bcRenderCurve(){
-  const wrap=document.getElementById('bc-curve-wrap');
-  if(!wrap) return;
-  const valid=_bcRows.filter(r=>r.calc&&!isNaN(r.calc.md)&&r.calc.md>0&&!isNaN(r.calc.tnaImpl));
-  const allPts=valid.map(r=>({x:r.calc.md,y:r.calc.tnaImpl,label:r.ticker}));
+function bcRenderCurve() {
+  var canvas = document.getElementById('bc-curve-chart');
+  if (!canvas) return;
+  if (_bcChart) { _bcChart.destroy(); _bcChart = null; }
 
-  if(_bcCurveChart){_bcCurveChart.destroy();_bcCurveChart=null;}
-  const canvas=document.getElementById('bc-curve-chart');
-  if(!canvas||!allPts.length){
-    wrap.innerHTML='<div class="empty-msg" style="height:260px;display:flex;align-items:center;justify-content:center;">Sin suficientes datos para la curva.</div>';
-    return;
-  }
+  var pts = _bcRows
+    .filter(function(r){ return r.calc && r.calc.md > 0 && isFinite(r.calc.tnaI); })
+    .map(function(r){ return {x:r.calc.md, y:r.calc.tnaI, label:r.ticker}; });
 
-  const activePts=allPts.filter(p=>!_bcExcluded.has(p.label));
-  const ptsForRange=activePts.length?activePts:allPts; // fallback para que no reviente con vacío
-  const trendDs=lcTrendDataset(activePts,'#1E27F3');
-  const colors=allPts.map(p=>_bcExcluded.has(p.label)?'rgba(30,39,243,0.15)':'#1E27F3');
-  const radii=allPts.map(p=>_bcExcluded.has(p.label)?3:5);
-  const ds=[];
-  if(trendDs)ds.push(trendDs);
-  ds.push({label:'BONCAPs',data:allPts,backgroundColor:colors,borderColor:colors,pointRadius:radii,pointHoverRadius:8,showLine:false,order:2});
-  if(_bcCmpRows&&_bcCmpRows.length){
-    const cv=_bcCmpRows.filter(r=>r.calc&&r.calc.md>0&&!isNaN(r.calc.tnaImpl));
-    const cp=cv.map(r=>({x:r.calc.md,y:r.calc.tnaImpl,label:r.ticker}));
-    const tr2=lcTrendDataset(cp,'#f59e0b');
-    if(tr2){tr2.borderDash=[5,3];ds.push(tr2);}
-    ds.push({label:'_cmp',data:cp,backgroundColor:'#f59e0b',borderColor:'#f59e0b',pointRadius:4,pointHoverRadius:7,pointStyle:'triangle',showLine:false,order:2});
-  }
+  if (!pts.length) return;
 
-  const xs=ptsForRange.map(p=>p.x), ys=ptsForRange.map(p=>p.y);
-  const xSpan=Math.max(...xs)-Math.min(...xs)||0.1;
-  const ySpan=Math.max(...ys)-Math.min(...ys)||1;
-  const xPad=xSpan*0.1, yPad=ySpan*0.15;
+  var active = pts.filter(function(p){ return !_bcExcl.has(p.label); });
+  var trend  = lcTrendDataset(active, '#1E27F3');
+  var colors = pts.map(function(p){ return _bcExcl.has(p.label)?'rgba(30,39,243,0.15)':'#1E27F3'; });
+  var radii  = pts.map(function(p){ return _bcExcl.has(p.label)?3:5; });
 
-  const monoFont="'DM Mono',monospace";
-  _bcCurveChart=new Chart(canvas,{
-    type:'scatter',data:{datasets:ds},
+  var ds = [];
+  if (trend) ds.push(trend);
+  ds.push({label:'BONCAPs', data:pts, backgroundColor:colors, borderColor:colors,
+           pointRadius:radii, pointHoverRadius:8, showLine:false, order:2});
+
+  var ref = active.length ? active : pts;
+  var xs = ref.map(function(p){return p.x;}), ys = ref.map(function(p){return p.y;});
+  var xPad = (Math.max.apply(null,xs)-Math.min.apply(null,xs))*0.12||0.05;
+  var yPad = (Math.max.apply(null,ys)-Math.min.apply(null,ys))*0.15||1;
+  var mono = "'DM Mono',monospace";
+
+  _bcChart = new Chart(canvas, {
+    type:'scatter', data:{datasets:ds},
     options:{
-      responsive:true,maintainAspectRatio:false,
-      onClick(evt,els){
-        if(!els||!els.length)return;
-        const el=els[0];const dset=_bcCurveChart.data.datasets[el.datasetIndex];
-        if(!dset||dset.label==='_trend'||dset.label==='_cmp')return;
-        const pt=dset.data[el.index];if(!pt||!pt.label)return;
-        if(_bcExcluded.has(pt.label))_bcExcluded.delete(pt.label);else _bcExcluded.add(pt.label);
-        // update colors/radii in place instead of destroying chart
-        const ptDs=_bcCurveChart.data.datasets.find(d=>d.label==='BONCAPs');
+      responsive:true, maintainAspectRatio:false,
+      onClick:function(evt,els){
+        if(!els||!els.length) return;
+        var ds2 = _bcChart.data.datasets[els[0].datasetIndex];
+        if(!ds2||ds2.label!=='BONCAPs') return;
+        var pt = ds2.data[els[0].index]; if(!pt) return;
+        if(_bcExcl.has(pt.label)) _bcExcl.delete(pt.label); else _bcExcl.add(pt.label);
+        // Solo actualizar colores, no destruir el chart
+        var ptDs = _bcChart.data.datasets.find(function(d){return d.label==='BONCAPs';});
         if(ptDs){
-          ptDs.backgroundColor=allPts.map(p=>_bcExcluded.has(p.label)?'rgba(30,39,243,0.15)':'#1E27F3');
-          ptDs.borderColor=ptDs.backgroundColor;
-          ptDs.pointRadius=allPts.map(p=>_bcExcluded.has(p.label)?3:5);
+          ptDs.backgroundColor = pts.map(function(p){return _bcExcl.has(p.label)?'rgba(30,39,243,0.15)':'#1E27F3';});
+          ptDs.borderColor = ptDs.backgroundColor;
+          ptDs.pointRadius = pts.map(function(p){return _bcExcl.has(p.label)?3:5;});
         }
-        _bcCurveChart.update('active');
+        _bcChart.update('active');
       },
       plugins:{
         legend:{display:false},
         tooltip:{
-          backgroundColor:'#fff',borderColor:'rgba(30,39,243,0.2)',borderWidth:1,
-          titleColor:'#3a3f5c',bodyColor:'#0a0c1a',padding:10,
-          titleFont:{family:monoFont,size:11},bodyFont:{family:monoFont,size:11},
-          filter:item=>item.dataset.label!=='_trend',
-          callbacks:{label:ctx=>{
-            const p=ctx.raw;
-            return`${_bcExcluded.has(p.label)?'[excluido] ':''}${p.label}: TNA ${p.y.toFixed(2)}% | MD ${p.x.toFixed(4)}`;
+          backgroundColor:'#fff', borderColor:'rgba(30,39,243,0.2)', borderWidth:1,
+          titleColor:'#3a3f5c', bodyColor:'#0a0c1a', padding:10,
+          titleFont:{family:mono,size:11}, bodyFont:{family:mono,size:11},
+          filter:function(item){return item.dataset.label!=='_trend';},
+          callbacks:{label:function(ctx){
+            var p=ctx.raw;
+            return (p.label||'') + ': TNA ' + p.y.toFixed(2) + '% | MD ' + p.x.toFixed(4);
           }}
         }
       },
       scales:{
-        x:{min:Math.min(...xs)-xPad,max:Math.max(...xs)+xPad,
-          grid:{color:'rgba(30,39,243,0.05)'},
-          ticks:{color:'#8a90b0',font:{family:monoFont,size:10}},
-          title:{display:true,text:'Modified Duration',color:'#8a90b0',font:{size:10}}},
-        y:{min:Math.min(...ys)-yPad,max:Math.max(...ys)+yPad,
-          grid:{color:'rgba(30,39,243,0.05)'},
-          ticks:{color:'#8a90b0',font:{family:monoFont,size:10},callback:v=>v.toFixed(1)+'%'},
-          title:{display:true,text:'TNA impl. (%)',color:'#8a90b0',font:{size:10}}}
+        x:{min:Math.min.apply(null,xs)-xPad, max:Math.max.apply(null,xs)+xPad,
+           grid:{color:'rgba(30,39,243,0.05)'},
+           ticks:{color:'#8a90b0',font:{family:mono,size:10}},
+           title:{display:true,text:'Modified Duration',color:'#8a90b0',font:{size:10}}},
+        y:{min:Math.min.apply(null,ys)-yPad, max:Math.max.apply(null,ys)+yPad,
+           grid:{color:'rgba(30,39,243,0.05)'},
+           ticks:{color:'#8a90b0',font:{family:mono,size:10},callback:function(v){return v.toFixed(1)+'%';}},
+           title:{display:true,text:'TNA (%)',color:'#8a90b0',font:{size:10}}}
       }
     },
-    plugins:[{id:'bc-labels',afterDatasetsDraw(chart){
-      const c2=chart.ctx;
-      chart.data.datasets.forEach((dset,di)=>{
-        if(dset.label==='_trend')return;
-        const meta=chart.getDatasetMeta(di);
-        dset.data.forEach((pt,pi)=>{
-          const el=meta.data[pi];if(!el||!pt.label)return;
-          const isExcl=_bcExcluded.has(pt.label);
-          const isCmp=dset.label==='_cmp';
+    plugins:[{id:'bc-lbl', afterDatasetsDraw:function(chart){
+      var c2=chart.ctx;
+      chart.data.datasets.forEach(function(dset,di){
+        if(dset.label==='_trend') return;
+        var meta=chart.getDatasetMeta(di);
+        dset.data.forEach(function(pt,pi){
+          var el=meta.data[pi]; if(!el||!pt.label) return;
           c2.save();
           c2.font="600 9px 'DM Mono',monospace";
-          const lx=el.x+8,ly=el.y-7;
-          const w=c2.measureText(pt.label).width;
-          if(!isExcl){c2.fillStyle='rgba(247,248,252,0.88)';c2.fillRect(lx-2,ly-9,w+4,12);}
-          c2.fillStyle=isExcl?'rgba(138,144,176,0.4)':isCmp?'#b07d1a':'#3a3f5c';
-          if(isExcl)c2.globalAlpha=0.4;
+          var lx=el.x+8, ly=el.y-7, w=c2.measureText(pt.label).width;
+          c2.fillStyle='rgba(247,248,252,0.88)'; c2.fillRect(lx-2,ly-9,w+4,12);
+          c2.fillStyle=_bcExcl.has(pt.label)?'rgba(138,144,176,0.5)':'#3a3f5c';
+          if(_bcExcl.has(pt.label)) c2.globalAlpha=0.45;
           c2.fillText(pt.label,lx,ly);
           c2.restore();
         });
@@ -2758,553 +2695,300 @@ function bcRenderCurve(){
   });
 }
 
-// ── Compare controls BONCAP ──
-window.bcSetCmp=function(mode){
-  _bcCmpMode=(_bcCmpMode===mode)?null:mode;
-  document.querySelectorAll('#bc-cmp-controls .cmp-btn').forEach(b=>{
-    b.classList.toggle('active',b.dataset.mode===_bcCmpMode);
-  });
-  if(!_bcCmpMode){_bcCmpRows=[];_bcCmpDate='';bcRenderCurve();return;}
-  const days={D1:1,W1:7,M1:30,M3:90}[_bcCmpMode]||7;
-  const ref=new Date(document.getElementById('bc-fecha-liq').value||lcDefaultFecha());
-  let count=days;
-  while(count>0){ref.setDate(ref.getDate()-1);if(ref.getDay()!==0&&ref.getDay()!==6)count--;}
-  const targetDate=ref.toISOString().slice(0,10);
-  _bcCmpDate=targetDate;
-  const cmpMap=lcGetPreciosForDate(targetDate);
-  const cmpLiq=lcNextBusinessDay(targetDate);
-  _bcCmpRows=bcCruzar(window._lcBundle,cmpMap,cmpLiq);
-  bcRenderCurve();
-};
-window.bcSetCmpDate=function(val){
-  if(!val){_bcCmpRows=[];_bcCmpDate='';_bcCmpMode=null;bcRenderCurve();return;}
-  _bcCmpDate=val;_bcCmpMode='CUSTOM';
-  document.querySelectorAll('#bc-cmp-controls .cmp-btn').forEach(b=>b.classList.remove('active'));
-  const cmpMap=lcGetPreciosForDate(val);
-  const cmpLiq=lcNextBusinessDay(val);
-  _bcCmpRows=bcCruzar(window._lcBundle,cmpMap,cmpLiq);
-  bcRenderCurve();
-};
+// ── Mostrar el pane BONCAP ──
+function bcShow() {
+  var banner = document.getElementById('bc-load-banner');
+  var wrap   = document.getElementById('bc-table-wrap');
+  var errB   = document.getElementById('bc-error-banner');
+  var fi     = document.getElementById('bc-fecha-liq');
 
-// ── Construir curva card en el pane ──
-function bcBuildCurveSection(){
-  const infoRow=document.getElementById('bc-info-row');if(!infoRow)return;
-  const old=document.getElementById('bc-curve-card-wrap');
-  if(old){
-    // Destruir chart anterior antes de quitar el canvas del DOM
-    if(_bcCurveChart){_bcCurveChart.destroy();_bcCurveChart=null;}
-    old.remove();
-  }
-  const wrap=document.createElement('div');
-  wrap.id='bc-curve-card-wrap';wrap.style.marginBottom='16px';
-  wrap.innerHTML=`
-    <div class="card">
-      <div class="card-header">
-        <span class="card-title">Curva de Rendimientos — BONCAPs (TNA impl. vs MD · base 30/360)</span>
-        <div class="compare-controls" id="bc-cmp-controls">
-          <button class="cmp-btn" data-mode="D1" onclick="bcSetCmp('D1')">-1D</button>
-          <button class="cmp-btn" data-mode="W1" onclick="bcSetCmp('W1')">-1S</button>
-          <button class="cmp-btn" data-mode="M1" onclick="bcSetCmp('M1')">-1M</button>
-          <button class="cmp-btn" data-mode="M3" onclick="bcSetCmp('M3')">-3M</button>
-          <input type="date" class="date-input" value="" onchange="bcSetCmpDate(this.value)" title="Fecha libre">
-        </div>
-      </div>
-      <div class="chart-wrap"><div id="bc-curve-wrap" style="position:relative;"><div class="chart-canvas-wrap"><canvas id="bc-curve-chart"></canvas></div></div></div>
-      <div class="chart-legend">
-        <div class="legend-item"><div class="legend-line" style="background:#1E27F3"></div>Tendencia hoy</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#1E27F3"></div>BONCAPs <span style="color:var(--text3);font-size:9px;">(click para excluir)</span></div>
-      </div>
-    </div>`;
-  const tableWrap=document.getElementById('bc-table-wrap');
-  tableWrap.insertBefore(wrap,infoRow);
-  // Dar tiempo al browser para pintar el canvas antes de que Chart.js lo use
-  setTimeout(bcRenderCurve, 60);
-}
-
-// ── Calcular desde bundle ya cargado ──
-function bcCalcFromBundle(){
-  // Guard: evitar ejecuciones concurrentes
-  if(window._bcLoading) return;
-  window._bcLoading=true;
-
-  const banner=document.getElementById('bc-load-banner');
-  const wrap  =document.getElementById('bc-table-wrap');
-  const errB  =document.getElementById('bc-error-banner');
-  if(banner) banner.style.display='flex';
-  if(wrap)   wrap.style.display='none';
-  if(errB)   errB.style.display='none';
-  bcSetMsg('Calculando BONCAPs...');
-
-  // Usar setTimeout para no bloquear el render del spinner
-  setTimeout(function(){
-    try{
-      const fi=document.getElementById('bc-fecha-liq');
-      if(fi && !fi.value) fi.value=lcDefaultFecha();
-      const fechaLiq=(fi&&fi.value)||lcDefaultFecha();
-      _bcRows=bcCruzar(window._lcBundle,_lcPrecios,fechaLiq);
-      _bcLoaded=true;
-      window._bcLoading=false;
-
-      if(!_bcRows.length){
-        if(banner) banner.style.display='none';
-        if(errB){
-          const tipos=window._lcBundle._tipos||{};
-          const tiposUniq=[...new Set(Object.values(tipos).map(v=>v.toLowerCase()))].join(', ')||'(ninguno)';
-          errB.style.display='block';
-          errB.innerHTML=`<b>⚠</b> No se encontraron BONCAPs en el Worker.<br>
-            <span style="font-size:10px;">Tipos disponibles en <code>_tipos</code>: <b>${tiposUniq}</b><br>
-            El Worker debe incluir <code>"boncap"</code> como tipo para cada ticker BONCAP.<br>
-            Si los datos son correctos, usá la pestaña ⚙ Diagnóstico para verificar el bundle.</span>`;
-        }
-        return;
-      }
-
-      if(banner) banner.style.display='none';
-      if(wrap)   wrap.style.display='block';
-      // Primero renderizar tabla (síncrono), luego curva con delay para que el canvas exista
-      bcRender();
-      setTimeout(bcBuildCurveSection, 30);
-    }catch(e){
-      window._bcLoading=false;
-      if(banner) banner.style.display='none';
-      if(errB){
-        errB.style.display='block';
-        errB.innerHTML=`<b>✗ Error:</b> ${e.message}`;
-      }
-    }
-  }, 20);
-}
-
-function bcSetMsg(m){const el=document.getElementById('bc-load-msg');if(el)el.textContent=m;}
-
-// ── BONCAP Detail ──
-window.bcOpenDetail=function(ticker){
-  const row=_bcRows.find(r=>r.ticker===ticker);if(!row)return;
-  const dv=document.getElementById('bc-detail-view');
-  dv.style.display='flex';dv.style.flexDirection='column';
-  document.getElementById('bc-detail-ticker').textContent=ticker;
-  const c=row.calc;
-  const meta=c
-    ?`BONCAP · Venc. ${fmtDateShort(c.fechaVto)} · ${c.diasVtoLiq} días · TEM orig ${fmtPct(c.tem,4)}`
-    :'Sin datos de cálculo';
-  document.getElementById('bc-detail-meta').textContent=meta;
-  window._bcDetailTicker=ticker;
-  window._bcDetailRealPrecio=row.precio;
-  bcBuildDetailBody(row,ticker);
-};
-
-window.bcCloseDetail=function(){
-  document.getElementById('bc-detail-view').style.display='none';
-  window._bcDetailTicker=null;
-};
-
-window.bcDetailRecalc=function(){
-  const ticker=window._bcDetailTicker;if(!ticker)return;
-  const row=_bcRows.find(r=>r.ticker===ticker);if(!row)return;
-  const fechaLiq=document.getElementById('bc-detail-fecha-liq').value||lcDefaultFecha();
-  const pxInput=document.getElementById('bc-detail-precio-input');
-  const pxVal=pxInput?toNum(pxInput.value):NaN;
-  const precioEfectivo=(!isNaN(pxVal)&&pxVal>0)?pxVal:row.precio;
-  const newCalc=row._cf?bcCalc(row._cf,precioEfectivo,fechaLiq):null;
-  const newRow={...row,precio:precioEfectivo,calc:newCalc,_isManualPx:precioEfectivo!==row.precio};
-  bcBuildDetailBody(newRow,ticker);
-  const pxInputNew=document.getElementById('bc-detail-precio-input');
-  if(pxInputNew&&newRow._isManualPx) pxInputNew.value=String(precioEfectivo).replace('.',',');
-  const flNew=document.getElementById('bc-detail-fecha-liq');
-  if(flNew) flNew.value=fechaLiq;
-};
-
-function bcBuildDetailBody(row,ticker){
-  const body=document.getElementById('bc-detail-body');
-  body.innerHTML='';
-  const c=row.calc;
-  if(!c){
-    body.innerHTML=`<div class="empty-msg">Sin datos suficientes para calcular. Verificá precio y cashflows.</div>`;
+  // Si no hay bundle todavía, mostrar mensaje de espera
+  if (!window._lcBundle) {
+    banner.style.display = 'flex';
+    document.getElementById('bc-load-msg').textContent = 'Esperando carga del Worker...';
     return;
   }
 
-  // [0] Barra de controles
-  const ctrlBar=document.createElement('div');
-  ctrlBar.style.cssText='display:flex;align-items:center;gap:16px;margin-bottom:16px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;flex-wrap:wrap;';
-  ctrlBar.innerHTML=`
-    <div style="display:flex;align-items:center;gap:8px;">
-      <label style="font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">Fecha liq.</label>
-      <input type="date" id="bc-detail-fecha-liq" value="${lcDefaultFecha()}"
-        style="background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px;font-family:var(--mono);padding:4px 8px;outline:none;cursor:pointer;"
-        onchange="bcDetailRecalc()"/>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;">
-      <label style="font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">Precio manual</label>
-      <input type="text" id="bc-detail-precio-input" placeholder="${fmtN(row.precio,2)}"
-        style="width:100px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px;font-family:var(--mono);padding:4px 8px;outline:none;"
-        onchange="bcDetailRecalc()" oninput="bcDetailRecalc()"/>
-      ${row._isManualPx?`<button onclick="document.getElementById('bc-detail-precio-input').value='';bcDetailRecalc();" style="padding:3px 8px;font-size:10px;font-family:var(--mono);border-radius:4px;border:1px solid var(--border2);background:transparent;color:var(--text3);cursor:pointer;">↺ real</button>`:''}
-    </div>
-    <div style="margin-left:auto;font-size:10px;font-family:var(--mono);color:var(--text3);">Metodología: base 30/360 · prospecto Sec. Finanzas</div>`;
-  body.appendChild(ctrlBar);
+  // Si no hay tipos en el bundle, informar
+  var tipos  = window._lcBundle._tipos || {};
+  var tickers = (window._lcBundle._index || Object.keys(window._lcBundle).filter(function(k){return !k.startsWith('_');}))
+    .filter(function(t){ return (tipos[t]||'').toLowerCase()==='boncap'; });
+
+  if (!tickers.length) {
+    banner.style.display = 'none';
+    errB.style.display   = 'block';
+    var tiposVals = [...new Set(Object.values(tipos))].join(', ') || '(ninguno)';
+    errB.innerHTML = '<b>⚠</b> No hay BONCAPs en el bundle.<br>'
+      + '<span style="font-size:10px;">Tipos presentes: <b>' + tiposVals + '</b> · El Worker debe tener <code>_tipos[ticker]="boncap"</code></span>';
+    return;
+  }
+
+  // Calcular
+  if (!fi.value) fi.value = bcDefaultFecha();
+  _bcRows = bcBuildRows(fi.value);
+
+  // Mostrar
+  banner.style.display = 'none';
+  wrap.style.display   = 'block';
+  errB.style.display   = 'none';
+  bcRenderTable();
+
+  // Curva: destruir chart viejo si existe, luego renderizar
+  if (_bcChart) { _bcChart.destroy(); _bcChart = null; }
+
+  // Insertar card de curva si no existe
+  var infoRow = document.getElementById('bc-info-row');
+  var oldCard = document.getElementById('bc-curve-card');
+  if (oldCard) oldCard.remove();
+  var card = document.createElement('div');
+  card.id = 'bc-curve-card';
+  card.style.marginBottom = '16px';
+  card.innerHTML = '<div class="card">'
+    + '<div class="card-header"><span class="card-title">Curva de Rendimientos — BONCAPs (TNA vs MD · base 30/360)</span></div>'
+    + '<div class="chart-wrap"><div class="chart-canvas-wrap"><canvas id="bc-curve-chart"></canvas></div></div>'
+    + '<div class="chart-legend">'
+    + '<div class="legend-item"><div class="legend-line" style="background:#1E27F3"></div>Tendencia</div>'
+    + '<div class="legend-item"><div class="legend-dot" style="background:#1E27F3"></div>BONCAPs <span style="color:var(--text3);font-size:9px;">(click para excluir)</span></div>'
+    + '</div></div>';
+  wrap.insertBefore(card, infoRow);
+
+  // Render con pequeño delay para que el canvas esté en el DOM
+  setTimeout(bcRenderCurve, 50);
+}
+
+// ── lcShowTab llama a bcShow cuando corresponde ──
+// (ya definido arriba en lcShowTab, solo actualizamos la lógica)
+// Sobreescribimos lcShowTab para que BONCAP use bcShow directamente
+window.lcShowTab = function(tab, el) {
+  document.getElementById('lc-pane-calc').style.display   = tab==='calc'   ? ''      : 'none';
+  document.getElementById('lc-pane-boncap').style.display = tab==='boncap' ? 'block' : 'none';
+  document.getElementById('lc-pane-diag').style.display   = tab==='diag'   ? 'block' : 'none';
+  document.querySelectorAll('#app-test .tab').forEach(function(t){t.classList.remove('active');});
+  if (el) el.classList.add('active');
+  if (tab === 'boncap') bcShow();
+};
+
+// ── Después de que lcLoad termine, si el pane BONCAP está visible, refrescar ──
+var _lcLoadOrig = window.lcLoad;
+window.lcLoad = async function() {
+  await _lcLoadOrig();
+  var pane = document.getElementById('lc-pane-boncap');
+  if (pane && pane.style.display !== 'none') bcShow();
+};
+
+// ── Detail panel ──
+window.bcOpenDetail = function(ticker) {
+  var row = _bcRows.find(function(r){return r.ticker===ticker;});
+  if (!row) return;
+  document.getElementById('bc-detail-view').style.display = 'flex';
+  document.getElementById('bc-detail-view').style.flexDirection = 'column';
+  document.getElementById('bc-detail-ticker').textContent = ticker;
+  var c = row.calc;
+  document.getElementById('bc-detail-meta').textContent = c
+    ? 'BONCAP · Venc. ' + fmtDateShort(c.fechaVto) + ' · ' + c.dias + ' días · TEM orig. ' + fmtPct(c.tem,4)
+    : 'Sin datos de cálculo';
+  window._bcDetailTicker = ticker;
+  window._bcDetailRow    = row;
+  bcBuildDetailBody(row, ticker);
+};
+
+window.bcCloseDetail = function() {
+  document.getElementById('bc-detail-view').style.display = 'none';
+};
+
+window.bcDetailRecalc = function() {
+  var ticker = window._bcDetailTicker; if (!ticker) return;
+  var row    = window._bcDetailRow;    if (!row)    return;
+  var fi     = document.getElementById('bc-detail-fecha-liq');
+  var pi     = document.getElementById('bc-detail-precio-input');
+  var fechaLiq = (fi&&fi.value) ? fi.value : bcDefaultFecha();
+  var pxVal    = pi ? toNum(pi.value) : NaN;
+  var dirty    = (!isNaN(pxVal)&&pxVal>0) ? pxVal : row.dirty;
+  var calc     = row._cf ? bcCalc(row._cf.fechaPago, row._cf.temOrigPct, row._cf.total100, dirty, fechaLiq) : null;
+  var newRow   = Object.assign({}, row, {dirty:dirty, calc:calc, _manual:(dirty!==row.dirty)});
+  window._bcDetailRow = newRow;
+  bcBuildDetailBody(newRow, ticker);
+  // Restaurar inputs
+  var fiN = document.getElementById('bc-detail-fecha-liq');
+  if (fiN) fiN.value = fechaLiq;
+  if (newRow._manual) {
+    var piN = document.getElementById('bc-detail-precio-input');
+    if (piN) piN.value = String(dirty).replace('.',',');
+  }
+};
+
+function bcBuildDetailBody(row, ticker) {
+  var body = document.getElementById('bc-detail-body');
+  body.innerHTML = '';
+  var c = row.calc;
+  if (!c) {
+    body.innerHTML = '<div class="empty-msg">Sin datos para calcular.</div>';
+    return;
+  }
+
+  // [0] Barra controles
+  var ctrl = document.createElement('div');
+  ctrl.style.cssText = 'display:flex;align-items:center;gap:16px;margin-bottom:16px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;flex-wrap:wrap;';
+  ctrl.innerHTML = ''
+    + '<div style="display:flex;align-items:center;gap:8px;">'
+    + '  <label style="font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">Fecha liq.</label>'
+    + '  <input type="date" id="bc-detail-fecha-liq" value="'+bcDefaultFecha()+'" style="background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px;font-family:var(--mono);padding:4px 8px;outline:none;" onchange="bcDetailRecalc()"/>'
+    + '</div>'
+    + '<div style="display:flex;align-items:center;gap:8px;">'
+    + '  <label style="font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">Precio manual</label>'
+    + '  <input type="text" id="bc-detail-precio-input" placeholder="'+fmtN(row.dirty,2)+'" style="width:100px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px;font-family:var(--mono);padding:4px 8px;outline:none;" oninput="bcDetailRecalc()"/>'
+    + '</div>'
+    + '<div style="margin-left:auto;font-size:10px;font-family:var(--mono);color:var(--text3);">Base 30/360 · prospecto Sec. Finanzas</div>';
+  body.appendChild(ctrl);
 
   // [1] Stats grid
-  const grid=document.createElement('div');
-  grid.className='detail-grid';
-  grid.style.marginBottom='16px';
-  const stats=[
-    {label:'TEM implícita',    value:fmtPct(c.temImpl,4),  accent:true},
-    {label:'TEA implícita',    value:fmtPct(c.teaImpl,4),  accent:true},
-    {label:'TNA implícita',    value:fmtPct(c.tnaImpl,4),  accent:true},
-    {label:'TEM orig. (prosp)',value:fmtPct(c.tem,4)},
-    {label:'Valor Técnico (VT)',value:fmtN(c.vt,4)},
-    {label:'Precio Limpio',    value:fmtN(c.precioLimpio,4)},
-    {label:'Interés corrido',  value:fmtN(c.ic,4)},
-    {label:'Paridad',          value:fmtPct(c.paridad,2)},
-    {label:'Mod. Duration',    value:fmtN(c.md,4)},
-    {label:'Duration',         value:fmtN(c.dur,4)},
-    {label:'Convexidad',       value:fmtN(c.conv,4)},
-    {label:'Días al venc.',    value:String(c.diasVtoLiq)},
-  ];
-  stats.forEach(s=>{
-    grid.innerHTML+=`<div class="stat-card">
-      <div class="stat-label">${s.label}</div>
-      <div class="stat-value" style="${s.accent?'color:var(--accent);':''}">${s.value}</div>
-    </div>`;
+  var grid = document.createElement('div');
+  grid.className = 'detail-grid';
+  grid.style.marginBottom = '16px';
+  [
+    {label:'TEM implícita',  value:fmtPct(c.temI,4),  accent:true},
+    {label:'TEA implícita',  value:fmtPct(c.teaI,4),  accent:true},
+    {label:'TNA implícita',  value:fmtPct(c.tnaI,2),  accent:true},
+    {label:'TEM orig. prosp',value:fmtPct(c.tem,4)},
+    {label:'VT a liq.',      value:fmtN(c.vt,4)},
+    {label:'Px Limpio',      value:fmtN(c.pxL,4)},
+    {label:'Interés corrido',value:fmtN(c.ic,4)},
+    {label:'Paridad',        value:fmtPct(c.paridad,2)},
+    {label:'Mod. Duration',  value:fmtN(c.md,4)},
+    {label:'Duration',       value:fmtN(c.dur,4)},
+    {label:'Convexidad',     value:fmtN(c.conv,4)},
+    {label:'Días al venc.',  value:String(c.dias)},
+  ].forEach(function(s){
+    grid.innerHTML += '<div class="stat-card"><div class="stat-label">'+s.label+'</div>'
+      + '<div class="stat-value" style="'+(s.accent?'color:var(--accent);':'')+'">'+s.value+'</div></div>';
   });
   body.appendChild(grid);
 
-  // [2] Fila media: posición en curva + cashflow
-  const rowMid=document.createElement('div');
-  rowMid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;';
+  // [2] Cashflow visual
+  var cfCard = document.createElement('div');
+  cfCard.className = 'card';
+  cfCard.style.marginBottom = '16px';
+  var ganancia = c.flujo - row.dirty;
+  var retorno  = row.dirty > 0 ? (ganancia/row.dirty)*100 : NaN;
+  cfCard.innerHTML = '<div class="card-header"><span class="card-title">Cashflow · Base 30/360</span></div>'
+    + '<div style="padding:14px 16px;">'
+    + '  <div style="display:flex;align-items:center;gap:0;margin-bottom:12px;">'
+    + '    <div style="flex-shrink:0;text-align:center;min-width:90px;">'
+    + '      <div style="font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;margin-bottom:4px;">Fecha liq.</div>'
+    + '      <div style="background:var(--accent);color:#fff;border-radius:6px;padding:6px 10px;font-size:13px;font-weight:700;font-family:var(--mono);">−'+fmtN(row.dirty)+'</div>'
+    + '    </div>'
+    + '    <div style="flex:1;height:2px;background:linear-gradient(90deg,var(--accent),var(--green));margin:0 8px;margin-top:10px;"></div>'
+    + '    <div style="flex-shrink:0;text-align:center;min-width:90px;">'
+    + '      <div style="font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;margin-bottom:4px;">Vto · '+fmtDateShort(c.fechaVto)+'</div>'
+    + '      <div style="background:rgba(13,158,110,0.12);color:var(--green);border:1px solid rgba(13,158,110,0.3);border-radius:6px;padding:6px 10px;font-size:13px;font-weight:700;font-family:var(--mono);">+'+fmtN(c.flujo,4)+'</div>'
+    + '    </div>'
+    + '  </div>'
+    + '  <div style="text-align:center;font-size:9px;font-family:var(--mono);color:var(--text3);margin-bottom:14px;">'+c.dias+' días · '+fmtN(c.meses,2)+' meses (base 30/360)</div>'
+    + '  <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:var(--mono);">'
+    + '    <tbody>'
+    + '      <tr style="border-bottom:1px solid var(--border);"><td style="padding:7px 8px;color:var(--text2);">Precio dirty (compra)</td><td style="padding:7px 8px;text-align:right;color:var(--accent);font-weight:600;">'+fmtN(row.dirty,4)+'</td><td style="padding:7px 8px;text-align:right;color:var(--text3);">100%</td></tr>'
+    + '      <tr style="border-bottom:1px solid var(--border);"><td style="padding:7px 8px;color:var(--text2);">VT a liq. <span style="color:var(--text3);font-size:9px;">flujo/(1+TEM)^'+fmtN(c.meses,2)+'m</span></td><td style="padding:7px 8px;text-align:right;">'+fmtN(c.vt,4)+'</td><td style="padding:7px 8px;text-align:right;color:var(--text3);">'+fmtN(c.vt/row.dirty*100,2)+'%</td></tr>'
+    + '      <tr style="border-bottom:1px solid var(--border);"><td style="padding:7px 8px;color:var(--text2);">Interés corrido (VT−100)</td><td style="padding:7px 8px;text-align:right;color:var(--yellow);">'+fmtN(c.ic,4)+'</td><td style="padding:7px 8px;text-align:right;color:var(--text3);">'+fmtN(c.ic/row.dirty*100,2)+'%</td></tr>'
+    + '      <tr style="border-bottom:1px solid var(--border);"><td style="padding:7px 8px;color:var(--text2);">Precio limpio (Dirty−IC)</td><td style="padding:7px 8px;text-align:right;">'+fmtN(c.pxL,4)+'</td><td style="padding:7px 8px;text-align:right;color:var(--text3);">Paridad '+fmtPct(c.paridad,2)+'</td></tr>'
+    + '      <tr style="border-bottom:1px solid var(--border);"><td style="padding:7px 8px;color:var(--text2);">Flujo al vto.</td><td style="padding:7px 8px;text-align:right;font-weight:600;">'+fmtN(c.flujo,4)+'</td><td style="padding:7px 8px;text-align:right;color:var(--text3);">'+fmtN(c.flujo/row.dirty*100,2)+'%</td></tr>'
+    + '      <tr style="background:rgba(13,158,110,0.04);"><td style="padding:7px 8px;color:var(--green);font-weight:600;">Ganancia bruta</td><td style="padding:7px 8px;text-align:right;color:var(--green);font-weight:700;">'+(ganancia>=0?'+':'')+fmtN(ganancia,4)+'</td><td style="padding:7px 8px;text-align:right;color:var(--green);">'+(isNaN(retorno)?'—':(retorno>=0?'+':'')+fmtN(retorno,2)+'%')+'</td></tr>'
+    + '    </tbody>'
+    + '  </table>'
+    + '</div>';
+  body.appendChild(cfCard);
 
-  // Card posición en curva
-  const posCard=document.createElement('div');
-  posCard.className='card';posCard.style.marginBottom='0';
-  posCard.innerHTML=`
-    <div class="card-header">
-      <span class="card-title">Posición en la Curva — TNA vs MD</span>
-      <div class="compare-controls" id="bc-pos-cmp-ctrls">
-        <button class="cmp-btn lc-pos-cmp-btn" data-mode="D1" onclick="bcPosCmp('D1','${ticker}')">-1D</button>
-        <button class="cmp-btn lc-pos-cmp-btn" data-mode="W1" onclick="bcPosCmp('W1','${ticker}')">-1S</button>
-        <button class="cmp-btn lc-pos-cmp-btn" data-mode="M1" onclick="bcPosCmp('M1','${ticker}')">-1M</button>
-        <input type="date" class="date-input" value="" onchange="bcPosCmpDate(this.value,'${ticker}')" title="Fecha libre">
-      </div>
-    </div>
-    <div class="chart-wrap"><div class="chart-canvas-wrap" style="height:220px"><canvas id="bc-pos-chart"></canvas></div></div>
-    <div class="chart-legend" id="bc-pos-legend">
-      <div class="legend-item"><div class="legend-dot" style="background:#1E27F3"></div>${ticker}</div>
-      <div class="legend-item"><div class="legend-dot" style="background:rgba(30,39,243,0.3)"></div>Resto BONCAPs</div>
-    </div>`;
-  rowMid.appendChild(posCard);
-
-  // Card cashflow desglose
-  const ganancia=c.flujoVto-row.precio;
-  const retorno=row.precio>0?(ganancia/row.precio)*100:NaN;
-  const cfCard=document.createElement('div');
-  cfCard.className='card';cfCard.style.marginBottom='0';
-  cfCard.innerHTML=`
-    <div class="card-header"><span class="card-title">Cashflow · Base 30/360</span></div>
-    <div style="padding:14px 16px;">
-      <div style="margin-bottom:18px;">
-        <div style="display:flex;align-items:center;gap:0;margin-bottom:6px;">
-          <div style="flex-shrink:0;text-align:center;min-width:90px;">
-            <div style="font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;margin-bottom:4px;">Fecha liq.</div>
-            <div style="background:var(--accent);color:#fff;border-radius:6px;padding:6px 10px;font-size:13px;font-weight:700;font-family:var(--mono);">−${fmtN(row.precio)}</div>
-          </div>
-          <div style="flex:1;height:2px;background:linear-gradient(90deg,var(--accent),var(--green));margin:0 8px;margin-top:10px;"></div>
-          <div style="flex-shrink:0;text-align:center;min-width:90px;">
-            <div style="font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;margin-bottom:4px;">Vto · ${fmtDateShort(c.fechaVto)}</div>
-            <div style="background:rgba(13,158,110,0.12);color:var(--green);border:1px solid rgba(13,158,110,0.3);border-radius:6px;padding:6px 10px;font-size:13px;font-weight:700;font-family:var(--mono);">+${fmtN(c.flujoVto,4)}</div>
-          </div>
-        </div>
-        <div style="text-align:center;font-size:9px;font-family:var(--mono);color:var(--text3);">${c.diasVtoLiq} días · ${fmtN(c.mesesLiqVto,2)} meses restantes (base 30/360)</div>
-      </div>
-      <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:var(--mono);">
-        <thead><tr style="border-bottom:1px solid var(--border);">
-          <th style="text-align:left;padding:6px 8px;font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);">Concepto</th>
-          <th style="text-align:right;padding:6px 8px;font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);">c/100 VN</th>
-          <th style="text-align:right;padding:6px 8px;font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);">%</th>
-        </tr></thead>
-        <tbody>
-          <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding:7px 8px;color:var(--text2);">Precio dirty (compra)</td>
-            <td style="padding:7px 8px;text-align:right;color:var(--accent);font-weight:600;">${fmtN(row.precio,4)}</td>
-            <td style="padding:7px 8px;text-align:right;color:var(--text3);">100%</td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding:7px 8px;color:var(--text2);">VT a fecha liq. <span style="color:var(--text3);font-size:9px;">flujoVto / (1+TEM)^${fmtN(c.mesesLiqVto,2)}m</span></td>
-            <td style="padding:7px 8px;text-align:right;">${fmtN(c.vt,4)}</td>
-            <td style="padding:7px 8px;text-align:right;color:var(--text3);">${fmtN(c.vt/row.precio*100,2)}%</td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding:7px 8px;color:var(--text2);">Interés corrido <span style="color:var(--text3);font-size:9px;">(VT−100)</span></td>
-            <td style="padding:7px 8px;text-align:right;color:var(--yellow);">${fmtN(c.ic,4)}</td>
-            <td style="padding:7px 8px;text-align:right;color:var(--text3);">${fmtN(c.ic/row.precio*100,2)}%</td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding:7px 8px;color:var(--text2);">Precio limpio <span style="color:var(--text3);font-size:9px;">(Dirty−IC)</span></td>
-            <td style="padding:7px 8px;text-align:right;">${fmtN(c.precioLimpio,4)}</td>
-            <td style="padding:7px 8px;text-align:right;color:var(--text3);">Paridad ${fmtPct(c.paridad,2)}</td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding:7px 8px;color:var(--text2);">Flujo al vto. <span style="color:var(--text3);font-size:9px;">100×(1+TEM)^meses_totales</span></td>
-            <td style="padding:7px 8px;text-align:right;font-weight:600;">${fmtN(c.flujoVto,4)}</td>
-            <td style="padding:7px 8px;text-align:right;color:var(--text3);">${fmtN(c.flujoVto/row.precio*100,2)}%</td>
-          </tr>
-          <tr style="background:rgba(13,158,110,0.04);">
-            <td style="padding:7px 8px;color:var(--green);font-weight:600;">Ganancia bruta</td>
-            <td style="padding:7px 8px;text-align:right;color:var(--green);font-weight:700;">${ganancia>=0?'+':''}${fmtN(ganancia,4)}</td>
-            <td style="padding:7px 8px;text-align:right;color:var(--green);font-weight:600;">${!isNaN(retorno)?(retorno>=0?'+':'')+fmtN(retorno,2)+'%':'—'}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>`;
-  rowMid.appendChild(cfCard);
-  body.appendChild(rowMid);
-
-  // [3] Ranking comparativo
-  const rankCard=document.createElement('div');
-  rankCard.className='card';rankCard.style.marginBottom='16px';
-  const allWithCalc=[..._bcRows.filter(r=>r.calc)].sort((a,b)=>b.calc.tnaImpl-a.calc.tnaImpl);
-  const myPos=allWithCalc.findIndex(r=>r.ticker===ticker);
-  const myTNA=c.tnaImpl;
-  const avgTNA=allWithCalc.reduce((a,r)=>a+r.calc.tnaImpl,0)/allWithCalc.length;
-  rankCard.innerHTML=`
-    <div class="card-header"><span class="card-title">Comparativa — Universo BONCAPs (TNA impl.)</span></div>
-    <div style="padding:14px 16px;">
-      <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:16px;">
-        <div><div style="font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">Posición</div>
-          <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--accent);">${myPos>=0?myPos+1:'—'} / ${allWithCalc.length}</div></div>
-        <div><div style="font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">TNA impl.</div>
-          <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--accent);">${fmtPct(myTNA,2)}</div></div>
-        <div><div style="font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">vs Promedio</div>
-          <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:${myTNA>=avgTNA?'var(--green)':'var(--red)'};">${(myTNA-avgTNA)>=0?'+':''}${fmtN(myTNA-avgTNA,2)}pp</div></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-        <div>
-          <div style="font-size:9px;font-family:var(--mono);color:var(--green);letter-spacing:.4px;text-transform:uppercase;margin-bottom:6px;font-weight:600;">↑ Mayor TNA</div>
-          ${allWithCalc.slice(0,4).map((r,i)=>`
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);${r.ticker===ticker?'font-weight:700;':''}">
-              <span style="font-size:10px;font-family:var(--mono);color:${r.ticker===ticker?'var(--accent)':'var(--text2)'};">${i+1}. ${r.ticker}${r.ticker===ticker?' ◀':''}</span>
-              <span style="font-size:10px;font-family:var(--mono);color:var(--green);font-weight:600;">${fmtPct(r.calc.tnaImpl,2)}</span>
-            </div>`).join('')}
-        </div>
-        <div>
-          <div style="font-size:9px;font-family:var(--mono);color:var(--red);letter-spacing:.4px;text-transform:uppercase;margin-bottom:6px;font-weight:600;">↓ Menor TNA</div>
-          ${allWithCalc.slice(-4).reverse().map((r,i)=>`
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);${r.ticker===ticker?'font-weight:700;':''}">
-              <span style="font-size:10px;font-family:var(--mono);color:${r.ticker===ticker?'var(--accent)':'var(--text2)'};">${allWithCalc.length-3+i}. ${r.ticker}${r.ticker===ticker?' ◀':''}</span>
-              <span style="font-size:10px;font-family:var(--mono);color:var(--red);font-weight:600;">${fmtPct(r.calc.tnaImpl,2)}</span>
-            </div>`).join('')}
-        </div>
-      </div>
-    </div>`;
+  // [3] Ranking
+  var allCalc = _bcRows.filter(function(r){return r.calc;}).sort(function(a,b){return b.calc.tnaI-a.calc.tnaI;});
+  var myPos   = allCalc.findIndex(function(r){return r.ticker===ticker;});
+  var avg     = allCalc.reduce(function(s,r){return s+r.calc.tnaI;},0) / (allCalc.length||1);
+  var rankCard = document.createElement('div');
+  rankCard.className = 'card';
+  rankCard.style.marginBottom = '16px';
+  rankCard.innerHTML = '<div class="card-header"><span class="card-title">Comparativa TNA — Universo BONCAPs</span></div>'
+    + '<div style="padding:14px 16px;">'
+    + '  <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:16px;">'
+    + '    <div><div style="font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">Posición</div>'
+    + '         <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--accent);">'+(myPos>=0?myPos+1:'—')+' / '+allCalc.length+'</div></div>'
+    + '    <div><div style="font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">TNA impl.</div>'
+    + '         <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--accent);">'+fmtPct(c.tnaI,2)+'</div></div>'
+    + '    <div><div style="font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">vs Promedio</div>'
+    + '         <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:'+(c.tnaI>=avg?'var(--green)':'var(--red)')+';">'+(c.tnaI-avg>=0?'+':'')+fmtN(c.tnaI-avg,2)+'pp</div></div>'
+    + '  </div>'
+    + '  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">'
+    + '    <div><div style="font-size:9px;font-family:var(--mono);color:var(--green);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;font-weight:600;">↑ Mayor TNA</div>'
+    + allCalc.slice(0,4).map(function(r,i){return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);'+(r.ticker===ticker?'font-weight:700;':'')+'"><span style="font-size:10px;font-family:var(--mono);color:'+(r.ticker===ticker?'var(--accent)':'var(--text2)')+';">'+(i+1)+'. '+r.ticker+(r.ticker===ticker?' ◀':'')+'</span><span style="font-size:10px;font-family:var(--mono);color:var(--green);font-weight:600;">'+fmtPct(r.calc.tnaI,2)+'</span></div>';}).join('')
+    + '    </div>'
+    + '    <div><div style="font-size:9px;font-family:var(--mono);color:var(--red);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;font-weight:600;">↓ Menor TNA</div>'
+    + allCalc.slice(-4).reverse().map(function(r,i){return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);'+(r.ticker===ticker?'font-weight:700;':'')+'"><span style="font-size:10px;font-family:var(--mono);color:'+(r.ticker===ticker?'var(--accent)':'var(--text2)')+';">'+(allCalc.length-3+i)+'. '+r.ticker+(r.ticker===ticker?' ◀':'')+'</span><span style="font-size:10px;font-family:var(--mono);color:var(--red);font-weight:600;">'+fmtPct(r.calc.tnaI,2)+'</span></div>';}).join('')
+    + '    </div>'
+    + '  </div>'
+    + '</div>';
   body.appendChild(rankCard);
 
-  // [4] Tabla histórica de precios
-  const histPxEntry=_lcPrecios[ticker.toUpperCase()]||_lcPrecios[ticker]||null;
-  const histByDate=histPxEntry?histPxEntry.byDate:{};
-  const histPxDates=Object.keys(histByDate).sort().reverse();
+  // [4] Histórico de precios
+  var histEntry = _lcPrecios[ticker.toUpperCase()] || _lcPrecios[ticker] || null;
+  var byDate    = histEntry ? histEntry.byDate : {};
+  var dates     = Object.keys(byDate).sort().reverse();
+  var histCard  = document.createElement('div');
+  histCard.className = 'card';
+  histCard.id = 'bc-hist-card';
+  histCard.style.marginBottom = '16px';
 
-  const histCard=document.createElement('div');
-  histCard.className='card';histCard.id='bc-hist-table-card';histCard.style.marginBottom='16px';
-
-  const histColDefs=[
-    {key:'fechaPx_iso',label:'Fecha',    fmt:(v,r)=>r.fechaPx||v||'—',      align:'left', sortNum:false},
-    {key:'precio',     label:'Último',   fmt:(v,r)=>isNaN(v)?'—':fmtN(v,4), align:'right',sortNum:true, hi:true},
-    {key:'variacion',  label:'Var%',     fmt:(v,r)=>isNaN(v)?'—':(v>=0?'+':'')+fmtN(v,2)+'%', align:'right',sortNum:true,varColor:true},
-    {key:'tna_hist',   label:'TNA impl.*',fmt:(v,r)=>isNaN(v)?'—':fmtPct(v,2), align:'right',sortNum:true,tnaColor:true},
-    {key:'vt_hist',    label:'VT',       fmt:(v,r)=>isNaN(v)?'—':fmtN(v,4), align:'right',sortNum:true},
-    {key:'vol',        label:'Volumen',  fmt:(v,r)=>{if(isNaN(v)||!v)return'—';if(v>=1e9)return(v/1e9).toFixed(2)+'B';if(v>=1e6)return(v/1e6).toFixed(2)+'M';return v.toFixed(0);}, align:'right',sortNum:true},
-  ];
-
-  const cf4hist=row._cf;
-  const histRows=histPxDates.map(d=>{
-    const r={...histByDate[d]};r.fechaPx_iso=d;
-    if(cf4hist&&!isNaN(r.precio)&&r.precio>0){
-      const liq=lcNextBusinessDay(d);
-      const calc=bcCalc(cf4hist,r.precio,liq);
-      r.tna_hist=calc?calc.tnaImpl:NaN;
-      r.vt_hist =calc?calc.vt:NaN;
-    } else {r.tna_hist=NaN;r.vt_hist=NaN;}
-    return r;
-  });
-
-  const tnaVals=histRows.map(r=>r.tna_hist).filter(v=>!isNaN(v));
-  const tnaMinH=tnaVals.length?Math.min(...tnaVals):0;
-  const tnaMaxH=tnaVals.length?Math.max(...tnaVals):1;
-  const tnaRangeH=tnaMaxH-tnaMinH||1;
-  function bcTnaHeat(v){
-    if(isNaN(v))return'';
-    const t=(v-tnaMinH)/tnaRangeH;
-    let r,g,b;
-    if(t<0.5){const u=t*2;r=Math.round(224+(217-224)*u);g=Math.round(49+(119-49)*u);b=Math.round(49+(6-49)*u);}
-    else{const u=(t-0.5)*2;r=Math.round(217+(13-217)*u);g=Math.round(119+(158-119)*u);b=Math.round(6+(110-6)*u);}
-    return`rgb(${r},${g},${b})`;
-  }
-
-  window._bcHistRows=histRows;
-  window._bcHistColDefs=histColDefs;
-  window._bcHistTnaHeat=bcTnaHeat;
-  window._bcHistTicker=ticker;
-  window._bcHistDates=histPxDates;
-  window._bcHistSortKey='fechaPx_iso';
-  window._bcHistSortDir=-1;
-  window._bcHistExpanded=false;
-
-  const DEFAULT_HIST=10;
-
-  window.bcHistSort=function(key){
-    if(window._bcHistSortKey===key)window._bcHistSortDir*=-1;else{window._bcHistSortKey=key;window._bcHistSortDir=key==='fechaPx_iso'?-1:1;}
-    bcHistRender();
-  };
-  window.bcHistToggle=function(){window._bcHistExpanded=!window._bcHistExpanded;bcHistRender();};
-
-  window.bcHistRender=function(){
-    const sk=window._bcHistSortKey,sd=window._bcHistSortDir;
-    const cd=window._bcHistColDefs;
-    const rows=[...window._bcHistRows];
-    const col=cd.find(c=>c.key===sk);
-    rows.sort((a,b)=>{
-      const va=col&&col.sortNum?(isNaN(a[sk])?-Infinity:a[sk]):a[sk]||'';
-      const vb=col&&col.sortNum?(isNaN(b[sk])?-Infinity:b[sk]):b[sk]||'';
-      if(typeof va==='string')return va.localeCompare(vb)*sd;return(va-vb)*sd;
+  if (!dates.length) {
+    histCard.innerHTML = '<div class="card-header"><span class="card-title">Histórico — '+ticker+'</span></div>'
+      + '<div class="empty-msg">Sin datos históricos en el Sheet.</div>';
+  } else {
+    var histRows = dates.map(function(d){
+      var r = Object.assign({}, byDate[d], {fecha:d});
+      if (row._cf && !isNaN(r.precio) && r.precio > 0) {
+        var liq = lcNextBusinessDay(d);
+        var calc = bcCalc(row._cf.fechaPago, row._cf.temOrigPct, row._cf.total100, r.precio, liq);
+        r.tna_h = calc ? calc.tnaI : NaN;
+      } else { r.tna_h = NaN; }
+      return r;
     });
-    const exp=window._bcHistExpanded;
-    const visible=exp?rows:rows.slice(0,DEFAULT_HIST);
-    const thStyle='padding:8px 12px;font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);background:var(--bg2);border-bottom:1px solid var(--border);white-space:nowrap;font-family:var(--mono);cursor:pointer;user-select:none;transition:color .15s;';
-    const tdBase='padding:7px 12px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;white-space:nowrap;';
-    const arrows={[-1]:'▼',[1]:'▲'};
-    const theadHtml=cd.map(c=>{
-      const isA=c.key===sk;
-      return`<th style="${thStyle}${c.align==='right'?'text-align:right;':'text-align:left;'}${isA?'color:var(--accent);':''}" onclick="bcHistSort('${c.key}')">${c.label}${isA?` ${arrows[sd]}`:''}</th>`;
-    }).join('');
-    const tbodyHtml=visible.map(r=>{
-      const isLatest=r.fechaPx_iso===window._bcHistDates[0];
-      const rowBg=isLatest?'background:rgba(30,39,243,0.04);':'';
-      return`<tr style="${rowBg}" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='${isLatest?'rgba(30,39,243,0.04)':''}'">${
-        cd.map(col=>{
-          const v=r[col.key];const fmtd=col.fmt(v,r);
-          let cs='';
-          if(col.hi)cs='color:var(--accent);font-weight:600;';
-          if(col.varColor&&!isNaN(v))cs=`color:${v>=0?'var(--green)':'var(--red)'};font-weight:600;`;
-          if(col.tnaColor&&!isNaN(v))cs=`color:${window._bcHistTnaHeat(v)};font-weight:700;`;
-          const badge=(col.key==='fechaPx_iso'&&isLatest)?` <span style="font-size:8px;background:rgba(30,39,243,0.1);color:var(--accent);padding:1px 5px;border-radius:8px;font-weight:700;margin-left:4px;">HOY</span>`:'';
-          return`<td style="${tdBase}${col.align==='right'?'text-align:right;':''}${cs}">${fmtd}${badge}</td>`;
+    var tnaVals  = histRows.map(function(r){return r.tna_h;}).filter(function(v){return !isNaN(v);});
+    var tnaMin   = tnaVals.length ? Math.min.apply(null,tnaVals) : 0;
+    var tnaMax   = tnaVals.length ? Math.max.apply(null,tnaVals) : 1;
+    var tnaRange = tnaMax - tnaMin || 1;
+    function heatCol(v) {
+      var t=(v-tnaMin)/tnaRange; var r,g,b;
+      if(t<0.5){var u=t*2;r=Math.round(224+(217-224)*u);g=Math.round(49+(119-49)*u);b=Math.round(49+(6-49)*u);}
+      else{var u=(t-0.5)*2;r=Math.round(217+(13-217)*u);g=Math.round(119+(158-119)*u);b=Math.round(6+(110-6)*u);}
+      return 'rgb('+r+','+g+','+b+')';
+    }
+    var thS2 = 'padding:8px 12px;font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);background:var(--bg2);border-bottom:1px solid var(--border);font-family:var(--mono);';
+    var tdS2 = 'padding:7px 12px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;white-space:nowrap;';
+    var show  = histRows.slice(0, 15);
+    histCard.innerHTML = '<div class="card-header"><span class="card-title">Histórico de Precios — '+ticker+'</span>'
+      + '<span style="font-size:10px;font-family:var(--mono);color:var(--text3);">'+dates.length+' registros · TNA recalculada 30/360</span></div>'
+      + '<div class="table-scroll"><table class="data-table" style="min-width:500px;">'
+      + '<thead><tr>'
+      + '<th style="'+thS2+'text-align:left;">Fecha</th>'
+      + '<th style="'+thS2+'text-align:right;">Último</th>'
+      + '<th style="'+thS2+'text-align:right;">Var%</th>'
+      + '<th style="'+thS2+'text-align:right;">TNA impl.*</th>'
+      + '<th style="'+thS2+'text-align:right;">Volumen</th>'
+      + '</tr></thead>'
+      + '<tbody>' + show.map(function(r,i){
+          var isLatest = i===0;
+          var bg = isLatest ? 'background:rgba(30,39,243,0.04);' : '';
+          var badge = isLatest ? ' <span style="font-size:8px;background:rgba(30,39,243,0.1);color:var(--accent);padding:1px 5px;border-radius:8px;font-weight:700;">HOY</span>' : '';
+          var tnaCol = !isNaN(r.tna_h) ? 'color:'+heatCol(r.tna_h)+';font-weight:700;' : '';
+          var varCol = !isNaN(r.variacion) ? 'color:'+(r.variacion>=0?'var(--green)':'var(--red)')+';font-weight:600;' : '';
+          var vol = isNaN(r.vol)||!r.vol ? '—' : r.vol>=1e9?(r.vol/1e9).toFixed(2)+'B':r.vol>=1e6?(r.vol/1e6).toFixed(2)+'M':r.vol.toFixed(0);
+          return '<tr style="'+bg+'" onmouseover="this.style.background=\'var(--accent-light)\'" onmouseout="this.style.background=\''+(isLatest?'rgba(30,39,243,0.04)':'')+'\'">'
+            + '<td style="'+tdS2+'">' + (r.fechaPx||r.fecha||'—') + badge + '</td>'
+            + '<td style="'+tdS2+'text-align:right;color:var(--accent);font-weight:600;">' + (isNaN(r.precio)?'—':fmtN(r.precio,4)) + '</td>'
+            + '<td style="'+tdS2+'text-align:right;'+varCol+'">' + (isNaN(r.variacion)?'—':(r.variacion>=0?'+':'')+fmtN(r.variacion,2)+'%') + '</td>'
+            + '<td style="'+tdS2+'text-align:right;'+tnaCol+'">' + (isNaN(r.tna_h)?'—':fmtPct(r.tna_h,2)) + '</td>'
+            + '<td style="'+tdS2+'text-align:right;">' + vol + '</td>'
+            + '</tr>';
         }).join('')
-      }</tr>`;
-    }).join('');
-    const card=document.getElementById('bc-hist-table-card');
-    if(!card)return;
-    card.innerHTML=`
-      <div class="card-header">
-        <span class="card-title">Histórico de Precios — ${window._bcHistTicker}</span>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-size:10px;font-family:var(--mono);color:var(--text3);">${rows.length} registros · TNA calculada con metodología 30/360</span>
-          ${rows.length>DEFAULT_HIST?`<button onclick="bcHistToggle()" style="padding:3px 10px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--accent);font-size:10px;font-weight:600;cursor:pointer;font-family:var(--mono);">${exp?'▲ Contraer':'▼ Ver todos ('+rows.length+')'}</button>`:''}
-        </div>
-      </div>
-      <div class="table-scroll">
-        <table class="data-table" style="min-width:600px;">
-          <thead><tr>${theadHtml}</tr></thead>
-          <tbody>${tbodyHtml}</tbody>
-        </table>
-      </div>
-      <div style="padding:6px 14px;font-size:9px;font-family:var(--mono);color:var(--text3);">* TNA impl. recalculada con cashflows actuales y T+1 hábil</div>`;
-  };
-
-  if(!histPxDates.length){
-    histCard.innerHTML=`<div class="card-header"><span class="card-title">Histórico — ${ticker}</span></div><div class="empty-msg">Sin datos históricos en el Sheet.</div>`;
+      + '</tbody></table></div>'
+      + '<div style="padding:6px 14px;font-size:9px;font-family:var(--mono);color:var(--text3);">* TNA recalculada con cashflows actuales · T+1 hábil s/feriados · mostrando últimas 15 fechas</div>';
   }
   body.appendChild(histCard);
-  if(histPxDates.length) bcHistRender();
-
-  // [5] Gráfico posición en curva (setTimeout para que el DOM esté listo)
-  window._bcPosCmpActiveTicker=ticker;
-  window._bcPosCmpRows=[];
-  window._bcPosCmpDate='';
-  window._bcPosCmpMode=null;
-
-  setTimeout(()=>{
-    const monoFont="'DM Mono',monospace";
-    function drawBcPosChart(){
-      const ctx=document.getElementById('bc-pos-chart');if(!ctx)return;
-      if(window._bcPosChartInst){window._bcPosChartInst.destroy();window._bcPosChartInst=null;}
-      const others=_bcRows.filter(r=>r.calc&&r.ticker!==ticker);
-      const otherPts=others.map(r=>({x:r.calc.md,y:r.calc.tnaImpl,label:r.ticker}));
-      const myPt={x:c.md,y:c.tnaImpl,label:ticker};
-      const allFit=[...otherPts,myPt].filter(p=>isFinite(p.x)&&isFinite(p.y));
-      const trendDs=lcTrendDataset(allFit,'#1E27F3');
-      const ds=[];
-      if(trendDs)ds.push(trendDs);
-      ds.push({label:'Resto',data:otherPts,backgroundColor:'rgba(30,39,243,0.18)',borderColor:'rgba(30,39,243,0.4)',pointRadius:4,pointHoverRadius:6,showLine:false});
-      ds.push({label:ticker,data:[myPt],backgroundColor:'#1E27F3',borderColor:'#1E27F3',pointRadius:9,pointHoverRadius:11,showLine:false});
-      if(window._bcPosCmpRows&&window._bcPosCmpRows.length){
-        const cv=window._bcPosCmpRows.filter(r=>r.calc&&r.calc.md>0&&!isNaN(r.calc.tnaImpl));
-        const cp=cv.map(r=>({x:r.calc.md,y:r.calc.tnaImpl,label:r.ticker}));
-        const tr2=lcTrendDataset(cp,'#f59e0b');
-        if(tr2){tr2.borderDash=[5,3];ds.push(tr2);}
-        ds.push({label:'_cmp',data:cp,backgroundColor:'#f59e0b',borderColor:'#f59e0b',pointRadius:3,pointHoverRadius:6,pointStyle:'triangle',showLine:false});
-      }
-      const xs=allFit.map(p=>p.x),ys=allFit.map(p=>p.y);
-      const xPad=(Math.max(...xs)-Math.min(...xs))*0.15||0.05;
-      const yPad=(Math.max(...ys)-Math.min(...ys))*0.2||1;
-      window._bcPosChartInst=new Chart(ctx,{
-        type:'scatter',data:{datasets:ds},
-        options:{
-          responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{display:false},tooltip:{
-            backgroundColor:'#fff',borderColor:'rgba(30,39,243,0.2)',borderWidth:1,
-            titleColor:'#3a3f5c',bodyColor:'#0a0c1a',padding:10,
-            titleFont:{family:monoFont,size:11},bodyFont:{family:monoFont,size:11},
-            filter:item=>item.dataset.label!=='_trend',
-            callbacks:{label:ctx2=>{ const p=ctx2.raw; return`${p.label}: TNA ${p.y.toFixed(2)}% | MD ${p.x.toFixed(4)}`; }}
-          }},
-          scales:{
-            x:{min:Math.min(...xs)-xPad,max:Math.max(...xs)+xPad,
-              grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:monoFont,size:10}},
-              title:{display:true,text:'Modified Duration',color:'#8a90b0',font:{size:10}}},
-            y:{min:Math.min(...ys)-yPad,max:Math.max(...ys)+yPad,
-              grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:monoFont,size:10},callback:v=>v.toFixed(1)+'%'},
-              title:{display:true,text:'TNA impl. (%)',color:'#8a90b0',font:{size:10}}}
-          }
-        },
-        plugins:[{id:'bc-pos-lbl',afterDatasetsDraw(chart){
-          const c2=chart.ctx;
-          chart.data.datasets.forEach((dset,di)=>{
-            if(dset.label==='_trend'||dset.label==='Resto'||dset.label==='_cmp')return;
-            const meta=chart.getDatasetMeta(di);
-            dset.data.forEach((pt,pi)=>{
-              const el=meta.data[pi];if(!el)return;
-              c2.save();c2.font=`700 10px ${monoFont}`;
-              const w=c2.measureText(pt.label).width;
-              c2.fillStyle='rgba(247,248,252,0.92)';c2.fillRect(el.x+10-2,el.y-14-2,w+8,14);
-              c2.fillStyle='#1E27F3';c2.fillText(pt.label,el.x+12,el.y-4);c2.restore();
-            });
-          });
-        }}]
-      });
-    }
-
-    window.bcPosCmp=function(mode,tkr){
-      if(tkr!==window._bcPosCmpActiveTicker)return;
-      window._bcPosCmpMode=(window._bcPosCmpMode===mode)?null:mode;
-      document.querySelectorAll('#bc-pos-cmp-ctrls .lc-pos-cmp-btn').forEach(b=>b.classList.toggle('active',b.dataset.mode===window._bcPosCmpMode));
-      if(!window._bcPosCmpMode){window._bcPosCmpRows=[];window._bcPosCmpDate='';drawBcPosChart();return;}
-      const days={D1:1,W1:7,M1:30}[mode]||7;
-      const ref=new Date(document.getElementById('bc-detail-fecha-liq').value||lcDefaultFecha());
-      let count=days;while(count>0){ref.setDate(ref.getDate()-1);if(ref.getDay()!==0&&ref.getDay()!==6)count--;}
-      const td=ref.toISOString().slice(0,10);window._bcPosCmpDate=td;
-      const cmpMap=lcGetPreciosForDate(td);window._bcPosCmpRows=bcCruzar(window._lcBundle,cmpMap,lcNextBusinessDay(td));
-      drawBcPosChart();
-    };
-    window.bcPosCmpDate=function(val,tkr){
-      if(tkr!==window._bcPosCmpActiveTicker)return;
-      if(!val){window._bcPosCmpRows=[];window._bcPosCmpDate='';window._bcPosCmpMode=null;drawBcPosChart();return;}
-      window._bcPosCmpDate=val;window._bcPosCmpMode='CUSTOM';
-      document.querySelectorAll('#bc-pos-cmp-ctrls .lc-pos-cmp-btn').forEach(b=>b.classList.remove('active'));
-      const cmpMap=lcGetPreciosForDate(val);window._bcPosCmpRows=bcCruzar(window._lcBundle,cmpMap,lcNextBusinessDay(val));
-      drawBcPosChart();
-    };
-
-    drawBcPosChart();
-  },80);
 } // fin bcBuildDetailBody
 
 // ── Auto-load: carga inmediata al entrar, sin necesidad de botón ──
