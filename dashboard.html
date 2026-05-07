@@ -1904,7 +1904,6 @@ function lcBuildDetailBody(row, ticker, fechaLiq){
     {key:'md',     label:'MD',         fmt:v=>v.toFixed(4),       fromCalc:true},
     {key:'dur',    label:'Duration',   fmt:v=>v.toFixed(4),       fromCalc:true},
     {key:'conv',   label:'Convexidad', fmt:v=>v.toFixed(4),       fromCalc:true},
-    {key:'diasReal',label:'Días',      fmt:v=>v.toFixed(0),       fromCalc:true},
     {key:'vol',    label:'Volumen',    fmt:v=>{if(isNaN(v)||!v)return'—';if(v>=1e9)return(v/1e9).toFixed(2)+'B';if(v>=1e6)return(v/1e6).toFixed(2)+'M';if(v>=1e3)return(v/1e3).toFixed(1)+'K';return v.toFixed(0);}, fromCalc:false},
   ];
 
@@ -2068,10 +2067,9 @@ function lcBuildDetailBody(row, ticker, fechaLiq){
     histTableCard.innerHTML=`
       <div class="card-header"><span class="card-title">Histórico de Precios — ${ticker}</span></div>
       <div class="empty-msg">Sin datos históricos en el Sheet para este ticker.</div>`;
-  } else {
-    lcHistTblRender();
   }
   body.appendChild(histTableCard);
+  if(histPxDates.length) lcHistTblRender();
 
   // ── CHARTS ──
   setTimeout(()=>{
