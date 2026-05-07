@@ -2422,16 +2422,22 @@ function lcBuildDetailBody(row, ticker, fechaLiq){
 } // fin lcBuildDetailBody
 
 // ══════════════════════════════════════════════════════════════════
-// BONCAP CALCULATOR ENGINE  v1
+// BONCAP CALCULATOR ENGINE  v2
 // Metodología según prospecto Secretaría de Finanzas:
 //   Base 30/360 · TEM capitalizable mensualmente · bullet al vencimiento
-//   VT    = 100 × (1 + TEM)^(dias_emitido / 30)        [base 30/360]
-//   Flujo = 100 × (1 + TEM)^(dias_totales / 30)         [base 30/360]
-//   IC    = VT - 100
-//   Px L  = Dirty - IC
-//   TEM_impl = (Flujo / Dirty)^(1/meses_restantes) - 1   [desde liq. a vto.]
-//   TEA_impl = (1 + TEM_impl)^12 - 1
-//   TNA_impl = TEM_impl × 12  (lineal)
+//
+//   El Worker devuelve para BONCAP el mismo formato CSV que LECAP:
+//     col[1] = fecha_pago (= fecha vencimiento, único flujo bullet)
+//     col[4] = TEM original (%)
+//     col[8] = flujo final c/100 VN  = 100 × (1+TEM)^(meses_totales)
+//
+//   La fecha de emisión la obtenemos del metadata del bundle (_emision map)
+//   o la inferimos desde el flujo: fechaEmi = hoy - meses implícitos
+//   Si no la tenemos, usamos el VT directamente desde el flujo y la TEM:
+//     VT_liq = flujoVto / (1+TEM)^(mesesRestantes)
+//     IC     = VT_liq - 100
+//     PxL    = Dirty - IC
+//     TEM_impl = (flujoVto/Dirty)^(1/mesesRestantes) - 1  ← YTM base 30/360
 // ══════════════════════════════════════════════════════════════════
 
 let _bcRows   = [];
@@ -2440,107 +2446,91 @@ let _bcSortDir= 1;
 let _bcLoaded = false;
 let _bcLoading= false;  // guard anti-loop
 
-// ── Parser Worker CSV para BONCAP ──
-// CSV tiene 2 filas de header. Para BONCAP necesitamos:
-//   col[0]: ticker
-//   col[1]: fecha_vencimiento (ISO)
-//   col[2]: fecha_emision (ISO)
-//   col[4]: TEM original (%) — misma posición que LECAPs
-//   col[8]: flujo_vto c/100VN
-// El worker puede tener columnas distintas; tomamos lo que necesitamos
-function bcParseWorkerCsv(text){
-  if(!text||!text.trim()) return null;
-  const lines=text.trim().split('\n').filter(l=>l.trim());
-  if(lines.length<3) return null;
-  // headers: line 0 y 1
-  const h1=lines[0].split(',').map(c=>c.trim().toLowerCase());
-  const h2=lines[1].split(',').map(c=>c.trim().toLowerCase());
-  // detectar columnas por nombre en header1 o header2
-  function findCol(patterns){
-    for(const h of [h1,h2]){
-      for(let i=0;i<h.length;i++){
-        if(patterns.some(p=>h[i].includes(p))) return i;
-      }
-    }
-    return -1;
-  }
-  const iVto  = findCol(['vencimiento','vto','fecha_pago','fecha pago']);
-  const iEmi  = findCol(['emision','emisión','emisi']);
-  const iTem  = findCol(['tasa','tem','rate','interes','interés']);
-  const iFlujo= findCol(['total','flujo','pago','flow']);
-
-  const dataLines=lines.slice(2);
-  const result=[];
-  for(const line of dataLines){
-    const cols=line.split(',').map(c=>c.trim());
-    if(cols.length<5) continue;
-    // fallback a posiciones fijas del worker (igual que LECAP)
-    const fechaVto  = (iVto>=0?cols[iVto]:cols[1]).replace('T00:00:00.000Z','').trim();
-    const fechaEmi  = (iEmi>=0?cols[iEmi]:cols[2]).replace('T00:00:00.000Z','').trim();
-    const temPct    = toNum(iEmi>=0&&iTem>=0?cols[iTem]:cols[4]);
-    const flujo100  = toNum(iFlujo>=0?cols[iFlujo]:cols[8]);
-    if(!fechaVto||!fechaEmi||isNaN(flujo100)||flujo100<=0) continue;
-    result.push({ fechaVto, fechaEmi, temPct, flujo100 });
-  }
-  return result.length?result:null;
+// ── Parser BONCAP: mismo formato que LECAP, reutilizar parseWorkerCsv ──
+// Para BONCAP bullet: hay un solo flujo (el vencimiento)
+// col[1]=fechaPago(=vto), col[4]=TEM%, col[8]=flujoFinal
+// La fecha de emisión viene en bundle._emision[ticker] si el Worker la provee,
+// o la calculamos de forma inversa desde el flujoFinal y la TEM.
+function bcGetCashflow(bundle, ticker){
+  const csvTxt = bundle[ticker];
+  if(!csvTxt) return null;
+  // Reusar exactamente el mismo parser de LECAP
+  const cfs = parseWorkerCsv(csvTxt);
+  if(!cfs||!cfs.length) return null;
+  // Para BONCAP bullet tomamos el último flujo (único pago al vencimiento)
+  const cf = cfs[cfs.length-1];
+  // Obtener fecha de emisión desde metadata del bundle
+  const emiMap = bundle._emision || bundle._emisiones || {};
+  const fechaEmi = emiMap[ticker] || emiMap[ticker.toUpperCase()] || null;
+  return { fechaVto: cf.fechaPago, fechaEmi, temPct: cf.temOrigPct, flujo100: cf.total100 };
 }
 
 // ── Motor de cálculo BONCAP ──
-// Prospecto: base 30/360 estricta — cada mes = 30 días, año = 360 días
+// Prospecto: base 30/360 estricta
+// Si tenemos fechaEmi → VT exacto; si no → VT por descuento desde flujo
 function bcCalc(cf, precioDirty, fechaLiqStr){
   const liq = new Date(fechaLiqStr+'T12:00:00');
   const vto = new Date(cf.fechaVto +'T12:00:00');
-  const emi = new Date(cf.fechaEmi +'T12:00:00');
-  if(isNaN(liq)||isNaN(vto)||isNaN(emi)) return null;
+  if(isNaN(liq)||isNaN(vto)) return null;
 
-  const diasVtoLiq = Math.round((vto-liq)/86400000);  // días reales liq→vto
-  const diasEmiLiq = Math.round((liq-emi)/86400000);  // días reales emi→liq
-  const diasTotal  = Math.round((vto-emi)/86400000);  // días reales emi→vto
-
-  if(diasVtoLiq<=0||diasEmiLiq<0||diasTotal<=0) return null;
+  const diasVtoLiq = Math.round((vto-liq)/86400000);
+  if(diasVtoLiq<=0) return null;
   if(isNaN(precioDirty)||precioDirty<=0) return null;
 
-  const tem     = cf.temPct/100;                       // TEM prospecto (decimal)
-  const flujoVto= cf.flujo100;                         // pago al vencimiento c/100VN
+  const tem      = cf.temPct/100;          // TEM prospecto decimal
+  const flujoVto = cf.flujo100;            // pago al vencimiento c/100VN
+  if(isNaN(tem)||tem<=0||isNaN(flujoVto)||flujoVto<=0) return null;
 
-  // — Base 30/360 —
-  const mesesEmiLiq = diasEmiLiq/30;   // meses desde emisión hasta liq
-  const mesesLiqVto = diasVtoLiq/30;   // meses restantes desde liq hasta vto
-  const mesesTotal  = diasTotal/30;    // meses totales vida del bono
+  const mesesLiqVto = diasVtoLiq/30;       // meses restantes base 30/360
 
-  // VT a fecha liq (base 30/360)
-  const vt = 100*Math.pow(1+tem, mesesEmiLiq);
+  // VT a fecha liq:
+  //   Con emisión: VT = 100 × (1+TEM)^(mesesEmiLiq)
+  //   Sin emisión: VT = flujoVto / (1+TEM)^(mesesLiqVto)  ← equivalente
+  let vt, mesesEmiLiq=NaN;
+  if(cf.fechaEmi){
+    const emi = new Date(cf.fechaEmi+'T12:00:00');
+    if(!isNaN(emi)){
+      const diasEmiLiq = Math.round((liq-emi)/86400000);
+      if(diasEmiLiq>=0){
+        mesesEmiLiq = diasEmiLiq/30;
+        vt = 100*Math.pow(1+tem, mesesEmiLiq);
+      }
+    }
+  }
+  // Fallback: descontar el flujo con la TEM original
+  if(!vt || isNaN(vt)){
+    vt = flujoVto/Math.pow(1+tem, mesesLiqVto);
+    mesesEmiLiq = NaN; // no lo tenemos exacto
+  }
 
-  // Interés corrido = VT - 100
-  const ic = vt - 100;
-
-  // Precio limpio
+  const ic = vt - 100;                     // interés corrido
   const precioLimpio = precioDirty - ic;
   if(precioLimpio<=0) return null;
 
-  // Paridad = Px Limpio / VT × 100
   const paridad = (precioLimpio/vt)*100;
 
-  // TEM implícita al precio DIRTY (YTM desde liq al vto, base 30/360)
-  // Flujo / Dirty = (1+TEM_impl)^mesesRestantes
+  // TEM implícita (YTM desde liq, base 30/360)
   const temImpl = Math.pow(flujoVto/precioDirty, 1/mesesLiqVto) - 1;
+  if(isNaN(temImpl)||!isFinite(temImpl)) return null;
   const teaImpl = Math.pow(1+temImpl, 12) - 1;
-  const tnaImpl = temImpl*12;  // convención lineal
+  const tnaImpl = temImpl*12;
 
-  // Duration Macaulay (bono bullet, un solo flujo al vto)
-  const dur = mesesLiqVto/12;                           // años base 30/360
-  const md  = dur/(1+temImpl);                          // modified duration
-  const conv= (dur*dur)/Math.pow(1+temImpl,2);          // convexidad
+  // Duration (Macaulay, bono bullet, base 30/360)
+  const dur  = mesesLiqVto/12;
+  const md   = dur/(1+temImpl);
+  const conv = (dur*dur)/Math.pow(1+temImpl,2);
 
   return {
     flujoVto, vt, ic, precioLimpio, paridad,
-    tem: tem*100,           // TEM prospecto en %
-    temImpl: temImpl*100,   // TEM implícita en %
-    teaImpl: teaImpl*100,   // TEA implícita en %
-    tnaImpl: tnaImpl*100,   // TNA implícita en %
-    diasVtoLiq, diasEmiLiq, mesesLiqVto, mesesEmiLiq,
+    tem: tem*100,
+    temImpl: temImpl*100,
+    teaImpl: teaImpl*100,
+    tnaImpl: tnaImpl*100,
+    diasVtoLiq, mesesLiqVto, mesesEmiLiq,
     dur, md, conv,
-    fechaVto: cf.fechaVto, fechaEmi: cf.fechaEmi
+    fechaVto: cf.fechaVto,
+    fechaEmi: cf.fechaEmi||null,
+    sinEmision: !cf.fechaEmi   // flag para mostrar aviso en UI
   };
 }
 
@@ -2548,30 +2538,24 @@ function bcCalc(cf, precioDirty, fechaLiqStr){
 function bcCruzar(bundle, preciosMap, fechaLiq){
   const allTickers = bundle._index||Object.keys(bundle).filter(k=>!k.startsWith('_'));
   const tipos = bundle._tipos||{};
+
+  // Filtrar solo BONCAPs — si no hay metadata de tipos, mostrar error en lugar de
+  // mezclar con LECAPs (devolver array vacío para que el error sea visible)
   const tickers = Object.keys(tipos).length
     ? allTickers.filter(t=>(tipos[t]||'').toLowerCase()==='boncap')
     : [];
 
-  if(!tickers.length){
-    // fallback: si no hay tipo, no mostrar nada (evitar mezclar con LECAPs)
-    return [];
-  }
-
   return tickers.map(ticker=>{
-    const csvTxt = bundle[ticker];
-    const cfs    = csvTxt?bcParseWorkerCsv(csvTxt):null;
-    const cf     = cfs&&cfs.length?cfs[cfs.length-1]:null;
+    const cf = bcGetCashflow(bundle, ticker);
 
-    const pxEntry = preciosMap[ticker.toUpperCase()]||null;
-    const pxData  = pxEntry&&pxEntry.latest?pxEntry.latest:pxEntry;
-    const precio  = pxData?pxData.precio    :NaN;
-    const varPct  = pxData?pxData.variacion :NaN;
-    const fechaPx = pxData?pxData.fechaPx   :'';
-    const vol     = pxData?pxData.vol       :NaN;
+    const pxEntry = preciosMap[ticker.toUpperCase()]||preciosMap[ticker]||null;
+    const pxData  = pxEntry&&pxEntry.latest ? pxEntry.latest : pxEntry;
+    const precio  = pxData ? pxData.precio   : NaN;
+    const varPct  = pxData ? pxData.variacion: NaN;
+    const fechaPx = pxData ? pxData.fechaPx  : '';
+    const vol     = pxData ? pxData.vol      : NaN;
 
-    const calc = (cf&&!isNaN(precio)&&precio>0)
-      ? bcCalc(cf, precio, fechaLiq)
-      : null;
+    const calc = (cf&&!isNaN(precio)&&precio>0) ? bcCalc(cf, precio, fechaLiq) : null;
 
     return { ticker, precio, variacion:varPct, vol, fechaPx, calc, _cf:cf };
   });
@@ -2717,9 +2701,13 @@ function bcRenderCurve(){
 
   if(_bcCurveChart){_bcCurveChart.destroy();_bcCurveChart=null;}
   const canvas=document.getElementById('bc-curve-chart');
-  if(!canvas||!allPts.length){if(wrap)wrap.innerHTML='<div class="empty-msg" style="height:260px;display:flex;align-items:center;justify-content:center;">Sin suficientes datos para la curva.</div>';return;}
+  if(!canvas||!allPts.length){
+    wrap.innerHTML='<div class="empty-msg" style="height:260px;display:flex;align-items:center;justify-content:center;">Sin suficientes datos para la curva.</div>';
+    return;
+  }
 
   const activePts=allPts.filter(p=>!_bcExcluded.has(p.label));
+  const ptsForRange=activePts.length?activePts:allPts; // fallback para que no reviente con vacío
   const trendDs=lcTrendDataset(activePts,'#1E27F3');
   const colors=allPts.map(p=>_bcExcluded.has(p.label)?'rgba(30,39,243,0.15)':'#1E27F3');
   const radii=allPts.map(p=>_bcExcluded.has(p.label)?3:5);
@@ -2734,9 +2722,10 @@ function bcRenderCurve(){
     ds.push({label:'_cmp',data:cp,backgroundColor:'#f59e0b',borderColor:'#f59e0b',pointRadius:4,pointHoverRadius:7,pointStyle:'triangle',showLine:false,order:2});
   }
 
-  const xs=activePts.map(p=>p.x),ys=activePts.map(p=>p.y);
-  const xPad=(Math.max(...xs)-Math.min(...xs))*0.1||0.05;
-  const yPad=(Math.max(...ys)-Math.min(...ys))*0.15||1;
+  const xs=ptsForRange.map(p=>p.x), ys=ptsForRange.map(p=>p.y);
+  const xSpan=Math.max(...xs)-Math.min(...xs)||0.1;
+  const ySpan=Math.max(...ys)-Math.min(...ys)||1;
+  const xPad=xSpan*0.1, yPad=ySpan*0.15;
 
   const monoFont="'DM Mono',monospace";
   _bcCurveChart=new Chart(canvas,{
@@ -2749,7 +2738,14 @@ function bcRenderCurve(){
         if(!dset||dset.label==='_trend'||dset.label==='_cmp')return;
         const pt=dset.data[el.index];if(!pt||!pt.label)return;
         if(_bcExcluded.has(pt.label))_bcExcluded.delete(pt.label);else _bcExcluded.add(pt.label);
-        bcRenderCurve();
+        // update colors/radii in place instead of destroying chart
+        const ptDs=_bcCurveChart.data.datasets.find(d=>d.label==='BONCAPs');
+        if(ptDs){
+          ptDs.backgroundColor=allPts.map(p=>_bcExcluded.has(p.label)?'rgba(30,39,243,0.15)':'#1E27F3');
+          ptDs.borderColor=ptDs.backgroundColor;
+          ptDs.pointRadius=allPts.map(p=>_bcExcluded.has(p.label)?3:5);
+        }
+        _bcCurveChart.update('active');
       },
       plugins:{
         legend:{display:false},
@@ -2889,8 +2885,13 @@ function bcCalcFromBundle(){
       if(!_bcRows.length){
         if(banner) banner.style.display='none';
         if(errB){
+          const tipos=window._lcBundle._tipos||{};
+          const tiposUniq=[...new Set(Object.values(tipos).map(v=>v.toLowerCase()))].join(', ')||'(ninguno)';
           errB.style.display='block';
-          errB.innerHTML='<b>⚠</b> No se encontraron BONCAPs en el Worker. Verificá la columna <code>tipo</code> del bundle (_tipos).';
+          errB.innerHTML=`<b>⚠</b> No se encontraron BONCAPs en el Worker.<br>
+            <span style="font-size:10px;">Tipos disponibles en <code>_tipos</code>: <b>${tiposUniq}</b><br>
+            El Worker debe incluir <code>"boncap"</code> como tipo para cada ticker BONCAP.<br>
+            Si los datos son correctos, usá la pestaña ⚙ Diagnóstico para verificar el bundle.</span>`;
         }
         return;
       }
