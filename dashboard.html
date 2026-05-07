@@ -823,8 +823,8 @@ window.lcShowTab = function(tab, el){
   document.getElementById('lc-pane-diag').style.display   = tab==='diag'   ? 'block' : 'none';
   document.querySelectorAll('#app-test .tab').forEach(t=>t.classList.remove('active'));
   if(el) el.classList.add('active');
-  // Si se entra a BONCAP y el bundle ya está cargado pero no se calculó aún, calcular
-  if(tab==='boncap' && window._lcBundle && !window._bcLoaded){
+  // Solo calcular si: es boncap + bundle listo + precios listos + no cargado + no cargando
+  if(tab==='boncap' && window._lcBundle && Object.keys(_lcPrecios).length && !window._bcLoaded && !window._bcLoading){
     bcCalcFromBundle();
   }
 };
@@ -1541,17 +1541,18 @@ window.lcLoad=async function(){
     // 5. Calcular LECAPs
     _lcRows=lcCruzar(_lcBundle,_lcPrecios,fi.value);
 
-    // 5b. Si la pestaña BONCAP ya está activa, calcular; si no, marcar para carga diferida
+    // 5b. Reset boncap state para esta carga fresca
     _bcLoaded=false;
+    _bcLoading=false;
     const bcPane=document.getElementById('lc-pane-boncap');
-    if(bcPane&&bcPane.style.display!=='none'){
+    // Solo auto-calcular si el pane ya está visible (usuario ya entró al tab)
+    if(bcPane && bcPane.style.display!=='none'){
       bcCalcFromBundle();
     } else {
-      // Resetear banner del pane BONCAP para que muestre "Hacé click en BONCAPs para cargar"
       const bcBanner=document.getElementById('bc-load-banner');
       const bcMsg=document.getElementById('bc-load-msg');
-      if(bcBanner){bcBanner.style.display='flex';}
-      if(bcMsg){bcMsg.textContent='Datos listos — hacé click en la pestaña BONCAPs';}
+      if(bcBanner) bcBanner.style.display='flex';
+      if(bcMsg) bcMsg.textContent='Datos listos — hacé click en la pestaña BONCAPs';
     }
 
     // 6. Mostrar LECAPs
@@ -2437,6 +2438,7 @@ let _bcRows   = [];
 let _bcSortKey= 'dias';
 let _bcSortDir= 1;
 let _bcLoaded = false;
+let _bcLoading= false;  // guard anti-loop
 
 // ── Parser Worker CSV para BONCAP ──
 // CSV tiene 2 filas de header. Para BONCAP necesitamos:
@@ -2660,7 +2662,7 @@ function bcRender(){
   if(el) el.textContent=`${total} BONCAPs · ${conCalc} con precio · metodología 30/360 prospecto`;
 
   bcColorTNA();
-  bcRenderCurve();
+  // NO llamar bcRenderCurve() acá — la curva se construye por separado con bcBuildCurveSection()
 }
 
 // ── TNA color heatmap ──
@@ -2697,6 +2699,9 @@ window.bcRecalcAll=function(){
   if(!window._lcBundle||!Object.keys(_lcPrecios).length) return;
   _bcRows=bcCruzar(window._lcBundle,_lcPrecios,fechaLiq);
   bcRender();
+  // Destruir y reconstruir curva para que refleje nueva fecha liq
+  if(_bcCurveChart){_bcCurveChart.destroy();_bcCurveChart=null;}
+  setTimeout(bcRenderCurve,30);
 };
 
 // ── Curva TNA vs MD ──
@@ -2825,7 +2830,12 @@ window.bcSetCmpDate=function(val){
 // ── Construir curva card en el pane ──
 function bcBuildCurveSection(){
   const infoRow=document.getElementById('bc-info-row');if(!infoRow)return;
-  const old=document.getElementById('bc-curve-card-wrap');if(old)old.remove();
+  const old=document.getElementById('bc-curve-card-wrap');
+  if(old){
+    // Destruir chart anterior antes de quitar el canvas del DOM
+    if(_bcCurveChart){_bcCurveChart.destroy();_bcCurveChart=null;}
+    old.remove();
+  }
   const wrap=document.createElement('div');
   wrap.id='bc-curve-card-wrap';wrap.style.marginBottom='16px';
   wrap.innerHTML=`
@@ -2848,38 +2858,57 @@ function bcBuildCurveSection(){
     </div>`;
   const tableWrap=document.getElementById('bc-table-wrap');
   tableWrap.insertBefore(wrap,infoRow);
-  setTimeout(bcRenderCurve,50);
+  // Dar tiempo al browser para pintar el canvas antes de que Chart.js lo use
+  setTimeout(bcRenderCurve, 60);
 }
 
 // ── Calcular desde bundle ya cargado ──
 function bcCalcFromBundle(){
+  // Guard: evitar ejecuciones concurrentes
+  if(window._bcLoading) return;
+  window._bcLoading=true;
+
   const banner=document.getElementById('bc-load-banner');
   const wrap  =document.getElementById('bc-table-wrap');
   const errB  =document.getElementById('bc-error-banner');
-  banner.style.display='flex';wrap.style.display='none';errB.style.display='none';
+  if(banner) banner.style.display='flex';
+  if(wrap)   wrap.style.display='none';
+  if(errB)   errB.style.display='none';
   bcSetMsg('Calculando BONCAPs...');
 
-  try{
-    const fi=document.getElementById('bc-fecha-liq');
-    if(!fi.value) fi.value=lcDefaultFecha();
-    _bcRows=bcCruzar(window._lcBundle,_lcPrecios,fi.value);
-    _bcLoaded=true;
+  // Usar setTimeout para no bloquear el render del spinner
+  setTimeout(function(){
+    try{
+      const fi=document.getElementById('bc-fecha-liq');
+      if(fi && !fi.value) fi.value=lcDefaultFecha();
+      const fechaLiq=(fi&&fi.value)||lcDefaultFecha();
+      _bcRows=bcCruzar(window._lcBundle,_lcPrecios,fechaLiq);
+      _bcLoaded=true;
+      window._bcLoading=false;
 
-    if(!_bcRows.length){
-      banner.style.display='none';
-      errB.style.display='block';
-      errB.innerHTML='<b>⚠</b> No se encontraron BONCAPs en el Worker. Verificá la columna <code>tipo</code> del bundle.';
-      return;
+      if(!_bcRows.length){
+        if(banner) banner.style.display='none';
+        if(errB){
+          errB.style.display='block';
+          errB.innerHTML='<b>⚠</b> No se encontraron BONCAPs en el Worker. Verificá la columna <code>tipo</code> del bundle (_tipos).';
+        }
+        return;
+      }
+
+      if(banner) banner.style.display='none';
+      if(wrap)   wrap.style.display='block';
+      // Primero renderizar tabla (síncrono), luego curva con delay para que el canvas exista
+      bcRender();
+      setTimeout(bcBuildCurveSection, 30);
+    }catch(e){
+      window._bcLoading=false;
+      if(banner) banner.style.display='none';
+      if(errB){
+        errB.style.display='block';
+        errB.innerHTML=`<b>✗ Error:</b> ${e.message}`;
+      }
     }
-
-    banner.style.display='none';wrap.style.display='block';
-    bcBuildCurveSection();
-    bcRender();
-  }catch(e){
-    banner.style.display='none';
-    errB.style.display='block';
-    errB.innerHTML=`<b>✗ Error:</b> ${e.message}`;
-  }
+  }, 20);
 }
 
 function bcSetMsg(m){const el=document.getElementById('bc-load-msg');if(el)el.textContent=m;}
