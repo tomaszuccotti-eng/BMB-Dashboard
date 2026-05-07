@@ -1649,58 +1649,95 @@ function lcBuildDetailBody(row, ticker, fechaLiq){
     return;
   }
 
-  // ── [2] FILA SUPERIOR: Curva de rendimientos (posicionamiento) + Hist TNA ──
+  // ── [2] FILA SUPERIOR: Curva de rendimientos (posicionamiento) + Histórico ──
   const rowTop=document.createElement('div');
   rowTop.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;';
 
-  // — Card: Posición en la curva —
+  // — Card: Posición en la curva (con compare, idéntico al gráfico general) —
   const curveCard=document.createElement('div');
   curveCard.className='card';
   curveCard.style.marginBottom='0';
+  // Init compare state for this detail chart (namespace _lcPosCmp*)
+  if(!window._lcPosCmpMode) window._lcPosCmpMode=null;
+  if(!window._lcPosCmpRows) window._lcPosCmpRows=[];
+  if(!window._lcPosCmpDate) window._lcPosCmpDate='';
   curveCard.innerHTML=`
     <div class="card-header">
       <span class="card-title">Posición en la Curva — TNA vs MD</span>
-      <span style="font-size:9px;font-family:var(--mono);color:var(--text3);">● este bono &nbsp; ○ resto</span>
+      <div class="compare-controls">
+        <button class="lc-pos-cmp-btn cmp-btn ${window._lcPosCmpMode==='D1'?'active':''}" data-mode="D1" onclick="lcPosCmp('D1','${ticker}')">-1D</button>
+        <button class="lc-pos-cmp-btn cmp-btn ${window._lcPosCmpMode==='W1'?'active':''}" data-mode="W1" onclick="lcPosCmp('W1','${ticker}')">-1S</button>
+        <button class="lc-pos-cmp-btn cmp-btn ${window._lcPosCmpMode==='M1'?'active':''}" data-mode="M1" onclick="lcPosCmp('M1','${ticker}')">-1M</button>
+        <button class="lc-pos-cmp-btn cmp-btn ${window._lcPosCmpMode==='M3'?'active':''}" data-mode="M3" onclick="lcPosCmp('M3','${ticker}')">-3M</button>
+        <input type="date" class="date-input" value="${window._lcPosCmpDate||''}" onchange="lcPosCmpDate(this.value,'${ticker}')" title="Fecha libre">
+      </div>
     </div>
-    <div class="chart-wrap"><div class="chart-canvas-wrap" style="height:220px"><canvas id="lc-pos-chart"></canvas></div></div>`;
+    <div class="chart-wrap" style="position:relative;">
+      <div class="outlier-indicator" id="lc-pos-outlier-pips" style="top:8px;"></div>
+      <div class="chart-canvas-wrap" style="height:220px"><canvas id="lc-pos-chart"></canvas></div>
+    </div>
+    <div class="chart-legend" id="lc-pos-legend"></div>`;
 
-  // — Card: Histórico TNA / Precio —
+  // — Card: Histórico con selector de variable (lista desplegable) —
   const histCard=document.createElement('div');
   histCard.className='card';
   histCard.style.marginBottom='0';
 
-  // Construir serie histórica desde _lcPrecios[ticker].byDate
+  // Series disponibles para el histórico (mismas que comparativa)
+  const HIST_METRICS=[
+    {key:'precio',   label:'Precio',     fromSheet:true,  color:'#0d9e6e', fill:'rgba(13,158,110,0.06)',  fmt:v=>'$'+v.toFixed(4),         yFmt:v=>'$'+v.toFixed(1)},
+    {key:'tna',      label:'TNA',        fromCalc:true,   color:'#1E27F3', fill:'rgba(30,39,243,0.06)',   fmt:v=>v.toFixed(2)+'%',         yFmt:v=>v.toFixed(1)+'%'},
+    {key:'tea',      label:'TEA',        fromCalc:true,   color:'#7c3aed', fill:'rgba(124,58,237,0.06)',  fmt:v=>v.toFixed(2)+'%',         yFmt:v=>v.toFixed(1)+'%'},
+    {key:'tem',      label:'TEM',        fromCalc:true,   color:'#db2777', fill:'rgba(219,39,119,0.06)',  fmt:v=>v.toFixed(2)+'%',         yFmt:v=>v.toFixed(1)+'%'},
+    {key:'paridad',  label:'Paridad',    fromCalc:true,   color:'#d97706', fill:'rgba(217,119,6,0.06)',   fmt:v=>v.toFixed(2)+'%',         yFmt:v=>v.toFixed(1)+'%'},
+    {key:'md',       label:'MD',         fromCalc:true,   color:'#0891b2', fill:'rgba(8,145,178,0.06)',   fmt:v=>v.toFixed(4),             yFmt:v=>v.toFixed(3)},
+    {key:'dur',      label:'Duration',   fromCalc:true,   color:'#059669', fill:'rgba(5,150,105,0.06)',   fmt:v=>v.toFixed(4),             yFmt:v=>v.toFixed(3)},
+    {key:'conv',     label:'Convexidad', fromCalc:true,   color:'#dc2626', fill:'rgba(220,38,38,0.06)',   fmt:v=>v.toFixed(4),             yFmt:v=>v.toFixed(3)},
+    {key:'apertura', label:'Apertura',   fromSheet:true,  color:'#64748b', fill:'rgba(100,116,139,0.06)', fmt:v=>'$'+v.toFixed(4),         yFmt:v=>'$'+v.toFixed(1)},
+    {key:'cierre',   label:'Cierre',     fromSheet:true,  color:'#475569', fill:'rgba(71,85,105,0.06)',   fmt:v=>'$'+v.toFixed(4),         yFmt:v=>'$'+v.toFixed(1)},
+    {key:'vol',      label:'Volumen',    fromSheet:true,  color:'#94a3b8', fill:'rgba(148,163,184,0.06)', fmt:v=>v>=1e6?(v/1e6).toFixed(2)+'M':v.toFixed(0), yFmt:v=>v>=1e6?(v/1e6).toFixed(1)+'M':v.toFixed(0)},
+  ];
+  window._lcHistMetrics=HIST_METRICS;
+  window._lcHistMetricKey='precio'; // default: precio
+
+  // Construir serie histórica
   const pxEntry=_lcPrecios[ticker.toUpperCase()]||_lcPrecios[ticker]||null;
   const byDate=pxEntry?pxEntry.byDate:{};
   const histDates=Object.keys(byDate).sort();
   const hasPxHist=histDates.length>1;
-
-  // Calcular TNA histórica por fecha usando cashflow del bono
   const cf0=_lcBundle?parseWorkerCsv(_lcBundle[ticker]):null;
   const cfLast=cf0&&cf0.length?cf0[cf0.length-1]:null;
-  const histTNA=[];
-  const histPx=[];
-  const histLabels=[];
-  if(cfLast&&hasPxHist){
-    histDates.forEach(d=>{
-      const px=byDate[d].precio;
-      if(isNaN(px)||px<=0) return;
+
+  // Build full history map: date → {precio, apertura, cierre, vol, tna, tea, tem, paridad, md, dur, conv}
+  const histDataMap={};
+  histDates.forEach(d=>{
+    const s=byDate[d];
+    const entry={precio:s.precio, apertura:s.apertura, cierre:s.cierre, vol:s.vol, label:d.substring(5)};
+    if(cfLast&&!isNaN(s.precio)&&s.precio>0){
       const liq=lcNextBusinessDay(d);
-      const r=calcLecap(cfLast,px,liq);
-      if(r){histTNA.push(parseFloat(r.tna.toFixed(4)));histPx.push(px);histLabels.push(d.substring(5));}
-    });
-  }
+      const calc=calcLecap(cfLast,s.precio,liq);
+      if(calc){ entry.tna=calc.tna; entry.tea=calc.tea; entry.tem=calc.tem;
+        entry.paridad=calc.paridad; entry.md=calc.md; entry.dur=calc.dur; entry.conv=calc.conv; }
+    }
+    histDataMap[d]=entry;
+  });
+  window._lcHistDataMap=histDataMap;
+  window._lcHistDates=histDates;
+  window._lcHistTicker=ticker;
 
   histCard.innerHTML=`
     <div class="card-header">
-      <span class="card-title">Histórico · TNA implícita</span>
-      <div style="display:flex;gap:6px;">
-        <button onclick="lcDetHist('tna','${ticker}')" id="lc-dh-tna" style="padding:3px 9px;font-size:9px;font-family:var(--mono);font-weight:600;cursor:pointer;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:#fff;transition:all .15s;">TNA</button>
-        <button onclick="lcDetHist('px','${ticker}')" id="lc-dh-px" style="padding:3px 9px;font-size:9px;font-family:var(--mono);font-weight:600;cursor:pointer;border-radius:4px;border:1px solid var(--border2);background:transparent;color:var(--text2);transition:all .15s;">Precio</button>
+      <span class="card-title" id="lc-hist-card-title">Histórico · Precio</span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">Variable:</label>
+        <select id="lc-hist-metric-sel" onchange="lcDetHistMetric(this.value,'${ticker}')"
+          style="background:var(--bg2);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:10px;font-family:var(--mono);padding:3px 8px;outline:none;cursor:pointer;">
+          ${HIST_METRICS.map(m=>`<option value="${m.key}" ${m.key==='precio'?'selected':''}>${m.label}</option>`).join('')}
+        </select>
       </div>
     </div>
     <div class="chart-wrap"><div class="chart-canvas-wrap" style="height:220px"><canvas id="lc-hist-chart"></canvas></div></div>
-    ${!hasPxHist?'<div style="padding:0 16px 12px;font-size:10px;font-family:var(--mono);color:var(--text3);">Solo hay un snapshot de precio disponible. El histórico requiere múltiples fechas en el Sheet.</div>':''}`;
+    ${!hasPxHist?'<div style="padding:0 16px 12px;font-size:10px;font-family:var(--mono);color:var(--text3);">Solo hay un snapshot disponible. El histórico requiere múltiples fechas en el Sheet.</div>':''}`;
 
   rowTop.appendChild(curveCard);
   rowTop.appendChild(histCard);
@@ -1892,18 +1929,19 @@ function lcBuildDetailBody(row, ticker, fechaLiq){
 
   const histTableCard=document.createElement('div');
   histTableCard.className='card';
+  histTableCard.id='lc-hist-table-card';
   histTableCard.style.marginBottom='16px';
 
   const histColDefs=[
-    {key:'fechaPx',  label:'Fecha',     fmt:(v,r)=>v||'—',               align:'left'},
-    {key:'precio',   label:'Último',    fmt:(v,r)=>isNaN(v)?'—':fmtN(v,4), align:'right', hi:true},
-    {key:'apertura', label:'Apertura',  fmt:(v,r)=>isNaN(v)?'—':fmtN(v,4), align:'right'},
-    {key:'cierre',   label:'Cierre',    fmt:(v,r)=>isNaN(v)?'—':fmtN(v,4), align:'right'},
-    {key:'minVal',   label:'Mínimo',    fmt:(v,r)=>isNaN(v)?'—':fmtN(v,4), align:'right'},
-    {key:'maxVal',   label:'Máximo',    fmt:(v,r)=>isNaN(v)?'—':fmtN(v,4), align:'right'},
-    {key:'variacion',label:'Var%',      fmt:(v,r)=>isNaN(v)?'—':(v>=0?'+':'')+fmtN(v,2)+'%', align:'right', varColor:true},
-    {key:'vol',      label:'Volumen',   fmt:(v,r)=>{if(isNaN(v)||!v)return'—';if(v>=1e9)return(v/1e9).toFixed(2)+'B';if(v>=1e6)return(v/1e6).toFixed(2)+'M';if(v>=1e3)return(v/1e3).toFixed(1)+'K';return v.toFixed(0);}, align:'right'},
-    {key:'tna_hist', label:'TNA impl.', fmt:(v,r)=>isNaN(v)?'—':fmtPct(v,2), align:'right', tnaColor:true},
+    {key:'fechaPx_iso', label:'Fecha',     fmt:(v,r)=>r.fechaPx||v||'—',      align:'left',  sortNum:false},
+    {key:'precio',      label:'Último',    fmt:(v,r)=>isNaN(v)?'—':fmtN(v,4), align:'right', sortNum:true,  hi:true},
+    {key:'apertura',    label:'Apertura',  fmt:(v,r)=>isNaN(v)?'—':fmtN(v,4), align:'right', sortNum:true},
+    {key:'cierre',      label:'Cierre',    fmt:(v,r)=>isNaN(v)?'—':fmtN(v,4), align:'right', sortNum:true},
+    {key:'minVal',      label:'Mínimo',    fmt:(v,r)=>isNaN(v)?'—':fmtN(v,4), align:'right', sortNum:true},
+    {key:'maxVal',      label:'Máximo',    fmt:(v,r)=>isNaN(v)?'—':fmtN(v,4), align:'right', sortNum:true},
+    {key:'variacion',   label:'Var%',      fmt:(v,r)=>isNaN(v)?'—':(v>=0?'+':'')+fmtN(v,2)+'%', align:'right', sortNum:true, varColor:true},
+    {key:'vol',         label:'Volumen',   fmt:(v,r)=>{if(isNaN(v)||!v)return'—';if(v>=1e9)return(v/1e9).toFixed(2)+'B';if(v>=1e6)return(v/1e6).toFixed(2)+'M';if(v>=1e3)return(v/1e3).toFixed(1)+'K';return v.toFixed(0);}, align:'right', sortNum:true},
+    {key:'tna_hist',    label:'TNA impl.*',fmt:(v,r)=>isNaN(v)?'—':fmtPct(v,2), align:'right', sortNum:true, tnaColor:true},
   ];
 
   // Calculamos TNA histórica para cada fila
@@ -1936,44 +1974,102 @@ function lcBuildDetailBody(row, ticker, fechaLiq){
     return `rgb(${r},${g},${b})`;
   }
 
-  const thStyle='padding:8px 12px;font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);background:var(--bg2);border-bottom:1px solid var(--border);white-space:nowrap;font-family:var(--mono);';
-  const tdBase='padding:7px 12px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;white-space:nowrap;';
+  // Estado de sort y expansión (en window para acceso desde onclick)
+  window._lcHistTblSortKey='fechaPx_iso';
+  window._lcHistTblSortDir=-1; // -1 = desc (más reciente primero por default)
+  window._lcHistTblExpanded=false;
+  window._lcHistRows=histRows;
+  window._lcHistColDefs=histColDefs;
+  window._lcHistTnaHeatColor=tnaHeatColor;
+
+  const DEFAULT_ROWS=10;
+
+  window.lcHistTblSort=function(key){
+    if(window._lcHistTblSortKey===key){ window._lcHistTblSortDir*=-1; }
+    else { window._lcHistTblSortKey=key; window._lcHistTblSortDir=key==='fechaPx_iso'?-1:1; }
+    lcHistTblRender();
+  };
+  window.lcHistTblToggle=function(){
+    window._lcHistTblExpanded=!window._lcHistTblExpanded;
+    lcHistTblRender();
+  };
+
+  window.lcHistTblRender=function(){
+    const sortKey=window._lcHistTblSortKey;
+    const sortDir=window._lcHistTblSortDir;
+    const expanded=window._lcHistTblExpanded;
+    const colDefs=window._lcHistColDefs;
+    const rows=[...window._lcHistRows];
+    const col=colDefs.find(c=>c.key===sortKey);
+
+    rows.sort((a,b)=>{
+      const va=col&&col.sortNum?(isNaN(a[sortKey])?-Infinity:a[sortKey]):a[sortKey]||'';
+      const vb=col&&col.sortNum?(isNaN(b[sortKey])?-Infinity:b[sortKey]):b[sortKey]||'';
+      if(typeof va==='string') return va.localeCompare(vb)*sortDir;
+      return (va-vb)*sortDir;
+    });
+
+    const visible=expanded?rows:rows.slice(0,DEFAULT_ROWS);
+    const remaining=rows.length-DEFAULT_ROWS;
+
+    const thStyle='padding:8px 12px;font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);background:var(--bg2);border-bottom:1px solid var(--border);white-space:nowrap;font-family:var(--mono);cursor:pointer;user-select:none;transition:color .15s;';
+    const tdBase='padding:7px 12px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;white-space:nowrap;';
+
+    const arrows={[-1]:'▼',[1]:'▲'};
+
+    const theadHtml=colDefs.map(c=>{
+      const isActive=c.key===sortKey;
+      const arrow=isActive?` ${arrows[sortDir]}`:'';
+      return`<th style="${thStyle}${c.align==='right'?'text-align:right;':'text-align:left;'}${isActive?'color:var(--accent);':''}" onclick="lcHistTblSort('${c.key}')">${c.label}${arrow}</th>`;
+    }).join('');
+
+    const tbodyHtml=visible.map((r,i)=>{
+      // "latest" = row with highest fechaPx_iso
+      const isLatest=r.fechaPx_iso===histPxDates[0];
+      const rowBg=isLatest?'background:rgba(30,39,243,0.04);':'';
+      return`<tr style="${rowBg}" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='${isLatest?'rgba(30,39,243,0.04)':''}'">${
+        colDefs.map(col=>{
+          const v=r[col.key];
+          const fmtd=col.fmt(v,r);
+          let colorStyle='';
+          if(col.hi) colorStyle='color:var(--accent);font-weight:600;';
+          if(col.varColor&&!isNaN(v)) colorStyle=`color:${v>=0?'var(--green)':'var(--red)'};font-weight:600;`;
+          if(col.tnaColor&&!isNaN(v)) colorStyle=`color:${window._lcHistTnaHeatColor(v)};font-weight:700;`;
+          const badge=(col.key==='fechaPx_iso'&&isLatest)?` <span style="font-size:8px;background:rgba(30,39,243,0.1);color:var(--accent);padding:1px 5px;border-radius:8px;font-weight:700;margin-left:4px;">HOY</span>`:'';
+          return`<td style="${tdBase}${col.align==='right'?'text-align:right;':''}${colorStyle}">${fmtd}${badge}</td>`;
+        }).join('')
+      }</tr>`;
+    }).join('');
+
+    const card=document.getElementById('lc-hist-table-card');
+    if(!card) return;
+    card.innerHTML=`
+      <div class="card-header">
+        <span class="card-title">Histórico de Precios — ${ticker}</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:10px;font-family:var(--mono);color:var(--text3);">${rows.length} registros · fuente: Sheet</span>
+          ${rows.length>DEFAULT_ROWS?`<button onclick="lcHistTblToggle()"
+            style="padding:3px 10px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--accent);font-size:10px;font-weight:600;cursor:pointer;font-family:var(--mono);transition:all .15s;"
+            onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='transparent'">
+            ${expanded?'▲ Contraer':'▼ Ver todos ('+rows.length+')'}
+          </button>`:''}
+        </div>
+      </div>
+      <div class="table-scroll">
+        <table class="data-table" style="min-width:700px;">
+          <thead><tr>${theadHtml}</tr></thead>
+          <tbody>${tbodyHtml}</tbody>
+        </table>
+      </div>
+      <div style="padding:6px 14px;font-size:9px;font-family:var(--mono);color:var(--text3);">* TNA impl. calculada con T+1 hábil s/feriados · ${expanded?rows.length:Math.min(DEFAULT_ROWS,rows.length)} de ${rows.length} filas</div>`;
+  };
 
   if(!histPxDates.length){
     histTableCard.innerHTML=`
       <div class="card-header"><span class="card-title">Histórico de Precios — ${ticker}</span></div>
       <div class="empty-msg">Sin datos históricos en el Sheet para este ticker.</div>`;
   } else {
-    histTableCard.innerHTML=`
-      <div class="card-header">
-        <span class="card-title">Histórico de Precios — ${ticker}</span>
-        <span style="font-size:10px;font-family:var(--mono);color:var(--text3);">${histPxDates.length} registros · fuente: Google Sheet</span>
-      </div>
-      <div class="table-scroll">
-        <table class="data-table" style="min-width:700px;">
-          <thead><tr>
-            ${histColDefs.map(col=>`<th style="${thStyle}${col.align==='right'?'text-align:right;':'text-align:left;'}">${col.label}</th>`).join('')}
-          </tr></thead>
-          <tbody>
-            ${histRows.map((r,i)=>{
-              const isLatest=i===0;
-              const rowBg=isLatest?'background:rgba(30,39,243,0.04);':'';
-              return`<tr style="${rowBg}" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='${isLatest?'rgba(30,39,243,0.04)':''}'">
-                ${histColDefs.map(col=>{
-                  const v=r[col.key];
-                  const fmtd=col.fmt(v,r);
-                  let colorStyle='';
-                  if(col.hi) colorStyle=`color:var(--accent);font-weight:600;`;
-                  if(col.varColor&&!isNaN(v)) colorStyle=`color:${v>=0?'var(--green)':'var(--red)'};font-weight:600;`;
-                  if(col.tnaColor&&!isNaN(v)) colorStyle=`color:${tnaHeatColor(v)};font-weight:700;`;
-                  const latestBadge=(col.key==='fechaPx'&&isLatest)?` <span style="font-size:8px;background:rgba(30,39,243,0.1);color:var(--accent);padding:1px 5px;border-radius:8px;font-weight:700;margin-left:4px;">HOY</span>`:'';
-                  return`<td style="${tdBase}${col.align==='right'?'text-align:right;':''}${colorStyle}">${fmtd}${latestBadge}</td>`;
-                }).join('')}
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>`;
+    lcHistTblRender();
   }
   body.appendChild(histTableCard);
 
@@ -1993,41 +2089,57 @@ function lcBuildDetailBody(row, ticker, fechaLiq){
       }
     };
 
-    // [A] POSICIÓN EN CURVA
-    const posCtx=document.getElementById('lc-pos-chart');
-    if(posCtx){
+    // [A] POSICIÓN EN CURVA — con compare idéntico al gráfico general
+    window._lcPosCmpActiveTicker=ticker;
+    let posCmpExcluded=new Set();
+    let posChartInst=null;
+
+    function buildPosCmpDatasets(cmpRows){
       const others=_lcRows.filter(r=>r.calc&&r.ticker!==ticker);
       const otherPts=others.map(r=>({x:r.calc.md,y:r.calc.tna,label:r.ticker}));
       const myPt={x:c.md,y:c.tna,label:ticker};
-
-      // Trend line sobre todos
-      const allPtsForFit=[...otherPts,myPt].filter(p=>isFinite(p.x)&&isFinite(p.y));
-      const trendDs=lcTrendDataset(allPtsForFit,'#1E27F3');
-
-      const datasets=[];
-      if(trendDs) datasets.push(trendDs);
-      datasets.push({
-        label:'Resto',data:otherPts,
+      const allForFit=[...otherPts,myPt].filter(p=>isFinite(p.x)&&isFinite(p.y));
+      const trendDs=lcTrendDataset(allForFit,'#1E27F3');
+      const ds=[];
+      if(trendDs) ds.push(trendDs);
+      ds.push({label:'Resto',data:otherPts,
         backgroundColor:'rgba(30,39,243,0.18)',borderColor:'rgba(30,39,243,0.4)',
-        pointRadius:4,pointHoverRadius:6,showLine:false
-      });
-      datasets.push({
-        label:ticker,data:[myPt],
+        pointRadius:4,pointHoverRadius:6,showLine:false});
+      ds.push({label:ticker,data:[myPt],
         backgroundColor:'#1E27F3',borderColor:'#1E27F3',
-        pointRadius:9,pointHoverRadius:11,showLine:false,
-        pointStyle:'circle'
-      });
+        pointRadius:9,pointHoverRadius:11,showLine:false,pointStyle:'circle'});
+      // Compare overlay
+      if(cmpRows&&cmpRows.length){
+        const cv=cmpRows.filter(r=>r.calc&&r.calc.md>0&&!isNaN(r.calc.tna));
+        const cp=cv.map(r=>({x:r.calc.md,y:r.calc.tna,label:r.ticker}));
+        const tr2=lcTrendDataset(cp,'#f59e0b');
+        if(tr2){tr2.borderDash=[5,3];ds.push(tr2);}
+        ds.push({label:'_cmp',data:cp,
+          backgroundColor:'#f59e0b',borderColor:'#f59e0b',
+          pointRadius:3,pointHoverRadius:6,pointStyle:'triangle',showLine:false});
+      }
+      return ds;
+    }
 
-      new Chart(posCtx,{
+    function drawPosChart(){
+      const posCtx=document.getElementById('lc-pos-chart');
+      if(!posCtx) return;
+      if(posChartInst){posChartInst.destroy();posChartInst=null;}
+      const cmpRows=window._lcPosCmpRows||[];
+      const datasets=buildPosCmpDatasets(cmpRows);
+      posChartInst=new Chart(posCtx,{
         type:'scatter',data:{datasets},
         options:{
           ...chartDefaults,
           plugins:{
             legend:{display:false},
-            tooltip:{
-              ...chartDefaults.plugins.tooltip,
+            tooltip:{...chartDefaults.plugins.tooltip,
               filter:item=>item.dataset.label!=='_trend',
-              callbacks:{label:ctx=>`${ctx.raw.label||'—'}: TNA ${ctx.raw.y.toFixed(2)}% | MD ${ctx.raw.x.toFixed(4)}`}
+              callbacks:{label:ctx=>{
+                const p=ctx.raw;
+                const isCmp=ctx.dataset.label==='_cmp';
+                return`${isCmp?'[cmp] ':''}${p.label||'—'}: TNA ${p.y.toFixed(2)}% | MD ${p.x.toFixed(4)}`;
+              }}
             }
           },
           scales:{
@@ -2038,7 +2150,7 @@ function lcBuildDetailBody(row, ticker, fechaLiq){
         plugins:[{id:'lc-pos-label',afterDatasetsDraw(chart){
           const ctx2=chart.ctx;
           chart.data.datasets.forEach((ds,di)=>{
-            if(ds.label==='_trend'||ds.label==='Resto') return;
+            if(ds.label==='_trend'||ds.label==='Resto'||ds.label==='_cmp') return;
             const meta=chart.getDatasetMeta(di);
             ds.data.forEach((pt,pi)=>{
               const el=meta.data[pi];if(!el) return;
@@ -2054,72 +2166,120 @@ function lcBuildDetailBody(row, ticker, fechaLiq){
           });
         }}]
       });
+      // Legend
+      const hasCmp=cmpRows&&cmpRows.length;
+      const legendEl=document.getElementById('lc-pos-legend');
+      if(legendEl) legendEl.innerHTML=`
+        <div class="legend-item"><div class="legend-line" style="background:#1E27F3"></div>Tendencia hoy</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#1E27F3"></div>LECAPs hoy</div>
+        ${hasCmp?`<div class="legend-item"><div class="legend-line" style="background:#f59e0b;opacity:.8"></div>Tendencia — ${window._lcPosCmpDate||'comparar'}</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>LECAPs — ${window._lcPosCmpDate||'comparar'}</div>`:''}`;
     }
 
-    // [B] HISTÓRICO TNA / PRECIO
-    const histCtx=document.getElementById('lc-hist-chart');
-    window._lcDetHistMode='tna';
-    window._lcDetHistTNA=histTNA;
-    window._lcDetHistPx=histPx;
-    window._lcDetHistLabels=histLabels;
-    window._lcDetHistTicker=ticker;
+    // Compare controls para la curva del detalle
+    window.lcPosCmp=function(mode,tkr){
+      if(tkr!==window._lcPosCmpActiveTicker) return;
+      window._lcPosCmpMode=(window._lcPosCmpMode===mode)?null:mode;
+      document.querySelectorAll('.lc-pos-cmp-btn').forEach(b=>{
+        b.classList.toggle('active',b.dataset.mode===window._lcPosCmpMode);
+      });
+      if(!window._lcPosCmpMode){
+        window._lcPosCmpRows=[];window._lcPosCmpDate='';
+        drawPosChart(); return;
+      }
+      const days={D1:1,W1:7,M1:30,M3:90}[mode]||7;
+      const ref=new Date(document.getElementById('lc-detail-fecha-liq').value||lcDefaultFecha());
+      let count=days;
+      while(count>0){ref.setDate(ref.getDate()-1);if(ref.getDay()!==0&&ref.getDay()!==6)count--;}
+      const targetDate=ref.toISOString().slice(0,10);
+      const cmpMap=lcGetPreciosForDate(targetDate);
+      const cmpLiq=lcNextBusinessDay(targetDate);
+      window._lcPosCmpRows=lcCruzar(_lcBundle,cmpMap,cmpLiq);
+      window._lcPosCmpDate=targetDate;
+      drawPosChart();
+    };
+    window.lcPosCmpDate=function(val,tkr){
+      if(tkr!==window._lcPosCmpActiveTicker) return;
+      if(!val){window._lcPosCmpRows=[];window._lcPosCmpDate='';window._lcPosCmpMode=null;drawPosChart();return;}
+      window._lcPosCmpDate=val;window._lcPosCmpMode='CUSTOM';
+      document.querySelectorAll('.lc-pos-cmp-btn').forEach(b=>b.classList.remove('active'));
+      const cmpMap=lcGetPreciosForDate(val);
+      const cmpLiq=lcNextBusinessDay(val);
+      window._lcPosCmpRows=lcCruzar(_lcBundle,cmpMap,cmpLiq);
+      drawPosChart();
+    };
 
-    function drawHistChart(mode){
+    // Reset compare state when opening a new detail
+    if(window._lcPosCmpActiveTicker!==ticker){
+      window._lcPosCmpRows=[];window._lcPosCmpDate='';window._lcPosCmpMode=null;
+    }
+    drawPosChart();
+
+    // [B] HISTÓRICO — selector de métricas con <select>
+    const histCtx=document.getElementById('lc-hist-chart');
+    window._lcHistChartTicker=ticker;
+
+    function drawHistMetricChart(metricKey){
       if(!histCtx) return;
-      if(window._lcDetHistChart){ window._lcDetHistChart.destroy(); window._lcDetHistChart=null; }
-      if(!histLabels.length){
-        // fallback: mostrar solo el punto actual
-        const singleLbl=[fechaLiq.substring(5)];
-        const singleVal=mode==='tna'?[parseFloat(c.tna.toFixed(4))]:[row.precio];
-        window._lcDetHistChart=new Chart(histCtx,{
-          type:'line',
-          data:{labels:singleLbl,datasets:[{
-            data:singleVal,borderColor:'#1E27F3',backgroundColor:'rgba(30,39,243,0.06)',
-            borderWidth:2,pointRadius:6,fill:true,tension:0.3
-          }]},
-          options:{...chartDefaults,scales:{
-            x:{grid:{display:false},ticks:{color:'#8a90b0',font:{family:monoFont,size:10}}},
-            y:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:monoFont,size:10},
-              callback:v=>mode==='tna'?v.toFixed(1)+'%':'$'+v.toFixed(2)}}
-          },plugins:{...chartDefaults.plugins,tooltip:{...chartDefaults.plugins.tooltip,
-            callbacks:{label:ctx=>mode==='tna'?`TNA: ${ctx.raw.toFixed(2)}%`:`Precio: $${ctx.raw.toFixed(4)}`}
-          }}}
-        });
+      if(window._lcDetHistChart){window._lcDetHistChart.destroy();window._lcDetHistChart=null;}
+      const metDef=(window._lcHistMetrics||[]).find(m=>m.key===metricKey)||(window._lcHistMetrics||[])[0];
+      if(!metDef) return;
+
+      // Update card title
+      const titleEl=document.getElementById('lc-hist-card-title');
+      if(titleEl) titleEl.textContent=`Histórico · ${metDef.label}`;
+
+      const datesArr=window._lcHistDates||[];
+      const dataMap=window._lcHistDataMap||{};
+      const pts=datesArr.map(d=>{
+        const e=dataMap[d];
+        if(!e) return null;
+        const v=e[metricKey];
+        return (v===undefined||v===null||isNaN(v))?null:{label:e.label,val:v};
+      }).filter(Boolean);
+
+      if(!pts.length){
+        // sin datos para esa métrica
+        window._lcDetHistChart=new Chart(histCtx,{type:'line',
+          data:{labels:['—'],datasets:[{data:[null],borderColor:metDef.color,backgroundColor:metDef.fill,borderWidth:2,pointRadius:0}]},
+          options:{...chartDefaults,plugins:{...chartDefaults.plugins,
+            title:{display:true,text:`Sin datos históricos de ${metDef.label}`,color:'#8a90b0',font:{family:monoFont,size:11}}}}});
         return;
       }
-      const vals=mode==='tna'?histTNA:histPx;
-      const color=mode==='tna'?'#1E27F3':'#0d9e6e';
-      const fillColor=mode==='tna'?'rgba(30,39,243,0.06)':'rgba(13,158,110,0.06)';
+
       window._lcDetHistChart=new Chart(histCtx,{
         type:'line',
-        data:{labels:histLabels,datasets:[{
-          label:mode==='tna'?'TNA %':'Precio',
-          data:vals,borderColor:color,backgroundColor:fillColor,
-          borderWidth:2,pointRadius:histLabels.length>30?0:3,pointHoverRadius:5,
-          fill:true,tension:0.3
-        }]},
-        options:{...chartDefaults,scales:{
-          x:{grid:{display:false},ticks:{color:'#8a90b0',font:{family:monoFont,size:10},maxTicksLimit:8}},
-          y:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:monoFont,size:10},
-            callback:v=>mode==='tna'?v.toFixed(1)+'%':'$'+v.toFixed(1)}}
-        },plugins:{...chartDefaults.plugins,tooltip:{...chartDefaults.plugins.tooltip,
-          callbacks:{label:ctx=>mode==='tna'?`TNA: ${ctx.raw.toFixed(2)}%`:`Precio: $${ctx.raw.toFixed(4)}`}
-        }}}
+        data:{
+          labels:pts.map(p=>p.label),
+          datasets:[{
+            label:metDef.label,
+            data:pts.map(p=>p.val),
+            borderColor:metDef.color,backgroundColor:metDef.fill,
+            borderWidth:2,
+            pointRadius:pts.length>40?0:3,pointHoverRadius:5,
+            fill:true,tension:0.3,spanGaps:true
+          }]
+        },
+        options:{...chartDefaults,
+          scales:{
+            x:{grid:{display:false},ticks:{color:'#8a90b0',font:{family:monoFont,size:10},maxTicksLimit:8}},
+            y:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:monoFont,size:10},
+              callback:v=>metDef.yFmt(v)}}
+          },
+          plugins:{...chartDefaults.plugins,tooltip:{...chartDefaults.plugins.tooltip,
+            callbacks:{label:ctx=>`${metDef.label}: ${metDef.fmt(ctx.raw)}`}
+          }}
+        }
       });
     }
-    drawHistChart('tna');
 
-    window.lcDetHist=function(mode,tkr){
-      if(tkr!==window._lcDetHistTicker) return;
-      window._lcDetHistMode=mode;
-      drawHistChart(mode);
-      ['tna','px'].forEach(m=>{
-        const btn=document.getElementById('lc-dh-'+m);
-        if(!btn) return;
-        if(m===mode){btn.style.background='var(--accent)';btn.style.color='#fff';btn.style.borderColor='var(--accent)';}
-        else{btn.style.background='transparent';btn.style.color='var(--text2)';btn.style.borderColor='var(--border2)';}
-      });
+    window.lcDetHistMetric=function(metricKey,tkr){
+      if(tkr!==window._lcHistChartTicker) return;
+      window._lcHistMetricKey=metricKey;
+      drawHistMetricChart(metricKey);
     };
+
+    drawHistMetricChart('precio'); // default: precio
 
     // [C] BAR CHART COMPARATIVO — interactivo, variable seleccionable
     const CMP_METRICS_RT=CMP_METRICS; // ya definido arriba en el scope de lcBuildDetailBody
