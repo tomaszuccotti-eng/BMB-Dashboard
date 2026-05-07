@@ -1717,23 +1717,12 @@ function lcBuildDetailBody(row, ticker, fechaLiq){
 
 
 
-// ── Auto-load: carga inmediata al entrar, sin necesidad de botón ──
+// ── Auto-load al entrar al módulo ──
 const _orig=window.enterTest;
 window.enterTest=function(){
   if(_orig) _orig();
-  setTimeout(lcLoad, 100);
+  if(!_lcBundle) setTimeout(lcLoad, 100);
 };
-
-(function(){
-  const observer=new MutationObserver(()=>{
-    const el=document.getElementById('app-test');
-    if(el&&el.style.display!=='none'&&!_lcBundle){
-      lcLoad();
-      observer.disconnect();
-    }
-  });
-  observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['style']});
-})();
 
 })(); // fin LECAP Calculator v3
 </script>
