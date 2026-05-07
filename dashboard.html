@@ -979,7 +979,7 @@ function calcLecap(cf, precioDirty, fechaLiqStr){
 
 // ── Cruzar bundle + mapa de precios → calcular ──
 function lcCruzar(bundle, preciosMap, fechaLiq){
-  const tickers = bundle._index || Object.keys(bundle).filter(k=>k!=='_index');
+  const tickers = (bundle._index || Object.keys(bundle).filter(k => !k.startsWith('_'))).filter(t => (bundle._tipos||{})[t] === 'lecap');
   return tickers.map(ticker=>{
     const csvTxt = bundle[ticker];
     const cfs    = csvTxt ? parseWorkerCsv(csvTxt) : null;
