@@ -633,12 +633,13 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
         </div>
         <div style="height:20px;width:1px;background:var(--border);margin:0 4px;"></div>
         <div class="tab active" id="lc-tab-calc" onclick="lcShowTab('calc',this)" style="padding:0 14px;height:52px;display:flex;align-items:center;">LECAPs</div>
+        <div class="tab" id="lc-tab-bcap" onclick="lcShowTab('bcap',this)" style="padding:0 14px;height:52px;display:flex;align-items:center;">BONCAPs</div>
         <div class="tab" id="lc-tab-diag" onclick="lcShowTab('diag',this)" style="padding:0 14px;height:52px;display:flex;align-items:center;">⚙ Diagnóstico</div>
         <div class="header-date" id="lc-header-date" style="margin-left:8px;">—</div>
       </div>
       <div class="header-right">
         <div class="status-dot" id="lc-status-dot" style="background:var(--red);box-shadow:0 0 6px var(--red);"></div>
-        <button onclick="lcLoad()" id="lc-reload-btn"
+        <button onclick="(document.getElementById('lc-tab-bcap').classList.contains('active')?bcLoad():lcLoad())" id="lc-reload-btn"
           style="padding:5px 14px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--mono);transition:all .15s;"
           onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='transparent'">
           ↻ Actualizar
@@ -680,6 +681,44 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 
       <div style="margin-top:10px;font-size:9px;font-family:var(--mono);color:var(--text3);line-height:1.6;">
         * VT = Valor Técnico a fecha liq. · Px L = Precio Limpio · Par = Paridad · MD = Modified Duration · Conv = Convexidad · Base 30/360 según prospecto LECAP
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══ TAB: BONCAPs ══ -->
+  <div id="lc-pane-bcap" class="main" style="display:none;padding:0;">
+
+    <!-- Banner de estado carga -->
+    <div id="bc-load-banner" style="display:flex;align-items:center;justify-content:center;gap:12px;padding:60px 24px;flex-direction:column;">
+      <div class="spinner"></div>
+      <div style="font-size:12px;font-family:var(--mono);color:var(--text3);" id="bc-load-msg">Cargando datos...</div>
+    </div>
+
+    <!-- Error banner -->
+    <div id="bc-error-banner" style="display:none;margin:24px;background:rgba(224,49,49,0.08);border:1px solid rgba(224,49,49,0.25);border-radius:8px;padding:14px 18px;font-size:12px;font-family:var(--mono);color:var(--red);"></div>
+
+    <!-- Tabla principal -->
+    <div id="bc-table-wrap" style="display:none;overflow-x:auto;padding:16px 24px 32px;">
+
+      <!-- Info row: fecha + stats -->
+      <div id="bc-info-row" style="display:flex;align-items:center;gap:20px;margin-bottom:14px;flex-wrap:wrap;">
+        <span id="bc-stats-txt" style="font-size:11px;font-family:var(--mono);color:var(--text3);"></span>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+          <label style="font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">Fecha liq.</label>
+          <input type="date" id="bc-fecha-liq"
+            style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;font-family:var(--mono);padding:4px 8px;outline:none;cursor:pointer;"
+            onchange="bcRecalcAll()" />
+        </div>
+      </div>
+
+      <table id="bc-table" style="width:100%;border-collapse:collapse;font-size:11px;font-family:var(--mono);min-width:900px;">
+        <thead id="bc-thead"></thead>
+        <tbody id="bc-tbody"></tbody>
+      </table>
+
+      <div style="margin-top:10px;font-size:9px;font-family:var(--mono);color:var(--text3);line-height:1.6;">
+        * VT = Valor Técnico a fecha liq. · Px L = Precio Limpio · Par = Paridad · MD = Modified Duration · Conv = Convexidad · Base 30/360 según prospecto BONCAP
       </div>
     </div>
 
@@ -777,9 +816,12 @@ let _sortDir   =  1;
 // ── Tab switcher ──
 window.lcShowTab = function(tab, el){
   document.getElementById('lc-pane-calc').style.display = tab==='calc' ? '' : 'none';
+  document.getElementById('lc-pane-bcap').style.display = tab==='bcap' ? '' : 'none';
   document.getElementById('lc-pane-diag').style.display = tab==='diag' ? 'block' : 'none';
   document.querySelectorAll('#app-test .tab').forEach(t=>t.classList.remove('active'));
   if(el) el.classList.add('active');
+  // Auto-load BONCAPs the first time the tab is opened
+  if(tab==='bcap' && !window._bcBundle) bcLoad();
 };
 
 // ── Helpers numéricos ──
@@ -2381,6 +2423,284 @@ window.enterTest=function(){
 
 })(); // fin LECAP Calculator v3
 </script>
+
+<script>
+(function(){
+// ══════════════════════════════════════════════════════════════════
+// BONCAP ENGINE  v1
+// Filtra _tipos==='boncap', cruza con Sheet de precios, calcula TNA/TEA/TEM/VT/Paridad/MD/Conv
+// Reutiliza parseWorkerCsv, parseSheetCsv, calcLecap, toNum, fmtN, fmtPct definidos en LECAP engine
+// ══════════════════════════════════════════════════════════════════
+
+const BC_WORKER = 'https://cashflows.tzuccotti.workers.dev';
+const BC_SHEET  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQAQTxefw1DIhUYs5GvmOe31a-ADH-WfajzoSmGQH-Eb59K7RpFv2qLBzHpJmmoye60DG8R8oaEoAW3/pub?output=csv';
+
+window._bcBundle  = null;
+let _bcPrecios = {};
+let _bcRows    = [];
+let _bcSortKey = 'dias';
+let _bcSortDir =  1;
+
+// ── helpers (reusan las del scope LECAP via window o redefinen si no existen) ──
+function bcToNum(v){ return typeof toNum==='function' ? toNum(v) : parseFloat(String(v).replace(/[^0-9.\-]/g,'')); }
+function bcFmtN(v,dec=2){ return typeof fmtN==='function' ? fmtN(v,dec) : (isNaN(v)?'—':v.toLocaleString('es-AR',{minimumFractionDigits:dec,maximumFractionDigits:dec})); }
+function bcFmtPct(v,dec=2){ return isNaN(v)||v==null?'—':bcFmtN(v,dec)+'%'; }
+function bcFmtDate(s){
+  if(!s) return '—';
+  const clean=s.replace('T00:00:00.000Z','').replace('T12:00:00','').trim();
+  const [y,m,d]=clean.split('-');
+  if(!y||!m||!d) return s;
+  const mn=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  return `${parseInt(d)} ${mn[parseInt(m)-1]} ${y}`;
+}
+
+// ── Cruzar bundle + precios → calcular (usa calcLecap del LECAP engine) ──
+function bcCruzar(bundle, preciosMap, fechaLiq){
+  const allTickers = bundle._index || Object.keys(bundle).filter(k=>!k.startsWith('_'));
+  const tipos = bundle._tipos || {};
+  // Filtrar solo BONCAPs
+  const tickers = Object.keys(tipos).length
+    ? allTickers.filter(t => (tipos[t]||'').toLowerCase() === 'boncap')
+    : [];
+  return tickers.map(ticker => {
+    const csvTxt = bundle[ticker];
+    const cfs    = csvTxt && typeof parseWorkerCsv==='function' ? parseWorkerCsv(csvTxt) : null;
+    const cf     = cfs && cfs.length ? cfs[cfs.length-1] : null;
+
+    const pxEntry = preciosMap[ticker.toUpperCase()] || null;
+    const pxData  = pxEntry && pxEntry.latest ? pxEntry.latest : pxEntry;
+    const precio  = pxData ? pxData.precio    : NaN;
+    const varPct  = pxData ? pxData.variacion : NaN;
+    const fechaPx = pxData ? pxData.fechaPx   : '';
+    const vol     = pxData ? pxData.vol       : NaN;
+
+    const calc = (cf && !isNaN(precio) && precio > 0 && typeof calcLecap==='function')
+      ? calcLecap(cf, precio, fechaLiq)
+      : null;
+
+    return { ticker, precio, variacion:varPct, vol, fechaPx, calc };
+  });
+}
+
+// ── Fecha liq default ──
+function bcDefaultFecha(){
+  const d=new Date(); d.setDate(d.getDate()+1);
+  while(d.getDay()===0||d.getDay()===6) d.setDate(d.getDate()+1);
+  return d.toISOString().slice(0,10);
+}
+
+// ── Columnas de tabla ──
+const BC_COLS = [
+  { key:'ticker', label:'Ticker',   align:'left',
+    fmt: r=>`<span style="color:var(--accent);font-weight:700;font-size:12px;">${r.ticker}</span>`,
+    sort: r=>r.ticker },
+  { key:'precio', label:'Precio',   align:'right',
+    fmt: r=>(!isNaN(r.precio)&&r.precio>0)?bcFmtN(r.precio):'—',
+    sort: r=>r.precio||0 },
+  { key:'var',    label:'Var%',     align:'right',
+    fmt: r=>(isNaN(r.variacion)||r.variacion==null)?'—':`<span style="color:${r.variacion>=0?'var(--green)':'var(--red)'}">${r.variacion>=0?'+':''}${bcFmtN(r.variacion,2)}%</span>`,
+    sort: r=>r.variacion||0 },
+  { key:'tna',    label:'TNA',      align:'right',
+    fmt: r=>r.calc?bcFmtPct(r.calc.tna):'—',
+    sort: r=>r.calc?r.calc.tna:-Infinity },
+  { key:'tea',    label:'TEA',      align:'right',
+    fmt: r=>r.calc?bcFmtPct(r.calc.tea):'—',
+    sort: r=>r.calc?r.calc.tea:-Infinity },
+  { key:'tem',    label:'TEM',      align:'right',
+    fmt: r=>r.calc?bcFmtPct(r.calc.tem):'—',
+    sort: r=>r.calc?r.calc.tem:-Infinity },
+  { key:'par',    label:'Paridad',  align:'right',
+    fmt: r=>r.calc&&!isNaN(r.calc.paridad)?bcFmtPct(r.calc.paridad,2):'—',
+    sort: r=>r.calc?r.calc.paridad:-Infinity },
+  { key:'vt',     label:'VT',       align:'right',
+    fmt: r=>r.calc&&!isNaN(r.calc.vt)?bcFmtN(r.calc.vt,4):'—',
+    sort: r=>r.calc?r.calc.vt:-Infinity },
+  { key:'dur',    label:'Duration', align:'right',
+    fmt: r=>r.calc?bcFmtN(r.calc.dur,4):'—',
+    sort: r=>r.calc?r.calc.dur:-Infinity },
+  { key:'md',     label:'MD',       align:'right',
+    fmt: r=>r.calc?bcFmtN(r.calc.md,4):'—',
+    sort: r=>r.calc?r.calc.md:-Infinity },
+  { key:'conv',   label:'Conv.',    align:'right',
+    fmt: r=>r.calc?bcFmtN(r.calc.conv,4):'—',
+    sort: r=>r.calc?r.calc.conv:-Infinity },
+  { key:'venc',   label:'Venc.',    align:'right',
+    fmt: r=>r.calc?bcFmtDate(r.calc.fechaVto):'—',
+    sort: r=>r.calc?r.calc.fechaVto:'' },
+  { key:'dias',   label:'Días',     align:'right',
+    fmt: r=>r.calc?String(r.calc.diasReal):'—',
+    sort: r=>r.calc?r.calc.diasReal:Infinity },
+  { key:'vol',    label:'Volumen',  align:'right',
+    fmt: r=>{
+      if(isNaN(r.vol)||!r.vol) return '—';
+      return r.vol.toLocaleString('es-AR',{maximumFractionDigits:0});
+    },
+    sort: r=>r.vol||0 },
+  { key:'fechaPx',label:'Fecha Px', align:'right',
+    fmt: r=>r.fechaPx?bcFmtDate(r.fechaPx.substring?r.fechaPx.substring(0,10):r.fechaPx):'—',
+    sort: r=>r.fechaPx||'' },
+];
+
+window.bcSort=function(key){
+  if(_bcSortKey===key) _bcSortDir*=-1; else{_bcSortKey=key;_bcSortDir=1;}
+  bcRender();
+};
+
+// ── Color TNA ──
+function bcColorTNA(){
+  const tbody=document.getElementById('bc-tbody');
+  if(!tbody) return;
+  const tnaColIdx=BC_COLS.findIndex(c=>c.key==='tna');
+  if(tnaColIdx<0) return;
+  const rows=[...tbody.querySelectorAll('tr')];
+  const vals=rows.map(tr=>{
+    const td=tr.querySelectorAll('td')[tnaColIdx];
+    if(!td) return null;
+    const txt=td.textContent.replace('%','').replace(',','.').trim();
+    const v=parseFloat(txt);
+    return isNaN(v)?null:v;
+  });
+  const valid=vals.filter(v=>v!==null);
+  if(valid.length<2) return;
+  const minV=Math.min(...valid), maxV=Math.max(...valid);
+  const range=maxV-minV||1;
+  rows.forEach((tr,i)=>{
+    const v=vals[i];
+    const td=tr.querySelectorAll('td')[tnaColIdx];
+    if(!td||v===null) return;
+    const t=(v-minV)/range;
+    let r,g,b;
+    if(t<0.5){ const u=t*2; r=Math.round(224+(217-224)*u); g=Math.round(49+(119-49)*u); b=Math.round(49+(6-49)*u); }
+    else { const u=(t-0.5)*2; r=Math.round(217+(13-217)*u); g=Math.round(119+(158-119)*u); b=Math.round(6+(110-6)*u); }
+    td.style.color=`rgb(${r},${g},${b})`;
+    td.style.fontWeight='700';
+  });
+}
+
+// ── Render tabla ──
+function bcRender(){
+  const thead=document.getElementById('bc-thead');
+  const tbody=document.getElementById('bc-tbody');
+  if(!thead||!tbody) return;
+
+  const sorted=[..._bcRows].sort((a,b)=>{
+    const col=BC_COLS.find(c=>c.key===_bcSortKey);
+    if(!col) return 0;
+    const va=col.sort(a), vb=col.sort(b);
+    if(typeof va==='string') return va.localeCompare(vb)*_bcSortDir;
+    return ((isNaN(va)?-Infinity:va)-(isNaN(vb)?-Infinity:vb))*_bcSortDir;
+  });
+
+  const thS='padding:9px 12px;font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text3);background:var(--bg2);border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;transition:color .15s;';
+  thead.innerHTML=`<tr>${BC_COLS.map(c=>{
+    const active=_bcSortKey===c.key;
+    const arrow=active?(_bcSortDir===1?' ▲':' ▼'):'';
+    const ta=c.key==='ticker'?'text-align:left;':'text-align:right;';
+    const hl=active?'color:var(--accent);':'';
+    return`<th style="${thS}${ta}${hl}" onclick="bcSort('${c.key}')">${c.label}${arrow}</th>`;
+  }).join('')}</tr>`;
+
+  const tdS='padding:8px 12px;border-bottom:1px solid var(--border);white-space:nowrap;font-variant-numeric:tabular-nums;font-size:11px;';
+  tbody.innerHTML=sorted.map(r=>{
+    const dim=!r.calc?'opacity:.4;':'';
+    return`<tr style="${dim}" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''">
+      ${BC_COLS.map(c=>`<td style="${tdS}${c.align==='right'?'text-align:right;':''}">${c.fmt(r)}</td>`).join('')}
+    </tr>`;
+  }).join('');
+
+  const total=_bcRows.length;
+  const conCalc=_bcRows.filter(r=>r.calc).length;
+  const sinPx=_bcRows.filter(r=>isNaN(r.precio)||!r.precio).length;
+  const sinCsv=_bcRows.filter(r=>!r.calc&&!isNaN(r.precio)&&r.precio>0).length;
+  const el=document.getElementById('bc-stats-txt');
+  if(el) el.innerHTML=`
+    <span>${total} BONCAPs en worker</span>
+    <span style="color:var(--green);margin-left:12px;">✓ ${conCalc} con precio y cálculo</span>
+    ${sinPx>0?`<span style="color:var(--yellow);margin-left:12px;">⚠ ${sinPx} sin cotización en sheet</span>`:''}
+    ${sinCsv>0?`<span style="color:var(--red);margin-left:12px;">✗ ${sinCsv} sin cashflow CSV</span>`:''}
+  `;
+  bcColorTNA();
+}
+
+window.bcRecalcAll=function(){
+  const fechaLiq=document.getElementById('bc-fecha-liq').value||bcDefaultFecha();
+  if(!window._bcBundle||!Object.keys(_bcPrecios).length) return;
+  _bcRows=bcCruzar(window._bcBundle,_bcPrecios,fechaLiq);
+  bcRender();
+};
+
+function bcSetMsg(m){ const el=document.getElementById('bc-load-msg'); if(el) el.textContent=m; }
+
+// ── Carga principal ──
+window.bcLoad=async function(){
+  const banner=document.getElementById('bc-load-banner');
+  const wrap  =document.getElementById('bc-table-wrap');
+  const errB  =document.getElementById('bc-error-banner');
+  banner.style.display='flex'; wrap.style.display='none'; errB.style.display='none';
+  bcSetMsg('Conectando con Worker de cashflows...');
+
+  try{
+    // 1. Worker (reutiliza bundle del LECAP si ya está cargado, sino fetch)
+    let bundle = window._lcBundle || null;
+    if(!bundle){
+      const t0=performance.now();
+      const rW=await fetch(BC_WORKER);
+      if(!rW.ok) throw new Error(`Worker HTTP ${rW.status}`);
+      bundle=await rW.json();
+    }
+    window._bcBundle=bundle;
+
+    const allIdx   = bundle._index||Object.keys(bundle).filter(k=>!k.startsWith('_'));
+    const tipos    = bundle._tipos||{};
+    const boncapIdx= Object.keys(tipos).length
+      ? allIdx.filter(t=>(tipos[t]||'').toLowerCase()==='boncap')
+      : [];
+    bcSetMsg(`Worker OK · ${boncapIdx.length} BONCAPs encontrados · Cargando precios...`);
+
+    // 2. Sheet de precios (reutiliza _lcPrecios si ya está cargado)
+    let preciosMap = (window._lcPrecios && Object.keys(window._lcPrecios).length)
+      ? window._lcPrecios
+      : null;
+    if(!preciosMap){
+      const t1=performance.now();
+      const rS=await fetch(BC_SHEET);
+      if(!rS.ok) throw new Error(`Sheet HTTP ${rS.status}`);
+      const txt=await rS.text();
+      preciosMap = typeof parseSheetCsv==='function' ? parseSheetCsv(txt) : {};
+    }
+    _bcPrecios=preciosMap;
+    const nPx=Object.keys(_bcPrecios).length;
+    bcSetMsg(`Precios OK · ${nPx} especies · Cruzando BONCAPs...`);
+
+    // 3. Fecha liq
+    const fi=document.getElementById('bc-fecha-liq');
+    if(fi&&!fi.value) fi.value=bcDefaultFecha();
+    const fechaLiq=(fi&&fi.value)||bcDefaultFecha();
+
+    // 4. Header date
+    const fechas=Object.values(_bcPrecios)
+      .map(p=>p.latest?p.latest.fechaPx:(p.fechaPx||''))
+      .filter(Boolean).sort();
+    if(fechas.length){
+      const hd=document.getElementById('lc-header-date');
+      if(hd) hd.textContent=bcFmtDate(fechas[fechas.length-1].substring(0,10));
+    }
+
+    // 5. Calcular BONCAPs
+    _bcRows=bcCruzar(bundle,_bcPrecios,fechaLiq);
+
+    // 6. Mostrar
+    banner.style.display='none'; wrap.style.display='block';
+    bcRender();
+
+  }catch(e){
+    banner.style.display='none';
+    errB.style.display='block';
+    errB.innerHTML=`<b>✗ Error:</b> ${e.message} &nbsp;<span style="font-size:10px;color:var(--text3);">· Revisá la pestaña Diagnóstico</span>`;
+  }
+};
+
+})(); // fin BONCAP Engine v1
 
 <!-- ══════════════════ APP ══════════════════ -->
 <div id="app">
