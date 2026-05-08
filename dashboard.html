@@ -690,6 +690,12 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
           onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='transparent'">
           ↻ Actualizar
         </button>
+        <button id="a3-live-btn" onclick="lcToggleA3Live()"
+          style="padding:5px 14px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--mono);transition:all .15s;display:flex;align-items:center;gap:6px;"
+          onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='transparent'">
+          <span id="a3-live-dot" style="width:6px;height:6px;border-radius:50%;background:var(--red);box-shadow:0 0 5px var(--red);display:inline-block;"></span>
+          <span id="a3-live-label">A3 Off</span>
+        </button>
         <button onclick="toggleTheme()" class="theme-btn-small">
           <span class="theme-btn-icon">☀</span> <span class="theme-btn-lbl">Modo Claro</span>
         </button>
@@ -856,6 +862,21 @@ let _lcPrecios = {};   // map: TICKER → { precio, variacion, vol, fechaPx }
 let _lcRows    = [];
 let _sortKey   = 'dias';
 let _sortDir   =  1;
+
+// ── A3 Live state ──
+let _a3LiveActive   = false;
+let _a3LiveInterval = null;
+let _a3Precios      = {};   // map: TICKER → { precio, variacion, vol, fechaPx } — precios intradiarios de hoy
+
+// Helper: devuelve el precio efectivo para un ticker.
+// Si A3 está ON y hay precio intradiario, lo usa. Si no, cae al latest del Sheet.
+function lcGetPrecio(ticker) {
+  const key = ticker.toUpperCase();
+  if (_a3LiveActive && _a3Precios[key]) return _a3Precios[key];
+  const entry = _lcPrecios[key] || _lcPrecios[ticker] || null;
+  if (!entry) return null;
+  return entry.latest ? entry.latest : entry;
+}
 
 // ── Tab switcher ──
 window.lcShowTab = function(tab, el){
@@ -1072,9 +1093,8 @@ function lcCruzar(bundle, preciosMap, fechaLiq){
     const cfs    = csvTxt ? parseWorkerCsv(csvTxt) : null;
     const cf     = cfs && cfs.length ? cfs[cfs.length-1] : null;   // único flujo LECAP
 
-    const pxEntry = preciosMap[ticker.toUpperCase()] || null;
-    // preciosMap can be the full map (with .latest) or a flat date map
-    const pxData  = pxEntry && pxEntry.latest ? pxEntry.latest : pxEntry;
+    // Usar lcGetPrecio para respetar el bypass A3 vs Sheet
+    const pxData  = lcGetPrecio(ticker);
     const precio  = pxData ? pxData.precio    : NaN;
     const varPct  = pxData ? pxData.variacion : NaN;
     const fechaPx = pxData ? pxData.fechaPx   : '';
@@ -2460,6 +2480,83 @@ window.enterTest=function(){
     }
   });
   observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['style']});
+
+  // ── A3 Live toggle ──
+  const A3_WORKER_PRECIOS = 'https://cashflows.tzuccotti.workers.dev/precios';
+
+  // Convierte la respuesta del Worker /precios al formato que usa lcGetPrecio
+  function a3MapPrecios(data) {
+    const map = {};
+    const hoy = new Date().toISOString().substring(0, 10);
+    for (const r of (data.precios || [])) {
+      if (!r.disponible) continue;
+      map[r.ticker.toUpperCase()] = {
+        precio:    r.precioUltimo,
+        variacion: r.variacion,
+        vol:       r.volumen || NaN,
+        fechaPx:   hoy,   // precio intradiario de hoy
+      };
+    }
+    return map;
+  }
+
+  async function a3FetchAndRefresh() {
+    try {
+      const res  = await fetch(A3_WORKER_PRECIOS);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      _a3Precios = a3MapPrecios(data);
+      // Recalcular tabla con precios frescos
+      if (_lcBundle && Object.keys(_lcPrecios).length) {
+        const fi = document.getElementById('lc-fecha-liq');
+        const fechaLiq = (fi && fi.value) ? fi.value : lcDefaultFecha();
+        _lcRows = lcCruzar(_lcBundle, _lcPrecios, fechaLiq);
+        lcRender();
+      }
+      // Actualizar label del botón con hora
+      const hora = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const lbl = document.getElementById('a3-live-label');
+      if (lbl) lbl.textContent = `A3 · ${hora}`;
+    } catch(e) {
+      console.warn('A3 fetch error:', e.message);
+    }
+  }
+
+  window.lcToggleA3Live = function() {
+    _a3LiveActive = !_a3LiveActive;
+    const btn  = document.getElementById('a3-live-btn');
+    const dot  = document.getElementById('a3-live-dot');
+    const lbl  = document.getElementById('a3-live-label');
+
+    if (_a3LiveActive) {
+      // Activar
+      dot.style.background  = 'var(--green)';
+      dot.style.boxShadow   = '0 0 6px var(--green)';
+      btn.style.color       = 'var(--green)';
+      btn.style.borderColor = 'rgba(13,158,110,0.4)';
+      if (lbl) lbl.textContent = 'A3 On…';
+      a3FetchAndRefresh();
+      _a3LiveInterval = setInterval(a3FetchAndRefresh, 30000);
+    } else {
+      // Desactivar
+      clearInterval(_a3LiveInterval);
+      _a3LiveInterval = null;
+      _a3Precios      = {};
+      dot.style.background  = 'var(--red)';
+      dot.style.boxShadow   = '0 0 5px var(--red)';
+      btn.style.color       = 'var(--text3)';
+      btn.style.borderColor = 'var(--border2)';
+      if (lbl) lbl.textContent = 'A3 Off';
+      // Recalcular con precios del Sheet
+      if (_lcBundle && Object.keys(_lcPrecios).length) {
+        const fi = document.getElementById('lc-fecha-liq');
+        const fechaLiq = (fi && fi.value) ? fi.value : lcDefaultFecha();
+        _lcRows = lcCruzar(_lcBundle, _lcPrecios, fechaLiq);
+        lcRender();
+      }
+    }
+  };
+
 })();
 
 })(); // fin LECAP Calculator v3
