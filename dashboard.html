@@ -220,6 +220,41 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
   background: var(--bg3);
   color: var(--text3);
 }
+.af-card {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  padding: 36px 32px;
+  cursor: pointer;
+  transition: all .2s;
+  position: relative;
+  overflow: hidden;
+}
+.af-card:hover {
+  border-color: var(--accent);
+  background: var(--bg3);
+}
+.af-card-title {
+  font-size: 20px;
+  font-weight: 800;
+  font-family: var(--display);
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.af-card-desc {
+  font-size: 12px;
+  color: var(--text3);
+  line-height: 1.6;
+  font-family: var(--mono);
+}
+.af-card-footer {
+  margin-top: 24px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: var(--mono);
+  letter-spacing: .1em;
+}
 .theme-btn-small {
   padding:5px 12px;
   border-radius:6px;
@@ -642,7 +677,6 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
       <div class="header-left">
         <div class="logo" onclick="backToLanding()" style="gap:0;">
           <img id="bm-logo-test" src="" alt="Bull Market" style="height:28px;width:auto;margin-right:10px;mix-blend-mode:screen;">
-          <span style="font-size:11px;font-family:var(--mono);color:var(--text3);font-weight:400;">— LECAP CALCULATOR</span>
         </div>
         <div style="height:20px;width:1px;background:var(--border);margin:0 4px;"></div>
         <div class="tab active" id="lc-tab-calc" onclick="lcShowTab('calc',this)" style="padding:0 14px;height:52px;display:flex;align-items:center;">LECAPs</div>
@@ -2496,26 +2530,22 @@ window.enterTest=function(){
       <div style="font-family:var(--display);font-size:clamp(28px,4vw,52px);font-weight:800;color:var(--text);line-height:1.05;margin-bottom:16px;letter-spacing:-1px;">Análisis<br><span style="color:var(--accent);">Financiero.</span></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:32px;">
         <!-- Balances -->
-        <div onclick="enterBalances()" style="background:#0f1422;border:1px solid rgba(30,39,243,0.25);border-radius:16px;padding:36px 32px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;"
-          onmouseover="this.style.borderColor='#1E27F3';this.style.background='#111828'"
-          onmouseout="this.style.borderColor='rgba(30,39,243,0.25)';this.style.background='#0f1422'">
+        <div onclick="enterBalances()" class="af-card">
           <div style="width:48px;height:48px;background:rgba(30,39,243,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1E27F3" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           </div>
-          <div style="font-size:20px;font-weight:800;font-family:var(--display);color:#e8eaf6;margin-bottom:8px;">Balances</div>
-          <div style="font-size:12px;color:#4a5280;line-height:1.6;font-family:var(--mono);">Análisis de estados financieros desde SEC EDGAR. Ratios, gráficos interactivos y comparación entre empresas.</div>
-          <div style="margin-top:24px;font-size:10px;font-weight:700;color:#1E27F3;font-family:var(--mono);letter-spacing:.1em;">NYSE · NASDAQ · AMEX →</div>
+          <div class="af-card-title">Balances</div>
+          <div class="af-card-desc">Análisis de estados financieros desde SEC EDGAR. Ratios, gráficos interactivos y comparación entre empresas.</div>
+          <div class="af-card-footer">NYSE · NASDAQ · AMEX →</div>
         </div>
         <!-- Scoring de Solvencia -->
-        <div onclick="enterExcel()" style="background:#0f1422;border:1px solid rgba(30,39,243,0.25);border-radius:16px;padding:36px 32px;position:relative;overflow:hidden;cursor:pointer;transition:all .2s;"
-          onmouseover="this.style.borderColor='#1E27F3';this.style.background='#111828'"
-          onmouseout="this.style.borderColor='rgba(30,39,243,0.25)';this.style.background='#0f1422'">
+        <div onclick="enterExcel()" class="af-card">
           <div style="width:48px;height:48px;background:rgba(30,39,243,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1E27F3" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
           </div>
-          <div style="font-size:20px;font-weight:800;font-family:var(--display);color:#e8eaf6;margin-bottom:8px;">Scoring de Solvencia</div>
-          <div style="font-size:12px;color:#4a5280;line-height:1.6;font-family:var(--mono);">Scoring de deuda y ratios financieros. Análisis por sector con historial por balance.</div>
-          <div style="margin-top:24px;font-size:10px;font-weight:700;color:#1E27F3;font-family:var(--mono);letter-spacing:.1em;">SECTORES · RATIOS · SCORING →</div>
+          <div class="af-card-title">Scoring de Solvencia</div>
+          <div class="af-card-desc">Scoring de deuda y ratios financieros. Análisis por sector con historial por balance.</div>
+          <div class="af-card-footer">SECTORES · RATIOS · SCORING →</div>
         </div>
       </div>
     </div>
@@ -5687,15 +5717,74 @@ function applyTheme(dark){
   const vars = dark ? DARK_VARS : LIGHT_VARS;
   const root = document.documentElement;
   Object.entries(vars).forEach(([k,v]) => root.style.setProperty(k, v));
+
   // logo blend mode
   document.querySelectorAll('img[id^="bm-logo"]').forEach(img => {
     img.style.mixBlendMode = dark ? 'screen' : 'multiply';
   });
-  // sync all theme buttons (landing + all app screens)
+
+  // sync all theme buttons
   const icon  = dark ? '☀' : '☾';
   const label = dark ? 'Modo Claro' : 'Modo Oscuro';
   document.querySelectorAll('.theme-btn-icon, #theme-toggle-icon').forEach(el => el.textContent = icon);
   document.querySelectorAll('.theme-btn-lbl, #theme-toggle-label').forEach(el => el.textContent = label);
+
+  // override hardcoded colors in Análisis Financiero sections
+  let dynStyle = document.getElementById('__theme_override');
+  if(!dynStyle){ dynStyle = document.createElement('style'); dynStyle.id='__theme_override'; document.head.appendChild(dynStyle); }
+  if(dark){
+    dynStyle.textContent = '';
+  } else {
+    dynStyle.textContent = `
+      /* landing active-module cards: light mode */
+      .mosaic-card.active-module {
+        background: var(--bg2) !important;
+        border-color: var(--accent) !important;
+        box-shadow: 0 4px 20px rgba(30,39,243,0.10);
+      }
+      .mosaic-card.active-module .mosaic-icon {
+        background: var(--accent-light) !important;
+      }
+      .mosaic-card.active-module .mosaic-icon svg { color: var(--accent) !important; }
+      .mosaic-card.active-module .mosaic-name { color: var(--text) !important; }
+      .mosaic-card.active-module .mosaic-desc { color: var(--text3) !important; }
+      .mosaic-card.active-module:hover {
+        background: var(--bg3) !important;
+      }
+      #app-balances-menu, #app-balances, #app-excel,
+      #app-balances-menu > div, #app-excel > div:first-child,
+      #app-balances > div:first-child { background: var(--bg) !important; }
+      #app-balances-menu [style*="background:#0b0e1a"],
+      #app-balances [style*="background:#0b0e1a"],
+      #app-excel [style*="background:#0b0e1a"] { background: var(--bg) !important; }
+      #app-balances-menu [style*="background:#0f1422"],
+      #app-balances [style*="background:#0f1422"],
+      #app-excel [style*="background:#0f1422"] { background: var(--bg2) !important; }
+      #app-balances-menu [style*="background:#111828"],
+      #app-balances [style*="background:#111828"],
+      #app-excel [style*="background:#111828"] { background: var(--bg3) !important; }
+      #app-balances [style*="background:#131929"],
+      #app-excel [style*="background:#131929"] { background: var(--bg3) !important; }
+      #app-balances [style*="color:#e8eaf6"],
+      #app-excel [style*="color:#e8eaf6"],
+      #app-balances-menu [style*="color:#e8eaf6"] { color: var(--text) !important; }
+      #app-balances [style*="color:#8b99c4"],
+      #app-excel [style*="color:#8b99c4"] { color: var(--text2) !important; }
+      #app-balances [style*="color:#4a5280"],
+      #app-excel [style*="color:#4a5280"],
+      #app-balances-menu [style*="color:#4a5280"] { color: var(--text3) !important; }
+      #app-balances input, #app-excel input, #app-balances select, #app-excel select {
+        background: var(--bg2) !important; color: var(--text) !important;
+        border-color: var(--border2) !important;
+      }
+      .sec-chip { background: var(--bg2) !important; color: var(--text2) !important; }
+      .sec-table th { background: var(--bg3) !important; color: var(--text2) !important; }
+      .sec-kpi { background: var(--bg3) !important; border-color: var(--border) !important; }
+      .ev-item { background: var(--bg2) !important; border-color: var(--border) !important; }
+      #excel-detail { background: var(--bg) !important; }
+      #secAutoList { background: var(--bg2) !important; }
+    `;
+  }
 }
 window.toggleTheme = function(){
   _isDark = !_isDark;
