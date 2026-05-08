@@ -9,23 +9,23 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #ffffff;
-  --bg2: #f7f8fc;
-  --bg3: #eef0f7;
-  --bg4: #e4e7f2;
-  --border: rgba(30,39,243,0.10);
-  --border2: rgba(30,39,243,0.18);
-  --text: #0a0c1a;
-  --text2: #3a3f5c;
-  --text3: #8a90b0;
+  --bg: #0a0c1a;
+  --bg2: #0d1020;
+  --bg3: #0f1422;
+  --bg4: #131929;
+  --border: rgba(30,39,243,0.14);
+  --border2: rgba(30,39,243,0.28);
+  --text: #e8eaf6;
+  --text2: #a5b4fc;
+  --text3: #4a5280;
   --accent: #1E27F3;
   --accent2: #3a42f5;
   --accent3: #1E27F3;
-  --accent-light: rgba(30,39,243,0.08);
-  --accent-mid: rgba(30,39,243,0.15);
-  --green: #0d9e6e;
-  --red: #e03131;
-  --yellow: #d97706;
+  --accent-light: rgba(30,39,243,0.12);
+  --accent-mid: rgba(30,39,243,0.20);
+  --green: #3fb950;
+  --red: #f85149;
+  --yellow: #d4a017;
   --mono: 'DM Mono', monospace;
   --sans: 'DM Sans', sans-serif;
   --display: 'Syne', sans-serif;
@@ -38,7 +38,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background: var(--bg);
   position: relative;
   overflow: hidden;
 }
@@ -522,7 +522,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
   gap:4px;
   cursor:pointer;
   pointer-events:all;
-  background:rgba(255,255,255,0.92);
+  background:rgba(13,16,32,0.95);
   border:1px solid var(--border2);
   border-radius:4px;
   padding:2px 6px 2px 4px;
@@ -530,7 +530,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
   font-family:var(--mono);
   color:var(--text2);
   transition:all .15s;
-  box-shadow:0 1px 4px rgba(30,39,243,0.10);
+  box-shadow:0 1px 4px rgba(0,0,0,0.4);
 }
 .outlier-pip:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
 .outlier-pip svg { flex-shrink:0; }
@@ -547,7 +547,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 <div id="landing">
   <div class="landing-header">
     <div class="landing-logo">
-      <img id="bm-logo-landing" src="" alt="Bull Market" style="height:38px;width:auto;mix-blend-mode:multiply;">
+      <img id="bm-logo-landing" src="" alt="Bull Market" style="height:38px;width:auto;mix-blend-mode:screen;">
     </div>
     <div class="landing-tagline" style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
       <span>RESEARCH &amp; ANALYTICS PLATFORM</span>
@@ -628,7 +628,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
     <div class="header" style="border-bottom:none;">
       <div class="header-left">
         <div class="logo" onclick="backToLanding()" style="gap:0;">
-          <img id="bm-logo-test" src="" alt="Bull Market" style="height:28px;width:auto;margin-right:10px;mix-blend-mode:multiply;">
+          <img id="bm-logo-test" src="" alt="Bull Market" style="height:28px;width:auto;margin-right:10px;mix-blend-mode:screen;">
           <span style="font-size:11px;font-family:var(--mono);color:var(--text3);font-weight:400;">— LECAP CALCULATOR</span>
         </div>
         <div style="height:20px;width:1px;background:var(--border);margin:0 4px;"></div>
@@ -1304,8 +1304,8 @@ function lcBuildCurveCard(rows){
         plugins:{
           legend:{display:false},
           tooltip:{
-            backgroundColor:'#fff',borderColor:'rgba(30,39,243,0.2)',borderWidth:1,
-            titleColor:'#3a3f5c',bodyColor:'#0a0c1a',padding:10,
+            backgroundColor:'#131929',borderColor:'rgba(30,39,243,0.3)',borderWidth:1,
+            titleColor:'#e8eaf6',bodyColor:'#a5b4fc',padding:10,
             titleFont:{family:"'DM Mono',monospace",size:11},bodyFont:{family:"'DM Mono',monospace",size:11},
             filter:item=>item.dataset.label!=='_trend',
             callbacks:{label:c=>{
@@ -1317,12 +1317,12 @@ function lcBuildCurveCard(rows){
         },
         scales:{
           x:{min:range.xMin,max:range.xMax,
-            grid:{color:'rgba(30,39,243,0.05)'},
-            ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:10}},
+            grid:{color:'rgba(30,39,243,0.08)'},
+            ticks:{color:'#4a5280',font:{family:"'DM Mono',monospace",size:10}},
             title:{display:true,text:'Modified Duration',color:'#8a90b0',font:{size:10}}},
           y:{min:range.yMin,max:range.yMax,
-            grid:{color:'rgba(30,39,243,0.05)'},
-            ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:10},callback:v=>v.toFixed(1)+'%'},
+            grid:{color:'rgba(30,39,243,0.08)'},
+            ticks:{color:'#4a5280',font:{family:"'DM Mono',monospace",size:10},callback:v=>v.toFixed(1)+'%'},
             title:{display:true,text:'TNA (%)',color:'#8a90b0',font:{size:10}}}
         }
       },
@@ -2084,13 +2084,13 @@ function lcBuildDetailBody(row, ticker, fechaLiq){
     const chartDefaults={
       responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{
-        backgroundColor:'#fff',borderColor:'rgba(30,39,243,0.2)',borderWidth:1,
-        titleColor:'#3a3f5c',bodyColor:'#0a0c1a',padding:10,
+        backgroundColor:'#131929',borderColor:'rgba(30,39,243,0.3)',borderWidth:1,
+        titleColor:'#e8eaf6',bodyColor:'#a5b4fc',padding:10,
         titleFont:{family:monoFont,size:11},bodyFont:{family:monoFont,size:11}
       }},
       scales:{
-        x:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:monoFont,size:10}}},
-        y:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:monoFont,size:10}}}
+        x:{grid:{color:'rgba(30,39,243,0.07)'},ticks:{color:'#4a5280',font:{family:monoFont,size:10}}},
+        y:{grid:{color:'rgba(30,39,243,0.07)'},ticks:{color:'#4a5280',font:{family:monoFont,size:10}}}
       }
     };
 
@@ -2162,9 +2162,9 @@ function lcBuildDetailBody(row, ticker, fechaLiq){
               ctx2.save();
               ctx2.font=`700 10px ${monoFont}`;
               const w=ctx2.measureText(pt.label).width;
-              ctx2.fillStyle='rgba(247,248,252,0.92)';
+              ctx2.fillStyle='rgba(13,16,32,0.92)';
               ctx2.fillRect(el.x+10-2,el.y-14-2,w+8,14);
-              ctx2.fillStyle='#1E27F3';
+              ctx2.fillStyle='#a5b4fc';
               ctx2.fillText(pt.label,el.x+12,el.y-4);
               ctx2.restore();
             });
@@ -2267,8 +2267,8 @@ function lcBuildDetailBody(row, ticker, fechaLiq){
         },
         options:{...chartDefaults,
           scales:{
-            x:{grid:{display:false},ticks:{color:'#8a90b0',font:{family:monoFont,size:10},maxTicksLimit:8}},
-            y:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:monoFont,size:10},
+            x:{grid:{display:false},ticks:{color:'#4a5280',font:{family:monoFont,size:10},maxTicksLimit:8}},
+            y:{grid:{color:'rgba(30,39,243,0.08)'},ticks:{color:'#4a5280',font:{family:monoFont,size:10},
               callback:v=>metDef.yFmt(v)}}
           },
           plugins:{...chartDefaults.plugins,tooltip:{...chartDefaults.plugins.tooltip,
@@ -2335,7 +2335,7 @@ function lcBuildDetailBody(row, ticker, fechaLiq){
           },
           scales:{
             x:{grid:{display:false},ticks:{color:(ctx)=>labels[ctx.index]===ticker?'#1E27F3':'#8a90b0',font:{family:monoFont,size:9}}},
-            y:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:monoFont,size:10},
+            y:{grid:{color:'rgba(30,39,243,0.08)'},ticks:{color:'#4a5280',font:{family:monoFont,size:10},
               callback:v=>isPercent?v.toFixed(1)+'%':isVol?(v>=1e6?(v/1e6).toFixed(1)+'M':v.toFixed(0)):v}}
           }
         }
@@ -2387,7 +2387,7 @@ window.enterTest=function(){
   <div class="header">
     <div class="header-left">
       <div class="logo" onclick="backToLanding()" style="gap:0;">
-        <img id="bm-logo-app" src="" alt="Bull Market" style="height:28px;width:auto;margin-right:10px;mix-blend-mode:multiply;">
+        <img id="bm-logo-app" src="" alt="Bull Market" style="height:28px;width:auto;margin-right:10px;mix-blend-mode:screen;">
         <span style="font-size:11px;font-family:var(--mono);color:var(--text3);font-weight:400;">— RENTA FIJA</span>
       </div>
       <div class="header-date" id="header-date">—</div>
@@ -2426,7 +2426,7 @@ window.enterTest=function(){
   <div class="header">
     <div class="header-left">
       <div class="logo" onclick="backToLanding()" style="gap:0;">
-        <img id="bm-logo-equity" src="" alt="Bull Market" style="height:28px;width:auto;margin-right:10px;mix-blend-mode:multiply;">
+        <img id="bm-logo-equity" src="" alt="Bull Market" style="height:28px;width:auto;margin-right:10px;mix-blend-mode:screen;">
         <span style="font-size:11px;font-family:var(--mono);color:var(--text3);font-weight:400;">— RENTA VARIABLE</span>
       </div>
       <div class="header-date" id="equity-date">—</div>
@@ -3234,15 +3234,15 @@ const CHART_OPTS_BASE={
   plugins:{
     legend:{display:false},
     tooltip:{
-      backgroundColor:'#fff',borderColor:'rgba(30,39,243,0.2)',borderWidth:1,
-      titleColor:'#3a3f5c',bodyColor:'#0a0c1a',padding:10,
+      backgroundColor:'#131929',borderColor:'rgba(30,39,243,0.3)',borderWidth:1,
+      titleColor:'#e8eaf6',bodyColor:'#a5b4fc',padding:10,
       titleFont:{family:"'DM Mono',monospace",size:11},
       bodyFont:{family:"'DM Mono',monospace",size:11}
     }
   },
   scales:{
-    x:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:10}}},
-    y:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:10}}}
+    x:{grid:{color:'rgba(30,39,243,0.07)'},ticks:{color:'#4a5280',font:{family:"'DM Mono',monospace",size:10}}},
+    y:{grid:{color:'rgba(30,39,243,0.07)'},ticks:{color:'#4a5280',font:{family:"'DM Mono',monospace",size:10}}}
   }
 };
 
@@ -5053,14 +5053,14 @@ function buildHistCharts(histRows,days){
           legend:{display:false},
           tooltip:{
             callbacks:{label:c=>`${label}: ${isPct?(c.raw!==null?c.raw.toFixed(2)+'%':'—'):c.raw}`},
-            backgroundColor:'#fff',borderColor:'rgba(30,39,243,0.2)',borderWidth:1,
-            titleColor:'#3a3f5c',bodyColor:'#0a0c1a',padding:10,
+            backgroundColor:'#131929',borderColor:'rgba(30,39,243,0.3)',borderWidth:1,
+            titleColor:'#e8eaf6',bodyColor:'#a5b4fc',padding:10,
             titleFont:{family:"'DM Mono',monospace",size:11},bodyFont:{family:"'DM Mono',monospace",size:11}
           }
         },
         scales:{
-          x:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:9},maxRotation:45,autoSkip:true,maxTicksLimit:8}},
-          y:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:9},callback:v=>isPct?(v!==null?v.toFixed(1)+'%':''):v.toFixed(1)}}
+          x:{grid:{color:'rgba(30,39,243,0.08)'},ticks:{color:'#4a5280',font:{family:"'DM Mono',monospace",size:9},maxRotation:45,autoSkip:true,maxTicksLimit:8}},
+          y:{grid:{color:'rgba(30,39,243,0.08)'},ticks:{color:'#4a5280',font:{family:"'DM Mono',monospace",size:9},callback:v=>isPct?(v!==null?v.toFixed(1)+'%':''):v.toFixed(1)}}
         }
       }
     });
@@ -5083,15 +5083,15 @@ function buildHistCharts(histRows,days){
           plugins:{
             legend:{display:true,labels:{color:'#3a3f5c',font:{family:"'DM Mono',monospace",size:10},boxWidth:12}},
             tooltip:{
-              backgroundColor:'#fff',borderColor:'rgba(30,39,243,0.2)',borderWidth:1,
-              titleColor:'#3a3f5c',bodyColor:'#0a0c1a',padding:10,
+              backgroundColor:'#131929',borderColor:'rgba(30,39,243,0.3)',borderWidth:1,
+              titleColor:'#e8eaf6',bodyColor:'#a5b4fc',padding:10,
               titleFont:{family:"'DM Mono',monospace",size:11},bodyFont:{family:"'DM Mono',monospace",size:11},
               callbacks:{label:c=>`${c.dataset.label}: ${c.raw!==null?c.raw.toFixed(2)+'%':'—'}`}
             }
           },
           scales:{
-            x:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:9},maxRotation:45,autoSkip:true,maxTicksLimit:8}},
-            y:{grid:{color:'rgba(30,39,243,0.05)'},ticks:{color:'#8a90b0',font:{family:"'DM Mono',monospace",size:9},callback:v=>v.toFixed(1)+'%'}}
+            x:{grid:{color:'rgba(30,39,243,0.08)'},ticks:{color:'#4a5280',font:{family:"'DM Mono',monospace",size:9},maxRotation:45,autoSkip:true,maxTicksLimit:8}},
+            y:{grid:{color:'rgba(30,39,243,0.08)'},ticks:{color:'#4a5280',font:{family:"'DM Mono',monospace",size:9},callback:v=>v.toFixed(1)+'%'}}
           }
         }
       });
