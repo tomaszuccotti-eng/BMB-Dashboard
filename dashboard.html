@@ -220,6 +220,24 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
   background: var(--bg3);
   color: var(--text3);
 }
+.theme-btn-small {
+  padding:5px 12px;
+  border-radius:6px;
+  border:1px solid var(--border2);
+  background:transparent;
+  color:var(--text2);
+  font-size:11px;
+  font-weight:600;
+  cursor:pointer;
+  font-family:var(--mono);
+  transition:all .15s;
+  display:flex;
+  align-items:center;
+  gap:5px;
+  white-space:nowrap;
+  flex-shrink:0;
+}
+.theme-btn-small:hover { background:var(--accent-light); }
 
 /* ── APP ── */
 #app { display:none; flex-direction:column; min-height:100vh; }
@@ -557,6 +575,9 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 
   <div class="landing-hero">
     <div class="landing-title">Monitor de<br><span>Mercados.</span></div>
+    <div class="landing-subtitle" style="max-width:480px;">
+      Plataforma de research interno · Prototipo en desarrollo
+    </div>
 
     <div class="mosaic">
       <!-- Fixed Income → activo -->
@@ -570,7 +591,6 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
         </div>
         <div class="mosaic-name">Renta Fija</div>
         <div class="mosaic-desc">LECAPs, BONCAPs, BONCERs, Soberanos, Duales y más.</div>
-        <span class="mosaic-badge">DISPONIBLE</span>
       </div>
 
       <!-- Equity → activo -->
@@ -583,7 +603,6 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
         </div>
         <div class="mosaic-name">Renta Variable</div>
         <div class="mosaic-desc">Acciones del mercado argentino con precios y variaciones.</div>
-        <span class="mosaic-badge">DISPONIBLE</span>
       </div>
 
       <!-- Análisis Financiero → activo -->
@@ -598,7 +617,6 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
         </div>
         <div class="mosaic-name">Análisis Financiero</div>
         <div class="mosaic-desc">Explorador de balances & Scoring de solvencia.</div>
-        <span class="mosaic-badge">DISPONIBLE</span>
       </div>
 
       <!-- Calculadoras → activo -->
@@ -610,7 +628,6 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
         </div>
         <div class="mosaic-name">Calculadoras</div>
         <div class="mosaic-desc">LECAPs.</div>
-        <span class="mosaic-badge">DISPONIBLE</span>
       </div>
     </div>
   </div>
@@ -638,6 +655,9 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
           style="padding:5px 14px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--mono);transition:all .15s;"
           onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='transparent'">
           ↻ Actualizar
+        </button>
+        <button onclick="toggleTheme()" class="theme-btn-small">
+          <span class="theme-btn-icon">☀</span> <span class="theme-btn-lbl">Modo Claro</span>
         </button>
       </div>
     </div>
@@ -2394,6 +2414,9 @@ window.enterTest=function(){
         <button class="plazo-btn active" onclick="setPlazo('C.I.')">C.I.</button>
         <button class="plazo-btn" onclick="setPlazo('24Hs.')">24Hs.</button>
       </div>
+      <button onclick="toggleTheme()" class="theme-btn-small">
+        <span class="theme-btn-icon">☀</span> <span class="theme-btn-lbl">Modo Claro</span>
+      </button>
     </div>
   </div>
 
@@ -2433,6 +2456,9 @@ window.enterTest=function(){
         <button class="plazo-btn active" onclick="setEquityPlazo('C.I.')">C.I.</button>
         <button class="plazo-btn" onclick="setEquityPlazo('24Hs.')">24Hs.</button>
       </div>
+      <button onclick="toggleTheme()" class="theme-btn-small">
+        <span class="theme-btn-icon">☀</span> <span class="theme-btn-lbl">Modo Claro</span>
+      </button>
     </div>
   </div>
   <div class="main" id="equity-content">
@@ -2460,37 +2486,36 @@ window.enterTest=function(){
   <!-- Header -->
   <div style="display:flex;align-items:center;padding:18px 32px;border-bottom:1px solid rgba(30,39,243,0.15);background:#0b0e1a;gap:16px;">
     <button onclick="backToLanding()" style="padding:6px 14px;border-radius:6px;border:1px solid rgba(30,39,243,0.25);background:transparent;color:#4a5280;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);">← Inicio</button>
-    <span style="font-family:var(--display);font-size:15px;font-weight:700;color:#e8eaf6;">Balances</span>
-    <span style="font-size:10px;font-family:var(--mono);color:#1E27F3;background:rgba(30,39,243,0.1);padding:2px 10px;border-radius:10px;border:1px solid rgba(30,39,243,0.3);">ANÁLISIS FINANCIERO</span>
+    <button onclick="toggleTheme()" class="theme-btn-small" style="margin-left:auto;">
+      <span class="theme-btn-icon">☀</span> <span class="theme-btn-lbl">Modo Claro</span>
+    </button>
   </div>
   <!-- Cards -->
   <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:60px 32px;">
     <div style="width:100%;max-width:900px;">
-      <div style="font-size:28px;font-weight:800;font-family:var(--display);color:#e8eaf6;margin-bottom:8px;">Herramientas de análisis financiero</div>
+      <div style="font-family:var(--display);font-size:clamp(28px,4vw,52px);font-weight:800;color:var(--text);line-height:1.05;margin-bottom:16px;letter-spacing:-1px;">Análisis<br><span style="color:var(--accent);">Financiero.</span></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:32px;">
-        <!-- Balance Explorer -->
+        <!-- Balances -->
         <div onclick="enterBalances()" style="background:#0f1422;border:1px solid rgba(30,39,243,0.25);border-radius:16px;padding:36px 32px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;"
           onmouseover="this.style.borderColor='#1E27F3';this.style.background='#111828'"
           onmouseout="this.style.borderColor='rgba(30,39,243,0.25)';this.style.background='#0f1422'">
           <div style="width:48px;height:48px;background:rgba(30,39,243,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1E27F3" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           </div>
-          <div style="font-size:20px;font-weight:800;font-family:var(--display);color:#e8eaf6;margin-bottom:8px;">Balance Explorer</div>
+          <div style="font-size:20px;font-weight:800;font-family:var(--display);color:#e8eaf6;margin-bottom:8px;">Balances</div>
           <div style="font-size:12px;color:#4a5280;line-height:1.6;font-family:var(--mono);">Análisis de estados financieros desde SEC EDGAR. Ratios, gráficos interactivos y comparación entre empresas.</div>
           <div style="margin-top:24px;font-size:10px;font-weight:700;color:#1E27F3;font-family:var(--mono);letter-spacing:.1em;">NYSE · NASDAQ · AMEX →</div>
-          <span style="position:absolute;top:16px;right:16px;font-size:9px;font-weight:700;color:#3fb950;background:rgba(63,185,80,0.1);border:1px solid rgba(63,185,80,0.3);padding:2px 8px;border-radius:10px;font-family:var(--mono);">DISPONIBLE</span>
         </div>
-        <!-- Excel de la Muerte -->
+        <!-- Scoring de Solvencia -->
         <div onclick="enterExcel()" style="background:#0f1422;border:1px solid rgba(30,39,243,0.25);border-radius:16px;padding:36px 32px;position:relative;overflow:hidden;cursor:pointer;transition:all .2s;"
           onmouseover="this.style.borderColor='#1E27F3';this.style.background='#111828'"
           onmouseout="this.style.borderColor='rgba(30,39,243,0.25)';this.style.background='#0f1422'">
           <div style="width:48px;height:48px;background:rgba(30,39,243,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1E27F3" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
           </div>
-          <div style="font-size:20px;font-weight:800;font-family:var(--display);color:#e8eaf6;margin-bottom:8px;">Excel de la Muerte</div>
+          <div style="font-size:20px;font-weight:800;font-family:var(--display);color:#e8eaf6;margin-bottom:8px;">Scoring de Solvencia</div>
           <div style="font-size:12px;color:#4a5280;line-height:1.6;font-family:var(--mono);">Scoring de deuda y ratios financieros. Análisis por sector con historial por balance.</div>
           <div style="margin-top:24px;font-size:10px;font-weight:700;color:#1E27F3;font-family:var(--mono);letter-spacing:.1em;">SECTORES · RATIOS · SCORING →</div>
-          <span style="position:absolute;top:16px;right:16px;font-size:9px;font-weight:700;color:#3fb950;background:rgba(63,185,80,0.1);border:1px solid rgba(63,185,80,0.3);padding:2px 8px;border-radius:10px;font-family:var(--mono);">DISPONIBLE</span>
         </div>
       </div>
     </div>
@@ -2506,10 +2531,13 @@ window.enterTest=function(){
       style="padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid rgba(30,39,243,0.35);border-radius:6px;background:transparent;color:#8b99c4;font-family:var(--mono);transition:all .15s;"
       onmouseover="this.style.background='#1E27F3';this.style.color='#fff';this.style.borderColor='#1E27F3';"
       onmouseout="this.style.background='transparent';this.style.color='#8b99c4';this.style.borderColor='rgba(30,39,243,0.35)';">← Volver</button>
-    <span style="font-family:var(--display);font-size:15px;font-weight:700;color:#e8eaf6;">Excel de la Muerte</span>
+    <span style="font-family:var(--display);font-size:15px;font-weight:700;color:#e8eaf6;">Scoring de Solvencia</span>
     <span style="font-size:10px;font-family:var(--mono);color:#1E27F3;background:rgba(30,39,243,0.1);padding:2px 10px;border-radius:10px;border:1px solid rgba(30,39,243,0.3);">SCORING · RATIOS DE DEUDA</span>
     <div style="flex:1;"></div>
     <span id="excel-date" style="font-size:11px;color:#4a5280;font-family:var(--mono);">—</span>
+    <button onclick="toggleTheme()" class="theme-btn-small">
+      <span class="theme-btn-icon">☀</span> <span class="theme-btn-lbl">Modo Claro</span>
+    </button>
   </div>
 
   <!-- Content -->
@@ -2618,10 +2646,13 @@ window.enterTest=function(){
       style="padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid rgba(30,39,243,0.35);border-radius:6px;background:transparent;color:#8b99c4;font-family:var(--mono);transition:all .15s;"
       onmouseover="this.style.background='#1E27F3';this.style.color='#fff';this.style.borderColor='#1E27F3';"
       onmouseout="this.style.background='transparent';this.style.color='#8b99c4';this.style.borderColor='rgba(30,39,243,0.35)';">← Volver</button>
-    <span style="font-family:var(--display);font-size:15px;font-weight:700;color:#e8eaf6;">Balance Explorer</span>
+    <span style="font-family:var(--display);font-size:15px;font-weight:700;color:#e8eaf6;">Balances</span>
     <span style="font-size:10px;font-family:var(--mono);color:#1E27F3;background:rgba(30,39,243,0.1);padding:2px 10px;border-radius:10px;border:1px solid rgba(30,39,243,0.3);">SEC EDGAR · GRATIS · SIN KEY</span>
     <div style="flex:1"></div>
     <span style="font-size:11px;color:#4a5280;font-family:var(--mono);">NYSE · NASDAQ · AMEX</span>
+    <button onclick="toggleTheme()" class="theme-btn-small">
+      <span class="theme-btn-icon">☀</span> <span class="theme-btn-lbl">Modo Claro</span>
+    </button>
   </div>
 
   <div style="max-width:1200px;margin:0 auto;padding:32px 28px 80px;">
@@ -5660,11 +5691,11 @@ function applyTheme(dark){
   document.querySelectorAll('img[id^="bm-logo"]').forEach(img => {
     img.style.mixBlendMode = dark ? 'screen' : 'multiply';
   });
-  // toggle button label
-  const icon = document.getElementById('theme-toggle-icon');
-  const label = document.getElementById('theme-toggle-label');
-  if(icon) icon.textContent = dark ? '☀' : '☾';
-  if(label) label.textContent = dark ? 'Modo Claro' : 'Modo Oscuro';
+  // sync all theme buttons (landing + all app screens)
+  const icon  = dark ? '☀' : '☾';
+  const label = dark ? 'Modo Claro' : 'Modo Oscuro';
+  document.querySelectorAll('.theme-btn-icon, #theme-toggle-icon').forEach(el => el.textContent = icon);
+  document.querySelectorAll('.theme-btn-lbl, #theme-toggle-label').forEach(el => el.textContent = label);
 }
 window.toggleTheme = function(){
   _isDark = !_isDark;
