@@ -793,7 +793,40 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
         </div>
       </div>
     </div>
+<!-- ③ Precios Live test -->
+    <div style="margin-top:40px;">
+      <div style="font-size:12px;font-weight:700;font-family:var(--mono);color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:14px;">③ Worker · Precios A3 Mercados</div>
+      <div id="px-status" style="display:none;margin-bottom:14px;"></div>
 
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+        <button onclick="pxTest()"
+          style="padding:10px 22px;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;"
+          onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='transparent'">
+          ▶ Testear Precios
+        </button>
+        <button id="px-live-btn" onclick="pxToggleLive()"
+          style="padding:10px 22px;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;"
+          onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='transparent'">
+          ⏸ Live OFF
+        </button>
+        <span id="px-last-update" style="font-size:10px;font-family:var(--mono);color:var(--text3);"></span>
+      </div>
+
+      <div id="px-results" style="display:none;">
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+          <div style="padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--text2);font-family:var(--mono);">Precios Renta Fija — A3 Mercados</span>
+            <span id="px-count" style="font-size:10px;font-family:var(--mono);color:var(--accent);font-weight:700;"></span>
+          </div>
+          <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:var(--mono);">
+              <thead id="px-thead"></thead>
+              <tbody id="px-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ── LECAP Detail Overlay ── -->
@@ -5694,7 +5727,100 @@ function renderEquity(){
   };
 
 })();
+// ══════════════════ PRECIOS A3 — TEST & LIVE ══════════════════
+const PX_WORKER = LC_WORKER + '/precios';
+let _pxLiveInterval = null;
+let _pxLiveActive   = false;
 
+function pxShowStatus(msg, ok) {
+  const el = document.getElementById('px-status');
+  el.style.display      = 'block';
+  el.style.background   = ok ? 'rgba(63,185,80,0.08)' : 'rgba(248,81,73,0.08)';
+  el.style.border       = ok ? '1px solid rgba(63,185,80,0.25)' : '1px solid rgba(248,81,73,0.25)';
+  el.style.borderRadius = '8px';
+  el.style.padding      = '10px 14px';
+  el.style.fontSize     = '11px';
+  el.style.fontFamily   = 'var(--mono)';
+  el.style.color        = ok ? 'var(--green)' : 'var(--red)';
+  el.textContent        = msg;
+}
+
+function pxRenderTable(data) {
+  const thead   = document.getElementById('px-thead');
+  const tbody   = document.getElementById('px-tbody');
+  const countEl = document.getElementById('px-count');
+  if (!thead || !tbody) return;
+
+  const thS = 'padding:8px 12px;font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text3);background:var(--bg2);border-bottom:1px solid var(--border);white-space:nowrap;text-align:right;';
+  thead.innerHTML = `<tr>
+    <th style="${thS}text-align:left;">Ticker</th>
+    <th style="${thS}">Segmento</th>
+    <th style="${thS}">Último</th>
+    <th style="${thS}">Cierre Ant.</th>
+    <th style="${thS}">Variación</th>
+    <th style="${thS}">Volumen</th>
+  </tr>`;
+
+  const tdS = 'padding:8px 12px;border-bottom:1px solid var(--border);white-space:nowrap;text-align:right;font-size:11px;';
+  tbody.innerHTML = data.precios.map(r => {
+    if (!r.disponible) {
+      return `<tr>
+        <td style="${tdS}text-align:left;color:var(--accent);font-weight:700;">${r.ticker}</td>
+        <td colspan="5" style="${tdS}color:var(--text3);">sin cotización</td>
+      </tr>`;
+    }
+    const varNum = parseFloat(r.variacion) || 0;
+    const varCol = varNum > 0 ? 'var(--green)' : varNum < 0 ? 'var(--red)' : 'var(--text3)';
+    const varStr = isNaN(varNum) ? '—' : (varNum >= 0 ? '+' : '') + varNum.toFixed(4);
+    const vol    = r.volumen ? Number(r.volumen).toLocaleString('es-AR') : '—';
+    return `<tr onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''">
+      <td style="${tdS}text-align:left;color:var(--accent);font-weight:700;">${r.ticker}</td>
+      <td style="${tdS}color:var(--text2);">${r.segmento || '—'}</td>
+      <td style="${tdS}">${r.precioUltimo != null ? Number(r.precioUltimo).toFixed(4) : '—'}</td>
+      <td style="${tdS}color:var(--text3);">${r.cierre != null ? Number(r.cierre).toFixed(4) : '—'}</td>
+      <td style="${tdS}color:${varCol};font-weight:700;">${varStr}</td>
+      <td style="${tdS}color:var(--text3);">${vol}</td>
+    </tr>`;
+  }).join('');
+
+  const con = data.precios.filter(p => p.disponible).length;
+  countEl.textContent = `${con} / ${data.precios.length} con precio`;
+  document.getElementById('px-last-update').textContent =
+    `Última actualización: ${new Date(data.timestamp).toLocaleTimeString('es-AR')}`;
+}
+
+window.pxTest = async function() {
+  pxShowStatus('Consultando Worker...', true);
+  document.getElementById('px-results').style.display = 'none';
+  try {
+    const res  = await fetch(PX_WORKER);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    document.getElementById('px-results').style.display = 'block';
+    pxRenderTable(data);
+    pxShowStatus(`✓ OK — ${data.fuente}`, true);
+  } catch(e) {
+    pxShowStatus(`✗ Error: ${e.message}`, false);
+  }
+};
+
+window.pxToggleLive = function() {
+  _pxLiveActive = !_pxLiveActive;
+  const btn = document.getElementById('px-live-btn');
+  if (_pxLiveActive) {
+    btn.textContent      = '■ Live ON';
+    btn.style.color      = 'var(--green)';
+    btn.style.borderColor = 'var(--green)';
+    pxTest();
+    _pxLiveInterval = setInterval(pxTest, 30000);
+  } else {
+    clearInterval(_pxLiveInterval);
+    _pxLiveInterval  = null;
+    btn.textContent      = '⏸ Live OFF';
+    btn.style.color      = 'var(--text3)';
+    btn.style.borderColor = 'var(--border2)';
+  }
+};
 // ══════════════════ THEME TOGGLE ══════════════════
 const LIGHT_VARS = {
   '--bg':'#ffffff','--bg2':'#f7f8fc','--bg3':'#eef0f7','--bg4':'#e4e7f2',
