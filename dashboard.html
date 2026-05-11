@@ -2899,6 +2899,8 @@ window.enterTest=function(){
         style="padding:10px 28px;font-size:12px;font-weight:700;cursor:pointer;border:none;border-left:1px solid var(--border2);background:transparent;color:var(--text3);font-family:var(--mono);letter-spacing:.05em;">⚖️ Comparar</button>
       <button id="secTabEvBtn" onclick="secShowTab('ev')"
         style="padding:10px 28px;font-size:12px;font-weight:700;cursor:pointer;border:none;border-left:1px solid var(--border2);background:transparent;color:var(--text3);font-family:var(--mono);letter-spacing:.05em;">📋 Filings</button>
+      <button id="secTabRawBtn" onclick="secShowTab('raw')"
+        style="padding:10px 28px;font-size:12px;font-weight:700;cursor:pointer;border:none;border-left:1px solid var(--border2);background:transparent;color:var(--text3);font-family:var(--mono);letter-spacing:.05em;">🗄 Datos SEC</button>
       </div>
 
       <!-- ── TAB: FINANCIALS ── -->
@@ -2927,6 +2929,11 @@ window.enterTest=function(){
       <!-- ── TAB: EVENTOS ── -->
       <div id="secTabEv" style="display:none;">
         <div id="secEvents"></div>
+      </div>
+
+      <!-- ── TAB: DATOS SEC ── -->
+      <div id="secTabRaw" style="display:none;">
+        <div id="secRawData"></div>
       </div>
 
     </div><!-- /secResults -->
@@ -4140,17 +4147,18 @@ function openDetail(especie){
 
   // ── Tabs ──
   window.secShowTab = function(tab){
-    ['fin','rat','cmp','ev'].forEach(t=>{
+    ['fin','rat','cmp','ev','raw'].forEach(t=>{
       const d=$(`secTab${t.charAt(0).toUpperCase()+t.slice(1)}`);
       if(d) d.style.display=tab===t?'block':'none';
     });
-    const tabs={fin:'secTabFinBtn',rat:'secTabRatBtn',cmp:'secTabCmpBtn',ev:'secTabEvBtn'};
+    const tabs={fin:'secTabFinBtn',rat:'secTabRatBtn',cmp:'secTabCmpBtn',ev:'secTabEvBtn',raw:'secTabRawBtn'};
     Object.entries(tabs).forEach(([t,id])=>{
       const b=$(id); if(!b) return;
       b.style.background=tab===t?'#1E27F3':'transparent';
       b.style.color=tab===t?'#fff':'var(--text3)';
     });
     if(tab==='cmp' && _lastFacts && !$('secCompare').innerHTML.trim()) renderCompare();
+    if(tab==='raw' && _lastFacts && !$('secRawData').innerHTML.trim()) renderRawData(_lastFacts);
   };
 
   // ══════════════════════════════════════════════
@@ -4259,6 +4267,7 @@ function openDetail(especie){
     renderRatios(facts);
     _renderKpiBar(facts);
     renderEvents(sub);
+    $('secRawData').innerHTML=''; // reset raw tab on new search
 
     $('secResults').style.display='block';
     $('secWelcome').style.display='none';
@@ -4296,97 +4305,178 @@ function openDetail(especie){
   }
 
   // ══════════════════════════════════════════════
-  // SHARED SERIES HELPERS
+  // SHARED SERIES HELPERS  (US-GAAP + IFRS)
   // ══════════════════════════════════════════════
-  function _seriesAnnual(us, ...keys){
-    for(const k of keys){
-      const all=(((us[k]||{}).units||{})['USD']||((us[k]||{}).units||{})['shares']||[]);
-      const arr=all.filter(x=>{
-        if(x.form!=='10-K'&&x.form!=='20-F'&&x.form!=='10-K/A') return false;
-        if(!x.end) return false;
-        if(!x.start) return true; // balance sheet / point-in-time
-        const days=(new Date(x.end)-new Date(x.start))/(1000*86400);
-        return days>=340&&days<=400; // flujo anual completo
-      }).sort((a,b)=>a.end>b.end?1:-1);
-      const seen=new Set(),out=[];
-      for(const item of arr){const yr=item.end.slice(0,4);if(!seen.has(yr)){seen.add(yr);out.push({yr,val:item.val,date:item.end});}}
-      if(out.length) return out;
-    }
-    return [];
+
+  // Returns a merged namespace object: tries us-gaap first, then ifrs-full as fallback per key.
+  // Callers receive a proxy that transparently resolves both namespaces.
+  function _getNS(facts){
+    const gaap = (facts?.facts||{})['us-gaap']||{};
+    const ifrs = (facts?.facts||{})['ifrs-full']||{};
+    return {gaap, ifrs};
   }
-  function _seriesQ(us, ...keys){
-    for(const k of keys){
-      const arr=(((us[k]||{}).units||{})['USD']||((us[k]||{}).units||{})['shares']||[])
-        .filter(x=>(x.form==='10-Q'||x.form==='10-K')&&x.end&&x.start)
-        .filter(x=>{const d=(new Date(x.end)-new Date(x.start))/(1000*86400);return(d>=60&&d<=100)||(d>=340&&d<=380&&x.form==='10-K');})
-        .sort((a,b)=>a.end>b.end?1:-1);
-      const seen=new Set(),out=[];
-      for(const item of arr){
-        const label=`${item.end.slice(0,4)}Q${Math.ceil(parseInt(item.end.slice(5,7))/3)}`;
-        if(!seen.has(label)){seen.add(label);out.push({yr:label,val:item.val,date:item.end});}
-      }
-      if(out.length) return out;
-    }
-    return [];
-  }
-  function _seriesBSAnnual(us,...keys){
-    for(const k of keys){
-      const arr=(((us[k]||{}).units||{})['USD']||((us[k]||{}).units||{})['shares']||[])
-        .filter(x=>x.end&&!x.start&&(x.form==='10-K'||x.form==='20-F'||x.form==='10-Q'||x.form==='10-K/A'))
-        .sort((a,b)=>a.end>b.end?1:-1);
-      const seen=new Set(),out=[];
-      for(const item of arr){const yr=item.end.slice(0,4);if(!seen.has(yr)){seen.add(yr);out.push({yr,val:item.val,date:item.end});}}
-      if(out.length) return out;
-    }
-    return [];
-  }
-  function _seriesBSQ(us,...keys){
-    for(const k of keys){
-      const arr=(((us[k]||{}).units||{})['USD']||((us[k]||{}).units||{})['shares']||[])
-        .filter(x=>x.end&&!x.start&&(x.form==='10-K'||x.form==='20-F'||x.form==='10-Q'||x.form==='10-K/A'))
-        .sort((a,b)=>a.end>b.end?1:-1);
-      const seen=new Set(),out=[];
-      for(const item of arr){
-        const label=`${item.end.slice(0,4)}Q${Math.ceil(parseInt(item.end.slice(5,7))/3)}`;
-        if(!seen.has(label)){seen.add(label);out.push({yr:label,val:item.val,date:item.end});}
-      }
-      if(out.length) return out;
+
+  // IFRS → equivalent US-GAAP key mapping (ifrs key → [gaap-style keys already tried elsewhere, but we need to pull from ifrs namespace])
+  const IFRS_MAP = {
+    // Income statement
+    'Revenue':                                    'revenue',
+    'RevenueFromContractsWithCustomers':          'revenue',
+    'GrossProfit':                                'grossP',
+    'ProfitLossFromOperatingActivities':          'opInc',
+    'ProfitLoss':                                 'netInc',
+    'ProfitLossAttributableToOwnersOfParent':     'netInc',
+    'DepreciationAndAmortisationExpense':         'da',
+    'ResearchAndDevelopmentExpense':              'rd',
+    'IncomeTaxExpense':                           'tax',
+    'FinanceCosts':                               'interest',
+    'BasicEarningsLossPerShare':                  'eps',
+    'DilutedEarningsLossPerShare':                'eps',
+    // Balance sheet
+    'Assets':                                     'assets',
+    'Liabilities':                                'liab',
+    'Equity':                                     'equity',
+    'EquityAttributableToOwnersOfParent':         'equity',
+    'CashAndCashEquivalents':                     'cash',
+    'CurrentAssets':                              'currentA',
+    'CurrentLiabilities':                         'currentL',
+    'Inventories':                                'inventory',
+    'TradeAndOtherCurrentReceivables':            'receiv',
+    'IntangibleAssetsOtherThanGoodwill':          'intangib',
+    'Goodwill':                                   'goodwill',
+    'BorrowingsNoncurrent':                       'debt',
+    'NoncurrentPortionOfLongtermBorrowings':      'debt',
+    'OrdinarySharesNumber':                       'shares',
+    // Cash flow
+    'CashFlowsFromUsedInOperatingActivities':     'opCF',
+    'CashFlowsFromUsedInOperations':              'opCF',
+    'PurchaseOfPropertyPlantAndEquipment':        'capex',
+    'AcquisitionOfPropertyPlantAndEquipment':     'capex',
+  };
+
+  // Get raw entries from either namespace, preferring gaap, falling back to ifrs
+  function _getEntries(gaap, ifrs, gaapKey, ifrsKeys){
+    // Try gaap key first
+    const gaapData = ((gaap[gaapKey]||{}).units||{});
+    const gaapArr = gaapData['USD']||gaapData['shares']||[];
+    if(gaapArr.length) return gaapArr;
+    // Try ifrs fallbacks
+    for(const ik of (ifrsKeys||[])){
+      const ifrsData = ((ifrs[ik]||{}).units||{});
+      const ifrsArr = ifrsData['USD']||ifrsData['EUR']||ifrsData['shares']||ifrsData['pure']||[];
+      if(ifrsArr.length) return ifrsArr;
     }
     return [];
   }
 
-  // Build all series objects for a given us-gaap namespace
-  function _buildAllSeries(us, isQ){
+  function _seriesAnnual(ns, gaapKey, ...ifrsKeys){
+    const {gaap,ifrs} = ns;
+    const all = _getEntries(gaap, ifrs, gaapKey, ifrsKeys);
+    const arr=all.filter(x=>{
+      if(x.form!=='10-K'&&x.form!=='20-F'&&x.form!=='10-K/A'&&x.form!=='20-F/A') return false;
+      if(!x.end) return false;
+      if(!x.start) return true;
+      const days=(new Date(x.end)-new Date(x.start))/(1000*86400);
+      return days>=300&&days<=420; // widened from 340-400 to catch fiscal-year variations
+    }).sort((a,b)=>a.end>b.end?1:-1);
+    const seen=new Set(),out=[];
+    for(const item of arr){const yr=item.end.slice(0,4);if(!seen.has(yr)){seen.add(yr);out.push({yr,val:item.val,date:item.end});}}
+    return out;
+  }
+  function _seriesQ(ns, gaapKey, ...ifrsKeys){
+    const {gaap,ifrs} = ns;
+    const all = _getEntries(gaap, ifrs, gaapKey, ifrsKeys);
+    const arr=all
+      .filter(x=>(x.form==='10-Q'||x.form==='10-K'||x.form==='6-K'||x.form==='20-F')&&x.end&&x.start)
+      .filter(x=>{const d=(new Date(x.end)-new Date(x.start))/(1000*86400);return(d>=60&&d<=100)||(d>=300&&d<=420&&(x.form==='10-K'||x.form==='20-F'));})
+      .sort((a,b)=>a.end>b.end?1:-1);
+    const seen=new Set(),out=[];
+    for(const item of arr){
+      const label=`${item.end.slice(0,4)}Q${Math.ceil(parseInt(item.end.slice(5,7))/3)}`;
+      if(!seen.has(label)){seen.add(label);out.push({yr:label,val:item.val,date:item.end});}
+    }
+    return out;
+  }
+  function _seriesBSAnnual(ns, gaapKey, ...ifrsKeys){
+    const {gaap,ifrs} = ns;
+    const all = _getEntries(gaap, ifrs, gaapKey, ifrsKeys);
+    const arr=all
+      .filter(x=>x.end&&!x.start&&(x.form==='10-K'||x.form==='20-F'||x.form==='10-Q'||x.form==='10-K/A'||x.form==='6-K'||x.form==='20-F/A'))
+      .sort((a,b)=>a.end>b.end?1:-1);
+    const seen=new Set(),out=[];
+    for(const item of arr){const yr=item.end.slice(0,4);if(!seen.has(yr)){seen.add(yr);out.push({yr,val:item.val,date:item.end});}}
+    return out;
+  }
+  function _seriesBSQ(ns, gaapKey, ...ifrsKeys){
+    const {gaap,ifrs} = ns;
+    const all = _getEntries(gaap, ifrs, gaapKey, ifrsKeys);
+    const arr=all
+      .filter(x=>x.end&&!x.start&&(x.form==='10-K'||x.form==='20-F'||x.form==='10-Q'||x.form==='10-K/A'||x.form==='6-K'||x.form==='20-F/A'))
+      .sort((a,b)=>a.end>b.end?1:-1);
+    const seen=new Set(),out=[];
+    for(const item of arr){
+      const label=`${item.end.slice(0,4)}Q${Math.ceil(parseInt(item.end.slice(5,7))/3)}`;
+      if(!seen.has(label)){seen.add(label);out.push({yr:label,val:item.val,date:item.end});}
+    }
+    return out;
+  }
+
+  // Build all series — accepts facts object (has both namespaces), or legacy plain us-gaap object
+  function _buildAllSeries(factsOrUs, isQ){
+    // Support both: called with facts object ({facts:{us-gaap,ifrs-full}}) or legacy plain us-gaap dict
+    let ns;
+    if(factsOrUs && factsOrUs.facts) {
+      ns = _getNS(factsOrUs);
+    } else {
+      // legacy: plain us-gaap namespace object
+      ns = {gaap: factsOrUs||{}, ifrs:{}};
+    }
     const sa = isQ ? _seriesQ : _seriesAnnual;
     const sb = isQ ? _seriesBSQ : _seriesBSAnnual;
-    const N = isQ ? 12 : 8;
-    const sl = (fn,...k) => fn(us,...k).slice(-N);
+    // N = no limit here; slicing is done at display time via _SEC_RANGE
+    const sl = (fn, gk, ...ik) => fn(ns, gk, ...ik);
     const R={};
-    R.revenue   = sl(sa,'Revenues','RevenueFromContractWithCustomerExcludingAssessedTax','SalesRevenueNet','RevenueNet');
-    R.netInc    = sl(sa,'NetIncomeLoss','ProfitLoss');
+    // Revenue — extra fallbacks for banks/financials and IFRS
+    R.revenue   = sl(sa,'Revenues','Revenue','RevenueFromContractsWithCustomers') ||
+                  (()=>{
+                    const r=sl(sa,'RevenueFromContractWithCustomerExcludingAssessedTax');
+                    if(r.length) return r;
+                    const r2=sl(sa,'SalesRevenueNet'); if(r2.length) return r2;
+                    const r3=sl(sa,'RevenueNet'); if(r3.length) return r3;
+                    // Banks: net interest income proxy
+                    return sl(sa,'InterestAndDividendIncomeOperating','InterestIncomeOperating');
+                  })();
+    // Ensure R.revenue is always an array
+    if(!Array.isArray(R.revenue)) R.revenue=[];
+    R.netInc    = sl(sa,'NetIncomeLoss','ProfitLoss','ProfitLossAttributableToOwnersOfParent');
     R.grossP    = sl(sa,'GrossProfit');
-    R.opInc     = sl(sa,'OperatingIncomeLoss');
+    R.opInc     = sl(sa,'OperatingIncomeLoss','ProfitLossFromOperatingActivities');
     R.assets    = sl(sb,'Assets');
     R.liab      = sl(sb,'Liabilities');
-    R.equity    = sl(sb,'StockholdersEquity','StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest');
-    R.cash      = sl(sb,'CashAndCashEquivalentsAtCarryingValue','Cash','CashCashEquivalentsAndShortTermInvestments');
-    R.opCF      = sl(sa,'NetCashProvidedByUsedInOperatingActivities');
-    R.capex     = sl(sa,'PaymentsToAcquirePropertyPlantAndEquipment','CapitalExpenditureDiscontinuedOperations');
-    R.eps       = sl(sa,'EarningsPerShareDiluted','EarningsPerShareBasic');
-    R.debt      = sl(sb,'LongTermDebt','LongTermDebtNoncurrent');
-    R.da        = sl(sa,'DepreciationDepletionAndAmortization','DepreciationAndAmortization');
+    R.equity    = sl(sb,'StockholdersEquity','StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest','Equity','EquityAttributableToOwnersOfParent');
+    R.cash      = sl(sb,'CashAndCashEquivalentsAtCarryingValue','Cash','CashCashEquivalentsAndShortTermInvestments','CashAndCashEquivalents');
+    R.opCF      = sl(sa,'NetCashProvidedByUsedInOperatingActivities','CashFlowsFromUsedInOperatingActivities','CashFlowsFromUsedInOperations');
+    R.capex     = sl(sa,'PaymentsToAcquirePropertyPlantAndEquipment','PurchaseOfPropertyPlantAndEquipment','AcquisitionOfPropertyPlantAndEquipment','CapitalExpenditureDiscontinuedOperations');
+    R.eps       = sl(sa,'EarningsPerShareDiluted','DilutedEarningsLossPerShare','EarningsPerShareBasic','BasicEarningsLossPerShare');
+    // Debt — use total financial debt (LT + current portions) where available
+    R.debt      = (()=>{
+      const lt = sl(sb,'LongTermDebt','LongTermDebtNoncurrent','BorrowingsNoncurrent','NoncurrentPortionOfLongtermBorrowings');
+      if(lt.length) return lt;
+      return sl(sb,'LongTermDebtAndCapitalLeaseObligations');
+    })();
+    if(!Array.isArray(R.debt)) R.debt=[];
+    R.da        = sl(sa,'DepreciationDepletionAndAmortization','DepreciationAndAmortization','DepreciationAndAmortisationExpense');
     R.rd        = sl(sa,'ResearchAndDevelopmentExpense');
     R.sga       = sl(sa,'SellingGeneralAndAdministrativeExpense');
-    R.shares    = sl(sb,'CommonStockSharesOutstanding','WeightedAverageNumberOfSharesOutstandingBasic');
-    R.currentA  = sl(sb,'AssetsCurrent');
-    R.currentL  = sl(sb,'LiabilitiesCurrent');
+    R.shares    = sl(sb,'CommonStockSharesOutstanding','WeightedAverageNumberOfSharesOutstandingBasic','OrdinarySharesNumber');
+    R.currentA  = sl(sb,'AssetsCurrent','CurrentAssets');
+    R.currentL  = sl(sb,'LiabilitiesCurrent','CurrentLiabilities');
     R.inventory = sl(sb,'InventoryNet','Inventories');
-    R.receiv    = sl(sb,'AccountsReceivableNetCurrent');
-    R.intangib  = sl(sb,'IntangibleAssetsNetExcludingGoodwill','FiniteLivedIntangibleAssetsNet');
+    R.receiv    = sl(sb,'AccountsReceivableNetCurrent','TradeAndOtherCurrentReceivables');
+    R.intangib  = sl(sb,'IntangibleAssetsNetExcludingGoodwill','FiniteLivedIntangibleAssetsNet','IntangibleAssetsOtherThanGoodwill');
     R.goodwill  = sl(sb,'Goodwill');
-    R.tax       = sl(sa,'IncomeTaxExpenseBenefit');
-    R.interest  = sl(sa,'InterestExpense','InterestAndDebtExpense');
-    // Computed
+    R.tax       = sl(sa,'IncomeTaxExpenseBenefit','IncomeTaxExpense');
+    R.interest  = sl(sa,'InterestExpense','InterestAndDebtExpense','FinanceCosts');
+    // Computed — capex sign: always treat as negative outflow for FCF
     R.ebitda = R.opInc.map(o=>{const d=R.da.find(x=>x.yr===o.yr);return d?{yr:o.yr,val:o.val+Math.abs(d.val)}:{yr:o.yr,val:o.val};});
     R.fcf    = R.opCF.map(o=>{const c=R.capex.find(x=>x.yr===o.yr);return{yr:o.yr,val:c?o.val-Math.abs(c.val):o.val};});
     R.grossM = R.revenue.map(r=>{const g=R.grossP.find(x=>x.yr===r.yr);return g&&r.val?{yr:r.yr,val:g.val/r.val*100}:null;}).filter(Boolean);
@@ -4443,49 +4533,42 @@ function openDetail(especie){
 
   function _renderKpiBar(facts){
     const el=$('secKpiBar'); if(!el||!facts) return;
-    const us=(facts.facts||{})['us-gaap']||{};
+    const ns=_getNS(facts);
 
-    // Get last reported value (point-in-time, from annual or most recent filing)
-    function getLast(...keys){
-      for(const k of keys){
-        const c=(us[k]||{}).units||{};
-        const arr=c['USD']||c['shares']||[];
-        if(!arr.length) continue;
-        const annual=arr.filter(x=>x.form==='10-K'||x.form==='20-F'||x.form==='10-K/A');
-        const src=annual.length?annual:arr;
-        const sorted=[...src].sort((a,b)=>a.end>b.end?1:-1);
-        if(sorted.length) return sorted[sorted.length-1].val;
-      }
-      return null;
+    function getLast(gaapKey,...ifrsKeys){
+      const arr=_getEntries(ns.gaap,ns.ifrs,gaapKey,ifrsKeys);
+      if(!arr.length) return null;
+      const annual=arr.filter(x=>x.form==='10-K'||x.form==='20-F'||x.form==='10-K/A'||x.form==='20-F/A');
+      const src=annual.length?annual:arr;
+      const sorted=[...src].sort((a,b)=>a.end>b.end?1:-1);
+      return sorted.length?sorted[sorted.length-1].val:null;
     }
-    // For flow items (income statement): acepta tanto sin start como con start anual (~1 año de duración)
-    function getLastFlow(...keys){
-      for(const k of keys){
-        const c=(us[k]||{}).units||{};
-        const all=c['USD']||[];
-        // Candidatos: 10-K o 20-F, con duración anual (con o sin start)
-        const annual=all.filter(x=>{
-          if(x.form!=='10-K'&&x.form!=='20-F'&&x.form!=='10-K/A') return false;
-          if(!x.start) return true; // sin start: ok
-          const days=(new Date(x.end)-new Date(x.start))/(1000*86400);
-          return days>=340&&days<=400; // duración ~1 año
-        }).sort((a,b)=>a.end>b.end?1:-1);
-        if(annual.length) return annual[annual.length-1].val;
-      }
-      return null;
+    function getLastFlow(gaapKey,...ifrsKeys){
+      const arr=_getEntries(ns.gaap,ns.ifrs,gaapKey,ifrsKeys);
+      if(!arr.length) return null;
+      const annual=arr.filter(x=>{
+        if(x.form!=='10-K'&&x.form!=='20-F'&&x.form!=='10-K/A'&&x.form!=='20-F/A') return false;
+        if(!x.start) return true;
+        const days=(new Date(x.end)-new Date(x.start))/(1000*86400);
+        return days>=300&&days<=420;
+      }).sort((a,b)=>a.end>b.end?1:-1);
+      return annual.length?annual[annual.length-1].val:null;
     }
 
-    const revenue = getLastFlow('Revenues','RevenueFromContractWithCustomerExcludingAssessedTax','SalesRevenueNet','RevenueNet');
+    const revenue = getLastFlow('Revenues','Revenue','RevenueFromContractsWithCustomers')
+                 ?? getLastFlow('RevenueFromContractWithCustomerExcludingAssessedTax')
+                 ?? getLastFlow('SalesRevenueNet')
+                 ?? getLastFlow('InterestAndDividendIncomeOperating');
     const grossP  = getLastFlow('GrossProfit');
-    const opInc   = getLastFlow('OperatingIncomeLoss');
-    const netInc  = getLastFlow('NetIncomeLoss','ProfitLoss');
-    const opCF    = getLastFlow('NetCashProvidedByUsedInOperatingActivities');
-    const capexRaw= getLastFlow('PaymentsToAcquirePropertyPlantAndEquipment','CapitalExpenditureDiscontinuedOperations');
-    const da      = getLastFlow('DepreciationDepletionAndAmortization','DepreciationAndAmortization');
+    const opInc   = getLastFlow('OperatingIncomeLoss','ProfitLossFromOperatingActivities');
+    const netInc  = getLastFlow('NetIncomeLoss','ProfitLoss','ProfitLossAttributableToOwnersOfParent');
+    const opCF    = getLastFlow('NetCashProvidedByUsedInOperatingActivities','CashFlowsFromUsedInOperatingActivities','CashFlowsFromUsedInOperations');
+    const capexRaw= getLastFlow('PaymentsToAcquirePropertyPlantAndEquipment','PurchaseOfPropertyPlantAndEquipment','AcquisitionOfPropertyPlantAndEquipment');
+    const da      = getLastFlow('DepreciationDepletionAndAmortization','DepreciationAndAmortization','DepreciationAndAmortisationExpense');
     const rd      = getLastFlow('ResearchAndDevelopmentExpense');
-    const eps     = getLastFlow('EarningsPerShareDiluted','EarningsPerShareBasic');
-    const cash    = getLast('CashAndCashEquivalentsAtCarryingValue','Cash','CashCashEquivalentsAndShortTermInvestments');
-    const debt    = getLast('LongTermDebt','LongTermDebtNoncurrent');
+    const eps     = getLastFlow('EarningsPerShareDiluted','DilutedEarningsLossPerShare','EarningsPerShareBasic','BasicEarningsLossPerShare');
+    const cash    = getLast('CashAndCashEquivalentsAtCarryingValue','Cash','CashCashEquivalentsAndShortTermInvestments','CashAndCashEquivalents');
+    const debt    = getLast('LongTermDebt','LongTermDebtNoncurrent','BorrowingsNoncurrent');
 
     const ebitda  = (opInc!=null&&da!=null) ? opInc+Math.abs(da) : opInc;
     const fcf     = (opCF!=null&&capexRaw!=null) ? opCF-Math.abs(capexRaw) : opCF;
@@ -4535,9 +4618,8 @@ function openDetail(especie){
   // ── Chart dashboard helpers ──
   function _renderOneDashChart(cid, metricId, period, xDir){
     const meta = CHART_METRICS.find(m=>m.id===metricId)||CHART_METRICS[0];
-    const us = (_lastFacts?.facts||{})['us-gaap']||{};
     const isQ = period==='quarterly';
-    const S = _buildAllSeries(us, isQ);
+    const S = _buildAllSeries(_lastFacts, isQ);
     let data = (S[meta.field]||[]);
     if((xDir||'desc')==='desc') data=[...data].reverse();
     const labels = data.map(x=>x.yr);
@@ -4648,34 +4730,34 @@ function openDetail(especie){
   // ══════════════════════════════════════════════
   // RENDER FINANCIALS + CHARTS
   // ══════════════════════════════════════════════
-  function renderFinancials(facts){
-    const us = facts.facts['us-gaap']||{};
+  // RANGE STATE for Financials tables
+  let _secRange = 5; // default: last 5 annual periods
+  let _secRangeQ = 8; // default: last 8 quarterly periods
 
+  function renderFinancials(facts){
     // ── Initial chart dashboard ──
-    // Destroy old chart instances
     Object.values(_chartInstances).forEach(c=>{try{c.destroy();}catch(_){}});
     _chartInstances={};
-
-    // Default 4 charts if none defined yet
     if(_chartDefs.length===0){
-      _chartDefs=[
-        {id:++_chartIdSeq, metric:'ebitda', period:'quarterly', xDir:'desc'},
-      ];
+      _chartDefs=[{id:++_chartIdSeq, metric:'ebitda', period:'quarterly', xDir:'desc'}];
     }
     _refreshDashboard();
 
-    // ── Table builder (sticky first col, newest-left) ──
+    // ── Table builder — NO color rules, with range filter ──
     function tbl(title, rows, isQ){
-      const allYears=[...new Set(rows.filter(r=>r.series.length).flatMap(r=>r.series.map(x=>x.yr)))].sort().reverse(); // newest first
+      const N = isQ ? _secRangeQ : _secRange;
+      // Collect all years across rows, sort newest-first, take last N
+      const allYearsAll=[...new Set(rows.filter(r=>r.series.length).flatMap(r=>r.series.map(x=>x.yr)))].sort().reverse();
+      const allYears = allYearsAll.slice(0, N);
       if(!allYears.length) return '';
       const visRows=rows.filter(r=>r.series.length);
       if(!visRows.length) return '';
-      // Col widths
       const colW=86;
       return `<div style="margin-bottom:20px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;">
         <div style="padding:14px 16px;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);font-family:var(--mono);display:flex;align-items:center;gap:10px;">
           ${title}
           <span style="font-size:9px;font-weight:500;color:var(--text3);background:var(--bg3);padding:2px 8px;border-radius:10px;border:1px solid var(--border);">${isQ?'TRIMESTRAL':'ANUAL'}</span>
+          <span style="font-size:9px;color:var(--text3);font-family:var(--mono);">${allYearsAll.length > N ? allYearsAll.length + ' períodos disponibles' : ''}</span>
         </div>
         <div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
@@ -4688,10 +4770,9 @@ function openDetail(especie){
             const cells=allYears.map(yr=>{
               const p=row.series.find(x=>x.yr===yr);
               const v=p?(row.fmt?row.fmt(p.val):fmtM(p.val)):'—';
-              const color=p&&row.colorFn?row.colorFn(p.val):'var(--text)';
-              return `<td style="padding:7px 10px;font-size:11px;text-align:right;color:${color};white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono);">${v}</td>`;
+              return `<td style="padding:7px 10px;font-size:11px;text-align:right;color:var(--text);white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono);">${v}</td>`;
             }).join('');
-            return `<tr>
+            return `<tr onmouseover="this.querySelectorAll('td').forEach(td=>td.style.background='var(--accent-light)')" onmouseout="this.querySelectorAll('td').forEach(td=>td.style.background='')">
               <td style="position:sticky;left:0;z-index:4;background:var(--bg2);padding:7px 14px;font-size:11px;color:var(--text2);white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono);">${row.label}</td>
               ${cells}
             </tr>`;
@@ -4701,23 +4782,41 @@ function openDetail(especie){
       </div>`;
     }
 
-    const cpn = v=>v>=0?'#3fb950':'#f85149';
-    const pct  = v=>fmtPct(v);
+    const pct = v=>fmtPct(v);
+    const fmtShares = v=>v>=1e9?(v/1e9).toFixed(2)+'B':v>=1e6?(v/1e6).toFixed(0)+'M':v.toFixed(0);
 
-    // Build annual series
-    const A = _buildAllSeries(us, false);
-    // Build quarterly series
-    const Q = _buildAllSeries(us, true);
+    const A = _buildAllSeries(facts, false);
+    const Q = _buildAllSeries(facts, true);
+
+    // ── Range selector controls ──
+    const annualOptions = [3,5,8,10,15,20].map(n=>`<option value="${n}"${n===_secRange?' selected':''}>${n} años</option>`).join('');
+    const qOptions = [4,8,12,16,20].map(n=>`<option value="${n}"${n===_secRangeQ?' selected':''}>${n} trim.</option>`).join('');
+    const rangeControls = `
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap;">
+        <span style="font-size:11px;color:var(--text3);font-family:var(--mono);">Rango:</span>
+        <label style="font-size:11px;color:var(--text2);font-family:var(--mono);display:flex;align-items:center;gap:6px;">Anuales
+          <select onchange="window._secRange=+this.value;renderFinancials(window._lastFacts)"
+            style="background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:11px;padding:3px 7px;cursor:pointer;outline:none;">
+            ${annualOptions}
+          </select>
+        </label>
+        <label style="font-size:11px;color:var(--text2);font-family:var(--mono);display:flex;align-items:center;gap:6px;">Trimestrales
+          <select onchange="window._secRangeQ=+this.value;renderFinancials(window._lastFacts)"
+            style="background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:11px;padding:3px 7px;cursor:pointer;outline:none;">
+            ${qOptions}
+          </select>
+        </label>
+      </div>`;
 
     function makeTables(S, isQ){
       return [
         tbl('📊 Income Statement', [
           {label:'Revenue',           series:S.revenue},
           {label:'Gross Profit',      series:S.grossP},
-          {label:'Op. Income (EBIT)', series:S.opInc,    colorFn:cpn},
-          {label:'EBITDA',            series:S.ebitda,   colorFn:cpn},
-          {label:'Net Income',        series:S.netInc,   colorFn:cpn},
-          {label:'EPS Diluted',       series:S.eps,      fmt:v=>'$'+v.toFixed(2), colorFn:cpn},
+          {label:'Op. Income (EBIT)', series:S.opInc},
+          {label:'EBITDA',            series:S.ebitda},
+          {label:'Net Income',        series:S.netInc},
+          {label:'EPS Diluted',       series:S.eps,     fmt:v=>'$'+v.toFixed(2)},
           {label:'R&D',               series:S.rd},
           {label:'SG&A',              series:S.sga},
           {label:'D&A',               series:S.da},
@@ -4725,42 +4824,54 @@ function openDetail(especie){
           {label:'Interest Expense',  series:S.interest},
         ].filter(r=>r.series.length), isQ),
         tbl('📐 Márgenes', [
-          {label:'Gross Margin %',    series:S.grossM,   fmt:pct, colorFn:cpn},
-          {label:'Op. Margin %',      series:S.opM,      fmt:pct, colorFn:cpn},
-          {label:'EBITDA Margin %',   series:S.ebitdaM,  fmt:pct, colorFn:cpn},
-          {label:'Net Margin %',      series:S.netM,     fmt:pct, colorFn:cpn},
+          {label:'Gross Margin %',    series:S.grossM,   fmt:pct},
+          {label:'Op. Margin %',      series:S.opM,      fmt:pct},
+          {label:'EBITDA Margin %',   series:S.ebitdaM,  fmt:pct},
+          {label:'Net Margin %',      series:S.netM,     fmt:pct},
         ].filter(r=>r.series.length), isQ),
         tbl('🏦 Balance Sheet', [
-          {label:'Cash',              series:S.cash,     colorFn:()=>'#3fb950'},
+          {label:'Cash',              series:S.cash},
           {label:'Receivables',       series:S.receiv},
           {label:'Inventories',       series:S.inventory},
           {label:'Current Assets',    series:S.currentA},
           {label:'Total Assets',      series:S.assets},
-          {label:'Current Liab.',     series:S.currentL, colorFn:()=>'#f85149'},
-          {label:'LT Debt',           series:S.debt,     colorFn:()=>'#f85149'},
-          {label:'Total Liab.',       series:S.liab,     colorFn:()=>'#f85149'},
-          {label:'Equity',            series:S.equity,   colorFn:cpn},
+          {label:'Current Liab.',     series:S.currentL},
+          {label:'LT Debt',           series:S.debt},
+          {label:'Total Liab.',       series:S.liab},
+          {label:'Equity',            series:S.equity},
           {label:'Goodwill',          series:S.goodwill},
           {label:'Intangibles',       series:S.intangib},
-          {label:'Shares Out.',       series:S.shares,   fmt:v=>v>=1e9?(v/1e9).toFixed(2)+'B':v>=1e6?(v/1e6).toFixed(0)+'M':v.toFixed(0)},
+          {label:'Shares Out.',       series:S.shares,   fmt:fmtShares},
         ].filter(r=>r.series.length), isQ),
         tbl('💸 Cash Flow', [
-          {label:'Operating CF',      series:S.opCF,     colorFn:cpn},
+          {label:'Operating CF',      series:S.opCF},
           {label:'Capex',             series:S.capex,    fmt:v=>fmtM(-Math.abs(v))},
-          {label:'Free Cash Flow',    series:S.fcf,      colorFn:cpn},
+          {label:'Free Cash Flow',    series:S.fcf},
         ].filter(r=>r.series.length), isQ),
       ].join('');
     }
 
-    $('secTables').innerHTML = makeTables(A,false) + '<div style="margin:28px 0 16px;border-top:1px solid rgba(30,39,243,0.12);padding-top:24px;font-size:11px;font-weight:700;color:#4a5280;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;">Datos Trimestrales</div>' + makeTables(Q,true);
+    $('secTables').innerHTML = rangeControls + makeTables(A,false) +
+      '<div style="margin:28px 0 16px;border-top:1px solid var(--border);padding-top:24px;font-size:11px;font-weight:700;color:var(--text3);font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;">Datos Trimestrales</div>' +
+      makeTables(Q,true);
   }
+  // Expose range state globally so select onchange can reach it
+  window._secRange = 5;
+  window._secRangeQ = 8;
+  Object.defineProperty(window, '_secRange', {
+    get(){ return _secRange; },
+    set(v){ _secRange=v; }
+  });
+  Object.defineProperty(window, '_secRangeQ', {
+    get(){ return _secRangeQ; },
+    set(v){ _secRangeQ=v; }
+  });
 
   // ══════════════════════════════════════════════
   // RENDER RATIOS
   // ══════════════════════════════════════════════
   function renderRatios(facts){
     const el=$('secRatios'); if(!el) return;
-    const us = facts.facts['us-gaap']||{};
 
     function buildRatioHTML(S, isQ){
       function cr(arrA,arrB,fn){return arrA.map(a=>{const b=arrB.find(x=>x.yr===a.yr);if(!b||!b.val)return null;const v=fn(a.val,b.val);return isFinite(v)?{yr:a.yr,val:v}:null;}).filter(Boolean);}
@@ -4791,7 +4902,8 @@ function openDetail(especie){
       const cpn=v=>v>=0?'#3fb950':'#f85149', blue=()=>'#a5b4fc';
 
       function rtbl(title, icon, rows){
-        const allYears=[...new Set(rows.filter(r=>r.s.length).flatMap(r=>r.s.map(x=>x.yr)))].sort().reverse();
+        const allYearsAll=[...new Set(rows.filter(r=>r.s.length).flatMap(r=>r.s.map(x=>x.yr)))].sort().reverse();
+        const allYears = isQ ? allYearsAll.slice(0,_secRangeQ) : allYearsAll.slice(0,_secRange);
         if(!allYears.length) return '';
         const visRows=rows.filter(r=>r.s.length);
         if(!visRows.length) return '';
@@ -4810,7 +4922,7 @@ function openDetail(especie){
               ${allYears.map(y=>`<th style="background:var(--bg3);padding:8px 10px;font-size:10px;font-weight:600;color:var(--text2);text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;">${y}</th>`).join('')}
             </tr></thead>
             <tbody>${visRows.map(row=>{
-              const cells=allYears.map(yr=>{const p=row.s.find(x=>x.yr===yr);const v=p?(row.fmt?row.fmt(p.val):p.val.toFixed(2)):'—';const color=p&&row.color?row.color(p.val):'var(--text)';return `<td style="padding:7px 10px;font-size:11px;text-align:right;color:${color};white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono);">${v}</td>`;}).join('');
+              const cells=allYears.map(yr=>{const p=row.s.find(x=>x.yr===yr);const v=p?(row.fmt?row.fmt(p.val):p.val.toFixed(2)):'—';return `<td style="padding:7px 10px;font-size:11px;text-align:right;color:var(--text);white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono);">${v}</td>`;}).join('');
               return `<tr><td style="position:sticky;left:0;z-index:4;background:var(--bg2);padding:7px 12px;font-size:11px;color:var(--text2);font-weight:600;white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono);">${row.label}</td><td style="padding:7px 10px;font-size:10px;color:var(--text3);border-bottom:1px solid var(--border);font-family:var(--mono);">${row.desc}</td>${cells}</tr>`;
             }).join('')}</tbody>
           </table>
@@ -4850,8 +4962,8 @@ function openDetail(especie){
       ].filter(Boolean).join('');
     }
 
-    const A=_buildAllSeries(us,false);
-    const Q=_buildAllSeries(us,true);
+    const A=_buildAllSeries(facts,false);
+    const Q=_buildAllSeries(facts,true);
     el.innerHTML = buildRatioHTML(A,false) +
       '<div style="margin:28px 0 16px;border-top:1px solid rgba(30,39,243,0.12);padding-top:24px;font-size:11px;font-weight:700;color:#4a5280;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;">Ratios Trimestrales</div>' +
       buildRatioHTML(Q,true);
@@ -4896,8 +5008,7 @@ function openDetail(especie){
 
     // Compute ratios for a company at a specific period offset
     function getCompanyRatios(facts, isQ, offset){
-      const us=(facts.facts||{})['us-gaap']||{};
-      const S=_buildAllSeries(us,isQ);
+      const S=_buildAllSeries(facts,isQ);
       // Get period list sorted newest first
       const periods=[...new Set([...S.revenue,...S.assets].map(x=>x.yr))].sort().reverse();
       const yr=periods[offset]||periods[0];
@@ -4942,8 +5053,8 @@ function openDetail(especie){
     function buildTable(){
       const base=companyData[0];
       const periods=base?.facts ? [...new Set([
-        ..._buildAllSeries((base.facts.facts||{})['us-gaap']||{},isQ).revenue.map(x=>x.yr),
-        ..._buildAllSeries((base.facts.facts||{})['us-gaap']||{},isQ).assets.map(x=>x.yr),
+        ..._buildAllSeries(base.facts,isQ).revenue.map(x=>x.yr),
+        ..._buildAllSeries(base.facts,isQ).assets.map(x=>x.yr),
       ]).values()].sort().reverse() : [];
 
       const offsetOpts=periods.slice(0,8).map((p,i)=>`<option value="${i}"${i===_cmpPeriodOffset?' selected':''}>${i===0?'Último: '+p:p}</option>`).join('');
@@ -5074,8 +5185,7 @@ function openDetail(especie){
     const dir=window._cmpSortDir;
     _cmpCompanies=[..._cmpCompanies].sort((a,b)=>{
       const getR=c=>{
-        const us=(c.facts?.facts||{})['us-gaap']||{};
-        const S=_buildAllSeries(us,isQ);
+        const S=_buildAllSeries(c.facts,isQ);
         const r=_cmpCompanies.find(x=>x.ticker===c.ticker);
         if(!r||!r.facts) return null;
         const rat=getCompanyRatios2(r.facts,isQ,_cmpPeriodOffset);
@@ -5090,8 +5200,7 @@ function openDetail(especie){
   };
 
   function getCompanyRatios2(facts,isQ,offset){
-    const us=(facts.facts||{})['us-gaap']||{};
-    const S=_buildAllSeries(us,isQ);
+    const S=_buildAllSeries(facts,isQ);
     const periods=[...new Set([...S.revenue,...S.assets].map(x=>x.yr))].sort().reverse();
     const yr=periods[offset]||periods[0];if(!yr)return{};
     function v(s){const p=s.find(x=>x.yr===yr);return p?p.val:null;}
@@ -5206,6 +5315,109 @@ function openDetail(especie){
         </div>
       `).join('')}`;
   }
+
+
+  // ══════════════════════════════════════════════
+  // RENDER RAW DATA (datos SEC sin tratamiento)
+  // ══════════════════════════════════════════════
+  function renderRawData(facts){
+    const el=$('secRawData'); if(!el||!facts) return;
+    const ns=_getNS(facts);
+    const combined={...ns.gaap,...ns.ifrs}; // merge both namespaces
+
+    // Get all concept keys that have USD or shares data, sorted alphabetically
+    const allKeys=Object.keys(combined).sort();
+
+    function getConceptRows(key){
+      const units=(combined[key]||{}).units||{};
+      const arr=units['USD']||units['shares']||units['EUR']||units['pure']||[];
+      if(!arr.length) return [];
+      // For each entry: form, start, end, val, accn
+      return [...arr].sort((a,b)=>a.end>b.end?1:-1);
+    }
+
+    // Build a search/filter UI + table of all concepts
+    const totalConcepts=allKeys.filter(k=>getConceptRows(k).length>0).length;
+    const namespace = ns.ifrs && Object.keys(ns.ifrs).length ? 'US-GAAP + IFRS' : 'US-GAAP';
+
+    el.innerHTML=`
+      <div style="margin-bottom:20px;">
+        <div style="font-size:12px;color:var(--text3);font-family:var(--mono);margin-bottom:12px;">
+          ${totalConcepts} conceptos XBRL disponibles · Namespace: ${namespace} · Datos tal cual los reporta SEC EDGAR
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+          <input id="rawSearch" type="text" placeholder="Filtrar por nombre de concepto (ej: Revenue, Assets...)"
+            oninput="secFilterRaw(this.value)"
+            style="flex:1;min-width:240px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--text);font-family:var(--mono);outline:none;" />
+          <span id="rawCount" style="font-size:11px;color:var(--text3);font-family:var(--mono);white-space:nowrap;">${totalConcepts} conceptos</span>
+        </div>
+        <div id="rawConceptList" style="max-height:70vh;overflow-y:auto;"></div>
+      </div>`;
+
+    // Store data for filter
+    window._rawConceptData = allKeys.filter(k=>getConceptRows(k).length>0).map(key=>{
+      const rows=getConceptRows(key);
+      const unit=Object.keys((combined[key]||{}).units||{})[0]||'';
+      return {key, rows, unit};
+    });
+
+    secFilterRaw('');
+  }
+
+  window.secFilterRaw = function(q){
+    const list=$('rawConceptList'); if(!list) return;
+    const count=$('rawCount');
+    const data=window._rawConceptData||[];
+    const ql=(q||'').toLowerCase();
+    const filtered=ql ? data.filter(d=>d.key.toLowerCase().includes(ql)) : data;
+    if(count) count.textContent=filtered.length+' conceptos';
+
+    if(!filtered.length){
+      list.innerHTML='<div style="color:var(--text3);font-family:var(--mono);font-size:12px;padding:20px;">Sin resultados.</div>';
+      return;
+    }
+
+    // Show max 50 concepts at once to avoid DOM bloat
+    const shown=filtered.slice(0,50);
+    list.innerHTML=shown.map(({key,rows,unit})=>{
+      // Show last 8 entries sorted by date desc
+      const display=[...rows].reverse().slice(0,8);
+      const rowsHtml=display.map(r=>{
+        const val=typeof r.val==='number'
+          ? (Math.abs(r.val)>=1e6 ? '$'+Math.round(r.val/1e6).toLocaleString()+'M ('+r.val.toLocaleString()+')' : r.val.toLocaleString())
+          : r.val;
+        return `<tr onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''">
+          <td style="padding:5px 10px;font-family:var(--mono);font-size:11px;color:var(--text3);white-space:nowrap;">${r.form||'—'}</td>
+          <td style="padding:5px 10px;font-family:var(--mono);font-size:11px;color:var(--text3);white-space:nowrap;">${r.start||'—'}</td>
+          <td style="padding:5px 10px;font-family:var(--mono);font-size:11px;color:var(--text2);white-space:nowrap;">${r.end||'—'}</td>
+          <td style="padding:5px 10px;font-family:var(--mono);font-size:11px;color:var(--text);text-align:right;white-space:nowrap;">${val}</td>
+        </tr>`;
+      }).join('');
+      const more=rows.length>8?`<div style="font-size:10px;color:var(--text3);font-family:var(--mono);padding:4px 10px;">${rows.length-8} entradas más</div>`:'';
+      return `<div style="margin-bottom:12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+        <div style="padding:8px 12px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
+          <span style="font-size:12px;font-weight:700;color:var(--text2);font-family:var(--mono);">${key}</span>
+          <span style="font-size:10px;color:var(--text3);font-family:var(--mono);">${unit}</span>
+          <span style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-left:auto;">${rows.length} registros</span>
+        </div>
+        <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr>
+            <th style="padding:5px 10px;font-size:9px;font-weight:600;color:var(--text3);text-align:left;background:var(--bg3);border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;">Form</th>
+            <th style="padding:5px 10px;font-size:9px;font-weight:600;color:var(--text3);text-align:left;background:var(--bg3);border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;">Inicio</th>
+            <th style="padding:5px 10px;font-size:9px;font-weight:600;color:var(--text3);text-align:left;background:var(--bg3);border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;">Fin</th>
+            <th style="padding:5px 10px;font-size:9px;font-weight:600;color:var(--text3);text-align:right;background:var(--bg3);border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;">Valor</th>
+          </tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+        </div>
+        ${more}
+      </div>`;
+    }).join('');
+    if(filtered.length>50){
+      list.innerHTML+='<div style="font-size:11px;color:var(--text3);font-family:var(--mono);padding:12px;text-align:center;">Mostrando 50 de '+filtered.length+' conceptos. Filtrá para ver más.</div>';
+    }
+  };
 
   window.bSetMode=function(){};window.bToggleOpt=function(){};window.bSetLang=function(){};window.bSaveKey=function(){};
 
