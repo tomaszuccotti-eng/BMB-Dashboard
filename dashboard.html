@@ -4268,6 +4268,7 @@ function openDetail(especie){
     _renderKpiBar(facts);
     renderEvents(sub);
     $('secRawData').innerHTML=''; // reset raw tab on new search
+    _secTableDefs=[]; // reset table defs for new company
 
     $('secResults').style.display='block';
     $('secWelcome').style.display='none';
@@ -4488,27 +4489,40 @@ function openDetail(especie){
 
   // ── Chart metric catalogue ──
   const CHART_METRICS = [
-    {id:'revenue',   label:'Revenue',           unit:'M', field:'revenue',  type:'bar',  color:'#1E27F3'},
-    {id:'grossP',    label:'Gross Profit',       unit:'M', field:'grossP',   type:'bar',  color:'#a5b4fc'},
-    {id:'opInc',     label:'Op. Income',         unit:'M', field:'opInc',    type:'bar',  color:'#3fb950'},
-    {id:'ebitda',    label:'EBITDA',             unit:'M', field:'ebitda',   type:'bar',  color:'#0d9e6e'},
-    {id:'netInc',    label:'Net Income',         unit:'M', field:'netInc',   type:'bar',  color:'#22c55e'},
-    {id:'opCF',      label:'Operating CF',       unit:'M', field:'opCF',     type:'bar',  color:'#1E27F3'},
-    {id:'fcf',       label:'Free Cash Flow',     unit:'M', field:'fcf',      type:'bar',  color:'#d4a017'},
-    {id:'assets',    label:'Total Assets',       unit:'M', field:'assets',   type:'bar',  color:'#a5b4fc'},
-    {id:'equity',    label:'Equity',             unit:'M', field:'equity',   type:'bar',  color:'#3fb950'},
-    {id:'debt',      label:'LT Debt',            unit:'M', field:'debt',     type:'bar',  color:'#f85149'},
-    {id:'cash',      label:'Cash',               unit:'M', field:'cash',     type:'bar',  color:'#22c55e'},
-    {id:'grossM',    label:'Gross Margin %',     unit:'%', field:'grossM',   type:'line', color:'#3fb950'},
-    {id:'opM',       label:'Op. Margin %',       unit:'%', field:'opM',      type:'line', color:'#1E27F3'},
-    {id:'netM',      label:'Net Margin %',       unit:'%', field:'netM',     type:'line', color:'#d4a017'},
-    {id:'ebitdaM',   label:'EBITDA Margin %',    unit:'%', field:'ebitdaM',  type:'line', color:'#0d9e6e'},
-    {id:'eps',       label:'EPS Diluted',        unit:'$', field:'eps',      type:'line', color:'#a5b4fc'},
-    {id:'rd',        label:'R&D Expense',        unit:'M', field:'rd',       type:'bar',  color:'#8b5cf6'},
-    {id:'sga',       label:'SG&A Expense',       unit:'M', field:'sga',      type:'bar',  color:'#f59e0b'},
-    {id:'capex',     label:'Capex',              unit:'M', field:'capex',    type:'bar',  color:'#f85149'},
-    {id:'da',        label:'D&A',                unit:'M', field:'da',       type:'bar',  color:'#8b99c4'},
-    {id:'shares',    label:'Shares Out.',        unit:'M', field:'shares',   type:'line', color:'#a5b4fc'},
+    // ── Income Statement ──
+    {id:'revenue',   label:'Revenue',            unit:'M', field:'revenue',  type:'bar',  color:'#1E27F3', group:'Income'},
+    {id:'grossP',    label:'Gross Profit',        unit:'M', field:'grossP',   type:'bar',  color:'#a5b4fc', group:'Income'},
+    {id:'opInc',     label:'Op. Income (EBIT)',   unit:'M', field:'opInc',    type:'bar',  color:'#3fb950', group:'Income'},
+    {id:'ebitda',    label:'EBITDA',              unit:'M', field:'ebitda',   type:'bar',  color:'#0d9e6e', group:'Income'},
+    {id:'netInc',    label:'Net Income',          unit:'M', field:'netInc',   type:'bar',  color:'#22c55e', group:'Income'},
+    {id:'eps',       label:'EPS Diluted',         unit:'$', field:'eps',      type:'line', color:'#a5b4fc', group:'Income'},
+    {id:'rd',        label:'R&D Expense',         unit:'M', field:'rd',       type:'bar',  color:'#8b5cf6', group:'Income'},
+    {id:'sga',       label:'SG&A Expense',        unit:'M', field:'sga',      type:'bar',  color:'#f59e0b', group:'Income'},
+    {id:'da',        label:'D&A',                 unit:'M', field:'da',       type:'bar',  color:'#8b99c4', group:'Income'},
+    {id:'tax',       label:'Tax Expense',         unit:'M', field:'tax',      type:'bar',  color:'#f85149', group:'Income'},
+    {id:'interest',  label:'Interest Expense',    unit:'M', field:'interest', type:'bar',  color:'#f59e0b', group:'Income'},
+    // ── Margins ──
+    {id:'grossM',    label:'Gross Margin %',      unit:'%', field:'grossM',   type:'line', color:'#3fb950', group:'Margins'},
+    {id:'opM',       label:'Op. Margin %',        unit:'%', field:'opM',      type:'line', color:'#1E27F3', group:'Margins'},
+    {id:'ebitdaM',   label:'EBITDA Margin %',     unit:'%', field:'ebitdaM',  type:'line', color:'#0d9e6e', group:'Margins'},
+    {id:'netM',      label:'Net Margin %',        unit:'%', field:'netM',     type:'line', color:'#d4a017', group:'Margins'},
+    // ── Cash Flow ──
+    {id:'opCF',      label:'Operating Cash Flow', unit:'M', field:'opCF',     type:'bar',  color:'#1E27F3', group:'CashFlow'},
+    {id:'capex',     label:'Capex',               unit:'M', field:'capex',    type:'bar',  color:'#f85149', group:'CashFlow'},
+    {id:'fcf',       label:'Free Cash Flow',      unit:'M', field:'fcf',      type:'bar',  color:'#d4a017', group:'CashFlow'},
+    // ── Balance Sheet ──
+    {id:'assets',    label:'Total Assets',        unit:'M', field:'assets',   type:'bar',  color:'#a5b4fc', group:'Balance'},
+    {id:'equity',    label:'Equity',              unit:'M', field:'equity',   type:'bar',  color:'#3fb950', group:'Balance'},
+    {id:'debt',      label:'LT Debt',             unit:'M', field:'debt',     type:'bar',  color:'#f85149', group:'Balance'},
+    {id:'cash',      label:'Cash & Equivalents',  unit:'M', field:'cash',     type:'bar',  color:'#22c55e', group:'Balance'},
+    {id:'currentA',  label:'Current Assets',      unit:'M', field:'currentA', type:'bar',  color:'#a5b4fc', group:'Balance'},
+    {id:'currentL',  label:'Current Liab.',       unit:'M', field:'currentL', type:'bar',  color:'#f85149', group:'Balance'},
+    {id:'liab',      label:'Total Liabilities',   unit:'M', field:'liab',     type:'bar',  color:'#f85149', group:'Balance'},
+    {id:'goodwill',  label:'Goodwill',            unit:'M', field:'goodwill', type:'bar',  color:'#8b99c4', group:'Balance'},
+    {id:'intangib',  label:'Intangibles',         unit:'M', field:'intangib', type:'bar',  color:'#8b99c4', group:'Balance'},
+    {id:'inventory', label:'Inventories',         unit:'M', field:'inventory',type:'bar',  color:'#f59e0b', group:'Balance'},
+    {id:'receiv',    label:'Receivables',         unit:'M', field:'receiv',   type:'bar',  color:'#a5b4fc', group:'Balance'},
+    {id:'shares',    label:'Shares Outstanding',  unit:'M', field:'shares',   type:'line', color:'#a5b4fc', group:'Balance'},
   ];
 
   // ── KPI config ──
@@ -4616,11 +4630,14 @@ function openDetail(especie){
   };
 
   // ── Chart dashboard helpers ──
-  function _renderOneDashChart(cid, metricId, period, xDir){
+  function _renderOneDashChart(cid, metricId, period, xDir, chartRange){
     const meta = CHART_METRICS.find(m=>m.id===metricId)||CHART_METRICS[0];
     const isQ = period==='quarterly';
     const S = _buildAllSeries(_lastFacts, isQ);
     let data = (S[meta.field]||[]);
+    // Apply range: take last N from sorted-by-date array, then apply direction
+    const cr = chartRange||20;
+    data = data.slice(-cr);
     if((xDir||'desc')==='desc') data=[...data].reverse();
     const labels = data.map(x=>x.yr);
     const vals   = data.map(x=> meta.unit==='M' ? +(x.val/1e6).toFixed(0) : +x.val.toFixed(2));
@@ -4646,35 +4663,77 @@ function openDetail(especie){
     });
   }
 
-  function _buildDashCard(cid, metricId, period, xDir){
+  function _buildDashCard(cid, metricId, period, xDir, chartRange){
     const meta = CHART_METRICS.find(m=>m.id===metricId)||CHART_METRICS[0];
-    const metricOpts = CHART_METRICS.map(m=>`<option value="${m.id}"${m.id===metricId?' selected':''}>${m.label}</option>`).join('');
     const dir=xDir||'desc';
+    const cr=chartRange||20; // default: show all available (capped at 20)
+    const rangeOpts=[5,8,10,15,20].map(n=>`<option value="${n}"${n===cr?' selected':''}>${n}</option>`).join('');
     return `<div id="dashCard_${cid}" style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:14px;position:relative;">
-      <div style="display:flex;align-items:center;gap:5px;margin-bottom:10px;flex-wrap:wrap;">
-        <select onchange="secUpdateChart(${cid},'metric',this.value)"
-          style="background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--text2);font-family:var(--mono);font-size:10px;padding:3px 7px;cursor:pointer;outline:none;font-weight:700;">
-          ${metricOpts}
-        </select>
-        <div style="display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:5px;overflow:hidden;">
-          <button onclick="secUpdateChart(${cid},'period','annual')"
-            style="padding:3px 10px;font-size:9px;font-weight:700;cursor:pointer;border:none;background:${period==='annual'?'#1E27F3':'transparent'};color:${period==='annual'?'#fff':'var(--text3)'};font-family:var(--mono);">Anual</button>
-          <button onclick="secUpdateChart(${cid},'period','quarterly')"
-            style="padding:3px 10px;font-size:9px;font-weight:700;cursor:pointer;border:none;background:${period==='quarterly'?'#1E27F3':'transparent'};color:${period==='quarterly'?'#fff':'var(--text3)'};font-family:var(--mono);">Trim.</button>
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:8px;flex-wrap:wrap;">
+        <!-- Metric search input -->
+        <div style="position:relative;flex:1;min-width:140px;">
+          <input id="chartSearch_${cid}" type="text" value="${meta.label}"
+            placeholder="Buscar métrica..."
+            oninput="secChartSearch(${cid},this.value)"
+            onfocus="secChartSearchShow(${cid})"
+            onblur="setTimeout(()=>secChartSearchHide(${cid}),200)"
+            style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 8px;outline:none;font-weight:700;cursor:pointer;" />
+          <div id="chartDrop_${cid}" style="display:none;position:absolute;top:calc(100%+3px);left:0;right:0;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;max-height:180px;overflow-y:auto;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,0.3);"></div>
         </div>
-        <button onclick="secUpdateChart(${cid},'xDir','${dir==='desc'?'asc':'desc'}')" title="Cambiar dirección eje X"
-          style="padding:3px 9px;font-size:9px;font-weight:700;cursor:pointer;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--text3);font-family:var(--mono);">${dir==='desc'?'← Asc':'Desc →'}</button>
+        <!-- Period toggle -->
+        <div style="display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:5px;overflow:hidden;flex-shrink:0;">
+          <button onclick="secUpdateChart(${cid},'period','annual')"
+            style="padding:3px 8px;font-size:9px;font-weight:700;cursor:pointer;border:none;background:${period==='annual'?'#1E27F3':'transparent'};color:${period==='annual'?'#fff':'var(--text3)'};font-family:var(--mono);">Anual</button>
+          <button onclick="secUpdateChart(${cid},'period','quarterly')"
+            style="padding:3px 8px;font-size:9px;font-weight:700;cursor:pointer;border:none;background:${period==='quarterly'?'#1E27F3':'transparent'};color:${period==='quarterly'?'#fff':'var(--text3)'};font-family:var(--mono);">Trim.</button>
+        </div>
+        <!-- Range -->
+        <label style="font-size:9px;color:var(--text3);font-family:var(--mono);display:flex;align-items:center;gap:3px;flex-shrink:0;">
+          Ult.
+          <select onchange="secUpdateChart(${cid},'chartRange',+this.value)"
+            style="background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text2);font-family:var(--mono);font-size:9px;padding:2px 4px;outline:none;">
+            ${rangeOpts}
+          </select>
+        </label>
+        <!-- Dir -->
+        <button onclick="secUpdateChart(${cid},'xDir','${dir==='desc'?'asc':'desc'}')"
+          style="padding:2px 7px;font-size:9px;font-weight:700;cursor:pointer;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text3);font-family:var(--mono);flex-shrink:0;">${dir==='desc'?'↔ Asc':'↔ Desc'}</button>
         <span style="flex:1"></span>
         <button onclick="secMinimizeChart(${cid})" title="Minimizar"
-          style="padding:2px 7px;font-size:10px;cursor:pointer;border:1px solid rgba(30,39,243,0.2);border-radius:4px;background:transparent;color:#4a5280;font-family:var(--mono);">-</button>
-        <button onclick="secRemoveChart(${cid})" title="Eliminar"
-          style="padding:2px 7px;font-size:10px;cursor:pointer;border:1px solid rgba(248,81,73,0.3);border-radius:4px;background:transparent;color:#f85149;font-family:var(--mono);">✕</button>
+          style="padding:2px 6px;font-size:10px;cursor:pointer;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text3);font-family:var(--mono);">-</button>
+        <button onclick="secRemoveChart(${cid})"
+          style="padding:2px 6px;font-size:10px;cursor:pointer;border:1px solid rgba(248,81,73,0.3);border-radius:4px;background:transparent;color:#f85149;font-family:var(--mono);">✕</button>
       </div>
       <div id="dashBody_${cid}" style="position:relative;height:200px;">
         <canvas id="dashCanvas_${cid}"></canvas>
       </div>
     </div>`;
   }
+
+  // Chart metric search
+  window.secChartSearch = function(cid, q){
+    const drop=document.getElementById(`chartDrop_${cid}`); if(!drop) return;
+    const ql=(q||'').toLowerCase();
+    const results=ql ? CHART_METRICS.filter(m=>m.label.toLowerCase().includes(ql)||m.group.toLowerCase().includes(ql)) : CHART_METRICS;
+    drop.style.display='block';
+    drop.innerHTML=results.map(m=>`
+      <div onmousedown="secUpdateChart(${cid},'metric','${m.id}');secChartSearchHide(${cid})"
+        style="padding:6px 10px;cursor:pointer;font-size:11px;font-family:var(--mono);color:var(--text2);display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);"
+        onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''">
+        <span style="font-size:9px;color:var(--text3);min-width:52px;">${m.group}</span>
+        <span style="font-weight:600;">${m.label}</span>
+        <span style="font-size:9px;color:var(--text3);margin-left:auto;">${m.unit}</span>
+      </div>`).join('');
+    if(!results.length) drop.innerHTML='<div style="padding:8px 12px;font-size:11px;color:var(--text3);font-family:var(--mono);">Sin resultados</div>';
+  };
+  window.secChartSearchShow = function(cid){
+    const inp=document.getElementById(`chartSearch_${cid}`);
+    if(inp) { inp.select(); secChartSearch(cid, ''); }
+  };
+  window.secChartSearchHide = function(cid){
+    const drop=document.getElementById(`chartDrop_${cid}`);
+    if(drop) drop.style.display='none';
+  };
 
   function _dashGridCols(n){
     if(n===1) return '1fr';
@@ -4688,9 +4747,9 @@ function openDetail(especie){
     dash.style.gridTemplateColumns=_dashGridCols(n);
     dash.innerHTML=_chartDefs.map((c,i)=>{
       const span=(n%2!==0&&i===n-1)?'grid-column:1/-1;':'';
-      return `<div style="${span}">${_buildDashCard(c.id,c.metric,c.period,c.xDir).replace('<div id="dashCard_','<div style="height:100%" id="dashCard_')}</div>`;
+      return `<div style="${span}">${_buildDashCard(c.id,c.metric,c.period,c.xDir,c.chartRange).replace('<div id="dashCard_','<div style="height:100%" id="dashCard_')}</div>`;
     }).join('');
-    _chartDefs.forEach(c=>{ setTimeout(()=>_renderOneDashChart(c.id,c.metric,c.period,c.xDir),30); });
+    _chartDefs.forEach(c=>{ setTimeout(()=>_renderOneDashChart(c.id,c.metric,c.period,c.xDir,c.chartRange),30); });
   }
 
   window.secUpdateChart = function(cid, prop, val){
@@ -4699,9 +4758,12 @@ function openDetail(especie){
     const card=$(`dashCard_${cid}`); if(!card) return;
     const wrapper=card.parentElement;
     const tempDiv=document.createElement('div');
-    tempDiv.innerHTML=_buildDashCard(cid,def.metric,def.period,def.xDir);
+    tempDiv.innerHTML=_buildDashCard(cid,def.metric,def.period,def.xDir,def.chartRange);
     wrapper.replaceChild(tempDiv.firstElementChild,card);
-    setTimeout(()=>_renderOneDashChart(cid,def.metric,def.period,def.xDir),30);
+    // Update search input label to current metric name
+    const inp=document.getElementById(`chartSearch_${cid}`);
+    if(inp){ const m=CHART_METRICS.find(m=>m.id===def.metric); if(m) inp.value=m.label; }
+    setTimeout(()=>_renderOneDashChart(cid,def.metric,def.period,def.xDir,def.chartRange),30);
   };
 
   window.secMinimizeChart = function(cid){
@@ -4723,149 +4785,232 @@ function openDetail(especie){
     const cid=++_chartIdSeq;
     const used=_chartDefs.map(c=>c.metric);
     const next=CHART_METRICS.find(m=>!used.includes(m.id))||CHART_METRICS[0];
-    _chartDefs.push({id:cid,metric:next.id,period:'annual',xDir:'desc'});
+    _chartDefs.push({id:cid,metric:next.id,period:'annual',xDir:'desc',chartRange:10});
     _refreshDashboard();
   };
 
   // ══════════════════════════════════════════════
   // RENDER FINANCIALS + CHARTS
   // ══════════════════════════════════════════════
-  // RANGE STATE for Financials tables
-  let _secRange = 5; // default: last 5 annual periods
-  let _secRangeQ = 8; // default: last 8 quarterly periods
+  // TABLE STATE  (per-table: range + visible rows)
+  // ══════════════════════════════════════════════
+  // _secTableDefs: array of {id, title, isQ, range, rows:[{key,label,fmt}], editing}
+  let _secTableDefs = [];
+  let _secTableIdSeq = 0;
+  let _secSeriesA = null;  // cached annual series
+  let _secSeriesQ = null;  // cached quarterly series
+
+  // Full catalogue of all available series for tables
+  const TABLE_ROW_CATALOGUE = [
+    // Income
+    {key:'revenue',  label:'Revenue',          group:'Income', fmt:null},
+    {key:'grossP',   label:'Gross Profit',      group:'Income', fmt:null},
+    {key:'opInc',    label:'Op. Income (EBIT)', group:'Income', fmt:null},
+    {key:'ebitda',   label:'EBITDA',            group:'Income', fmt:null},
+    {key:'netInc',   label:'Net Income',        group:'Income', fmt:null},
+    {key:'eps',      label:'EPS Diluted',       group:'Income', fmt:'eps'},
+    {key:'rd',       label:'R&D',               group:'Income', fmt:null},
+    {key:'sga',      label:'SG&A',              group:'Income', fmt:null},
+    {key:'da',       label:'D&A',               group:'Income', fmt:null},
+    {key:'tax',      label:'Tax Expense',       group:'Income', fmt:null},
+    {key:'interest', label:'Interest Expense',  group:'Income', fmt:null},
+    // Margins
+    {key:'grossM',   label:'Gross Margin %',    group:'Margins', fmt:'pct'},
+    {key:'opM',      label:'Op. Margin %',      group:'Margins', fmt:'pct'},
+    {key:'ebitdaM',  label:'EBITDA Margin %',   group:'Margins', fmt:'pct'},
+    {key:'netM',     label:'Net Margin %',      group:'Margins', fmt:'pct'},
+    // Balance
+    {key:'cash',     label:'Cash',              group:'Balance', fmt:null},
+    {key:'receiv',   label:'Receivables',       group:'Balance', fmt:null},
+    {key:'inventory',label:'Inventories',       group:'Balance', fmt:null},
+    {key:'currentA', label:'Current Assets',    group:'Balance', fmt:null},
+    {key:'assets',   label:'Total Assets',      group:'Balance', fmt:null},
+    {key:'currentL', label:'Current Liab.',     group:'Balance', fmt:null},
+    {key:'debt',     label:'LT Debt',           group:'Balance', fmt:null},
+    {key:'liab',     label:'Total Liab.',       group:'Balance', fmt:null},
+    {key:'equity',   label:'Equity',            group:'Balance', fmt:null},
+    {key:'goodwill', label:'Goodwill',          group:'Balance', fmt:null},
+    {key:'intangib', label:'Intangibles',       group:'Balance', fmt:null},
+    {key:'shares',   label:'Shares Out.',       group:'Balance', fmt:'shares'},
+    // Cash Flow
+    {key:'opCF',     label:'Operating CF',      group:'CashFlow', fmt:null},
+    {key:'capex',    label:'Capex',             group:'CashFlow', fmt:'capex'},
+    {key:'fcf',      label:'Free Cash Flow',    group:'CashFlow', fmt:null},
+  ];
+
+  function _tblFmt(key, val){
+    const cat = TABLE_ROW_CATALOGUE.find(r=>r.key===key);
+    const f = cat?.fmt;
+    if(f==='pct')    return fmtPct(val);
+    if(f==='eps')    return '$'+val.toFixed(2);
+    if(f==='shares') return val>=1e9?(val/1e9).toFixed(2)+'B':val>=1e6?(val/1e6).toFixed(0)+'M':val.toFixed(0);
+    if(f==='capex')  return fmtM(-Math.abs(val));
+    return fmtM(val);
+  }
+
+  function _initTableDefs(){
+    _secTableIdSeq=0;
+    _secTableDefs=[
+      {id:++_secTableIdSeq, title:'📊 Income Statement', isQ:false, range:5, editing:false,
+        rows:['revenue','grossP','opInc','ebitda','netInc','eps','rd','sga','da','tax','interest']},
+      {id:++_secTableIdSeq, title:'📐 Márgenes',          isQ:false, range:5, editing:false,
+        rows:['grossM','opM','ebitdaM','netM']},
+      {id:++_secTableIdSeq, title:'🏦 Balance Sheet',     isQ:false, range:5, editing:false,
+        rows:['cash','receiv','inventory','currentA','assets','currentL','debt','liab','equity','goodwill','intangib','shares']},
+      {id:++_secTableIdSeq, title:'💸 Cash Flow',         isQ:false, range:5, editing:false,
+        rows:['opCF','capex','fcf']},
+      // Quarterly versions
+      {id:++_secTableIdSeq, title:'📊 Income Statement',  isQ:true,  range:8, editing:false,
+        rows:['revenue','grossP','opInc','ebitda','netInc','eps']},
+      {id:++_secTableIdSeq, title:'📐 Márgenes',          isQ:true,  range:8, editing:false,
+        rows:['grossM','opM','ebitdaM','netM']},
+      {id:++_secTableIdSeq, title:'🏦 Balance Sheet',     isQ:true,  range:8, editing:false,
+        rows:['cash','currentA','assets','currentL','debt','equity']},
+      {id:++_secTableIdSeq, title:'💸 Cash Flow',         isQ:true,  range:8, editing:false,
+        rows:['opCF','capex','fcf']},
+    ];
+  }
+
+  function _renderOneTable(def, S){
+    const allSeries = def.rows.map(key=>({key, series:(S[key]||[])})).filter(r=>r.series.length);
+    const allYearsAll=[...new Set(allSeries.flatMap(r=>r.series.map(x=>x.yr)))].sort().reverse();
+    const allYears = allYearsAll.slice(0, def.range);
+    if(!allYears.length && !def.editing) return '';
+    const rangeOpts=[3,5,8,10,15,20].map(n=>`<option value="${n}"${n===def.range?' selected':''}>${n}</option>`).join('');
+    const colW=86;
+
+    const headerHtml=`
+      <div style="padding:10px 14px;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);font-family:var(--mono);display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span>${def.title}</span>
+        <span style="font-size:9px;font-weight:500;color:var(--text3);background:var(--bg3);padding:2px 8px;border-radius:10px;border:1px solid var(--border);">${def.isQ?'TRIMESTRAL':'ANUAL'}</span>
+        <label style="font-size:9px;color:var(--text3);font-family:var(--mono);display:flex;align-items:center;gap:3px;margin-left:4px;">
+          Ult. <select onchange="secTblSetRange(${def.id},+this.value)"
+            style="background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text2);font-family:var(--mono);font-size:9px;padding:2px 4px;outline:none;">${rangeOpts}</select>
+        </label>
+        <span style="flex:1;"></span>
+        <button onclick="secTblToggleEdit(${def.id})"
+          style="padding:2px 8px;font-size:10px;cursor:pointer;border:1px solid ${def.editing?'#1E27F3':'var(--border2)'};border-radius:4px;background:${def.editing?'rgba(30,39,243,0.12)':'transparent'};color:${def.editing?'#a5b4fc':'var(--text3)'};font-family:var(--mono);">✎ Editar</button>
+        <button onclick="secTblRemove(${def.id})"
+          style="padding:2px 8px;font-size:10px;cursor:pointer;border:1px solid rgba(248,81,73,0.3);border-radius:4px;background:transparent;color:#f85149;font-family:var(--mono);">✕</button>
+      </div>`;
+
+    // Edit mode: show all catalogue rows as toggleable chips
+    let editPanelHtml='';
+    if(def.editing){
+      const catByGroup={};
+      TABLE_ROW_CATALOGUE.forEach(r=>{ if(!catByGroup[r.group]) catByGroup[r.group]=[]; catByGroup[r.group].push(r); });
+      editPanelHtml=`<div style="padding:10px 14px;background:var(--bg3);border-bottom:1px solid var(--border);">
+        <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:8px;">Tocá para agregar o quitar filas:</div>
+        ${Object.entries(catByGroup).map(([grp,rows])=>`
+          <div style="margin-bottom:6px;">
+            <span style="font-size:9px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;margin-right:6px;">${grp}</span>
+            ${rows.map(r=>{
+              const active=def.rows.includes(r.key);
+              return `<button onmousedown="secTblToggleRow(${def.id},'${r.key}')"
+                style="padding:2px 9px;margin:2px;border-radius:12px;font-size:10px;cursor:pointer;font-family:var(--mono);border:1px solid ${active?'#1E27F3':'var(--border)'};background:${active?'rgba(30,39,243,0.15)':'transparent'};color:${active?'#a5b4fc':'var(--text3)'};">${r.label}</button>`;
+            }).join('')}
+          </div>`).join('')}
+      </div>`;
+    }
+
+    if(!allYears.length) return `<div id="secTbl_${def.id}" style="margin-bottom:16px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;">${headerHtml}${editPanelHtml}<div style="padding:16px;font-size:11px;color:var(--text3);font-family:var(--mono);">Sin datos disponibles para las métricas seleccionadas.</div></div>`;
+
+    const tableHtml=`<div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+        <colgroup><col style="width:180px;min-width:180px;">${allYears.map(()=>`<col style="width:${colW}px;min-width:${colW}px;">`).join('')}</colgroup>
+        <thead><tr>
+          <th style="position:sticky;left:0;z-index:5;background:var(--bg3);padding:8px 14px;font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;">Métrica</th>
+          ${allYears.map(y=>`<th style="background:var(--bg3);padding:8px 10px;font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;">${y}</th>`).join('')}
+        </tr></thead>
+        <tbody>${allSeries.map(({key,series})=>{
+          const cells=allYears.map(yr=>{
+            const p=series.find(x=>x.yr===yr);
+            const v=p?_tblFmt(key,p.val):'—';
+            return `<td style="padding:7px 10px;font-size:11px;text-align:right;color:var(--text);white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono);">${v}</td>`;
+          }).join('');
+          const cat=TABLE_ROW_CATALOGUE.find(r=>r.key===key);
+          return `<tr onmouseover="this.querySelectorAll('td').forEach(td=>td.style.background='var(--accent-light)')" onmouseout="this.querySelectorAll('td').forEach(td=>td.style.background='')">
+            <td style="position:sticky;left:0;z-index:4;background:var(--bg2);padding:7px 14px;font-size:11px;color:var(--text2);white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono);">${cat?.label||key}</td>
+            ${cells}
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>`;
+
+    return `<div id="secTbl_${def.id}" style="margin-bottom:16px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;">${headerHtml}${editPanelHtml}${tableHtml}</div>`;
+  }
+
+  function _renderAllTables(){
+    const el=$('secTables'); if(!el) return;
+    const S_A = _secSeriesA;
+    const S_Q = _secSeriesQ;
+    if(!S_A||!S_Q){ el.innerHTML=''; return; }
+
+    const annualTables  = _secTableDefs.filter(d=>!d.isQ);
+    const quarterTables = _secTableDefs.filter(d=>d.isQ);
+
+    const addBtnStyle='padding:5px 14px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border2);border-radius:6px;background:transparent;color:var(--text3);font-family:var(--mono);transition:all .15s;';
+
+    el.innerHTML =
+      annualTables.map(d=>_renderOneTable(d,S_A)).join('') +
+      `<div style="margin:8px 0 12px;">
+        <button onclick="secTblAdd(false)" style="${addBtnStyle}" onmouseover="this.style.borderColor='#1E27F3';this.style.color='#a5b4fc'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text3)'">+ Agregar tabla anual</button>
+      </div>` +
+      `<div style="margin:28px 0 12px;border-top:1px solid var(--border);padding-top:20px;font-size:11px;font-weight:700;color:var(--text3);font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;">Datos Trimestrales</div>` +
+      quarterTables.map(d=>_renderOneTable(d,S_Q)).join('') +
+      `<div style="margin:8px 0;">
+        <button onclick="secTblAdd(true)" style="${addBtnStyle}" onmouseover="this.style.borderColor='#1E27F3';this.style.color='#a5b4fc'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text3)'">+ Agregar tabla trimestral</button>
+      </div>`;
+  }
+
+  window.secTblSetRange = function(id, n){
+    const d=_secTableDefs.find(t=>t.id===id); if(!d) return;
+    d.range=n;
+    const el=document.getElementById(`secTbl_${id}`);
+    if(el){ const S=d.isQ?_secSeriesQ:_secSeriesA; el.outerHTML=_renderOneTable(d,S); }
+  };
+  window.secTblToggleEdit = function(id){
+    const d=_secTableDefs.find(t=>t.id===id); if(!d) return;
+    d.editing=!d.editing;
+    const el=document.getElementById(`secTbl_${id}`);
+    if(el){ const S=d.isQ?_secSeriesQ:_secSeriesA; el.outerHTML=_renderOneTable(d,S); }
+  };
+  window.secTblToggleRow = function(id, key){
+    const d=_secTableDefs.find(t=>t.id===id); if(!d) return;
+    if(d.rows.includes(key)) d.rows=d.rows.filter(k=>k!==key);
+    else d.rows.push(key);
+    const el=document.getElementById(`secTbl_${id}`);
+    if(el){ const S=d.isQ?_secSeriesQ:_secSeriesA; el.outerHTML=_renderOneTable(d,S); }
+  };
+  window.secTblRemove = function(id){
+    _secTableDefs=_secTableDefs.filter(d=>d.id!==id);
+    _renderAllTables();
+  };
+  window.secTblAdd = function(isQ){
+    const id=++_secTableIdSeq;
+    _secTableDefs.push({id, title:'📋 Nueva tabla', isQ, range:isQ?8:5, editing:true, rows:['revenue','netInc']});
+    _renderAllTables();
+    // Scroll to bottom of tables
+    setTimeout(()=>{const el=document.getElementById(`secTbl_${id}`);if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'});},50);
+  };
 
   function renderFinancials(facts){
     // ── Initial chart dashboard ──
     Object.values(_chartInstances).forEach(c=>{try{c.destroy();}catch(_){}});
     _chartInstances={};
     if(_chartDefs.length===0){
-      _chartDefs=[{id:++_chartIdSeq, metric:'ebitda', period:'quarterly', xDir:'desc'}];
+      _chartDefs=[{id:++_chartIdSeq, metric:'ebitda', period:'quarterly', xDir:'desc', chartRange:10}];
     }
     _refreshDashboard();
 
-    // ── Table builder — NO color rules, with range filter ──
-    function tbl(title, rows, isQ){
-      const N = isQ ? _secRangeQ : _secRange;
-      // Collect all years across rows, sort newest-first, take last N
-      const allYearsAll=[...new Set(rows.filter(r=>r.series.length).flatMap(r=>r.series.map(x=>x.yr)))].sort().reverse();
-      const allYears = allYearsAll.slice(0, N);
-      if(!allYears.length) return '';
-      const visRows=rows.filter(r=>r.series.length);
-      if(!visRows.length) return '';
-      const colW=86;
-      return `<div style="margin-bottom:20px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;">
-        <div style="padding:14px 16px;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);font-family:var(--mono);display:flex;align-items:center;gap:10px;">
-          ${title}
-          <span style="font-size:9px;font-weight:500;color:var(--text3);background:var(--bg3);padding:2px 8px;border-radius:10px;border:1px solid var(--border);">${isQ?'TRIMESTRAL':'ANUAL'}</span>
-          <span style="font-size:9px;color:var(--text3);font-family:var(--mono);">${allYearsAll.length > N ? allYearsAll.length + ' períodos disponibles' : ''}</span>
-        </div>
-        <div style="overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
-          <colgroup><col style="width:180px;min-width:180px;">${allYears.map(()=>`<col style="width:${colW}px;min-width:${colW}px;">`).join('')}</colgroup>
-          <thead><tr>
-            <th style="position:sticky;left:0;z-index:5;background:var(--bg3);padding:8px 14px;font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;">Métrica</th>
-            ${allYears.map(y=>`<th style="background:var(--bg3);padding:8px 10px;font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;">${y}</th>`).join('')}
-          </tr></thead>
-          <tbody>${visRows.map(row=>{
-            const cells=allYears.map(yr=>{
-              const p=row.series.find(x=>x.yr===yr);
-              const v=p?(row.fmt?row.fmt(p.val):fmtM(p.val)):'—';
-              return `<td style="padding:7px 10px;font-size:11px;text-align:right;color:var(--text);white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono);">${v}</td>`;
-            }).join('');
-            return `<tr onmouseover="this.querySelectorAll('td').forEach(td=>td.style.background='var(--accent-light)')" onmouseout="this.querySelectorAll('td').forEach(td=>td.style.background='')">
-              <td style="position:sticky;left:0;z-index:4;background:var(--bg2);padding:7px 14px;font-size:11px;color:var(--text2);white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono);">${row.label}</td>
-              ${cells}
-            </tr>`;
-          }).join('')}</tbody>
-        </table>
-        </div>
-      </div>`;
-    }
+    // Build + cache series
+    _secSeriesA = _buildAllSeries(facts, false);
+    _secSeriesQ = _buildAllSeries(facts, true);
 
-    const pct = v=>fmtPct(v);
-    const fmtShares = v=>v>=1e9?(v/1e9).toFixed(2)+'B':v>=1e6?(v/1e6).toFixed(0)+'M':v.toFixed(0);
+    // Init table defs only on first load (preserve edits if re-rendering)
+    if(_secTableDefs.length===0) _initTableDefs();
 
-    const A = _buildAllSeries(facts, false);
-    const Q = _buildAllSeries(facts, true);
-
-    // ── Range selector controls ──
-    const annualOptions = [3,5,8,10,15,20].map(n=>`<option value="${n}"${n===_secRange?' selected':''}>${n} años</option>`).join('');
-    const qOptions = [4,8,12,16,20].map(n=>`<option value="${n}"${n===_secRangeQ?' selected':''}>${n} trim.</option>`).join('');
-    const rangeControls = `
-      <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap;">
-        <span style="font-size:11px;color:var(--text3);font-family:var(--mono);">Rango:</span>
-        <label style="font-size:11px;color:var(--text2);font-family:var(--mono);display:flex;align-items:center;gap:6px;">Anuales
-          <select onchange="window._secRange=+this.value;renderFinancials(window._lastFacts)"
-            style="background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:11px;padding:3px 7px;cursor:pointer;outline:none;">
-            ${annualOptions}
-          </select>
-        </label>
-        <label style="font-size:11px;color:var(--text2);font-family:var(--mono);display:flex;align-items:center;gap:6px;">Trimestrales
-          <select onchange="window._secRangeQ=+this.value;renderFinancials(window._lastFacts)"
-            style="background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:11px;padding:3px 7px;cursor:pointer;outline:none;">
-            ${qOptions}
-          </select>
-        </label>
-      </div>`;
-
-    function makeTables(S, isQ){
-      return [
-        tbl('📊 Income Statement', [
-          {label:'Revenue',           series:S.revenue},
-          {label:'Gross Profit',      series:S.grossP},
-          {label:'Op. Income (EBIT)', series:S.opInc},
-          {label:'EBITDA',            series:S.ebitda},
-          {label:'Net Income',        series:S.netInc},
-          {label:'EPS Diluted',       series:S.eps,     fmt:v=>'$'+v.toFixed(2)},
-          {label:'R&D',               series:S.rd},
-          {label:'SG&A',              series:S.sga},
-          {label:'D&A',               series:S.da},
-          {label:'Tax Expense',       series:S.tax},
-          {label:'Interest Expense',  series:S.interest},
-        ].filter(r=>r.series.length), isQ),
-        tbl('📐 Márgenes', [
-          {label:'Gross Margin %',    series:S.grossM,   fmt:pct},
-          {label:'Op. Margin %',      series:S.opM,      fmt:pct},
-          {label:'EBITDA Margin %',   series:S.ebitdaM,  fmt:pct},
-          {label:'Net Margin %',      series:S.netM,     fmt:pct},
-        ].filter(r=>r.series.length), isQ),
-        tbl('🏦 Balance Sheet', [
-          {label:'Cash',              series:S.cash},
-          {label:'Receivables',       series:S.receiv},
-          {label:'Inventories',       series:S.inventory},
-          {label:'Current Assets',    series:S.currentA},
-          {label:'Total Assets',      series:S.assets},
-          {label:'Current Liab.',     series:S.currentL},
-          {label:'LT Debt',           series:S.debt},
-          {label:'Total Liab.',       series:S.liab},
-          {label:'Equity',            series:S.equity},
-          {label:'Goodwill',          series:S.goodwill},
-          {label:'Intangibles',       series:S.intangib},
-          {label:'Shares Out.',       series:S.shares,   fmt:fmtShares},
-        ].filter(r=>r.series.length), isQ),
-        tbl('💸 Cash Flow', [
-          {label:'Operating CF',      series:S.opCF},
-          {label:'Capex',             series:S.capex,    fmt:v=>fmtM(-Math.abs(v))},
-          {label:'Free Cash Flow',    series:S.fcf},
-        ].filter(r=>r.series.length), isQ),
-      ].join('');
-    }
-
-    $('secTables').innerHTML = rangeControls + makeTables(A,false) +
-      '<div style="margin:28px 0 16px;border-top:1px solid var(--border);padding-top:24px;font-size:11px;font-weight:700;color:var(--text3);font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;">Datos Trimestrales</div>' +
-      makeTables(Q,true);
+    _renderAllTables();
   }
-  // Expose range state globally so select onchange can reach it
-  window._secRange = 5;
-  window._secRangeQ = 8;
-  Object.defineProperty(window, '_secRange', {
-    get(){ return _secRange; },
-    set(v){ _secRange=v; }
-  });
-  Object.defineProperty(window, '_secRangeQ', {
-    get(){ return _secRangeQ; },
-    set(v){ _secRangeQ=v; }
-  });
 
   // ══════════════════════════════════════════════
   // RENDER RATIOS
@@ -4903,7 +5048,8 @@ function openDetail(especie){
 
       function rtbl(title, icon, rows){
         const allYearsAll=[...new Set(rows.filter(r=>r.s.length).flatMap(r=>r.s.map(x=>x.yr)))].sort().reverse();
-        const allYears = isQ ? allYearsAll.slice(0,_secRangeQ) : allYearsAll.slice(0,_secRange);
+        const defN = isQ ? 8 : 5;
+        const allYears = allYearsAll.slice(0, defN);
         if(!allYears.length) return '';
         const visRows=rows.filter(r=>r.s.length);
         if(!visRows.length) return '';
