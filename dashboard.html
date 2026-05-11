@@ -2905,14 +2905,34 @@ window.enterTest=function(){
 
       <!-- ── TAB: FINANCIALS ── -->
       <div id="secTabFin">
-        <!-- Dynamic chart dashboard -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
-          <span style="font-size:11px;color:#4a5280;font-family:var(--mono);">Gráficos interactivos — podés minimizar, agregar y cambiar variable/período</span>
+        <!-- Toolbar -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
           <button onclick="secAddChart()"
-            style="padding:6px 16px;border-radius:6px;border:1px solid rgba(30,39,243,0.4);background:rgba(30,39,243,0.1);color:#a5b4fc;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);">+ Agregar gráfico</button>
+            style="padding:6px 14px;border-radius:6px;border:1px solid rgba(30,39,243,0.4);background:rgba(30,39,243,0.1);color:#a5b4fc;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);">+ Gráfico</button>
+          <button onclick="secOpenAddBlock()"
+            style="padding:6px 14px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);">+ Tabla</button>
+          <div style="flex:1"></div>
+          <button onclick="secSaveLayout()" title="Guardar layout en localStorage"
+            style="padding:5px 12px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:10px;cursor:pointer;font-family:var(--mono);">💾 Guardar</button>
+          <button onclick="secExportLayout()" title="Exportar layout como JSON"
+            style="padding:5px 12px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:10px;cursor:pointer;font-family:var(--mono);">⬇ Exportar</button>
+          <button onclick="secImportLayout()" title="Importar layout desde JSON"
+            style="padding:5px 12px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:10px;cursor:pointer;font-family:var(--mono);">⬆ Importar</button>
+          <button onclick="secGenerateReport()" title="Generar reporte exportable"
+            style="padding:5px 14px;border-radius:6px;border:1px solid rgba(30,39,243,0.4);background:rgba(30,39,243,0.12);color:#a5b4fc;font-size:10px;font-weight:700;cursor:pointer;font-family:var(--mono);">📄 Generar reporte</button>
         </div>
+        <!-- Modal para agregar tabla -->
+        <div id="secAddBlockModal" onclick="if(event.target===this)secCloseAddBlock()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+          <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:24px;width:480px;max-width:95vw;max-height:80vh;overflow-y:auto;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <span style="font-size:14px;font-weight:700;color:var(--text);font-family:var(--mono);">Agregar tabla</span>
+              <button onclick="secCloseAddBlock()" style="background:transparent;border:none;color:var(--text3);font-size:18px;cursor:pointer;">✕</button>
+            </div>
+            <div id="secAddBlockContent"></div>
+          </div>
+        </div>
+        <!-- Unified block grid (charts + tables) -->
         <div id="secChartDashboard" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px;"></div>
-        <!-- Tables with annual + quarterly separate -->
         <div id="secTables"></div>
       </div>
 
@@ -4268,7 +4288,7 @@ function openDetail(especie){
     _renderKpiBar(facts);
     renderEvents(sub);
     $('secRawData').innerHTML=''; // reset raw tab on new search
-    _secTableDefs=[]; // reset table defs for new company
+    _secTableDefs=[]; // reset table defs — will auto-load saved layout or init defaults
 
     $('secResults').style.display='block';
     $('secWelcome').style.display='none';
@@ -4791,227 +4811,539 @@ function openDetail(especie){
 
   // ══════════════════════════════════════════════
   // RENDER FINANCIALS + CHARTS
-  // ══════════════════════════════════════════════
-  // TABLE STATE  (per-table: range + visible rows)
-  // ══════════════════════════════════════════════
-  // _secTableDefs: array of {id, title, isQ, range, rows:[{key,label,fmt}], editing}
-  let _secTableDefs = [];
-  let _secTableIdSeq = 0;
-  let _secSeriesA = null;  // cached annual series
-  let _secSeriesQ = null;  // cached quarterly series
+  // ══════════════════════════════════════════════════════════════
+  // TABLE + BLOCK SYSTEM
+  // Key fix: ALL mutations call _renderAllTables() — never outerHTML
+  // ══════════════════════════════════════════════════════════════
 
-  // Full catalogue of all available series for tables
+  let _secTableDefs  = [];
+  let _secTableIdSeq = 0;
+  let _secSeriesA    = null;
+  let _secSeriesQ    = null;
+  let _secRatioSets  = null; // cached computed ratio series
+
+  // ── Row catalogues ────────────────────────────────────────────
   const TABLE_ROW_CATALOGUE = [
-    // Income
-    {key:'revenue',  label:'Revenue',          group:'Income', fmt:null},
-    {key:'grossP',   label:'Gross Profit',      group:'Income', fmt:null},
-    {key:'opInc',    label:'Op. Income (EBIT)', group:'Income', fmt:null},
-    {key:'ebitda',   label:'EBITDA',            group:'Income', fmt:null},
-    {key:'netInc',   label:'Net Income',        group:'Income', fmt:null},
-    {key:'eps',      label:'EPS Diluted',       group:'Income', fmt:'eps'},
-    {key:'rd',       label:'R&D',               group:'Income', fmt:null},
-    {key:'sga',      label:'SG&A',              group:'Income', fmt:null},
-    {key:'da',       label:'D&A',               group:'Income', fmt:null},
-    {key:'tax',      label:'Tax Expense',       group:'Income', fmt:null},
-    {key:'interest', label:'Interest Expense',  group:'Income', fmt:null},
-    // Margins
-    {key:'grossM',   label:'Gross Margin %',    group:'Margins', fmt:'pct'},
-    {key:'opM',      label:'Op. Margin %',      group:'Margins', fmt:'pct'},
-    {key:'ebitdaM',  label:'EBITDA Margin %',   group:'Margins', fmt:'pct'},
-    {key:'netM',     label:'Net Margin %',      group:'Margins', fmt:'pct'},
-    // Balance
-    {key:'cash',     label:'Cash',              group:'Balance', fmt:null},
-    {key:'receiv',   label:'Receivables',       group:'Balance', fmt:null},
-    {key:'inventory',label:'Inventories',       group:'Balance', fmt:null},
-    {key:'currentA', label:'Current Assets',    group:'Balance', fmt:null},
-    {key:'assets',   label:'Total Assets',      group:'Balance', fmt:null},
-    {key:'currentL', label:'Current Liab.',     group:'Balance', fmt:null},
-    {key:'debt',     label:'LT Debt',           group:'Balance', fmt:null},
-    {key:'liab',     label:'Total Liab.',       group:'Balance', fmt:null},
-    {key:'equity',   label:'Equity',            group:'Balance', fmt:null},
-    {key:'goodwill', label:'Goodwill',          group:'Balance', fmt:null},
-    {key:'intangib', label:'Intangibles',       group:'Balance', fmt:null},
-    {key:'shares',   label:'Shares Out.',       group:'Balance', fmt:'shares'},
-    // Cash Flow
-    {key:'opCF',     label:'Operating CF',      group:'CashFlow', fmt:null},
-    {key:'capex',    label:'Capex',             group:'CashFlow', fmt:'capex'},
-    {key:'fcf',      label:'Free Cash Flow',    group:'CashFlow', fmt:null},
+    {key:'revenue',  label:'Revenue',           group:'Income',   fmt:'M'},
+    {key:'grossP',   label:'Gross Profit',       group:'Income',   fmt:'M'},
+    {key:'opInc',    label:'Op. Income (EBIT)',  group:'Income',   fmt:'M'},
+    {key:'ebitda',   label:'EBITDA',             group:'Income',   fmt:'M'},
+    {key:'netInc',   label:'Net Income',         group:'Income',   fmt:'M'},
+    {key:'eps',      label:'EPS Diluted',        group:'Income',   fmt:'eps'},
+    {key:'rd',       label:'R&D',                group:'Income',   fmt:'M'},
+    {key:'sga',      label:'SG&A',               group:'Income',   fmt:'M'},
+    {key:'da',       label:'D&A',                group:'Income',   fmt:'M'},
+    {key:'tax',      label:'Tax Expense',        group:'Income',   fmt:'M'},
+    {key:'interest', label:'Interest Expense',   group:'Income',   fmt:'M'},
+    {key:'grossM',   label:'Gross Margin %',     group:'Margins',  fmt:'pct'},
+    {key:'opM',      label:'Op. Margin %',       group:'Margins',  fmt:'pct'},
+    {key:'ebitdaM',  label:'EBITDA Margin %',    group:'Margins',  fmt:'pct'},
+    {key:'netM',     label:'Net Margin %',       group:'Margins',  fmt:'pct'},
+    {key:'cash',     label:'Cash',               group:'Balance',  fmt:'M'},
+    {key:'receiv',   label:'Receivables',        group:'Balance',  fmt:'M'},
+    {key:'inventory',label:'Inventories',        group:'Balance',  fmt:'M'},
+    {key:'currentA', label:'Current Assets',     group:'Balance',  fmt:'M'},
+    {key:'assets',   label:'Total Assets',       group:'Balance',  fmt:'M'},
+    {key:'currentL', label:'Current Liab.',      group:'Balance',  fmt:'M'},
+    {key:'debt',     label:'LT Debt',            group:'Balance',  fmt:'M'},
+    {key:'liab',     label:'Total Liab.',        group:'Balance',  fmt:'M'},
+    {key:'equity',   label:'Equity',             group:'Balance',  fmt:'M'},
+    {key:'goodwill', label:'Goodwill',           group:'Balance',  fmt:'M'},
+    {key:'intangib', label:'Intangibles',        group:'Balance',  fmt:'M'},
+    {key:'shares',   label:'Shares Out.',        group:'Balance',  fmt:'shares'},
+    {key:'opCF',     label:'Operating CF',       group:'CashFlow', fmt:'M'},
+    {key:'capex',    label:'Capex',              group:'CashFlow', fmt:'capex'},
+    {key:'fcf',      label:'Free Cash Flow',     group:'CashFlow', fmt:'M'},
+    // Ratios (computed — resolved via _secRatioSets)
+    {key:'r_grossM',  label:'Gross Margin %',    group:'Rentabilidad', fmt:'pct', ratio:true},
+    {key:'r_opM',     label:'Op. Margin %',      group:'Rentabilidad', fmt:'pct', ratio:true},
+    {key:'r_ebitdaM', label:'EBITDA Margin %',   group:'Rentabilidad', fmt:'pct', ratio:true},
+    {key:'r_netM',    label:'Net Margin %',      group:'Rentabilidad', fmt:'pct', ratio:true},
+    {key:'r_fcfM',    label:'FCF Margin %',      group:'Rentabilidad', fmt:'pct', ratio:true},
+    {key:'r_roe',     label:'ROE %',             group:'Rentabilidad', fmt:'pct', ratio:true},
+    {key:'r_roa',     label:'ROA %',             group:'Rentabilidad', fmt:'pct', ratio:true},
+    {key:'r_roic',    label:'ROIC %',            group:'Rentabilidad', fmt:'pct', ratio:true},
+    {key:'r_currR',   label:'Current Ratio',     group:'Liquidez',     fmt:'x2',  ratio:true},
+    {key:'r_quickR',  label:'Quick Ratio',       group:'Liquidez',     fmt:'x2',  ratio:true},
+    {key:'r_cashR',   label:'Cash Ratio',        group:'Liquidez',     fmt:'x2',  ratio:true},
+    {key:'r_de',      label:'D/E Ratio',         group:'Apalancamiento',fmt:'x2', ratio:true},
+    {key:'r_ndEBITDA',label:'Net Debt/EBITDA',   group:'Apalancamiento',fmt:'x1', ratio:true},
+    {key:'r_debtA',   label:'Debt/Assets %',     group:'Apalancamiento',fmt:'pct',ratio:true},
+    {key:'r_intCov',  label:'Interest Cov.',     group:'Apalancamiento',fmt:'x1', ratio:true},
+    {key:'r_eqMult',  label:'Equity Multiplier', group:'Apalancamiento',fmt:'x2', ratio:true},
+    {key:'r_assetTO', label:'Asset Turnover',    group:'Eficiencia',   fmt:'x2',  ratio:true},
+    {key:'r_revPS',   label:'Revenue/Share',     group:'Eficiencia',   fmt:'dlr', ratio:true},
+    {key:'r_fcfPS',   label:'FCF/Share',         group:'Eficiencia',   fmt:'dlr', ratio:true},
   ];
 
   function _tblFmt(key, val){
     const cat = TABLE_ROW_CATALOGUE.find(r=>r.key===key);
-    const f = cat?.fmt;
+    const f = cat?.fmt||'M';
     if(f==='pct')    return fmtPct(val);
-    if(f==='eps')    return '$'+val.toFixed(2);
+    if(f==='eps'||f==='dlr') return '$'+val.toFixed(2);
+    if(f==='x2')     return val.toFixed(2)+'x';
+    if(f==='x1')     return val.toFixed(1)+'x';
     if(f==='shares') return val>=1e9?(val/1e9).toFixed(2)+'B':val>=1e6?(val/1e6).toFixed(0)+'M':val.toFixed(0);
     if(f==='capex')  return fmtM(-Math.abs(val));
     return fmtM(val);
   }
 
+  // ── Compute and cache ratio series from _secSeriesA/_Q ────────
+  function _computeRatioSets(S){
+    if(!S) return {};
+    function cr(a,b,fn){return a.map(x=>{const y=b.find(z=>z.yr===x.yr);if(!y||!y.val)return null;const v=fn(x.val,y.val);return isFinite(v)?{yr:x.yr,val:v}:null;}).filter(Boolean);}
+    const ebitda=S.opInc.map(o=>{const d=S.da.find(x=>x.yr===o.yr);return d?{yr:o.yr,val:o.val+Math.abs(d.val)}:{yr:o.yr,val:o.val};});
+    const fcf=S.opCF.map(o=>{const c=S.capex.find(x=>x.yr===o.yr);return{yr:o.yr,val:c?o.val-Math.abs(c.val):o.val};});
+    const netDebt=S.debt.map(d=>{const c=S.cash.find(x=>x.yr===d.yr);return{yr:d.yr,val:d.val-(c?.val||0)};});
+    return {
+      r_grossM:  cr(S.grossP,S.revenue,(g,r)=>g/r*100),
+      r_opM:     cr(S.opInc,S.revenue,(o,r)=>o/r*100),
+      r_ebitdaM: cr(ebitda,S.revenue,(e,r)=>e/r*100),
+      r_netM:    cr(S.netInc,S.revenue,(n,r)=>n/r*100),
+      r_fcfM:    cr(fcf,S.revenue,(f,r)=>f/r*100),
+      r_roe:     cr(S.netInc,S.equity,(n,e)=>n/e*100),
+      r_roa:     cr(S.netInc,S.assets,(n,a)=>n/a*100),
+      r_roic:    S.opInc.map(o=>{const e=S.equity.find(x=>x.yr===o.yr),d=S.debt.find(x=>x.yr===o.yr);const ic=(e?.val||0)+(d?.val||0);return ic?{yr:o.yr,val:o.val/ic*100}:null;}).filter(Boolean),
+      r_currR:   cr(S.currentA,S.currentL,(a,l)=>a/l),
+      r_quickR:  S.currentA.map(a=>{const l=S.currentL.find(x=>x.yr===a.yr),inv=S.inventory.find(x=>x.yr===a.yr);return l?.val?{yr:a.yr,val:(a.val-(inv?.val||0))/l.val}:null;}).filter(Boolean),
+      r_cashR:   cr(S.cash,S.currentL,(c,l)=>c/l),
+      r_de:      cr(S.debt,S.equity,(d,e)=>d/e),
+      r_ndEBITDA:cr(netDebt,ebitda,(nd,eb)=>nd/eb),
+      r_debtA:   cr(S.debt,S.assets,(d,a)=>d/a*100),
+      r_intCov:  cr(S.opInc,S.interest,(o,i)=>o/Math.abs(i)),
+      r_eqMult:  cr(S.assets,S.equity,(a,e)=>a/e),
+      r_assetTO: cr(S.revenue,S.assets,(r,a)=>r/a),
+      r_revPS:   cr(S.revenue,S.shares,(r,s)=>r/s),
+      r_fcfPS:   cr(fcf,S.shares,(f,s)=>f/s),
+    };
+  }
+
+  // ── Get series for a key (handles both raw + ratio keys) ──────
+  function _getSeriesForKey(key, isQ){
+    const rs = isQ ? _secRatioSets?.Q : _secRatioSets?.A;
+    const s  = isQ ? _secSeriesQ : _secSeriesA;
+    if(!s) return [];
+    if(key.startsWith('r_')) return rs?.[key]||[];
+    return s[key]||[];
+  }
+
+  // ── Default table definitions ─────────────────────────────────
   function _initTableDefs(){
     _secTableIdSeq=0;
     _secTableDefs=[
-      {id:++_secTableIdSeq, title:'📊 Income Statement', isQ:false, range:5, editing:false,
+      {id:++_secTableIdSeq,title:'📊 Income Statement',isQ:false,range:5,width:100,order:0,editing:false,
         rows:['revenue','grossP','opInc','ebitda','netInc','eps','rd','sga','da','tax','interest']},
-      {id:++_secTableIdSeq, title:'📐 Márgenes',          isQ:false, range:5, editing:false,
+      {id:++_secTableIdSeq,title:'📐 Márgenes',isQ:false,range:5,width:100,order:1,editing:false,
         rows:['grossM','opM','ebitdaM','netM']},
-      {id:++_secTableIdSeq, title:'🏦 Balance Sheet',     isQ:false, range:5, editing:false,
+      {id:++_secTableIdSeq,title:'🏦 Balance Sheet',isQ:false,range:5,width:100,order:2,editing:false,
         rows:['cash','receiv','inventory','currentA','assets','currentL','debt','liab','equity','goodwill','intangib','shares']},
-      {id:++_secTableIdSeq, title:'💸 Cash Flow',         isQ:false, range:5, editing:false,
+      {id:++_secTableIdSeq,title:'💸 Cash Flow',isQ:false,range:5,width:100,order:3,editing:false,
         rows:['opCF','capex','fcf']},
-      // Quarterly versions
-      {id:++_secTableIdSeq, title:'📊 Income Statement',  isQ:true,  range:8, editing:false,
+      {id:++_secTableIdSeq,title:'📊 Income Statement',isQ:true,range:8,width:100,order:4,editing:false,
         rows:['revenue','grossP','opInc','ebitda','netInc','eps']},
-      {id:++_secTableIdSeq, title:'📐 Márgenes',          isQ:true,  range:8, editing:false,
+      {id:++_secTableIdSeq,title:'📐 Márgenes',isQ:true,range:8,width:100,order:5,editing:false,
         rows:['grossM','opM','ebitdaM','netM']},
-      {id:++_secTableIdSeq, title:'🏦 Balance Sheet',     isQ:true,  range:8, editing:false,
+      {id:++_secTableIdSeq,title:'🏦 Balance Sheet',isQ:true,range:8,width:100,order:6,editing:false,
         rows:['cash','currentA','assets','currentL','debt','equity']},
-      {id:++_secTableIdSeq, title:'💸 Cash Flow',         isQ:true,  range:8, editing:false,
+      {id:++_secTableIdSeq,title:'💸 Cash Flow',isQ:true,range:8,width:100,order:7,editing:false,
         rows:['opCF','capex','fcf']},
     ];
   }
 
-  function _renderOneTable(def, S){
-    const allSeries = def.rows.map(key=>({key, series:(S[key]||[])})).filter(r=>r.series.length);
+  // ── Render ONE table (pure HTML string — no DOM side effects) ─
+  function _renderOneTable(def){
+    const allSeries=def.rows.map(key=>({key,series:_getSeriesForKey(key,def.isQ)})).filter(r=>r.series.length);
     const allYearsAll=[...new Set(allSeries.flatMap(r=>r.series.map(x=>x.yr)))].sort().reverse();
-    const allYears = allYearsAll.slice(0, def.range);
-    if(!allYears.length && !def.editing) return '';
-    const rangeOpts=[3,5,8,10,15,20].map(n=>`<option value="${n}"${n===def.range?' selected':''}>${n}</option>`).join('');
+    const allYears=allYearsAll.slice(0,def.range);
     const colW=86;
+    const widthStyles={100:'width:100%',50:'width:calc(50% - 8px)',33:'width:calc(33.33% - 11px)'};
+    const wStyle=widthStyles[def.width||100]||'width:100%';
+
+    const rangeOpts=[3,5,8,10,15,20].map(n=>`<option value="${n}"${n===def.range?' selected':''}>${n}</option>`).join('');
+    const widthOpts=[{v:100,l:'Full'},{v:50,l:'½'},{v:33,l:'⅓'}]
+      .map(o=>`<option value="${o.v}"${(def.width||100)===o.v?' selected':''}>${o.l}</option>`).join('');
 
     const headerHtml=`
-      <div style="padding:10px 14px;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);font-family:var(--mono);display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <div style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--border);font-family:var(--mono);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <span style="cursor:grab;color:var(--text3);font-size:13px;" draggable="false">⠿</span>
         <span>${def.title}</span>
-        <span style="font-size:9px;font-weight:500;color:var(--text3);background:var(--bg3);padding:2px 8px;border-radius:10px;border:1px solid var(--border);">${def.isQ?'TRIMESTRAL':'ANUAL'}</span>
-        <label style="font-size:9px;color:var(--text3);font-family:var(--mono);display:flex;align-items:center;gap:3px;margin-left:4px;">
-          Ult. <select onchange="secTblSetRange(${def.id},+this.value)"
-            style="background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text2);font-family:var(--mono);font-size:9px;padding:2px 4px;outline:none;">${rangeOpts}</select>
+        <span style="font-size:9px;color:var(--text3);background:var(--bg3);padding:1px 7px;border-radius:8px;border:1px solid var(--border);">${def.isQ?'TRIM':'ANUAL'}</span>
+        <label style="font-size:9px;color:var(--text3);font-family:var(--mono);display:flex;align-items:center;gap:2px;margin-left:2px;">
+          Ult.<select data-action="range" data-id="${def.id}"
+            style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text2);font-family:var(--mono);font-size:9px;padding:1px 3px;outline:none;">${rangeOpts}</select>
         </label>
+        <label style="font-size:9px;color:var(--text3);font-family:var(--mono);display:flex;align-items:center;gap:2px;">
+          <select data-action="width" data-id="${def.id}"
+            style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text2);font-family:var(--mono);font-size:9px;padding:1px 3px;outline:none;">${widthOpts}</select>
+        </label>
+        <button data-action="up" data-id="${def.id}"
+          style="padding:1px 6px;font-size:10px;cursor:pointer;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text3);font-family:var(--mono);">↑</button>
+        <button data-action="down" data-id="${def.id}"
+          style="padding:1px 6px;font-size:10px;cursor:pointer;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text3);font-family:var(--mono);">↓</button>
         <span style="flex:1;"></span>
-        <button onclick="secTblToggleEdit(${def.id})"
+        <button data-action="edit" data-id="${def.id}"
           style="padding:2px 8px;font-size:10px;cursor:pointer;border:1px solid ${def.editing?'#1E27F3':'var(--border2)'};border-radius:4px;background:${def.editing?'rgba(30,39,243,0.12)':'transparent'};color:${def.editing?'#a5b4fc':'var(--text3)'};font-family:var(--mono);">✎ Editar</button>
-        <button onclick="secTblRemove(${def.id})"
+        <button data-action="remove" data-id="${def.id}"
           style="padding:2px 8px;font-size:10px;cursor:pointer;border:1px solid rgba(248,81,73,0.3);border-radius:4px;background:transparent;color:#f85149;font-family:var(--mono);">✕</button>
       </div>`;
 
-    // Edit mode: show all catalogue rows as toggleable chips
     let editPanelHtml='';
     if(def.editing){
       const catByGroup={};
-      TABLE_ROW_CATALOGUE.forEach(r=>{ if(!catByGroup[r.group]) catByGroup[r.group]=[]; catByGroup[r.group].push(r); });
-      editPanelHtml=`<div style="padding:10px 14px;background:var(--bg3);border-bottom:1px solid var(--border);">
-        <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:8px;">Tocá para agregar o quitar filas:</div>
+      TABLE_ROW_CATALOGUE.forEach(r=>{if(!catByGroup[r.group])catByGroup[r.group]=[];catByGroup[r.group].push(r);});
+      editPanelHtml=`<div style="padding:10px 12px;background:var(--bg3);border-bottom:1px solid var(--border);">
+        <div style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;">Tocá para agregar o quitar filas:</div>
         ${Object.entries(catByGroup).map(([grp,rows])=>`
-          <div style="margin-bottom:6px;">
-            <span style="font-size:9px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;margin-right:6px;">${grp}</span>
+          <div style="margin-bottom:5px;display:flex;align-items:center;flex-wrap:wrap;gap:3px;">
+            <span style="font-size:9px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;min-width:80px;">${grp}</span>
             ${rows.map(r=>{
               const active=def.rows.includes(r.key);
-              return `<button onmousedown="secTblToggleRow(${def.id},'${r.key}')"
-                style="padding:2px 9px;margin:2px;border-radius:12px;font-size:10px;cursor:pointer;font-family:var(--mono);border:1px solid ${active?'#1E27F3':'var(--border)'};background:${active?'rgba(30,39,243,0.15)':'transparent'};color:${active?'#a5b4fc':'var(--text3)'};">${r.label}</button>`;
+              return `<button data-action="togglerow" data-id="${def.id}" data-key="${r.key}"
+                style="padding:2px 8px;border-radius:10px;font-size:10px;cursor:pointer;font-family:var(--mono);border:1px solid ${active?'#1E27F3':'var(--border)'};background:${active?'rgba(30,39,243,0.15)':'transparent'};color:${active?'#a5b4fc':'var(--text3)'};">${r.label}</button>`;
             }).join('')}
           </div>`).join('')}
       </div>`;
     }
 
-    if(!allYears.length) return `<div id="secTbl_${def.id}" style="margin-bottom:16px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;">${headerHtml}${editPanelHtml}<div style="padding:16px;font-size:11px;color:var(--text3);font-family:var(--mono);">Sin datos disponibles para las métricas seleccionadas.</div></div>`;
+    let tableHtml='';
+    if(allYears.length && allSeries.length){
+      tableHtml=`<div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+          <colgroup><col style="width:170px;min-width:170px;">${allYears.map(()=>`<col style="width:${colW}px;min-width:${colW}px;">`).join('')}</colgroup>
+          <thead><tr>
+            <th style="position:sticky;left:0;z-index:5;background:var(--bg3);padding:7px 12px;font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;">Métrica</th>
+            ${allYears.map(y=>`<th style="background:var(--bg3);padding:7px 10px;font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;">${y}</th>`).join('')}
+          </tr></thead>
+          <tbody>${allSeries.map(({key,series})=>{
+            const cells=allYears.map(yr=>{
+              const p=series.find(x=>x.yr===yr);
+              const v=p?_tblFmt(key,p.val):'—';
+              return `<td style="padding:6px 10px;font-size:11px;text-align:right;color:var(--text);white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono);">${v}</td>`;
+            }).join('');
+            const cat=TABLE_ROW_CATALOGUE.find(r=>r.key===key);
+            return `<tr class="tbl-row">
+              <td style="position:sticky;left:0;z-index:4;background:var(--bg2);padding:6px 12px;font-size:11px;color:var(--text2);white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono);">${cat?.label||key}</td>
+              ${cells}
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>`;
+    } else {
+      tableHtml=`<div style="padding:14px;font-size:11px;color:var(--text3);font-family:var(--mono);">Sin datos. Usá Editar para agregar métricas.</div>`;
+    }
 
-    const tableHtml=`<div style="overflow-x:auto;">
-      <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
-        <colgroup><col style="width:180px;min-width:180px;">${allYears.map(()=>`<col style="width:${colW}px;min-width:${colW}px;">`).join('')}</colgroup>
-        <thead><tr>
-          <th style="position:sticky;left:0;z-index:5;background:var(--bg3);padding:8px 14px;font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;">Métrica</th>
-          ${allYears.map(y=>`<th style="background:var(--bg3);padding:8px 10px;font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;">${y}</th>`).join('')}
-        </tr></thead>
-        <tbody>${allSeries.map(({key,series})=>{
-          const cells=allYears.map(yr=>{
-            const p=series.find(x=>x.yr===yr);
-            const v=p?_tblFmt(key,p.val):'—';
-            return `<td style="padding:7px 10px;font-size:11px;text-align:right;color:var(--text);white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono);">${v}</td>`;
-          }).join('');
-          const cat=TABLE_ROW_CATALOGUE.find(r=>r.key===key);
-          return `<tr onmouseover="this.querySelectorAll('td').forEach(td=>td.style.background='var(--accent-light)')" onmouseout="this.querySelectorAll('td').forEach(td=>td.style.background='')">
-            <td style="position:sticky;left:0;z-index:4;background:var(--bg2);padding:7px 14px;font-size:11px;color:var(--text2);white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono);">${cat?.label||key}</td>
-            ${cells}
-          </tr>`;
-        }).join('')}</tbody>
-      </table></div>`;
-
-    return `<div id="secTbl_${def.id}" style="margin-bottom:16px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;">${headerHtml}${editPanelHtml}${tableHtml}</div>`;
+    return `<div data-tbl-id="${def.id}" style="${wStyle};display:inline-block;vertical-align:top;margin-bottom:16px;${(def.width||100)<100?'padding-right:16px;':''}">
+      <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;">
+        ${headerHtml}${editPanelHtml}${tableHtml}
+      </div>
+    </div>`;
   }
 
+  // ── Render all tables — SINGLE source of truth for DOM ───────
   function _renderAllTables(){
     const el=$('secTables'); if(!el) return;
-    const S_A = _secSeriesA;
-    const S_Q = _secSeriesQ;
-    if(!S_A||!S_Q){ el.innerHTML=''; return; }
+    const sorted=[..._secTableDefs].sort((a,b)=>a.order-b.order);
+    const annualTbls=sorted.filter(d=>!d.isQ);
+    const quarterTbls=sorted.filter(d=>d.isQ);
 
-    const annualTables  = _secTableDefs.filter(d=>!d.isQ);
-    const quarterTables = _secTableDefs.filter(d=>d.isQ);
-
-    const addBtnStyle='padding:5px 14px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border2);border-radius:6px;background:transparent;color:var(--text3);font-family:var(--mono);transition:all .15s;';
+    const btnStyle='padding:5px 14px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border2);border-radius:6px;background:transparent;color:var(--text3);font-family:var(--mono);';
 
     el.innerHTML =
-      annualTables.map(d=>_renderOneTable(d,S_A)).join('') +
-      `<div style="margin:8px 0 12px;">
-        <button onclick="secTblAdd(false)" style="${addBtnStyle}" onmouseover="this.style.borderColor='#1E27F3';this.style.color='#a5b4fc'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text3)'">+ Agregar tabla anual</button>
-      </div>` +
-      `<div style="margin:28px 0 12px;border-top:1px solid var(--border);padding-top:20px;font-size:11px;font-weight:700;color:var(--text3);font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;">Datos Trimestrales</div>` +
-      quarterTables.map(d=>_renderOneTable(d,S_Q)).join('') +
-      `<div style="margin:8px 0;">
-        <button onclick="secTblAdd(true)" style="${addBtnStyle}" onmouseover="this.style.borderColor='#1E27F3';this.style.color='#a5b4fc'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text3)'">+ Agregar tabla trimestral</button>
-      </div>`;
+      `<div style="display:flex;flex-wrap:wrap;gap:0px;">${annualTbls.map(d=>_renderOneTable(d)).join('')}</div>` +
+      `<div style="margin:28px 0 10px;border-top:1px solid var(--border);padding-top:16px;font-size:11px;font-weight:700;color:var(--text3);font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;">Datos Trimestrales</div>` +
+      `<div style="display:flex;flex-wrap:wrap;gap:0px;">${quarterTbls.map(d=>_renderOneTable(d)).join('')}</div>`;
+
+    // ── Attach event delegation — ONE listener on secTables ──────
+    el.onclick = null;
+    el.addEventListener('click', _tblClickHandler, {once:false});
+    el.addEventListener('change', _tblChangeHandler, {once:false});
   }
 
-  window.secTblSetRange = function(id, n){
-    const d=_secTableDefs.find(t=>t.id===id); if(!d) return;
-    d.range=n;
-    const el=document.getElementById(`secTbl_${id}`);
-    if(el){ const S=d.isQ?_secSeriesQ:_secSeriesA; el.outerHTML=_renderOneTable(d,S); }
-  };
-  window.secTblToggleEdit = function(id){
-    const d=_secTableDefs.find(t=>t.id===id); if(!d) return;
-    d.editing=!d.editing;
-    const el=document.getElementById(`secTbl_${id}`);
-    if(el){ const S=d.isQ?_secSeriesQ:_secSeriesA; el.outerHTML=_renderOneTable(d,S); }
-  };
-  window.secTblToggleRow = function(id, key){
-    const d=_secTableDefs.find(t=>t.id===id); if(!d) return;
-    if(d.rows.includes(key)) d.rows=d.rows.filter(k=>k!==key);
-    else d.rows.push(key);
-    const el=document.getElementById(`secTbl_${id}`);
-    if(el){ const S=d.isQ?_secSeriesQ:_secSeriesA; el.outerHTML=_renderOneTable(d,S); }
-  };
-  window.secTblRemove = function(id){
-    _secTableDefs=_secTableDefs.filter(d=>d.id!==id);
+  // ── Event delegation handlers ─────────────────────────────────
+  function _tblMutate(id, fn){
+    const d=_secTableDefs.find(t=>t.id===+id); if(!d) return;
+    fn(d);
     _renderAllTables();
+  }
+
+  function _tblClickHandler(e){
+    const btn=e.target.closest('[data-action]'); if(!btn) return;
+    const action=btn.dataset.action;
+    const id=+btn.dataset.id;
+    if(action==='edit')      _tblMutate(id, d=>d.editing=!d.editing);
+    if(action==='remove')    { _secTableDefs=_secTableDefs.filter(t=>t.id!==id); _renderAllTables(); }
+    if(action==='togglerow') _tblMutate(id, d=>{ const k=btn.dataset.key; d.rows=d.rows.includes(k)?d.rows.filter(x=>x!==k):[...d.rows,k]; });
+    if(action==='up')        _tblMutate(id, d=>{ const s=[..._secTableDefs].sort((a,b)=>a.order-b.order); const i=s.findIndex(t=>t.id===id); if(i>0){const tmp=s[i-1].order;s[i-1].order=s[i].order;s[i].order=tmp;} });
+    if(action==='down')      _tblMutate(id, d=>{ const s=[..._secTableDefs].sort((a,b)=>a.order-b.order); const i=s.findIndex(t=>t.id===id); if(i<s.length-1){const tmp=s[i+1].order;s[i+1].order=s[i].order;s[i].order=tmp;} });
+    e.stopPropagation();
+  }
+
+  function _tblChangeHandler(e){
+    const sel=e.target.closest('[data-action]'); if(!sel) return;
+    const action=sel.dataset.action;
+    const id=+sel.dataset.id;
+    if(action==='range') _tblMutate(id, d=>d.range=+sel.value);
+    if(action==='width') _tblMutate(id, d=>d.width=+sel.value);
+    e.stopPropagation();
+  }
+
+  // ── Add block modal ───────────────────────────────────────────
+  window.secOpenAddBlock = function(){
+    const modal=$('secAddBlockModal');
+    const content=$('secAddBlockContent');
+    if(!modal||!content) return;
+
+    const catByGroup={};
+    TABLE_ROW_CATALOGUE.forEach(r=>{if(!catByGroup[r.group])catByGroup[r.group]=[];catByGroup[r.group].push(r);});
+
+    const presets=[
+      {label:'Income Statement (Anual)', isQ:false, rows:['revenue','grossP','opInc','ebitda','netInc','eps']},
+      {label:'Márgenes (Anual)',          isQ:false, rows:['grossM','opM','ebitdaM','netM']},
+      {label:'Balance Sheet (Anual)',     isQ:false, rows:['cash','assets','debt','equity']},
+      {label:'Cash Flow (Anual)',         isQ:false, rows:['opCF','capex','fcf']},
+      {label:'Rentabilidad - Ratios',     isQ:false, rows:['r_roe','r_roa','r_roic','r_grossM','r_opM','r_netM']},
+      {label:'Liquidez - Ratios',         isQ:false, rows:['r_currR','r_quickR','r_cashR']},
+      {label:'Apalancamiento - Ratios',   isQ:false, rows:['r_de','r_ndEBITDA','r_debtA','r_intCov']},
+      {label:'Income Statement (Trim.)',  isQ:true,  rows:['revenue','grossP','opInc','ebitda','netInc']},
+      {label:'Márgenes (Trim.)',           isQ:true,  rows:['grossM','opM','ebitdaM','netM']},
+      {label:'Custom (vacía)',            isQ:false, rows:[]},
+    ];
+
+    content.innerHTML=`
+      <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:12px;">Elegí un preset o creá una tabla custom:</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;">
+        ${presets.map((p,i)=>`
+          <button onclick="secAddPreset(${i})"
+            style="padding:6px 14px;border-radius:6px;font-size:11px;cursor:pointer;font-family:var(--mono);font-weight:600;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);">${p.label}</button>
+        `).join('')}
+      </div>
+      <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:6px;">O elegí filas manualmente:</div>
+      <div id="addBlockRowPicker" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:14px;">
+        ${Object.entries(catByGroup).map(([grp,rows])=>`
+          <div style="width:100%;margin-top:6px;">
+            <span style="font-size:9px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;margin-right:6px;">${grp}</span>
+            ${rows.map(r=>`<button data-pick="${r.key}" onclick="secToggleAddPick(this,'${r.key}')"
+              style="padding:2px 9px;margin:2px;border-radius:10px;font-size:10px;cursor:pointer;font-family:var(--mono);border:1px solid var(--border);background:transparent;color:var(--text3);">${r.label}</button>`).join('')}
+          </div>`).join('')}
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <label style="font-size:11px;color:var(--text2);font-family:var(--mono);display:flex;align-items:center;gap:6px;">
+          Período:
+          <select id="addBlockIsQ" style="background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:11px;padding:3px 7px;outline:none;">
+            <option value="0">Anual</option>
+            <option value="1">Trimestral</option>
+          </select>
+        </label>
+        <button onclick="secConfirmAddBlock()"
+          style="padding:6px 18px;border-radius:6px;border:none;background:#1E27F3;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">Agregar tabla</button>
+        <button onclick="secCloseAddBlock()"
+          style="padding:6px 14px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;cursor:pointer;font-family:var(--mono);">Cancelar</button>
+      </div>`;
+
+    window._addBlockSelectedRows=[];
+    modal.style.display='flex';
   };
-  window.secTblAdd = function(isQ){
+
+  window.secCloseAddBlock = function(){
+    const modal=$('secAddBlockModal'); if(modal) modal.style.display='none';
+  };
+
+  window.secToggleAddPick = function(btn, key){
+    if(!window._addBlockSelectedRows) window._addBlockSelectedRows=[];
+    const arr=window._addBlockSelectedRows;
+    if(arr.includes(key)){
+      window._addBlockSelectedRows=arr.filter(k=>k!==key);
+      btn.style.borderColor='var(--border)'; btn.style.background='transparent'; btn.style.color='var(--text3)';
+    } else {
+      window._addBlockSelectedRows=[...arr,key];
+      btn.style.borderColor='#1E27F3'; btn.style.background='rgba(30,39,243,0.15)'; btn.style.color='#a5b4fc';
+    }
+  };
+
+  const _addBlockPresets=[
+    {label:'Income Statement (Anual)', isQ:false, rows:['revenue','grossP','opInc','ebitda','netInc','eps']},
+    {label:'Márgenes (Anual)',          isQ:false, rows:['grossM','opM','ebitdaM','netM']},
+    {label:'Balance Sheet (Anual)',     isQ:false, rows:['cash','assets','debt','equity']},
+    {label:'Cash Flow (Anual)',         isQ:false, rows:['opCF','capex','fcf']},
+    {label:'Rentabilidad - Ratios',     isQ:false, rows:['r_roe','r_roa','r_roic','r_grossM','r_opM','r_netM']},
+    {label:'Liquidez - Ratios',         isQ:false, rows:['r_currR','r_quickR','r_cashR']},
+    {label:'Apalancamiento - Ratios',   isQ:false, rows:['r_de','r_ndEBITDA','r_debtA','r_intCov']},
+    {label:'Income Statement (Trim.)',  isQ:true,  rows:['revenue','grossP','opInc','ebitda','netInc']},
+    {label:'Márgenes (Trim.)',           isQ:true,  rows:['grossM','opM','ebitdaM','netM']},
+    {label:'Custom (vacía)',            isQ:false, rows:[]},
+  ];
+  window.secAddPreset = function(i){
+    const p=_addBlockPresets[i]; if(!p) return;
+    secCloseAddBlock();
     const id=++_secTableIdSeq;
-    _secTableDefs.push({id, title:'📋 Nueva tabla', isQ, range:isQ?8:5, editing:true, rows:['revenue','netInc']});
+    const isQ=p.isQ;
+    _secTableDefs.push({id,title:p.label,isQ,range:isQ?8:5,width:100,order:_secTableDefs.length,editing:p.rows.length===0,rows:[...p.rows]});
     _renderAllTables();
-    // Scroll to bottom of tables
-    setTimeout(()=>{const el=document.getElementById(`secTbl_${id}`);if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'});},50);
+  };
+  window.secConfirmAddBlock = function(){
+    const rows=window._addBlockSelectedRows||[];
+    const isQ=!!+($('addBlockIsQ')?.value||0);
+    secCloseAddBlock();
+    const id=++_secTableIdSeq;
+    _secTableDefs.push({id,title:'📋 Tabla personalizada',isQ,range:isQ?8:5,width:100,order:_secTableDefs.length,editing:rows.length===0,rows:[...rows]});
+    _renderAllTables();
+  };
+
+  // ── Layout persistence (localStorage + JSON export/import) ────
+  function _layoutKey(){ return `secLayout_${_lastTicker||'default'}`; }
+
+  window.secSaveLayout = function(){
+    try{
+      const data={tableDefs:_secTableDefs,chartDefs:_chartDefs,savedAt:new Date().toISOString()};
+      localStorage.setItem(_layoutKey(),JSON.stringify(data));
+      showStatus('Layout guardado en el browser ✓','ok');
+    }catch(e){ showStatus('Error al guardar: '+e.message,'err'); }
+  };
+
+  window.secExportLayout = function(){
+    try{
+      const data={tableDefs:_secTableDefs,chartDefs:_chartDefs,ticker:_lastTicker,savedAt:new Date().toISOString()};
+      const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download=`layout_${_lastTicker||'custom'}_${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+    }catch(e){ showStatus('Error al exportar: '+e.message,'err'); }
+  };
+
+  window.secImportLayout = function(){
+    const inp=document.createElement('input');
+    inp.type='file'; inp.accept='.json';
+    inp.onchange=function(e){
+      const file=e.target.files[0]; if(!file) return;
+      const reader=new FileReader();
+      reader.onload=function(ev){
+        try{
+          const data=JSON.parse(ev.target.result);
+          if(data.tableDefs) _secTableDefs=data.tableDefs;
+          if(data.chartDefs){ _chartDefs=data.chartDefs; _refreshDashboard(); }
+          _renderAllTables();
+          showStatus('Layout importado ✓','ok');
+        }catch(err){ showStatus('Error al importar JSON: '+err.message,'err'); }
+      };
+      reader.readAsText(file);
+    };
+    inp.click();
+  };
+
+  // ── Auto-load saved layout for this ticker ────────────────────
+  function _tryLoadSavedLayout(ticker){
+    try{
+      const raw=localStorage.getItem(`secLayout_${ticker}`);
+      if(!raw) return false;
+      const data=JSON.parse(raw);
+      if(data.tableDefs&&data.tableDefs.length){ _secTableDefs=data.tableDefs; return true; }
+    }catch(_){}
+    return false;
+  }
+
+  // ── Report generator ──────────────────────────────────────────
+  window.secGenerateReport = function(){
+    const ticker=_lastTicker||'—';
+    const name=$('secCompanyName')?.textContent||ticker;
+    const meta=$('secCompanyMeta')?.textContent||'';
+    const date=new Date().toLocaleDateString('es-AR',{year:'numeric',month:'long',day:'numeric'});
+
+    // KPI bar HTML (clone from DOM)
+    const kpiHtml=$('secKpiBar')?.innerHTML||'';
+
+    // Tables HTML
+    const sorted=[..._secTableDefs].sort((a,b)=>a.order-b.order);
+    const annualHtml=sorted.filter(d=>!d.isQ).map(d=>_renderOneTable(d)).join('');
+    const quarterHtml=sorted.filter(d=>d.isQ).map(d=>_renderOneTable(d)).join('');
+
+    // Charts as images
+    let chartsHtml='';
+    _chartDefs.forEach(c=>{
+      const canvas=document.getElementById(`dashCanvas_${c.id}`);
+      if(!canvas) return;
+      const img=canvas.toDataURL('image/png');
+      const meta=CHART_METRICS.find(m=>m.id===c.metric);
+      chartsHtml+=`<div style="width:calc(50% - 8px);display:inline-block;vertical-align:top;margin-bottom:16px;padding-right:16px;">
+        <div style="background:#f8f9fa;border:1px solid #e0e0e0;border-radius:8px;padding:12px;">
+          <div style="font-size:10px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">${meta?.label||c.metric} · ${c.period==='quarterly'?'TRIM.':'ANUAL'}</div>
+          <img src="${img}" style="width:100%;height:auto;" />
+        </div>
+      </div>`;
+    });
+
+    const reportHtml=`<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<title>${ticker} — Reporte Financiero · ${date}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1a1a1a;font-size:13px;}
+  .page{max-width:1100px;margin:0 auto;padding:32px 28px;}
+  .header{border-bottom:2px solid #1E27F3;padding-bottom:16px;margin-bottom:24px;}
+  .ticker{font-size:32px;font-weight:800;color:#1E27F3;letter-spacing:.04em;}
+  .co-name{font-size:20px;font-weight:600;color:#1a1a1a;margin-top:4px;}
+  .co-meta{font-size:11px;color:#666;margin-top:4px;}
+  .report-date{font-size:10px;color:#999;margin-top:8px;}
+  .kpi-bar{display:flex;flex-wrap:wrap;gap:0;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;margin-bottom:28px;}
+  .kpi-item{padding:12px 20px;border-right:1px solid #e0e0e0;min-width:120px;}
+  .kpi-label{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#888;margin-bottom:4px;}
+  .kpi-value{font-size:18px;font-weight:700;color:#1a1a1a;}
+  .section-title{font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.08em;margin:24px 0 10px;padding-bottom:6px;border-bottom:1px solid #e8e8e8;}
+  table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:0;}
+  th{background:#f4f5ff;padding:7px 10px;font-size:10px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.04em;text-align:right;border-bottom:1px solid #dde;}
+  th:first-child{text-align:left;}
+  td{padding:6px 10px;border-bottom:1px solid #f0f0f0;text-align:right;color:#1a1a1a;}
+  td:first-child{text-align:left;color:#555;font-weight:500;}
+  .tbl-wrapper{border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;margin-bottom:16px;}
+  .tbl-header{background:#f4f5ff;padding:8px 12px;font-size:11px;font-weight:700;color:#333;text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid #dde;display:flex;align-items:center;gap:8px;}
+  .badge{font-size:9px;background:#eeefff;color:#1E27F3;border:1px solid #c5c8ff;padding:1px 7px;border-radius:8px;}
+  .footer{margin-top:36px;padding-top:16px;border-top:1px solid #eee;font-size:10px;color:#999;text-align:center;}
+  @media print{body{background:#fff;}.page{padding:16px;}}
+</style></head>
+<body><div class="page">
+  <div class="header">
+    <div class="ticker">${ticker}</div>
+    <div class="co-name">${name}</div>
+    <div class="co-meta">${meta}</div>
+    <div class="report-date">Reporte generado: ${date} · Fuente: SEC EDGAR</div>
+  </div>
+  <div class="section-title">KPIs Principales</div>
+  <div class="kpi-bar">${kpiHtml.replace(/style="[^"]*color:[^"]*"/g,'').replace(/var\(--[^)]+\)/g,'inherit')}</div>
+  ${chartsHtml?`<div class="section-title">Gráficos</div><div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:24px;">${chartsHtml}</div>`:''}
+  <div class="section-title">Tablas Anuales</div>
+  ${annualHtml.replace(/var\(--[^)]+\)/g, s=>({
+    'var(--bg2)':'#fff','var(--bg3)':'#f4f5ff','var(--border)':'#e0e0e0',
+    'var(--border2)':'#dde','var(--text)':'#1a1a1a','var(--text2)':'#444',
+    'var(--text3)':'#888','var(--accent-light)':'#f4f5ff'
+  }[s]||'inherit'))}
+  ${quarterHtml?`<div class="section-title" style="margin-top:24px;">Tablas Trimestrales</div>${quarterHtml.replace(/var\(--[^)]+\)/g, s=>({'var(--bg2)':'#fff','var(--bg3)':'#f4f5ff','var(--border)':'#e0e0e0','var(--border2)':'#dde','var(--text)':'#1a1a1a','var(--text2)':'#444','var(--text3)':'#888'}[s]||'inherit'))}` : ''}
+  <div class="footer">Generado por el dashboard · Datos: SEC EDGAR · No constituye asesoramiento de inversión</div>
+</div></body></html>`;
+
+    const blob=new Blob([reportHtml],{type:'text/html'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=`${ticker}_reporte_${new Date().toISOString().slice(0,10)}.html`;
+    a.click();
+    showStatus('Reporte generado ✓','ok');
   };
 
   function renderFinancials(facts){
-    // ── Initial chart dashboard ──
     Object.values(_chartInstances).forEach(c=>{try{c.destroy();}catch(_){}});
     _chartInstances={};
     if(_chartDefs.length===0){
-      _chartDefs=[{id:++_chartIdSeq, metric:'ebitda', period:'quarterly', xDir:'desc', chartRange:10}];
+      _chartDefs=[{id:++_chartIdSeq,metric:'ebitda',period:'quarterly',xDir:'desc',chartRange:10}];
     }
     _refreshDashboard();
 
-    // Build + cache series
-    _secSeriesA = _buildAllSeries(facts, false);
-    _secSeriesQ = _buildAllSeries(facts, true);
+    _secSeriesA=_buildAllSeries(facts,false);
+    _secSeriesQ=_buildAllSeries(facts,true);
+    _secRatioSets={A:_computeRatioSets(_secSeriesA),Q:_computeRatioSets(_secSeriesQ)};
 
-    // Init table defs only on first load (preserve edits if re-rendering)
-    if(_secTableDefs.length===0) _initTableDefs();
+    const loaded=_tryLoadSavedLayout(_lastTicker||'');
+    if(!loaded && _secTableDefs.length===0) _initTableDefs();
 
     _renderAllTables();
   }
-
   // ══════════════════════════════════════════════
   // RENDER RATIOS
   // ══════════════════════════════════════════════
