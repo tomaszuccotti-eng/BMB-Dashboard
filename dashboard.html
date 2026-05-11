@@ -4950,94 +4950,6 @@ function openDetail(especie){
     ];
   }
 
-  // ── Render ONE table (pure HTML string — no DOM side effects) ─
-  function _renderOneTable(def){
-    const allSeries=def.rows.map(key=>({key,series:_getSeriesForKey(key,def.isQ)})).filter(r=>r.series.length);
-    const allYearsAll=[...new Set(allSeries.flatMap(r=>r.series.map(x=>x.yr)))].sort().reverse();
-    const allYears=allYearsAll.slice(0,def.range);
-    const colW=86;
-    const widthStyles={100:'width:100%',50:'width:calc(50% - 8px)',33:'width:calc(33.33% - 11px)'};
-    const wStyle=widthStyles[def.width||100]||'width:100%';
-
-    const rangeOpts=[3,5,8,10,15,20].map(n=>`<option value="${n}"${n===def.range?' selected':''}>${n}</option>`).join('');
-    const widthOpts=[{v:100,l:'Full'},{v:50,l:'½'},{v:33,l:'⅓'}]
-      .map(o=>`<option value="${o.v}"${(def.width||100)===o.v?' selected':''}>${o.l}</option>`).join('');
-
-    const headerHtml=`
-      <div style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--border);font-family:var(--mono);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-        <span style="cursor:grab;color:var(--text3);font-size:13px;" draggable="false">⠿</span>
-        <span>${def.title}</span>
-        <span style="font-size:9px;color:var(--text3);background:var(--bg3);padding:1px 7px;border-radius:8px;border:1px solid var(--border);">${def.isQ?'TRIM':'ANUAL'}</span>
-        <label style="font-size:9px;color:var(--text3);font-family:var(--mono);display:flex;align-items:center;gap:2px;margin-left:2px;">
-          Ult.<select data-action="range" data-id="${def.id}"
-            style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text2);font-family:var(--mono);font-size:9px;padding:1px 3px;outline:none;">${rangeOpts}</select>
-        </label>
-        <label style="font-size:9px;color:var(--text3);font-family:var(--mono);display:flex;align-items:center;gap:2px;">
-          <select data-action="width" data-id="${def.id}"
-            style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text2);font-family:var(--mono);font-size:9px;padding:1px 3px;outline:none;">${widthOpts}</select>
-        </label>
-        <button data-action="up" data-id="${def.id}"
-          style="padding:1px 6px;font-size:10px;cursor:pointer;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text3);font-family:var(--mono);">↑</button>
-        <button data-action="down" data-id="${def.id}"
-          style="padding:1px 6px;font-size:10px;cursor:pointer;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text3);font-family:var(--mono);">↓</button>
-        <span style="flex:1;"></span>
-        <button data-action="edit" data-id="${def.id}"
-          style="padding:2px 8px;font-size:10px;cursor:pointer;border:1px solid ${def.editing?'#1E27F3':'var(--border2)'};border-radius:4px;background:${def.editing?'rgba(30,39,243,0.12)':'transparent'};color:${def.editing?'#a5b4fc':'var(--text3)'};font-family:var(--mono);">✎ Editar</button>
-        <button data-action="remove" data-id="${def.id}"
-          style="padding:2px 8px;font-size:10px;cursor:pointer;border:1px solid rgba(248,81,73,0.3);border-radius:4px;background:transparent;color:#f85149;font-family:var(--mono);">✕</button>
-      </div>`;
-
-    let editPanelHtml='';
-    if(def.editing){
-      const catByGroup={};
-      TABLE_ROW_CATALOGUE.forEach(r=>{if(!catByGroup[r.group])catByGroup[r.group]=[];catByGroup[r.group].push(r);});
-      editPanelHtml=`<div style="padding:10px 12px;background:var(--bg3);border-bottom:1px solid var(--border);">
-        <div style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;">Tocá para agregar o quitar filas:</div>
-        ${Object.entries(catByGroup).map(([grp,rows])=>`
-          <div style="margin-bottom:5px;display:flex;align-items:center;flex-wrap:wrap;gap:3px;">
-            <span style="font-size:9px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;min-width:80px;">${grp}</span>
-            ${rows.map(r=>{
-              const active=def.rows.includes(r.key);
-              return `<button data-action="togglerow" data-id="${def.id}" data-key="${r.key}"
-                style="padding:2px 8px;border-radius:10px;font-size:10px;cursor:pointer;font-family:var(--mono);border:1px solid ${active?'#1E27F3':'var(--border)'};background:${active?'rgba(30,39,243,0.15)':'transparent'};color:${active?'#a5b4fc':'var(--text3)'};">${r.label}</button>`;
-            }).join('')}
-          </div>`).join('')}
-      </div>`;
-    }
-
-    let tableHtml='';
-    if(allYears.length && allSeries.length){
-      tableHtml=`<div style="overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
-          <colgroup><col style="width:170px;min-width:170px;">${allYears.map(()=>`<col style="width:${colW}px;min-width:${colW}px;">`).join('')}</colgroup>
-          <thead><tr>
-            <th style="position:sticky;left:0;z-index:5;background:var(--bg3);padding:7px 12px;font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;">Métrica</th>
-            ${allYears.map(y=>`<th style="background:var(--bg3);padding:7px 10px;font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;">${y}</th>`).join('')}
-          </tr></thead>
-          <tbody>${allSeries.map(({key,series})=>{
-            const cells=allYears.map(yr=>{
-              const p=series.find(x=>x.yr===yr);
-              const v=p?_tblFmt(key,p.val):'—';
-              return `<td style="padding:6px 10px;font-size:11px;text-align:right;color:var(--text);white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono);">${v}</td>`;
-            }).join('');
-            const cat=TABLE_ROW_CATALOGUE.find(r=>r.key===key);
-            return `<tr class="tbl-row">
-              <td style="position:sticky;left:0;z-index:4;background:var(--bg2);padding:6px 12px;font-size:11px;color:var(--text2);white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono);">${cat?.label||key}</td>
-              ${cells}
-            </tr>`;
-          }).join('')}</tbody>
-        </table></div>`;
-    } else {
-      tableHtml=`<div style="padding:14px;font-size:11px;color:var(--text3);font-family:var(--mono);">Sin datos. Usá Editar para agregar métricas.</div>`;
-    }
-
-    return `<div data-tbl-id="${def.id}" style="${wStyle};display:inline-block;vertical-align:top;margin-bottom:16px;${(def.width||100)<100?'padding-right:16px;':''}">
-      <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;">
-        ${headerHtml}${editPanelHtml}${tableHtml}
-      </div>
-    </div>`;
-  }
-
   // ══════════════════════════════════════════════════════════════
   // _renderAllTables — SINGLE event listener via AbortController
   // ══════════════════════════════════════════════════════════════
@@ -5266,7 +5178,7 @@ function openDetail(especie){
       TABLE_ROW_CATALOGUE.forEach(r=>{ if(!catByGroup[r.group]) catByGroup[r.group]=[]; catByGroup[r.group].push(r); });
 
       const tabHtml = tabs.map(t=>`
-        <button onclick="(function(){window._addModalTab='${t}';${content.id?`document.getElementById('${content.id}').innerHTML=''`:''}window.secOpenAddBlock();})()"
+        <button data-modaltab="${t}"
           style="padding:6px 16px;font-size:11px;font-weight:700;cursor:pointer;border:none;border-bottom:2px solid ${t===activeTab?'#1E27F3':'transparent'};background:transparent;color:${t===activeTab?'#a5b4fc':'var(--text3)'};font-family:var(--mono);">${t}</button>`).join('');
 
       const presets = _TBL_PRESETS.filter(p=>p.tab===activeTab);
@@ -5308,6 +5220,17 @@ function openDetail(especie){
     activeTab = window._addModalTab || 'Financials';
     renderModal();
     modal.style.display='flex';
+
+    // Tab click delegation — replace listener each time modal opens
+    if(modal._tabAbort) modal._tabAbort.abort();
+    modal._tabAbort = new AbortController();
+    content.addEventListener('click', function(e){
+      const btn = e.target.closest('[data-modaltab]');
+      if(!btn) return;
+      window._addModalTab = btn.dataset.modaltab;
+      activeTab = btn.dataset.modaltab;
+      renderModal();
+    }, {signal: modal._tabAbort.signal});
   };
 
   window.secCloseAddBlock = function(){
@@ -5413,15 +5336,21 @@ function openDetail(especie){
       return `<div class="kpi-item"><div class="kpi-label">${def.label}</div><div class="kpi-value">${disp}</div></div>`;
     }).join('');
 
-    // Charts as PNG images
+    // Charts as PNG images — render each to a bigger offscreen canvas for quality
     let chartsHtml='';
     _chartDefs.forEach(c=>{
       const canvas=document.getElementById(`dashCanvas_${c.id}`);
       if(!canvas) return;
-      const img=canvas.toDataURL('image/png');
+      // Scale up to full report width for quality
+      const offscreen=document.createElement('canvas');
+      offscreen.width=900; offscreen.height=320;
+      const ctx=offscreen.getContext('2d');
+      ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,900,320);
+      ctx.drawImage(canvas,0,0,900,320);
+      const img=offscreen.toDataURL('image/png');
       const m=CHART_METRICS.find(x=>x.id===c.metric);
-      chartsHtml+=`<div style="flex:0 0 calc(50% - 8px);min-width:280px;">
-        <div style="background:#f8f9fa;border:1px solid #e0e0e0;border-radius:8px;padding:12px;margin-bottom:16px;">
+      chartsHtml+=`<div style="width:100%;margin-bottom:16px;">
+        <div style="background:#f8f9fa;border:1px solid #e0e0e0;border-radius:8px;padding:14px;">
           <div style="font-size:10px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">${m?.label||c.metric} · ${c.period==='quarterly'?'TRIM':'ANUAL'}</div>
           <img src="${img}" style="width:100%;height:auto;" />
         </div></div>`;
