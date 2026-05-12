@@ -3111,6 +3111,7 @@ document.addEventListener('DOMContentLoaded', setLogos);
 const SHEET_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vS3HCJ_QcVOvx3sj6ZZxofvqh91vyUxLhacQhQatYTLYABvMcqelJmgKYEFGO3NYSHAFnVmySErB9vd/pub?gid=0&single=true&output=csv';
 const SHEET_URL_EQUITY='https://docs.google.com/spreadsheets/d/e/2PACX-1vRUEu_zO60H9j9dOZv0-sRj4qpuBh50KHqBYGkFlG5NbhpXkHDxyJxl07qDvyvQ_vBXx0MkrDtJK7f5/pub?gid=0&single=true&output=csv';
 const SHEET_URL_EXCEL='https://docs.google.com/spreadsheets/d/e/2PACX-1vTG24q0SWcJ-Bxc171MibEHe5HepPR4ydhb7iVsUbyiytz4qJ8hvdn4fxCbgAiNhwdleSrYTgaXrQw7/pub?gid=0&single=true&output=csv';
+const SHEET_URL_CUITS='https://docs.google.com/spreadsheets/d/e/2PACX-1vTG24q0SWcJ-Bxc171MibEHe5HepPR4ydhb7iVsUbyiytz4qJ8hvdn4fxCbgAiNhwdleSrYTgaXrQw7/pub?gid=1658016967&single=true&output=csv';
 const SCRIPT_URL_EXCEL='https://script.google.com/macros/s/AKfycbzgCfu_em089EUbR7GXxUOJ96B-cYU7xpasKe99878jD3wW4XhAe32z9pevlCVrVB5T/exec';
 
 let ALL_DATA=[];
@@ -6221,6 +6222,7 @@ function renderEquity(){
 
   window.EXCEL_DATA=[];
   window.EXCEL_DATA_LOADED=false;
+  window.EXCEL_CUIT_MAP={};  // ticker (uppercase) → cuit string
   let _currentExcelTicker=null;
   let _currentExcelEmpresa=null;
   let _currentExcelSector=null;
@@ -6320,6 +6322,26 @@ function renderEquity(){
       console.log("[EXCEL] Keys norm:", raw.length>0?Object.keys(raw[0]).join("|"):"");
       window.EXCEL_DATA=deduplicateExcel(raw);
       console.log("[EXCEL] Dedup:", window.EXCEL_DATA.length);
+
+      // Cargar hoja CUITs — completamente aislado, nunca rompe la carga principal
+      window.EXCEL_CUIT_MAP={};
+      fetch(SHEET_URL_CUITS)
+        .then(r=>r.text())
+        .then(cuitText=>{
+          // Si Google devuelve HTML en vez de CSV, parseCSV produce array vacío — seguro
+          if(cuitText.trim().startsWith('<')){ console.warn('[CUITS] Hoja no publicada como CSV'); return; }
+          const cuitRows=parseCSV(cuitText);
+          const map={};
+          cuitRows.forEach(r=>{
+            const ticker=(r['Ticker']||r['ticker']||'').trim().toUpperCase();
+            const cuit=(r['CUIT']||r['cuit']||'').toString().replace(/-/g,'').trim();
+            if(ticker&&cuit) map[ticker]=cuit;
+          });
+          window.EXCEL_CUIT_MAP=map;
+          console.log('[CUITS] Cargados:', Object.keys(map).length);
+        })
+        .catch(e=>console.warn('[CUITS] Error (no crítico):', e.message));
+
       window.EXCEL_DATA_LOADED=true;
       // Fecha más reciente para el topbar
       const dates=raw.map(r=>(r['fecha_carga']||'').trim()).filter(Boolean).sort();
@@ -6584,6 +6606,219 @@ function renderEquity(){
       </div>`;
 
     body.innerHTML=statsHtml+histTableHtml;
+
+    // ── Sección Central de Deudores ──────────────────────────────
+    const cuit=(window.EXCEL_CUIT_MAP||{})[_currentExcelTicker];
+
+    // Contenedor BCRA siempre visible debajo del historial
+    const bcraWrap=document.createElement('div');
+    bcraWrap.style.cssText='margin-top:28px;';
+    bcraWrap.id='excel-bcra-section';
+
+    const bcraTitle=`<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:14px;padding-bottom:8px;border-top:1px solid var(--border);padding-top:20px;">Central de Deudores — BCRA</div>`;
+
+    if(!cuit){
+      bcraWrap.innerHTML=bcraTitle+`
+        <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:20px 24px;display:flex;align-items:center;gap:12px;">
+          <span style="font-size:18px;opacity:.5;">🏛</span>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--text2);font-family:var(--mono);">CUIT no cargado para ${_currentExcelTicker}</div>
+            <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:3px;">Agregá el CUIT en la hoja "CUIT" del Google Sheet para ver la situación crediticia.</div>
+          </div>
+        </div>`;
+      body.appendChild(bcraWrap);
+      return;
+    }
+
+    // Tiene CUIT — mostrar spinner y consultar
+    bcraWrap.innerHTML=bcraTitle+`
+      <div id="excel-bcra-loading" style="display:flex;align-items:center;gap:10px;padding:20px;color:var(--text3);font-family:var(--mono);font-size:11px;">
+        <div class="spinner"></div>Consultando BCRA para CUIT ${cuit}...
+      </div>
+      <div id="excel-bcra-content"></div>`;
+    body.appendChild(bcraWrap);
+
+    // Fetch asíncrono — no bloquea el render del historial
+    (async()=>{
+      const loadingEl=document.getElementById('excel-bcra-loading');
+      const contentEl=document.getElementById('excel-bcra-content');
+      if(!loadingEl||!contentEl) return;
+      try{
+        const res  = await fetch(`${window.DEU_WORKER||'https://central-deudores.tzuccotti.workers.dev'}/deudas/${cuit}/full`);
+        const json = await res.json();
+
+        if(loadingEl) loadingEl.style.display='none';
+
+        // Mantenimiento
+        if(json.deudas?.errorMessages?.some(m=>m.toLowerCase().includes('mantenimiento'))){
+          contentEl.innerHTML=`<div style="padding:16px;color:var(--text3);font-family:var(--mono);font-size:11px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;">⏳ La API del BCRA está en mantenimiento. Intentá más tarde.</div>`;
+          return;
+        }
+        // 404
+        if(json.deudas?.status===404||json.error){
+          contentEl.innerHTML=`<div style="padding:16px;color:var(--text3);font-family:var(--mono);font-size:11px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;">Sin datos en Central de Deudores para CUIT ${cuit}.</div>`;
+          return;
+        }
+
+        const deudas  = json.deudas?.results  || json.deudas  || null;
+        const hist    = json.hist?.results     || json.hist    || null;
+        const cheques = json.cheques?.results  || json.cheques || null;
+
+        if(!deudas){ contentEl.innerHTML=''; return; }
+
+        // Reutilizar las funciones de renderizado de Central de Deudores
+        // Renderizamos en el contenedor inline
+        const heroDiv   = document.createElement('div'); heroDiv.style.marginBottom='16px';
+        const sitDiv    = document.createElement('div'); sitDiv.style.marginBottom='16px';
+        const heatDiv   = document.createElement('div'); heatDiv.style.marginBottom='16px';
+        const chartDiv  = document.createElement('div'); chartDiv.style.marginBottom='16px';
+        const chkDiv    = document.createElement('div');
+
+        contentEl.appendChild(heroDiv);
+        contentEl.appendChild(sitDiv);
+        contentEl.appendChild(heatDiv);
+        contentEl.appendChild(chartDiv);
+        contentEl.appendChild(chkDiv);
+
+        // Hero
+        const risk=window._deuCalcRisk?window._deuCalcRisk(deudas):{nivel:'—',color:'var(--text3)',bg:'var(--bg2)',causa:'',peorSit:0};
+        const denominacion=deudas.denominacion||_currentExcelEmpresa||_currentExcelTicker;
+        const entidades=(deudas.periodos?.[0]?.entidades||[]).filter(e=>e.situacion>0);
+        const montoTotal=entidades.reduce((s,e)=>s+(e.monto||0),0)*1000;
+        const periodo=deudas.periodos?.[0]?.periodo||'';
+        const periodLabel=periodo?`${periodo.slice(0,4)}/${periodo.slice(4,6)}`:'—';
+
+        heroDiv.innerHTML=`
+          <div style="background:${risk.bg};border:1px solid ${risk.color}33;border-radius:12px;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+            <div>
+              <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">CUIT ${cuit} · Último período: ${periodLabel}</div>
+              <div style="font-size:13px;color:var(--text2);font-family:var(--mono);">${entidades.length} entidades activas · Deuda total: <strong style="color:var(--text);">${window._deuFmtPesos?window._deuFmtPesos(montoTotal):('$'+(montoTotal/1e6).toFixed(1)+'M')}</strong></div>
+            </div>
+            <div style="text-align:center;background:${risk.color}22;border:2px solid ${risk.color};border-radius:10px;padding:10px 20px;min-width:140px;">
+              <div style="font-size:9px;color:${risk.color};font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;">Nivel de Riesgo</div>
+              <div style="font-size:18px;font-weight:800;color:${risk.color};font-family:var(--mono);">${risk.nivel}</div>
+              <div style="font-size:9px;color:${risk.color};font-family:var(--mono);margin-top:3px;opacity:.8;">${risk.causa}</div>
+            </div>
+          </div>`;
+
+        // Situación actual — tabla compacta
+        if(entidades.length){
+          const SIT_BG ={0:'transparent',1:'#16a34a',2:'#ca8a04',3:'#ea580c',4:'#dc2626',5:'#7f1d1d'};
+          const SIT_TXT={0:'var(--text3)',1:'#fff',2:'#fff',3:'#fff',4:'#fff',5:'#fca5a5'};
+          const SIT_LBL={0:'Sin deuda',1:'Normal',2:'Riesgo Bajo',3:'Con Problemas',4:'Alto Riesgo',5:'Irrecuperable'};
+          const rows=entidades.sort((a,b)=>b.situacion-a.situacion).map(e=>`
+            <tr onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''">
+              <td style="padding:6px 12px;font-size:11px;color:var(--text2);font-family:var(--mono);border-bottom:1px solid var(--border);white-space:nowrap;">${e.entidad}</td>
+              <td style="padding:6px 10px;text-align:center;border-bottom:1px solid var(--border);">
+                <span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;background:${SIT_BG[e.situacion]||'var(--bg3)'};color:${SIT_TXT[e.situacion]||'var(--text)'};">${e.situacion} — ${SIT_LBL[e.situacion]||'—'}</span>
+              </td>
+              <td style="padding:6px 10px;font-size:11px;text-align:right;color:var(--text);font-family:var(--mono);border-bottom:1px solid var(--border);white-space:nowrap;">$${Math.round((e.monto||0)/1000).toLocaleString('es-AR')}M</td>
+              <td style="padding:6px 10px;font-size:11px;text-align:center;color:${(e.diasAtrasoPago||0)>0?'#f87171':'var(--text3)'};font-family:var(--mono);border-bottom:1px solid var(--border);">${(e.diasAtrasoPago||0)>0?e.diasAtrasoPago+'d':'—'}</td>
+            </tr>`).join('');
+          sitDiv.innerHTML=`
+            <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono);margin-bottom:8px;">Situación Actual</div>
+            <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;overflow:hidden;">
+              <div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;">
+                  <thead><tr style="background:var(--bg3);">
+                    <th style="padding:7px 12px;font-size:10px;font-weight:600;color:var(--text2);text-align:left;border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;">Entidad</th>
+                    <th style="padding:7px 10px;font-size:10px;font-weight:600;color:var(--text2);text-align:center;border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;">Situación</th>
+                    <th style="padding:7px 10px;font-size:10px;font-weight:600;color:var(--text2);text-align:right;border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;">Monto</th>
+                    <th style="padding:7px 10px;font-size:10px;font-weight:600;color:var(--text2);text-align:center;border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;">Atraso</th>
+                  </tr></thead>
+                  <tbody>${rows}</tbody>
+                </table>
+              </div>
+            </div>`;
+        }
+
+        // Cheques resumen
+        if(cheques?.causales?.length){
+          const allChq=[];
+          cheques.causales.forEach(c=>c.entidades.forEach(e=>e.detalle.forEach(d=>allChq.push({...d,causal:c.causal}))));
+          const sinReg=allChq.filter(c=>!c.fechaPago).length;
+          chkDiv.innerHTML=`
+            <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono);margin-bottom:8px;">Cheques Rechazados</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:12px 18px;flex:1;min-width:100px;">
+                <div style="font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">Total</div>
+                <div style="font-size:20px;font-weight:700;color:var(--text);font-family:var(--mono);">${allChq.length}</div>
+              </div>
+              <div style="background:${sinReg?'rgba(248,81,73,0.08)':'rgba(63,185,80,0.08)'};border:1px solid ${sinReg?'rgba(248,81,73,0.3)':'rgba(63,185,80,0.25)'};border-radius:8px;padding:12px 18px;flex:1;min-width:100px;">
+                <div style="font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">Sin regularizar</div>
+                <div style="font-size:20px;font-weight:700;color:${sinReg?'#f87171':'#3fb950'};font-family:var(--mono);">${sinReg}</div>
+              </div>
+            </div>`;
+        } else if(cheques!==null){
+          chkDiv.innerHTML=`
+            <div style="background:rgba(63,185,80,0.06);border:1px solid rgba(63,185,80,0.2);border-radius:8px;padding:14px 18px;display:flex;align-items:center;gap:10px;">
+              <span style="font-size:16px;">✅</span>
+              <div style="font-size:11px;font-weight:600;color:var(--text2);font-family:var(--mono);">Sin cheques rechazados</div>
+            </div>`;
+        }
+
+        // Heatmap — solo si hay historial
+        if(hist?.periodos?.length){
+          const allPeriodos=[...new Set(hist.periodos.map(p=>p.periodo))].sort();
+          const entityMap={};
+          hist.periodos.forEach(p=>p.entidades.forEach(e=>{
+            if(e.situacion===0) return;
+            if(!entityMap[e.entidad]) entityMap[e.entidad]={};
+            entityMap[e.entidad][p.periodo]={situacion:e.situacion,monto:e.monto||0};
+          }));
+          const entities=Object.keys(entityMap).sort((a,b)=>{
+            const wA=Math.max(...Object.values(entityMap[a]).map(x=>x.situacion));
+            const wB=Math.max(...Object.values(entityMap[b]).map(x=>x.situacion));
+            return wB-wA||a.localeCompare(b);
+          });
+          if(entities.length){
+            const HEAT={0:'var(--bg3)',1:'#14532d',2:'#713f12',3:'#7c2d12',4:'#7f1d1d',5:'#450a0a'};
+            const SIT_BG2={0:'transparent',1:'#16a34a',2:'#ca8a04',3:'#ea580c',4:'#dc2626',5:'#7f1d1d'};
+            const SIT_TXT2={0:'var(--text3)',1:'#fff',2:'#fff',3:'#fff',4:'#fff',5:'#fca5a5'};
+            const SIT_LBL2={0:'Sin deuda',1:'Normal',2:'Riesgo Bajo',3:'Con Problemas',4:'Alto Riesgo',5:'Irrecuperable'};
+            const cellW=34,labelW=200;
+            const headerCells=allPeriodos.map(p=>`<th style="width:${cellW}px;min-width:${cellW}px;padding:3px 2px;font-size:8px;font-weight:600;color:var(--text3);text-align:center;font-family:var(--mono);background:var(--bg3);border-bottom:1px solid var(--border);white-space:nowrap;">${p.slice(4,6)}/${p.slice(2,4)}</th>`).join('');
+            const dataRows=entities.map(ent=>{
+              const worst=Math.max(...Object.values(entityMap[ent]).map(x=>x.situacion));
+              const cells=allPeriodos.map(p=>{
+                const d=entityMap[ent]?.[p];
+                const sit=d?.situacion||0;
+                const tt=`${ent} · ${p.slice(0,4)}/${p.slice(4,6)} · Sit.${sit} ${SIT_LBL2[sit]||''}`;
+                return `<td title="${tt.replace(/"/g,"'")}" style="width:${cellW}px;min-width:${cellW}px;height:24px;background:${sit>0?HEAT[sit]:'var(--bg3)'};border:1px solid rgba(0,0,0,0.12);cursor:default;"></td>`;
+              }).join('');
+              return `<tr>
+                <td style="position:sticky;left:0;z-index:3;background:var(--bg2);padding:2px 8px;font-size:10px;color:var(--text2);font-family:var(--mono);white-space:nowrap;border-bottom:1px solid var(--border);border-right:1px solid var(--border2);min-width:${labelW}px;max-width:${labelW}px;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;">
+                    <span style="overflow:hidden;text-overflow:ellipsis;font-size:10px;">${ent}</span>
+                    <span style="flex-shrink:0;font-size:8px;padding:1px 5px;border-radius:6px;background:${SIT_BG2[worst]||'var(--bg3)'};color:${SIT_TXT2[worst]||'var(--text)'};">${worst}</span>
+                  </div>
+                </td>${cells}
+              </tr>`;
+            }).join('');
+            heatDiv.innerHTML=`
+              <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono);margin-bottom:8px;">Historial 24 Meses</div>
+              <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;overflow:hidden;">
+                <div style="overflow-x:auto;">
+                  <table style="border-collapse:collapse;table-layout:fixed;">
+                    <colgroup><col style="width:${labelW}px;min-width:${labelW}px;">${allPeriodos.map(()=>`<col style="width:${cellW}px;min-width:${cellW}px;">`).join('')}</colgroup>
+                    <thead><tr>
+                      <th style="position:sticky;left:0;z-index:4;background:var(--bg3);border-bottom:1px solid var(--border);border-right:1px solid var(--border2);padding:4px 8px;font-size:10px;color:var(--text2);text-align:left;font-family:var(--mono);">Entidad</th>
+                      ${headerCells}
+                    </tr></thead>
+                    <tbody>${dataRows}</tbody>
+                  </table>
+                </div>
+              </div>`;
+          }
+        }
+
+      }catch(e){
+        const loadingEl=document.getElementById('excel-bcra-loading');
+        const contentEl=document.getElementById('excel-bcra-content');
+        if(loadingEl) loadingEl.style.display='none';
+        if(contentEl) contentEl.innerHTML=`<div style="padding:14px;color:var(--text3);font-family:var(--mono);font-size:11px;">Error al consultar BCRA: ${e.message}</div>`;
+      }
+    })();
   }
 
   // ── Modal carga manual ──
@@ -6965,6 +7200,7 @@ function buildEquityTable(data){
 // ══════════════════════════════════════════════════════
 
 const DEU_WORKER = 'https://central-deudores.tzuccotti.workers.dev';
+window.DEU_WORKER = DEU_WORKER;
 
 // ── Directorio de empresas frecuentes ────────────────
 const DEU_EMPRESAS = [
@@ -7087,12 +7323,21 @@ window.deuSearch = async function(){
       return;
     }
 
-    const deudas  = json.deudas  || null;
-    const hist    = json.hist    || null;
-    const cheques = json.cheques || null;
+    // Detectar mantenimiento del BCRA
+    const isMaint = d => d?.errorMessages?.some(m => m.toLowerCase().includes('mantenimiento'));
+    if(isMaint(json.deudas)){
+      deuStatus('La API del BCRA está en mantenimiento. Intentá en unos minutos.','err'); return;
+    }
 
-    if(!deudas){
-      deuStatus('No se recibieron datos de deudas para este CUIT','err'); return;
+    // Detectar 404 dentro de la respuesta anidada
+    const is404 = d => d?.status === 404;
+
+    const deudas  = (!is404(json.deudas)  && json.deudas?.results)  ? json.deudas.results  : json.deudas?.results || null;
+    const hist    = (!is404(json.hist)    && json.hist?.results)    ? json.hist.results    : null;
+    const cheques = (!is404(json.cheques) && json.cheques?.results) ? json.cheques.results : null;
+
+    if(!deudas || json.deudas?.status === 404){
+      deuStatus('CUIT sin datos en la Central de Deudores del BCRA','err'); return;
     }
 
     const warnings = [];
@@ -7151,6 +7396,7 @@ function deuCalcRisk(deudas){
   }
   return {nivel, color, bg, causa, peorSit};
 }
+window._deuCalcRisk = deuCalcRisk;
 
 // ── Format helpers ────────────────────────────────────
 function fmtPesos(v){
@@ -7162,6 +7408,7 @@ function fmtPesos(v){
   if(v>=1e6)  return '$'+(v/1e6).toFixed(1)+'M';
   return '$'+Math.round(v).toLocaleString('es-AR');
 }
+window._deuFmtPesos = fmtPesos;
 function fmtCUIT(c){ return c.length===11?`${c.slice(0,2)}-${c.slice(2,10)}-${c.slice(10)}`:c; }
 function periodoLabel(p){ return `${p.slice(0,4)}/${p.slice(4,6)}`; }
 
