@@ -6968,9 +6968,9 @@ const DEU_WORKER = 'https://central-deudores.tzuccotti.workers.dev';
 
 // ── Directorio de empresas frecuentes ────────────────
 const DEU_EMPRESAS = [
-  {nombre:'YPF',              cuit:'30546689979'},
-  {nombre:'Pampa Energía',    cuit:'30708695831'},
-  {nombre:'TGS',              cuit:'30680928156'},
+  {nombre:'YPF',              cuit:'30546689979'}, // ✓ verificado
+  {nombre:'Pampa Energía',    cuit:'30526552659'}, // pampa energia s a
+  {nombre:'TGS',              cuit:'30657862068'}, // ✓ verificado
   {nombre:'Loma Negra',       cuit:'30500010912'},
   {nombre:'Arcor',            cuit:'30503663278'},
   {nombre:'Banco Macro',      cuit:'30663016600'},
@@ -6979,10 +6979,10 @@ const DEU_EMPRESAS = [
   {nombre:'IRSA',             cuit:'30557429253'},
   {nombre:'Cresud',           cuit:'30654298955'},
   {nombre:'Aluar',            cuit:'30528010457'},
-  {nombre:'Telecom',          cuit:'30708726771'},
-  {nombre:'Aerolíneas',       cuit:'30568082181'},
-  {nombre:'Techint',          cuit:'30573030512'},
-  {nombre:'Mercado Libre AR', cuit:'30658393422'},
+  {nombre:'Telecom AR',       cuit:'30708726771'},
+  {nombre:'Aerolíneas AR',    cuit:'30568082181'},
+  {nombre:'Ternium AR',       cuit:'30573030512'},
+  {nombre:'Central Puerto',   cuit:'30587027949'},
 ];
 
 // ── Situación labels ──────────────────────────────────
@@ -7074,28 +7074,42 @@ window.deuSearch = async function(){
   deuStatus('Consultando BCRA...','load');
 
   try{
-    const [rDeudas, rHist, rCheques] = await Promise.all([
-      fetch(`${DEU_WORKER}/deudas/${raw}`).then(r=>r.json()),
-      fetch(`${DEU_WORKER}/deudas/${raw}/historicas`).then(r=>r.json()),
-      fetch(`${DEU_WORKER}/deudas/${raw}/cheques`).then(r=>r.json()),
-    ]);
+    // Un solo request al worker — el worker hace los 3 calls al BCRA secuencialmente
+    const res  = await fetch(`${DEU_WORKER}/deudas/${raw}/full`);
+    const json = await res.json();
 
-    if(rDeudas.error) throw new Error(rDeudas.error);
-
-    const deudas   = rDeudas.results  || null;
-    const hist     = rHist.results    || null;
-    const cheques  = rCheques.results || null;
-
-    if(!deudas && !hist){
-      deuStatus('No se encontraron datos para este CUIT (404)','err'); return;
+    if(json.error){
+      const msg = json.error;
+      if(msg.includes('404') || msg.includes('No se encontró'))
+        deuStatus('CUIT sin datos en la Central de Deudores del BCRA (404)','err');
+      else
+        deuStatus(`Error al consultar BCRA: ${msg}`,'err');
+      return;
     }
 
-    deuRender(raw, deudas, hist, cheques);
-    deuStatus('Datos cargados correctamente','ok');
-    setTimeout(()=>{ document.getElementById('deu-status').style.display='none'; }, 3000);
+    const deudas  = json.deudas  || null;
+    const hist    = json.hist    || null;
+    const cheques = json.cheques || null;
+
+    if(!deudas){
+      deuStatus('No se recibieron datos de deudas para este CUIT','err'); return;
+    }
+
+    const warnings = [];
+    if(!hist)    warnings.push('Historial 24m no disponible');
+    if(!cheques) warnings.push('Cheques no disponibles');
+
+    deuRender(raw, deudas, hist, cheques, warnings);
+
+    if(warnings.length)
+      deuStatus(`Datos parciales: ${warnings.join(' · ')} — reintentá en unos segundos`,'load');
+    else{
+      deuStatus('Datos cargados correctamente','ok');
+      setTimeout(()=>{ document.getElementById('deu-status').style.display='none'; }, 3000);
+    }
 
   }catch(e){
-    deuStatus(`Error: ${e.message}`,'err');
+    deuStatus(`Error inesperado: ${e.message}`,'err');
     console.error('[deuSearch]', e);
   }
 };
@@ -7152,7 +7166,7 @@ function fmtCUIT(c){ return c.length===11?`${c.slice(0,2)}-${c.slice(2,10)}-${c.
 function periodoLabel(p){ return `${p.slice(0,4)}/${p.slice(4,6)}`; }
 
 // ── Main render orchestrator ──────────────────────────
-function deuRender(cuit, deudas, hist, cheques){
+function deuRender(cuit, deudas, hist, cheques, warnings){
   renderHero(cuit, deudas);
   renderSituacion(deudas);
   renderHeatmap(hist);
