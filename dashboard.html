@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bull Market — Dashboard v7.6.0</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -2703,6 +2704,8 @@ window.enterTest=function(){
         style="padding:5px 16px;font-size:11px;font-weight:700;cursor:pointer;border:none;border-left:1px solid var(--border2);background:transparent;color:var(--text3);font-family:var(--mono);">📊 Sectorial</button>
       <button id="earTabDeudoresBtn" onclick="earShowTab('deudores')"
         style="padding:5px 16px;font-size:11px;font-weight:700;cursor:pointer;border:none;border-left:1px solid var(--border2);background:transparent;color:var(--text3);font-family:var(--mono);">🏛 Deudores</button>
+      <button id="earTabMavBtn" onclick="earShowTab('mav')"
+        style="padding:5px 16px;font-size:11px;font-weight:700;cursor:pointer;border:none;border-left:1px solid var(--border2);background:transparent;color:var(--text3);font-family:var(--mono);">📂 MAV</button>
     </div>
     <div style="flex:1;"></div>
     <span id="excel-date" style="font-size:11px;color:var(--text3);font-family:var(--mono);">—</span>
@@ -2821,6 +2824,21 @@ window.enterTest=function(){
         <div style="font-size:13px;line-height:1.9;max-width:460px;margin:0 auto;font-family:var(--mono);">Fuente oficial: BCRA Central de Deudores · Datos públicos gratuitos<br>Ingresá un CUIT para ver situación, historial 24 meses y cheques</div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- Tab: MAV CENDEU -->
+  <div id="earTabMav" style="display:none;">
+    <div style="max-width:1200px;margin:0 auto;padding:28px 28px 80px;width:100%;">
+      <div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);font-family:var(--mono);margin-bottom:6px;">MAV · Central de Deuda</div>
+      <div style="font-size:12px;color:var(--text3);font-family:var(--mono);margin-bottom:20px;">Instrumentos de deuda negociados en el mercado de capitales. Aceptá cualquier empresa.</div>
+      <div id="mav-global-drop" class="mav-dropzone" onclick="document.getElementById('mav-global-input').click()">
+        <div style="font-size:28px;margin-bottom:10px;opacity:.5;">📂</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:4px;">Arrastrá el ZIP de CENDEU aquí</div>
+        <div style="font-size:11px;color:var(--text3);">o hacé click para seleccionar · cendeu-XXXXXXXXXX.zip</div>
+        <input type="file" id="mav-global-input" accept=".zip" style="display:none" onchange="mavHandleFile(this.files[0],null,'mav-global-results')">
+      </div>
+      <div id="mav-global-results" style="margin-top:24px;"></div>
     </div>
   </div>
 
@@ -6375,23 +6393,24 @@ function renderEquity(){
 
   // ── Tab switching ──
   window.earShowTab = function(tab){
-    ['buscar','sector','deudores'].forEach(t=>{
-      const d=document.getElementById(`earTab${t.charAt(0).toUpperCase()+t.slice(1)}`);
+    ['buscar','sector','deudores','mav'].forEach(t=>{
+      const key=t.charAt(0).toUpperCase()+t.slice(1);
+      const d=document.getElementById(`earTab${key}`);
       if(d) d.style.display=tab===t?'block':'none';
     });
-    const tabs={buscar:'earTabBuscarBtn',sector:'earTabSectorBtn',deudores:'earTabDeudoresBtn'};
+    const tabs={buscar:'earTabBuscarBtn',sector:'earTabSectorBtn',deudores:'earTabDeudoresBtn',mav:'earTabMavBtn'};
     Object.entries(tabs).forEach(([t,id])=>{
       const b=document.getElementById(id); if(!b) return;
       b.style.background=tab===t?'#1E27F3':'transparent';
       b.style.color=tab===t?'#fff':'var(--text3)';
     });
-    // Init deudores chips when switching to that tab
     if(tab==='deudores' && !window._deuInitialized) deuInit();
-    // Show excel-content when switching to sector
     if(tab==='sector'){
       const ec=document.getElementById('excel-content');
       if(ec && window.EXCEL_DATA_LOADED) ec.style.display='block';
     }
+    // Setup MAV global drop on first visit
+    if(tab==='mav') mavInitGlobalDrop();
   };
 
   // ── Buscador Empresas AR — autocomplete ──
@@ -6848,36 +6867,52 @@ function renderEquity(){
           </div>
         </div>`;
       body.appendChild(bcraWrap);
+      // Still show MAV section even without CUIT
+      if(typeof mavBuildCompanySection==='function'){
+        mavBuildCompanySection(_currentExcelTicker, null, body);
+      }
       return;
     }
 
     // Tiene CUIT — mostrar spinner y consultar
+    const bcraCid=`bcra-content-${cuit}`;
+    const bcraLoadId=`bcra-load-${cuit}`;
+
     bcraWrap.innerHTML=bcraTitle+`
-      <div id="excel-bcra-loading" style="display:flex;align-items:center;gap:10px;padding:20px;color:var(--text3);font-family:var(--mono);font-size:11px;">
-        <div class="spinner"></div>Consultando BCRA para CUIT ${cuit}...
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+        <span style="font-size:10px;color:var(--text3);font-family:var(--mono);">CUIT ${cuit}</span>
+        <button onclick="mavBcraRefresh('${cuit}','${bcraCid}')"
+          style="padding:3px 12px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--border2);border-radius:5px;background:transparent;color:var(--text3);font-family:var(--mono);">🔄 Actualizar</button>
       </div>
-      <div id="excel-bcra-content"></div>`;
+      <div id="${bcraLoadId}" style="display:flex;align-items:center;gap:10px;padding:14px;color:var(--text3);font-family:var(--mono);font-size:11px;">
+        <div class="spinner"></div>Consultando BCRA...
+      </div>
+      <div id="${bcraCid}"></div>`;
     body.appendChild(bcraWrap);
 
-    // Fetch asíncrono — no bloquea el render del historial
+    // Also add MAV section below BCRA
+    if(typeof mavBuildCompanySection==='function'){
+      mavBuildCompanySection(_currentExcelTicker, cuit, body);
+    }
+
+    // Fetch asíncrono
     (async()=>{
-      const loadingEl=document.getElementById('excel-bcra-loading');
-      const contentEl=document.getElementById('excel-bcra-content');
-      if(!loadingEl||!contentEl) return;
+      const loadingEl=document.getElementById(bcraLoadId);
+      const contentEl=document.getElementById(bcraCid);
+      if(!contentEl) return;
       try{
         const res  = await fetch(`${window.DEU_WORKER||'https://central-deudores.tzuccotti.workers.dev'}/deudas/${cuit}/full`);
         const json = await res.json();
 
         if(loadingEl) loadingEl.style.display='none';
 
-        // Mantenimiento
         if(json.deudas?.errorMessages?.some(m=>m.toLowerCase().includes('mantenimiento'))){
-          contentEl.innerHTML=`<div style="padding:16px;color:var(--text3);font-family:var(--mono);font-size:11px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;">⏳ La API del BCRA está en mantenimiento. Intentá más tarde.</div>`;
+          contentEl.innerHTML=window._mavBcraErrorHtml?window._mavBcraErrorHtml(cuit,'La API del BCRA está en mantenimiento. Intentá más tarde.')
+            :`<div style="padding:14px;color:var(--text3);font-family:var(--mono);font-size:11px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;">⏳ BCRA en mantenimiento.</div>`;
           return;
         }
-        // 404
         if(json.deudas?.status===404||json.error){
-          contentEl.innerHTML=`<div style="padding:16px;color:var(--text3);font-family:var(--mono);font-size:11px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;">Sin datos en Central de Deudores para CUIT ${cuit}.</div>`;
+          contentEl.innerHTML=`<div style="padding:14px;color:var(--text3);font-family:var(--mono);font-size:11px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;">Sin datos en Central de Deudores para CUIT ${cuit}.</div>`;
           return;
         }
 
@@ -8090,5 +8125,503 @@ function renderCheques(cheques){
 
 })();
 </script>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// MAV CENDEU — Parser + Renderer
+// ══════════════════════════════════════════════════════════════
+(function(){
+
+  // ── CSV parser (semicolon-separated, handles quotes) ─────────
+  function mavParseCSV(text){
+    const lines=text.trim().split('\n').filter(l=>l.trim());
+    if(lines.length<2) return{headers:[],rows:[]};
+    const sep=';';
+    const headers=lines[0].split(sep).map(h=>h.trim().replace(/"/g,''));
+    const rows=lines.slice(1).map(l=>l.split(sep).map(c=>c.trim().replace(/"/g,'')));
+    return{headers,rows};
+  }
+
+  function mavFmtPesos(val){
+    const n=parseFloat(String(val).replace(/\./g,'').replace(',','.').trim());
+    if(!n||isNaN(n)) return'—';
+    if(n>=1e9) return'$'+(n/1e9).toFixed(2)+'MM';
+    if(n>=1e6) return'$'+(n/1e6).toFixed(1)+'M';
+    return'$'+n.toLocaleString('es-AR');
+  }
+  function mavFmtNum(val){
+    const n=parseFloat(String(val).replace(/\./g,'').replace(',','.').trim());
+    if(!n||isNaN(n)) return'—';
+    return n.toLocaleString('es-AR');
+  }
+  function mavPillTipo(t){
+    if(!t) return'—';
+    const u=t.toUpperCase();
+    if(u.includes('PAG')) return'<span class="mav-pill mav-pill-pagare">Pagaré</span>';
+    if(u.includes('CPD')||u.includes('CHEQUE')) return'<span class="mav-pill mav-pill-cpd">CPD</span>';
+    if(u.includes('FCE')) return'<span class="mav-pill mav-pill-fce">FCE</span>';
+    return`<span class="mav-pill mav-pill-other">${t}</span>`;
+  }
+  function mavPillMoneda(m){
+    if(!m) return'—';
+    const u=m.toUpperCase();
+    if(u.includes('HARD')) return'<span class="mav-pill mav-pill-hd">Hard $</span>';
+    if(u==='$'||u.includes('PESO')) return'<span class="mav-pill mav-pill-ars">ARS</span>';
+    return`<span class="mav-pill mav-pill-other">${m}</span>`;
+  }
+  function mavExtractCUIT(name){
+    const m=name.match(/(\d{11})/);
+    if(!m) return null;
+    return m[1];
+  }
+  function mavExtractDate(name){
+    const m=name.match(/(\d{8})\.zip$/i);
+    if(!m) return'';
+    const d=m[1];
+    return d.slice(0,2)+'/'+d.slice(2,4)+'/'+d.slice(4);
+  }
+
+  // ── Main render ───────────────────────────────────────────────
+  function mavRender(files, filename, container, validCUIT){
+    if(!container) return;
+
+    // Validate CUIT if passed (for company-specific view)
+    const fileCUIT = mavExtractCUIT(filename||'');
+    if(validCUIT && fileCUIT && fileCUIT!==validCUIT){
+      container.innerHTML=`<div style="padding:16px;background:rgba(248,81,73,0.08);border:1px solid rgba(248,81,73,0.3);border-radius:8px;font-family:var(--mono);font-size:12px;color:#f87171;">
+        ⚠ El archivo corresponde al CUIT ${fileCUIT} — esta empresa tiene CUIT ${validCUIT}. Cargá el archivo correcto.
+      </div>`;
+      return;
+    }
+
+    const det=mavParseCSV(files.det||'');
+    const ci=name=>det.headers.findIndex(h=>h.toUpperCase().includes(name.toUpperCase()));
+    const iCod=ci('CODIGO'), iTipo=ci('TIPO'), iSeg=ci('SEGMENTO');
+    const iRaz=ci('RAZON'), iEmi=ci('EMISION'), iVto=ci('VTO');
+    const iMon=ci('MONEDA');
+    const iMto=det.headers.findIndex(h=>h.toUpperCase()==='MONTO');
+    const iMtoP=ci('MONTO PESOS');
+
+    const razonSocial=(det.rows.length&&iRaz>=0)?det.rows[0][iRaz]||'':'';
+    const fechaInforme=mavExtractDate(filename||'');
+    const cuitFmt=fileCUIT?fileCUIT.slice(0,2)+'-'+fileCUIT.slice(2,10)+'-'+fileCUIT.slice(10):'—';
+
+    let totalPesos=0;
+    det.rows.forEach(r=>{
+      const v=parseFloat(String(r[iMtoP]||'0').replace(/\./g,'').replace(',','.').trim());
+      if(!isNaN(v)) totalPesos+=v;
+    });
+
+    // Info bar
+    const infoBar=`
+      <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--text);">CUIT ${cuitFmt}</div>
+          ${razonSocial?`<div style="font-size:11px;color:#a5b4fc;font-family:var(--mono);margin-top:2px;">${razonSocial}</div>`:''}
+        </div>
+        <div style="text-align:right;">
+          ${fechaInforme?`<div style="font-size:11px;color:var(--text3);font-family:var(--mono);">Informe: ${fechaInforme}</div>`:''}
+          <button onclick="this.closest('[data-mav-wrap]').remove()"
+            style="margin-top:6px;padding:4px 12px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid var(--border2);border-radius:5px;background:transparent;color:var(--text3);font-family:var(--mono);">↩ Cargar otro</button>
+        </div>
+      </div>`;
+
+    // KPIs
+    const ins=mavParseCSV(files.ins||'');
+    let kpiHTML=`
+      <div class="mav-kpi highlight">
+        <div class="mav-kpi-label">Total en $</div>
+        <div class="mav-kpi-value">${mavFmtPesos(totalPesos)}</div>
+        <div class="mav-kpi-sub">Monto total pendiente</div>
+      </div>
+      <div class="mav-kpi">
+        <div class="mav-kpi-label">Instrumentos</div>
+        <div class="mav-kpi-value">${det.rows.length}</div>
+        <div class="mav-kpi-sub">Pendientes de vto.</div>
+      </div>`;
+    ins.rows.forEach(r=>{
+      const tipo=r[0]?.trim(), mto=r[1]?.trim();
+      const n=parseFloat(String(mto||'').replace(/\./g,'').replace(',','.'));
+      if(n>0) kpiHTML+=`<div class="mav-kpi"><div class="mav-kpi-label">${tipo}</div><div class="mav-kpi-value">${mavFmtPesos(n)}</div><div class="mav-kpi-sub">por instrumento</div></div>`;
+    });
+
+    // Detail table
+    const detRows=det.rows.map(r=>`
+      <tr onmouseover="this.querySelectorAll('td').forEach(td=>td.style.background='var(--accent-light)')" onmouseout="this.querySelectorAll('td').forEach(td=>td.style.background='')">
+        <td style="padding:8px 12px;font-size:10px;color:var(--text3);font-family:var(--mono);border-bottom:1px solid var(--border);">${r[iCod]||'—'}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid var(--border);">${mavPillTipo(r[iTipo])}</td>
+        <td style="padding:8px 12px;font-size:10px;color:var(--text3);font-family:var(--mono);border-bottom:1px solid var(--border);">${r[iSeg]||'—'}</td>
+        <td style="padding:8px 12px;font-size:11px;text-align:right;color:var(--text2);font-family:var(--mono);border-bottom:1px solid var(--border);">${r[iEmi]||'—'}</td>
+        <td style="padding:8px 12px;font-size:11px;text-align:right;color:#a5b4fc;font-family:var(--mono);border-bottom:1px solid var(--border);font-weight:600;">${r[iVto]||'—'}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid var(--border);">${mavPillMoneda(r[iMon])}</td>
+        <td style="padding:8px 12px;font-size:11px;text-align:right;color:var(--text);font-family:var(--mono);border-bottom:1px solid var(--border);">${mavFmtNum(r[iMto])}</td>
+        <td style="padding:8px 12px;font-size:11px;text-align:right;color:var(--text);font-family:var(--mono);border-bottom:1px solid var(--border);font-weight:600;">${mavFmtPesos(r[iMtoP])}</td>
+      </tr>`).join('');
+
+    const thStyle='padding:8px 12px;font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;text-align:left;border-bottom:1px solid var(--border);background:var(--bg3);font-family:var(--mono);white-space:nowrap;';
+    const thR=thStyle+'text-align:right;';
+    const detTable=`
+      <div style="overflow-x:auto;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr>
+            <th style="${thStyle}">Código</th><th style="${thStyle}">Tipo</th><th style="${thStyle}">Segmento</th>
+            <th style="${thR}">Emisión</th><th style="${thR}">Vto.</th><th style="${thStyle}">Moneda</th>
+            <th style="${thR}">Monto orig.</th><th style="${thR}">Monto $</th>
+          </tr></thead>
+          <tbody>${detRows}</tbody>
+          <tfoot><tr>
+            <td colspan="7" style="padding:8px 12px;text-align:right;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);border-top:1px solid var(--border2);">Total en pesos</td>
+            <td style="padding:8px 12px;text-align:right;font-size:12px;font-weight:700;color:#a5b4fc;font-family:var(--mono);border-top:1px solid var(--border2);">${mavFmtPesos(totalPesos)}</td>
+          </tr></tfoot>
+        </table>
+      </div>`;
+
+    // Vencimientos bar chart
+    const ven=mavParseCSV(files.ven||'');
+    const iTotal=ven.headers.findIndex(h=>h.toUpperCase().includes('TOTAL'));
+    const venData=ven.rows
+      .map(r=>({mes:r[0],val:parseFloat(String(r[iTotal]||'0').replace(/\./g,'').replace(',','.').trim())||0}))
+      .filter(r=>r.val>0);
+    const maxVal=Math.max(...venData.map(r=>r.val),1);
+    const venChart=venData.length
+      ? venData.map(r=>`
+        <div class="mav-ven-row">
+          <span class="mav-ven-label">${r.mes}</span>
+          <div class="mav-ven-bar-wrap"><div class="mav-ven-bar" style="width:${(r.val/maxVal*100).toFixed(1)}%"></div></div>
+          <span class="mav-ven-val">${mavFmtPesos(r.val)}</span>
+        </div>`).join('')
+      : '<div style="color:var(--text3);font-size:12px;font-family:var(--mono);padding:8px;">Sin vencimientos con monto.</div>';
+
+    // Moneda breakdown
+    const mon=mavParseCSV(files.mon||'');
+    const monRows=mon.rows.map(r=>{
+      const n=parseFloat(String(r[1]||'0').replace(/\./g,'').replace(',','.').trim());
+      if(!n) return'';
+      return`<tr onmouseover="this.querySelectorAll('td').forEach(td=>td.style.background='var(--accent-light)')" onmouseout="this.querySelectorAll('td').forEach(td=>td.style.background='')">
+        <td style="padding:7px 12px;font-size:11px;color:var(--text2);font-family:var(--mono);border-bottom:1px solid var(--border);">${r[0]||'—'}</td>
+        <td style="padding:7px 12px;font-size:11px;text-align:right;color:#a5b4fc;font-family:var(--mono);border-bottom:1px solid var(--border);font-weight:600;">${mavFmtPesos(n)}</td>
+      </tr>`;
+    }).join('');
+
+    container.innerHTML=`<div data-mav-wrap="1">
+      ${infoBar}
+      <div class="mav-kpi-grid">${kpiHTML}</div>
+      <div class="mav-section-title">Detalle de instrumentos</div>
+      ${detTable}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:0;">
+        <div>
+          <div class="mav-section-title">Vencimientos por mes</div>
+          <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:16px;">
+            ${venChart}
+          </div>
+        </div>
+        <div>
+          <div class="mav-section-title">Breakdown por moneda</div>
+          <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;overflow:hidden;">
+            <table style="width:100%;border-collapse:collapse;">
+              <thead><tr>
+                <th style="padding:7px 12px;font-size:10px;font-weight:600;color:var(--text2);text-align:left;border-bottom:1px solid var(--border);background:var(--bg3);font-family:var(--mono);text-transform:uppercase;">Moneda</th>
+                <th style="padding:7px 12px;font-size:10px;font-weight:600;color:var(--text2);text-align:right;border-bottom:1px solid var(--border);background:var(--bg3);font-family:var(--mono);text-transform:uppercase;">Monto</th>
+              </tr></thead>
+              <tbody>${monRows||'<tr><td colspan="2" style="padding:10px 12px;color:var(--text3);font-family:var(--mono);font-size:11px;">Sin datos</td></tr>'}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // ── File handler ──────────────────────────────────────────────
+  window.mavHandleFile = async function(file, validCUIT, targetId){
+    if(!file) return;
+    if(!file.name.toLowerCase().endsWith('.zip')){
+      alert('Seleccioná un archivo .zip de CENDEU.');
+      return;
+    }
+    if(typeof JSZip==='undefined'){
+      alert('JSZip no está cargado. Recargá la página.');
+      return;
+    }
+    const container=document.getElementById(targetId);
+    if(container) container.innerHTML='<div style="padding:16px;color:var(--text3);font-family:var(--mono);font-size:11px;display:flex;align-items:center;gap:8px;"><div class="spinner"></div>Procesando ZIP...</div>';
+
+    try{
+      const zip=await JSZip.loadAsync(file);
+      const files={};
+      for(const [name,entry] of Object.entries(zip.files)){
+        const key=name.includes('-det-')?'det':name.includes('-mon-')?'mon':name.includes('-ven-')?'ven':name.includes('-ins-')?'ins':name.endsWith('.txt')?'ref':null;
+        if(key) files[key]=await entry.async('string');
+      }
+      if(!files.det){
+        if(container) container.innerHTML='<div style="padding:16px;background:rgba(248,81,73,0.08);border:1px solid rgba(248,81,73,0.3);border-radius:8px;color:#f87171;font-family:var(--mono);font-size:12px;">No se encontró el archivo DET en el ZIP. Verificá que sea un ZIP de CENDEU válido.</div>';
+        return;
+      }
+      // Hide dropzone
+      const dropEl=document.getElementById(targetId==='mav-global-results'?'mav-global-drop':null);
+      if(dropEl) dropEl.style.display='none';
+      mavRender(files, file.name, container, validCUIT);
+    }catch(e){
+      if(container) container.innerHTML=`<div style="padding:16px;background:rgba(248,81,73,0.08);border:1px solid rgba(248,81,73,0.3);border-radius:8px;color:#f87171;font-family:var(--mono);font-size:12px;">Error al procesar el ZIP: ${e.message}</div>`;
+    }
+  };
+
+  // ── Init drag+drop for global MAV tab ─────────────────────────
+  window.mavInitGlobalDrop = function(){
+    const dz=document.getElementById('mav-global-drop');
+    if(!dz||dz._mavInited) return;
+    dz._mavInited=true;
+    dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag');});
+    dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+    dz.addEventListener('drop',e=>{
+      e.preventDefault(); dz.classList.remove('drag');
+      const f=e.dataTransfer.files[0];
+      if(f){ dz.style.display='none'; mavHandleFile(f,null,'mav-global-results'); }
+    });
+  };
+
+  // ── Build inline MAV section for company detail ───────────────
+  window.mavBuildCompanySection = function(ticker, cuit, parentEl){
+    const wrap=document.createElement('div');
+    wrap.style.cssText='margin-top:28px;';
+
+    const title=`<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:14px;padding-bottom:8px;border-top:1px solid var(--border);padding-top:20px;">MAV · Instrumentos de Mercado de Capitales</div>`;
+
+    const dropId=`mav-drop-${ticker}`;
+    const resultId=`mav-results-${ticker}`;
+    const inputId=`mav-input-${ticker}`;
+
+    wrap.innerHTML=title+`
+      <div id="${dropId}" class="mav-dropzone" onclick="document.getElementById('${inputId}').click()">
+        <div style="font-size:22px;margin-bottom:8px;opacity:.5;">📂</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:3px;">Arrastrá el ZIP de CENDEU para ${ticker}</div>
+        <div style="font-size:11px;color:var(--text3);">El archivo debe corresponder al CUIT ${cuit||'de esta empresa'}</div>
+        <input type="file" id="${inputId}" accept=".zip" style="display:none"
+          onchange="document.getElementById('${dropId}').style.display='none';mavHandleFile(this.files[0],'${cuit||''}','${resultId}')">
+      </div>
+      <div id="${resultId}" style="margin-top:12px;"></div>`;
+
+    // Drag+drop
+    setTimeout(()=>{
+      const dz=document.getElementById(dropId); if(!dz) return;
+      dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag');});
+      dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+      dz.addEventListener('drop',e=>{
+        e.preventDefault(); dz.classList.remove('drag');
+        const f=e.dataTransfer.files[0];
+        if(f){ dz.style.display='none'; mavHandleFile(f,cuit||null,resultId); }
+      });
+    },100);
+
+    parentEl.appendChild(wrap);
+  };
+
+})();
+</script>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// BCRA REFRESH BUTTON
+// ══════════════════════════════════════════════════════════════
+(function(){
+
+  // Called from buildExcelDetailBody — wraps the BCRA section with a refresh button
+  window.mavBcraRefresh = async function(cuit, contentElId){
+    const contentEl=document.getElementById(contentElId); if(!contentEl) return;
+    contentEl.innerHTML='<div style="display:flex;align-items:center;gap:8px;padding:14px;color:var(--text3);font-family:var(--mono);font-size:11px;"><div class="spinner"></div>Consultando BCRA...</div>';
+    try{
+      const res=await fetch(`${window.DEU_WORKER||'https://central-deudores.tzuccotti.workers.dev'}/deudas/${cuit}/full`);
+      const json=await res.json();
+      // Render using existing inline BCRA render pipeline
+      window._mavBcraRenderInline(cuit, json, contentEl);
+    }catch(e){
+      contentEl.innerHTML=mavBcraErrorHtml(cuit,`Error: ${e.message}`);
+    }
+  };
+
+  function mavBcraErrorHtml(cuit, msg){
+    return`<div style="background:rgba(248,81,73,0.08);border:1px solid rgba(248,81,73,0.3);border-radius:8px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <span style="font-size:11px;color:#f87171;font-family:var(--mono);">⚠ ${msg}</span>
+      <button onclick="mavBcraRefresh('${cuit}','bcra-content-${cuit}')"
+        style="padding:4px 14px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid rgba(248,81,73,0.4);border-radius:5px;background:transparent;color:#f87171;font-family:var(--mono);">🔄 Reintentar</button>
+    </div>`;
+  }
+
+  // Expose so buildExcelDetailBody can call it
+  window._mavBcraErrorHtml = mavBcraErrorHtml;
+
+  // Inline BCRA render — called both on first load and on refresh
+  window._mavBcraRenderInline = function(cuit, json, contentEl){
+    if(!contentEl) return;
+    if(json.deudas?.errorMessages?.some(m=>m.toLowerCase().includes('mantenimiento'))){
+      contentEl.innerHTML=mavBcraErrorHtml(cuit,'La API del BCRA está en mantenimiento. Intentá más tarde.');
+      return;
+    }
+    if(json.deudas?.status===404||json.error){
+      contentEl.innerHTML=mavBcraErrorHtml(cuit,'Sin datos en Central de Deudores para CUIT '+cuit+'.');
+      return;
+    }
+    const deudas  = json.deudas?.results  || json.deudas  || null;
+    const hist    = json.hist?.results    || json.hist    || null;
+    const cheques = json.cheques?.results || json.cheques || null;
+    if(!deudas){ contentEl.innerHTML=''; return; }
+
+    // Use existing risk + render functions if available
+    const risk=window._deuCalcRisk?window._deuCalcRisk(deudas):{nivel:'—',color:'var(--text3)',bg:'var(--bg2)',causa:'',peorSit:0};
+    const entidades=(deudas.periodos?.[0]?.entidades||[]).filter(e=>e.situacion>0);
+    const montoTotal=entidades.reduce((s,e)=>s+(e.monto||0),0)*1000;
+    const periodo=deudas.periodos?.[0]?.periodo||'';
+    const periodLabel=periodo?`${periodo.slice(0,4)}/${periodo.slice(4,6)}`:'—';
+
+    // Build fragments
+    const frag=document.createElement('div');
+
+    // Hero
+    const heroDiv=document.createElement('div'); heroDiv.style.marginBottom='14px';
+    heroDiv.innerHTML=`
+      <div style="background:${risk.bg};border:1px solid ${risk.color}33;border-radius:10px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">Último período: ${periodLabel}</div>
+          <div style="font-size:12px;color:var(--text2);font-family:var(--mono);">${entidades.length} entidades activas · Deuda total: <strong style="color:var(--text);">${window._deuFmtPesos?window._deuFmtPesos(montoTotal):('$'+(montoTotal/1e6).toFixed(1)+'M')}</strong></div>
+        </div>
+        <div style="text-align:center;background:${risk.color}22;border:2px solid ${risk.color};border-radius:8px;padding:8px 16px;min-width:120px;">
+          <div style="font-size:9px;color:${risk.color};font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px;">Riesgo</div>
+          <div style="font-size:16px;font-weight:800;color:${risk.color};font-family:var(--mono);">${risk.nivel}</div>
+        </div>
+      </div>`;
+    frag.appendChild(heroDiv);
+
+    // Situacion table
+    if(entidades.length){
+      const SIT_BG={0:'transparent',1:'#16a34a',2:'#ca8a04',3:'#ea580c',4:'#dc2626',5:'#7f1d1d'};
+      const SIT_TXT={0:'var(--text3)',1:'#fff',2:'#fff',3:'#fff',4:'#fff',5:'#fca5a5'};
+      const SIT_LBL={0:'Sin deuda',1:'Normal',2:'Riesgo Bajo',3:'Con Problemas',4:'Alto Riesgo',5:'Irrecuperable'};
+      const sitDiv=document.createElement('div'); sitDiv.style.marginBottom='14px';
+      const rows=entidades.sort((a,b)=>b.situacion-a.situacion).map(e=>`
+        <tr onmouseover="this.querySelectorAll('td').forEach(td=>td.style.background='var(--accent-light)')" onmouseout="this.querySelectorAll('td').forEach(td=>td.style.background='')">
+          <td style="padding:6px 12px;font-size:11px;color:var(--text2);font-family:var(--mono);border-bottom:1px solid var(--border);white-space:nowrap;">${e.entidad}</td>
+          <td style="padding:6px 10px;text-align:center;border-bottom:1px solid var(--border);">
+            <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;background:${SIT_BG[e.situacion]||'var(--bg3)'};color:${SIT_TXT[e.situacion]||'var(--text)'}">${e.situacion} — ${SIT_LBL[e.situacion]||'—'}</span>
+          </td>
+          <td style="padding:6px 10px;font-size:11px;text-align:right;color:var(--text);font-family:var(--mono);border-bottom:1px solid var(--border);white-space:nowrap;">$${Math.round((e.monto||0)/1000).toLocaleString('es-AR')}M</td>
+          <td style="padding:6px 10px;font-size:11px;text-align:center;color:${(e.diasAtrasoPago||0)>0?'#f87171':'var(--text3)'};font-family:var(--mono);border-bottom:1px solid var(--border);">${(e.diasAtrasoPago||0)>0?e.diasAtrasoPago+'d':'—'}</td>
+        </tr>`).join('');
+      sitDiv.innerHTML=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono);margin-bottom:6px;">Situación Actual</div>
+        <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;overflow:hidden;"><div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr style="background:var(--bg3);">
+            <th style="padding:6px 12px;font-size:10px;font-weight:600;color:var(--text2);text-align:left;border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;">Entidad</th>
+            <th style="padding:6px 10px;font-size:10px;font-weight:600;color:var(--text2);text-align:center;border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;">Situación</th>
+            <th style="padding:6px 10px;font-size:10px;font-weight:600;color:var(--text2);text-align:right;border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;">Monto</th>
+            <th style="padding:6px 10px;font-size:10px;font-weight:600;color:var(--text2);text-align:center;border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;">Atraso</th>
+          </tr></thead><tbody>${rows}</tbody>
+        </table></div></div>`;
+      frag.appendChild(sitDiv);
+    }
+
+    // Cheques
+    if(cheques?.causales?.length){
+      const allChq=[];
+      cheques.causales.forEach(c=>c.entidades.forEach(e=>e.detalle.forEach(d=>allChq.push({...d,causal:c.causal}))));
+      const sinReg=allChq.filter(c=>!c.fechaPago).length;
+      const chkDiv=document.createElement('div'); chkDiv.style.marginBottom='14px';
+      chkDiv.innerHTML=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono);margin-bottom:6px;">Cheques Rechazados</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:12px 16px;flex:1;min-width:90px;">
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">Total</div>
+            <div style="font-size:18px;font-weight:700;color:var(--text);font-family:var(--mono);">${allChq.length}</div>
+          </div>
+          <div style="background:${sinReg?'rgba(248,81,73,0.08)':'rgba(63,185,80,0.08)'};border:1px solid ${sinReg?'rgba(248,81,73,0.3)':'rgba(63,185,80,0.25)'};border-radius:8px;padding:12px 16px;flex:1;min-width:90px;">
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">Sin regularizar</div>
+            <div style="font-size:18px;font-weight:700;color:${sinReg?'#f87171':'#3fb950'};font-family:var(--mono);">${sinReg}</div>
+          </div>
+        </div>`;
+      frag.appendChild(chkDiv);
+    } else if(cheques!==null){
+      const okDiv=document.createElement('div'); okDiv.style.marginBottom='14px';
+      okDiv.innerHTML='<div style="background:rgba(63,185,80,0.06);border:1px solid rgba(63,185,80,0.2);border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:8px;"><span style="font-size:14px;">✅</span><div style="font-size:11px;font-weight:600;color:var(--text2);font-family:var(--mono);">Sin cheques rechazados</div></div>';
+      frag.appendChild(okDiv);
+    }
+
+    // Heatmap
+    if(hist?.periodos?.length){
+      const allPeriodos=[...new Set(hist.periodos.map(p=>p.periodo))].sort();
+      const entityMap={};
+      hist.periodos.forEach(p=>p.entidades.forEach(e=>{
+        if(e.situacion===0) return;
+        if(!entityMap[e.entidad]) entityMap[e.entidad]={};
+        entityMap[e.entidad][p.periodo]={situacion:e.situacion,monto:e.monto||0};
+      }));
+      const entities=Object.keys(entityMap).sort((a,b)=>{
+        const wA=Math.max(...Object.values(entityMap[a]).map(x=>x.situacion));
+        const wB=Math.max(...Object.values(entityMap[b]).map(x=>x.situacion));
+        return wB-wA||a.localeCompare(b);
+      });
+      if(entities.length){
+        const HEAT={0:'var(--bg3)',1:'#14532d',2:'#713f12',3:'#7c2d12',4:'#7f1d1d',5:'#450a0a'};
+        const SBG={0:'transparent',1:'#16a34a',2:'#ca8a04',3:'#ea580c',4:'#dc2626',5:'#7f1d1d'};
+        const STXT={0:'var(--text3)',1:'#fff',2:'#fff',3:'#fff',4:'#fff',5:'#fca5a5'};
+        const SLBL={0:'Sin deuda',1:'Normal',2:'Riesgo Bajo',3:'Con Problemas',4:'Alto Riesgo',5:'Irrecuperable'};
+        const cellW=34,labelW=200;
+        const heatDiv=document.createElement('div'); heatDiv.style.marginBottom='14px';
+        heatDiv.innerHTML=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono);margin-bottom:6px;">Historial 24 Meses</div>
+          <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;overflow:hidden;"><div style="overflow-x:auto;">
+          <table style="border-collapse:collapse;table-layout:fixed;">
+            <colgroup><col style="width:${labelW}px;min-width:${labelW}px;">${allPeriodos.map(()=>`<col style="width:${cellW}px;min-width:${cellW}px;">`).join('')}</colgroup>
+            <thead><tr>
+              <th style="position:sticky;left:0;z-index:4;background:var(--bg3);border-bottom:1px solid var(--border);border-right:1px solid var(--border2);padding:4px 8px;font-size:10px;color:var(--text2);text-align:left;font-family:var(--mono);">Entidad</th>
+              ${allPeriodos.map(p=>`<th style="width:${cellW}px;padding:3px 2px;font-size:8px;font-weight:600;color:var(--text3);text-align:center;font-family:var(--mono);background:var(--bg3);border-bottom:1px solid var(--border);white-space:nowrap;">${p.slice(4,6)}/${p.slice(2,4)}</th>`).join('')}
+            </tr></thead>
+            <tbody>${entities.map(ent=>{
+              const worst=Math.max(...Object.values(entityMap[ent]).map(x=>x.situacion));
+              const cells=allPeriodos.map(p=>{
+                const d=entityMap[ent]?.[p];
+                const sit=d?.situacion||0;
+                const tt=`${ent} · ${p.slice(0,4)}/${p.slice(4,6)} · Sit.${sit} ${SLBL[sit]||''}`;
+                return`<td title="${tt.replace(/"/g,"'")}" style="width:${cellW}px;height:22px;background:${sit>0?HEAT[sit]:'var(--bg3)'};border:1px solid rgba(0,0,0,0.1);cursor:default;"></td>`;
+              }).join('');
+              return`<tr><td style="position:sticky;left:0;z-index:3;background:var(--bg2);padding:2px 8px;font-size:10px;color:var(--text2);font-family:var(--mono);white-space:nowrap;border-bottom:1px solid var(--border);border-right:1px solid var(--border2);min-width:${labelW}px;max-width:${labelW}px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;">
+                  <span style="overflow:hidden;text-overflow:ellipsis;font-size:10px;">${ent}</span>
+                  <span style="flex-shrink:0;font-size:8px;padding:1px 5px;border-radius:5px;background:${SBG[worst]||'var(--bg3)'};color:${STXT[worst]||'var(--text)'};">${worst}</span>
+                </div>
+              </td>${cells}</tr>`;
+            }).join('')}</tbody>
+          </table></div></div>`;
+        frag.appendChild(heatDiv);
+      }
+    }
+
+    contentEl.innerHTML='';
+    contentEl.appendChild(frag);
+  };
+
+})();
+</script>
 </body>
 </html>
+  .mav-dropzone {
+    border:2px dashed var(--border2);border-radius:10px;padding:40px 28px;
+    text-align:center;cursor:pointer;transition:border-color .2s,background .2s;font-family:var(--mono);
+  }
+  .mav-dropzone:hover,.mav-dropzone.drag{border-color:#1E27F3;background:var(--accent-light);}
+  .mav-section-title{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+  .mav-kpi-grid{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px;}
+  .mav-kpi{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:14px 18px;flex:1;min-width:110px;}
+  .mav-kpi.highlight{border-color:#1E27F3;background:var(--accent-light);}
+  .mav-kpi-label{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);font-family:var(--mono);margin-bottom:5px;}
+  .mav-kpi-value{font-size:20px;font-weight:700;color:var(--text);font-family:var(--mono);line-height:1;}
+  .mav-kpi-sub{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:3px;}
+  .mav-kpi.highlight .mav-kpi-value{color:#a5b4fc;}
+  .mav-pill{display:inline-block;padding:2px 8px;font-size:10px;letter-spacing:.05em;border:1px solid;border-radius:4px;font-family:var(--mono);}
+  .mav-pill-pagare{color:#a5b4fc;border-color:#a5b4fc;}
+  .mav-pill-cpd{color:#3fb950;border-color:#3fb950;}
+  .mav-pill-fce{color:#f59e0b;border-color:#f59e0b;}
+  .mav-pill-ars{color:#3fb950;border-color:#3fb950;}
+  .mav-pill-hd{color:#d4a017;border-color:#d4a017;}
+  .mav-pill-other{color:var(--text3);border-color:var(--border2);}
+  .mav-ven-row{display:flex;align-items:center;gap:10px;font-size:11px;font-family:var(--mono);margin-bottom:5px;}
+  .mav-ven-label{width:68px;color:var(--text3);flex-shrink:0;}
+  .mav-ven-bar-wrap{flex:1;background:var(--border);height:18px;position:relative;border-radius:2px;overflow:hidden;}
+  .mav-ven-bar{height:100%;background:#1E27F3;opacity:.75;transition:width .4s ease;}
+  .mav-ven-val{width:130px;text-align:right;color:var(--text);flex-shrink:0;}
+
