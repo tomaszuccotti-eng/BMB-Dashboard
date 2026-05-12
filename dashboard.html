@@ -6882,20 +6882,14 @@ function renderEquity(){
     // ── Sección Central de Deudores ──────────────────────────────
     const cuit=(window.EXCEL_CUIT_MAP||{})[_currentExcelTicker];
 
-    // Contenedor BCRA siempre visible debajo del historial
     const bcraWrap=document.createElement('div');
     bcraWrap.style.cssText='margin-top:28px;';
     bcraWrap.id='excel-bcra-section';
 
-    const bcraTitle=`<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:12px;padding-bottom:8px;border-top:1px solid var(--border);padding-top:20px;display:flex;align-items:center;gap:10px;">
-      <span>Central de Deudores — BCRA</span>
-      <span style="flex:1;"></span>
-      <button onclick="mavBcraRefresh('${cuit}','${bcraCid}')"
-        style="padding:3px 12px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--border2);border-radius:5px;background:transparent;color:var(--text3);font-family:var(--mono);">🔄 Actualizar</button>
-    </div>`;
+    const bcraSectionTitle=`<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:12px;padding-bottom:8px;border-top:1px solid var(--border);padding-top:20px;">Central de Deudores — BCRA</div>`;
 
     if(!cuit){
-      bcraWrap.innerHTML=bcraTitle+`
+      bcraWrap.innerHTML=bcraSectionTitle+`
         <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:20px 24px;display:flex;align-items:center;gap:12px;">
           <span style="font-size:18px;opacity:.5;">🏛</span>
           <div>
@@ -6904,18 +6898,24 @@ function renderEquity(){
           </div>
         </div>`;
       body.appendChild(bcraWrap);
-      // Still show MAV section even without CUIT
       if(typeof mavBuildCompanySection==='function'){
         mavBuildCompanySection(_currentExcelTicker, null, body);
       }
       return;
     }
 
-    // Tiene CUIT — mostrar spinner y consultar
+    // Tiene CUIT — definir IDs antes de usarlos en el HTML
     const bcraCid=`bcra-content-${cuit}`;
     const bcraLoadId=`bcra-load-${cuit}`;
 
-    bcraWrap.innerHTML=bcraTitle+`
+    const bcraTitleWithBtn=`<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:12px;padding-bottom:8px;border-top:1px solid var(--border);padding-top:20px;display:flex;align-items:center;gap:10px;">
+      <span>Central de Deudores — BCRA</span>
+      <span style="flex:1;"></span>
+      <button onclick="mavBcraRefresh('${cuit}','${bcraCid}')"
+        style="padding:3px 12px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--border2);border-radius:5px;background:transparent;color:var(--text3);font-family:var(--mono);">🔄 Actualizar</button>
+    </div>`;
+
+    bcraWrap.innerHTML=bcraTitleWithBtn+`
       <div id="${bcraLoadId}" style="display:flex;align-items:center;gap:10px;padding:10px 0;color:var(--text3);font-family:var(--mono);font-size:11px;">
         <div class="spinner"></div>Consultando BCRA...
       </div>
