@@ -6385,36 +6385,67 @@ function renderEquity(){
 
   // ─────────────────────────────────────────────────────────────
   // PARSEO ECONOMATICA CSV
-  // Columna 0: "AGRO<XBUE>" → extraemos ticker
-  // Números con coma decimal → normalizar a punto
+  // Headers de Economatica tienen doble-espacio entre palabras,
+  // espacios al inicio, y múltiples variaciones. Usamos un índice
+  // normalizado: colapsamos espacios múltiples y comparamos en
+  // lowercase para matchear cada columna del catálogo.
   // ─────────────────────────────────────────────────────────────
+  function _normalizeHeader(s){
+    // Colapsa múltiples espacios en uno, trim, lowercase
+    return (s||'').replace(/\s+/g,' ').trim().toLowerCase();
+  }
+
   function parseEcoCSV(text){
-    // Usa el parseCSV global del dashboard
     const rows = parseCSV(text);
+    if(!rows.length) return {};
+
+    // Construir índice: headerNormalizado → headerOriginal
+    // para poder buscar rápido en O(1) después
+    const allKeys = Object.keys(rows[0]);
+    const normIndex = {}; // normKey → originalKey
+    allKeys.forEach(k=>{ normIndex[_normalizeHeader(k)] = k; });
+
+    // Pre-computar qué originalKey corresponde a cada ECO_COL
+    // Estrategia: normalizar el col definido en el catálogo y buscar
+    // una coincidencia exacta; si no, buscar por las primeras palabras clave
+    const colMap = {}; // def.key → originalKey | null
+    ECO_COLS.forEach(def=>{
+      const normDef = _normalizeHeader(def.col);
+      // 1) Intento exacto
+      if(normIndex[normDef]){ colMap[def.key] = normIndex[normDef]; return; }
+      // 2) Buscar por las primeras ~40 chars del header normalizado
+      const prefix40 = normDef.substring(0,40);
+      const found = Object.keys(normIndex).find(nk => nk.startsWith(prefix40));
+      colMap[def.key] = found ? normIndex[found] : null;
+    });
+
+    // También pre-computar claves especiales
+    const fechaKey  = Object.keys(normIndex).find(nk => nk.includes('fecha del bal')) || null;
+    const nombreKey = normIndex['nombre'] || allKeys.find(k=>_normalizeHeader(k)==='nombre') || null;
+    const sectorKey = allKeys.find(k=>_normalizeHeader(k).startsWith('sector naics')) || null;
+
+    console.log('[ECO] colMap sample:', Object.entries(colMap).slice(0,5));
+    console.log('[ECO] fechaKey:', fechaKey ? normIndex[fechaKey]||fechaKey : 'NOT FOUND');
+
     const result = {};
     rows.forEach(r=>{
-      // La primera columna (sin nombre de header o vacía) contiene "AGRO<XBUE>"
-      const rawId = r[''] || r[Object.keys(r)[0]] || '';
-      const tickerMatch = rawId.match(/^([A-Z0-9]+)</);
+      // Primera columna (vacía o sin nombre) contiene "AGRO<XBUE>"
+      const firstVal = r[''] || r[allKeys[0]] || '';
+      const tickerMatch = firstVal.match(/^([A-Z0-9]+[A-Z0-9]*)\s*</i);
       if(!tickerMatch) return;
       const ticker = tickerMatch[1].toUpperCase();
 
-      // Fecha del balance
-      const fechaKey = Object.keys(r).find(k=>k.includes('Fecha del Bal'));
-      const fechaBal = fechaKey ? (r[fechaKey]||'').trim() : '';
-
-      // Nombre de empresa
-      const nombre = (r['Nombre']||'').trim();
-      const sector = (r['Sector NAICS ult disponib']||'').trim();
+      const nombre   = nombreKey ? (r[nombreKey]||'').trim() : '';
+      const sector   = sectorKey ? (r[sectorKey]||'').trim() : '';
+      const fechaBal = fechaKey  ? (r[normIndex[fechaKey]]||r[fechaKey]||'').trim() : '';
 
       const entry = { ticker, nombre, sector, fechaBal };
 
-      // Mapear todas las columnas del catálogo
       ECO_COLS.forEach(def=>{
-        // Buscar la columna por match parcial (los headers del CSV tienen espacios extra)
-        const matchKey = Object.keys(r).find(k=> k.trim().toLowerCase().startsWith(def.col.trim().toLowerCase().substring(0,30)));
-        if(matchKey){
-          const raw = String(r[matchKey]||'').replace(',','.');
+        const origKey = colMap[def.key];
+        if(origKey && r[origKey] !== undefined){
+          // Economatica usa coma como decimal en algunos locales
+          const raw = String(r[origKey]||'').replace(',','.');
           const n = parseFloat(raw);
           entry[def.key] = isNaN(n) ? null : n;
         } else {
@@ -6425,7 +6456,7 @@ function renderEquity(){
       if(!result[ticker]) result[ticker]=[];
       result[ticker].push(entry);
     });
-    // Ordenar cada ticker por fecha de balance desc
+
     Object.keys(result).forEach(t=>{
       result[t].sort((a,b)=>parseDate(b.fechaBal)-parseDate(a.fechaBal));
     });
@@ -6680,11 +6711,17 @@ function renderEquity(){
             <div style="font-size:22px;font-weight:800;color:var(--text3);font-family:var(--mono);line-height:1;">—</div>
             <div style="font-size:9px;color:var(--text3);font-family:var(--mono);opacity:.7;">situación</div>
           </div>
-          <!-- Botón carga manual -->
-          <button onclick="openExcelManual()"
-            style="padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(30,39,243,0.4);border-radius:6px;background:transparent;color:#a5b4fc;font-family:var(--mono);">
-            + Manual
-          </button>
+          <!-- Botones acción -->
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <button onclick="openExcelManual()"
+              style="padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(30,39,243,0.4);border-radius:6px;background:transparent;color:#a5b4fc;font-family:var(--mono);">
+              + Manual
+            </button>
+            ${cuit?`<button onclick="_bcraRefreshInline('${ticker}','${cuit}','bcra-inline-${ticker}','bcra-load-inline-${ticker}')"
+              style="padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid var(--border2);border-radius:6px;background:transparent;color:var(--text3);font-family:var(--mono);">
+              🔄 BCRA
+            </button>`:''}
+          </div>
         </div>
       </div>
       <!-- KPI BAR -->
@@ -6798,16 +6835,30 @@ function renderEquity(){
       const json=await res.json();
       const deudas=json.deudas?.results||json.deudas||null;
       if(!deudas)return;
-      const risk=window._deuCalcRisk?window._deuCalcRisk(deudas):{nivel:'—',color:'var(--text3)',peorSit:0};
+
+      // Calcular situación peor del período más reciente
+      const entidades=(deudas.periodos?.[0]?.entidades||[]).filter(e=>e.situacion>0);
+      const peorSit=entidades.length ? Math.max(...entidades.map(e=>e.situacion)) : 0;
+
+      const SIT_COLOR={0:'var(--text3)',1:'#4ade80',2:'#fbbf24',3:'#fb923c',4:'#f87171',5:'#fca5a5'};
+      const SIT_BG={0:'var(--bg2)',1:'rgba(22,163,74,0.12)',2:'rgba(202,138,4,0.12)',3:'rgba(234,88,12,0.12)',4:'rgba(220,38,38,0.12)',5:'rgba(127,29,29,0.25)'};
+      const SIT_LBL={0:'Sin deuda',1:'Normal',2:'Riesgo Bajo',3:'Alerta',4:'Alto Riesgo',5:'Crítico'};
+      const SIT_BORDER={0:'var(--border2)',1:'rgba(22,163,74,0.4)',2:'rgba(202,138,4,0.4)',3:'rgba(234,88,12,0.4)',4:'rgba(220,38,38,0.4)',5:'rgba(127,29,29,0.6)'};
+
+      const color=SIT_COLOR[peorSit]||SIT_COLOR[0];
+      const bg=SIT_BG[peorSit]||SIT_BG[0];
+      const border=SIT_BORDER[peorSit]||SIT_BORDER[0];
+      const lbl=SIT_LBL[peorSit]||'—';
+
       const badge=document.getElementById(`bcra-badge-${ticker}`);
       if(!badge)return;
-      badge.style.background=`${risk.color}18`;
-      badge.style.borderColor=`${risk.color}55`;
+      badge.style.background=bg;
+      badge.style.borderColor=border;
       badge.innerHTML=`
-        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:${risk.color};font-family:var(--mono);margin-bottom:3px;">BCRA</div>
-        <div style="font-size:22px;font-weight:800;color:${risk.color};font-family:var(--mono);line-height:1;">${risk.peorSit||'0'}</div>
-        <div style="font-size:9px;color:${risk.color};font-family:var(--mono);opacity:.8;">${risk.nivel}</div>`;
-    }catch(e){/* silencioso */}
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:${color};font-family:var(--mono);margin-bottom:3px;">BCRA</div>
+        <div style="font-size:22px;font-weight:800;color:${color};font-family:var(--mono);line-height:1;">${peorSit}</div>
+        <div style="font-size:9px;color:${color};font-family:var(--mono);opacity:.85;">${lbl}</div>`;
+    }catch(e){/* silencioso — badge queda en gris */}
   }
 
   // ─────────────────────────────────────────────────────────────
