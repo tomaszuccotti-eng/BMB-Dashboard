@@ -2728,10 +2728,9 @@ window.enterTest=function(){
               autocomplete="off"
               oninput="earAutoFilter(this.value)"
               onkeydown="earAutoKey(event)"
-              onfocus="earAutoShow()"
-              onblur="setTimeout(()=>earAutoHide(),200)"
-              style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:11px 16px 11px 40px;font-size:15px;font-weight:700;color:var(--text);font-family:var(--mono);outline:none;transition:border-color .2s;"
-              onfocus="this.style.borderColor='#1E27F3';earAutoShow()" onblur="this.style.borderColor='var(--border2)';setTimeout(()=>earAutoHide(),200)" />
+              onfocus="this.style.borderColor='#1E27F3';earAutoShow()"
+              onblur="this.style.borderColor='var(--border2)';setTimeout(()=>earAutoHide(),200)"
+              style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:11px 16px 11px 40px;font-size:15px;font-weight:700;color:var(--text);font-family:var(--mono);outline:none;transition:border-color .2s;" />
             <div id="ear-autocomplete" style="display:none;position:absolute;top:calc(100%+4px);left:0;right:0;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,0.3);max-height:300px;overflow-y:auto;"></div>
           </div>
         </div>
@@ -2745,14 +2744,14 @@ window.enterTest=function(){
         <div style="color:var(--text3);font-size:11px;font-family:var(--mono);">Cargando datos...</div>
       </div>
 
-      <!-- Resultados empresa seleccionada -->
+      <!-- Resultados empresa seleccionada — ficha completa -->
       <div id="ear-company-results" style="display:none;"></div>
 
       <!-- Welcome state -->
       <div id="ear-welcome" style="display:none;text-align:center;padding:60px 40px;color:var(--text3);">
         <div style="font-size:52px;opacity:.1;margin-bottom:20px;">🏢</div>
         <div style="font-size:16px;font-weight:600;color:var(--text2);margin-bottom:8px;">Análisis integral de empresas argentinas</div>
-        <div style="font-size:13px;line-height:1.9;max-width:460px;margin:0 auto;font-family:var(--mono);">Scoring de solvencia · Historial de balances · Central de Deudores BCRA<br>Buscá una empresa para ver todo en un lugar</div>
+        <div style="font-size:13px;line-height:1.9;max-width:460px;margin:0 auto;font-family:var(--mono);">Scoring de solvencia · Balances Economatica · Central de Deudores BCRA<br>Buscá una empresa para ver todo en un lugar</div>
       </div>
 
     </div>
@@ -3146,6 +3145,7 @@ const SHEET_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vS3HCJ_QcVOvx3s
 const SHEET_URL_EQUITY='https://docs.google.com/spreadsheets/d/e/2PACX-1vRUEu_zO60H9j9dOZv0-sRj4qpuBh50KHqBYGkFlG5NbhpXkHDxyJxl07qDvyvQ_vBXx0MkrDtJK7f5/pub?gid=0&single=true&output=csv';
 const SHEET_URL_EXCEL='https://docs.google.com/spreadsheets/d/e/2PACX-1vTG24q0SWcJ-Bxc171MibEHe5HepPR4ydhb7iVsUbyiytz4qJ8hvdn4fxCbgAiNhwdleSrYTgaXrQw7/pub?gid=0&single=true&output=csv';
 const SHEET_URL_CUITS='https://docs.google.com/spreadsheets/d/e/2PACX-1vTG24q0SWcJ-Bxc171MibEHe5HepPR4ydhb7iVsUbyiytz4qJ8hvdn4fxCbgAiNhwdleSrYTgaXrQw7/pub?gid=1658016967&single=true&output=csv';
+const SHEET_URL_ECONOMATICA='https://docs.google.com/spreadsheets/d/e/2PACX-1vTG24q0SWcJ-Bxc171MibEHe5HepPR4ydhb7iVsUbyiytz4qJ8hvdn4fxCbgAiNhwdleSrYTgaXrQw7/pub?gid=1753750092&single=true&output=csv';
 const SCRIPT_URL_EXCEL='https://script.google.com/macros/s/AKfycbzgCfu_em089EUbR7GXxUOJ96B-cYU7xpasKe99878jD3wW4XhAe32z9pevlCVrVB5T/exec';
 
 let ALL_DATA=[];
@@ -6238,9 +6238,76 @@ function renderEquity(){
   main.appendChild(buildEquityTable(data));
 }
 
-// ══════════════════ EXCEL DE LA MUERTE ══════════════════
+// ══════════════════ EMPRESAS AR ══════════════════
 (function(){
 
+  // ─────────────────────────────────────────────────────────────
+  // CATÁLOGO ECONOMATICA — mapeo columna CSV → campo interno
+  // ─────────────────────────────────────────────────────────────
+  // Cada entrada: { col: nombre exacto en CSV, key: campo interno, label: etiqueta UI, group, fmt }
+  // fmt: 'pct'|'x2'|'x1'|'M'|'dlr'|'dias'|'num2'
+  const ECO_COLS = [
+    // Por acción
+    {col:'UPA Mas reciente en moneda orig de 12 meses consolid:si* ajust p/var cap',          key:'upa',        label:'UPA (EPS)',           group:'Por Acción',  fmt:'dlr'},
+    {col:'VLA Mas reciente en moneda orig consolid:si* ajust p/var cap',                      key:'vla',        label:'VLA (Book/Share)',    group:'Por Acción',  fmt:'dlr'},
+    {col:'Ventas/Accion Mas reciente en moneda orig de 12 meses consolid:si* ajust p/var cap',key:'ventasAcc',  label:'Ventas/Acción',       group:'Por Acción',  fmt:'dlr'},
+    {col:'EBITDA/Accion Mas reciente en moneda orig de 12 meses consolid:si* ajust p/var cap',key:'ebitdaAcc',  label:'EBITDA/Acción',       group:'Por Acción',  fmt:'dlr'},
+    // Deuda absoluta
+    {col:'Deu Tt Nt Mas reciente en moneda orig en miles consolid:si*',                       key:'deuNeta',    label:'Deuda Neta ($M)',     group:'Deuda',       fmt:'M'},
+    {col:'Deu Tt Bruta Mas reciente en moneda orig en miles consolid:si*',                    key:'deuBruta',   label:'Deuda Bruta ($M)',    group:'Deuda',       fmt:'M'},
+    // Apalancamiento
+    {col:'DeuBr/Activo Mas reciente consolid:si*',                                            key:'deuBrActivo',label:'DeuBr/Activo %',     group:'Apalancamiento', fmt:'pct'},
+    {col:'DeuBr/Patr Mas reciente consolid:si*',                                              key:'deuBrPatr',  label:'DeuBr/Patr %',       group:'Apalancamiento', fmt:'pct'},
+    {col:'DN/PN Mas reciente consolid:si*',                                                   key:'dnPn',       label:'DN/PN %',            group:'Apalancamiento', fmt:'pct'},
+    {col:'EBIT/DeuBr Mas reciente de 12 meses consolid:si*',                                  key:'ebitDeuBr',  label:'EBIT/DeuBr',         group:'Apalancamiento', fmt:'x2'},
+    {col:'EBIT/Deuda Nt Mas reciente de 12 meses consolid:si*',                               key:'ebitDeuNt',  label:'EBIT/DeuNeta',       group:'Apalancamiento', fmt:'x2'},
+    {col:'EBIT/FinB Mas reciente de 12 meses consolid:si*',                                   key:'ebitFinB',   label:'EBIT/FinBruto',      group:'Apalancamiento', fmt:'x2'},
+    {col:'EBIT/FinN Mas reciente de 12 meses consolid:si*',                                   key:'ebitFinN',   label:'EBIT/FinNeto',       group:'Apalancamiento', fmt:'x2'},
+    {col:'DeuBr/Ebitda Mas reciente de 12 meses consolid:si*',                                key:'deuBrEbitda',label:'DeuBr/EBITDA',       group:'Apalancamiento', fmt:'x2'},
+    {col:'DeuNt/Ebitda Mas reciente de 12 meses consolid:si*',                                key:'deuNtEbitda',label:'DN/EBITDA',           group:'Apalancamiento', fmt:'x2'},
+    {col:'DeuCP/DeuTt Mas reciente consolid:si*',                                             key:'deuCpDeuTt', label:'DeuCP/DeuTt %',      group:'Apalancamiento', fmt:'pct'},
+    // Estructura
+    {col:'Pas/Ac Mas reciente consolid:si*',                                                  key:'pasAc',      label:'Pas/Activo %',       group:'Estructura',  fmt:'pct'},
+    {col:'Pas / PN Mas reciente consolid:si*',                                                key:'pasPn',      label:'Pas/PN',             group:'Estructura',  fmt:'x2'},
+    {col:'PasTt/Vent Mas reciente de 12 meses consolid:si*',                                  key:'pasTtVent',  label:'PasTt/Ventas',       group:'Estructura',  fmt:'x2'},
+    {col:'AFj/PN Mas reciente consolid:si*',                                                  key:'afjPn',      label:'AFijo/PN',           group:'Estructura',  fmt:'x2'},
+    // Liquidez
+    {col:'LiqCor Mas reciente consolid:si*',                                                  key:'liqCor',     label:'Liq. Corriente',     group:'Liquidez',    fmt:'x2'},
+    {col:'LiqAci Mas reciente consolid:si*',                                                  key:'liqAci',     label:'Liq. Ácida',         group:'Liquidez',    fmt:'x2'},
+    {col:'CapTrb Mas reciente en moneda orig en miles consolid:si*',                          key:'capTrb',     label:'Cap. Trabajo ($M)',   group:'Liquidez',    fmt:'M'},
+    {col:'Cap Empl Mas reciente en moneda orig en miles consolid:si*',                        key:'capEmpl',    label:'Cap. Empleado ($M)',  group:'Liquidez',    fmt:'M'},
+    // Ciclos operativos
+    {col:'PPInvt Mas reciente de 12 meses consolid:si*',                                      key:'ppInvt',     label:'Días Inventario',    group:'Eficiencia',  fmt:'dias'},
+    {col:'PPProv Mas reciente de 12 meses consolid:si*',                                      key:'ppProv',     label:'Días Proveedores',   group:'Eficiencia',  fmt:'dias'},
+    {col:'PPCobr Mas reciente de 12 meses consolid:si*',                                      key:'ppCobr',     label:'Días Cobro',         group:'Eficiencia',  fmt:'dias'},
+    {col:'CicFin Mas reciente de 12 meses consolid:si*',                                      key:'cicFin',     label:'Ciclo Financiero',   group:'Eficiencia',  fmt:'dias'},
+    {col:'CicOpe Mas reciente de 12 meses consolid:si*',                                      key:'cicOpe',     label:'Ciclo Operativo',    group:'Eficiencia',  fmt:'dias'},
+    // EBITDA absoluto
+    {col:'EBITDA Mas reciente en moneda orig en miles de 12 meses consolid:si*',              key:'ebitda',     label:'EBITDA ($M)',         group:'Rentabilidad',fmt:'M'},
+    // Márgenes
+    {col:'MrgBru Mas reciente de 12 meses consolid:si*',                                      key:'mrgBru',     label:'Margen Bruto %',     group:'Márgenes',    fmt:'pct'},
+    {col:'Mrg EBIT Mas reciente de 12 meses consolid:si*',                                    key:'mrgEbit',    label:'Margen EBIT %',      group:'Márgenes',    fmt:'pct'},
+    {col:'Margen Neto Mas reciente de 12 meses consolid:si*',                                 key:'mrgNeto',    label:'Margen Neto %',      group:'Márgenes',    fmt:'pct'},
+    {col:'Mrg Ebitda Mas reciente de 12 meses consolid:si*',                                  key:'mrgEbitda',  label:'Margen EBITDA %',    group:'Márgenes',    fmt:'pct'},
+    // Rotación y rentabilidad
+    {col:'RotAct Mas reciente de 12 meses consolid:si*',                                      key:'rotAct',     label:'Rot. Activos',       group:'Rentabilidad',fmt:'x2'},
+    {col:'RotPN Mas reciente de 12 meses consolid:si*',                                       key:'rotPn',      label:'Rot. Pat. Neto',     group:'Rentabilidad',fmt:'x2'},
+    {col:'RentAc Mas reciente de 12 meses consolid:si*',                                      key:'roa',        label:'ROA %',              group:'Rentabilidad',fmt:'pct'},
+    {col:'RenPat(fin) Mas reciente de 12 meses consolid:si*',                                 key:'roeFin',     label:'ROE (fin) %',        group:'Rentabilidad',fmt:'pct'},
+    {col:'RenPat(prom) Mas reciente en moneda orig de 12 meses consolid:si*',                 key:'roeProm',    label:'ROE (prom) %',       group:'Rentabilidad',fmt:'pct'},
+    {col:'ROIC (IC fin) % Mas reciente de 12 meses consolid:si*',                             key:'roicFin',    label:'ROIC (fin) %',       group:'Rentabilidad',fmt:'pct'},
+    {col:'ROIC (IC prom) % Mas reciente de 12 meses consolid:si*',                            key:'roicProm',   label:'ROIC (prom) %',      group:'Rentabilidad',fmt:'pct'},
+    {col:'Invest Cap $ Mas reciente en moneda orig en miles consolid:si*',                    key:'investCap',  label:'Capital Invertido',  group:'Rentabilidad',fmt:'M'},
+    // Apalancamiento operativo/financiero
+    {col:'ApaFin Mas reciente de 12 meses consolid:si*',                                      key:'apaFin',     label:'Apa. Financiero',    group:'Apalancamiento', fmt:'x2'},
+    {col:'ApaOpe Mas reciente de 12 meses consolid:si*',                                      key:'apaOpe',     label:'Apa. Operativo',     group:'Apalancamiento', fmt:'x2'},
+    // Capex y D&A
+    {col:'Capex Mas reciente en moneda orig en miles de 12 meses consolid:si*',               key:'capex',      label:'Capex ($M)',          group:'CapEx & D&A', fmt:'M'},
+    {col:'Depr y Amor Mas reciente en moneda orig en miles de 12 meses consolid:si*',         key:'da',         label:'D&A ($M)',            group:'CapEx & D&A', fmt:'M'},
+    {col:'Capex(+inv)/Dep Mas reciente de 12 meses consolid:si*',                             key:'capexDep',   label:'Capex/Dep',          group:'CapEx & D&A', fmt:'x2'},
+  ];
+
+  // Los 5 ratios fijos del scoring (para tabla Sectorial — tabla 1)
   const RATIOS=[
     {key:'Deuda N. / Patrimonio N.', short:'DN/PN'},
     {key:'Deuda B. / Activo',        short:'DB/A'},
@@ -6249,143 +6316,197 @@ function renderEquity(){
     {key:'Deuda Fin. CP / EBITDA',   short:'DCP/EBITDA'},
   ];
 
+  // KPIs por defecto en el header de ficha (configurables)
+  const KPI_DEFAULT = ['ebitda','mrgEbitda','deuNtEbitda','liqCor','roeFin','capex'];
+
+  // Grupos para las pestañas de Financials y Ratios
+  const FIN_GROUPS = [
+    { id:'rentabilidad', label:'📈 Rentabilidad', keys:['ebitda','mrgBru','mrgEbit','mrgNeto','mrgEbitda','roa','roeFin','roeProm','roicFin','roicProm','rotAct','rotPn','investCap'] },
+    { id:'porAccion',    label:'📌 Por Acción',   keys:['upa','vla','ventasAcc','ebitdaAcc'] },
+    { id:'eficiencia',   label:'⚙ Eficiencia',   keys:['ppInvt','ppProv','ppCobr','cicFin','cicOpe'] },
+    { id:'capexda',      label:'🏗 CapEx & D&A',  keys:['capex','da','capexDep'] },
+  ];
+  const RAT_GROUPS = [
+    { id:'apalancamiento', label:'🔩 Apalancamiento', keys:['deuBrActivo','deuBrPatr','dnPn','ebitDeuBr','ebitDeuNt','ebitFinB','ebitFinN','deuBrEbitda','deuNtEbitda','deuCpDeuTt','apaFin','apaOpe'] },
+    { id:'liquidez',       label:'💧 Liquidez',        keys:['liqCor','liqAci','capTrb','capEmpl'] },
+    { id:'estructura',     label:'🏛 Estructura',      keys:['pasAc','pasPn','pasTtVent','afjPn'] },
+    { id:'deuda',          label:'💰 Deuda',           keys:['deuNeta','deuBruta'] },
+  ];
+
+  // ─────────────────────────────────────────────────────────────
+  // STATE
+  // ─────────────────────────────────────────────────────────────
   window.EXCEL_DATA=[];
   window.EXCEL_DATA_LOADED=false;
   window.EXCEL_CUIT_MAP={};
-  // Expose _currentExcelTicker so BCRA inline render can fill KPI cards
-  Object.defineProperty(window,'_currentExcelTicker',{get(){return _currentExcelTicker;},set(v){_currentExcelTicker=v;}});  // ticker (uppercase) → cuit string
+  window.ECO_DATA={};   // { TICKER: [ {fechaBal, ...campos} ] } — acumulado por fecha
+  window.ECO_LOADED=false;
+  Object.defineProperty(window,'_currentExcelTicker',{get(){return _currentExcelTicker;},set(v){_currentExcelTicker=v;}});
   let _currentExcelTicker=null;
   let _currentExcelEmpresa=null;
   let _currentExcelSector=null;
-  let _excelSortKeys={}; // por sectorId
+  let _excelSortKeys={};
   let _excelSortDirs={};
+  let _kpiActive=[...KPI_DEFAULT];
+  let _kpiPanelOpen=false;
+  // Columna order para tablas de ficha: 'desc' = más reciente primero
+  let _fichaColOrder='desc';
 
-  // ── helpers ──
+  // ─────────────────────────────────────────────────────────────
+  // HELPERS
+  // ─────────────────────────────────────────────────────────────
   function fmtR(v){
     const n=parseFloat(v);
     if(v===''||v===null||v===undefined||isNaN(n))return'—';
     return n.toFixed(2);
   }
-  function scoreColor(s){
-    const v=parseFloat(s);
-    if(isNaN(v))return'#4a5280';
-    if(v>=7)  return'#3fb950';
-    if(v>=4)  return'#d97706';
-    return '#f85149';
+  function fmtEco(key, val){
+    const def=ECO_COLS.find(c=>c.key===key);
+    const f=def?.fmt||'num2';
+    const n=parseFloat(String(val).replace(',','.'));
+    if(isNaN(n))return'—';
+    if(f==='pct')  return n.toFixed(1)+'%';
+    if(f==='x2')   return n.toFixed(2)+'x';
+    if(f==='x1')   return n.toFixed(1)+'x';
+    if(f==='dlr')  return '$'+n.toFixed(2);
+    if(f==='dias') return n.toFixed(0)+'d';
+    if(f==='M'){
+      const a=Math.abs(n),s=n<0?'-':'';
+      if(a>=1e6) return s+'$'+(a/1e6).toFixed(1)+'B';
+      if(a>=1e3) return s+'$'+(a/1e3).toFixed(1)+'M';
+      return s+'$'+a.toFixed(0)+'K';
+    }
+    return n.toFixed(2);
   }
-  function scoreBg(s){
-    const v=parseFloat(s);
-    if(isNaN(v))return'rgba(74,82,128,0.12)';
-    if(v>=7)  return'rgba(63,185,80,0.12)';
-    if(v>=4)  return'rgba(217,119,6,0.12)';
-    return 'rgba(248,81,73,0.12)';
-  }
-  function parseDate(d){
-    if(!d)return new Date(0);
-    return new Date(d.trim());
+  function scoreColor(s){const v=parseFloat(s);if(isNaN(v))return'#4a5280';if(v>=7)return'#3fb950';if(v>=4)return'#d97706';return'#f85149';}
+  function scoreBg(s){const v=parseFloat(s);if(isNaN(v))return'rgba(74,82,128,0.12)';if(v>=7)return'rgba(63,185,80,0.12)';if(v>=4)return'rgba(217,119,6,0.12)';return'rgba(248,81,73,0.12)';}
+  function parseDate(d){if(!d)return new Date(0);return new Date(d.trim());}
+  function normalizeRow(r){const out={};Object.keys(r).forEach(k=>{out[k.trim()]=r[k];});return out;}
+
+  // ─────────────────────────────────────────────────────────────
+  // PARSEO ECONOMATICA CSV
+  // Columna 0: "AGRO<XBUE>" → extraemos ticker
+  // Números con coma decimal → normalizar a punto
+  // ─────────────────────────────────────────────────────────────
+  function parseEcoCSV(text){
+    // Usa el parseCSV global del dashboard
+    const rows = parseCSV(text);
+    const result = {};
+    rows.forEach(r=>{
+      // La primera columna (sin nombre de header o vacía) contiene "AGRO<XBUE>"
+      const rawId = r[''] || r[Object.keys(r)[0]] || '';
+      const tickerMatch = rawId.match(/^([A-Z0-9]+)</);
+      if(!tickerMatch) return;
+      const ticker = tickerMatch[1].toUpperCase();
+
+      // Fecha del balance
+      const fechaKey = Object.keys(r).find(k=>k.includes('Fecha del Bal'));
+      const fechaBal = fechaKey ? (r[fechaKey]||'').trim() : '';
+
+      // Nombre de empresa
+      const nombre = (r['Nombre']||'').trim();
+      const sector = (r['Sector NAICS ult disponib']||'').trim();
+
+      const entry = { ticker, nombre, sector, fechaBal };
+
+      // Mapear todas las columnas del catálogo
+      ECO_COLS.forEach(def=>{
+        // Buscar la columna por match parcial (los headers del CSV tienen espacios extra)
+        const matchKey = Object.keys(r).find(k=> k.trim().toLowerCase().startsWith(def.col.trim().toLowerCase().substring(0,30)));
+        if(matchKey){
+          const raw = String(r[matchKey]||'').replace(',','.');
+          const n = parseFloat(raw);
+          entry[def.key] = isNaN(n) ? null : n;
+        } else {
+          entry[def.key] = null;
+        }
+      });
+
+      if(!result[ticker]) result[ticker]=[];
+      result[ticker].push(entry);
+    });
+    // Ordenar cada ticker por fecha de balance desc
+    Object.keys(result).forEach(t=>{
+      result[t].sort((a,b)=>parseDate(b.fechaBal)-parseDate(a.fechaBal));
+    });
+    return result;
   }
 
-  // ── Normalizar claves del CSV (trim espacios) ──
-  function normalizeRow(r){
-    const out={};
-    Object.keys(r).forEach(k=>{ out[k.trim()]=r[k]; });
-    return out;
-  }
-
-  // ── Deduplicar: por Ticker + Fecha Balance, quedar con fecha_carga más reciente ──
-  // También detectar si había diferencias en los datos
+  // ─────────────────────────────────────────────────────────────
+  // DEDUPLICAR EXCEL (scoring sheet)
+  // ─────────────────────────────────────────────────────────────
   function deduplicateExcel(rows){
-    const map={}; // key: ticker|fechaBalance
+    const map={};
     rows.forEach(r=>{
       const ticker=(r['Ticker']||'').trim().toUpperCase();
       const fb=(r['Fecha Balance']||'').trim();
       if(!ticker||!fb)return;
       const key=ticker+'|'+fb;
-      if(!map[key]){
-        map[key]={row:r, dupes:[]};
-      } else {
-        // guardar duplicado anterior para comparar
-        map[key].dupes.push(map[key].row);
-        // quedarse con el de fecha_carga más reciente
-        if(parseDate(r['fecha_carga'])>parseDate(map[key].row['fecha_carga'])){
-          map[key].row=r;
-        }
-      }
+      if(!map[key]){map[key]={row:r,dupes:[]};}
+      else{map[key].dupes.push(map[key].row);if(parseDate(r['fecha_carga'])>parseDate(map[key].row['fecha_carga']))map[key].row=r;}
     });
-    // Para cada entrada, detectar si hubo cambios reales en los ratios
     return Object.values(map).map(({row,dupes})=>{
       let updated=false;
-      if(dupes.length>0){
-        // comparar ratios del row final vs cada dupe
-        updated=dupes.some(d=>
-          RATIOS.some(rat=>
-            (d[rat.key]||'').trim()!==(row[rat.key]||'').trim()
-          ) || (d['Score']||'').trim()!==(row['Score']||'').trim()
-        );
-      }
-      return {...row, _updated:updated};
+      if(dupes.length>0){updated=dupes.some(d=>RATIOS.some(rat=>(d[rat.key]||'').trim()!==(row[rat.key]||'').trim())||(d['Score']||'').trim()!==(row['Score']||'').trim());}
+      return{...row,_updated:updated};
     });
   }
 
-  // ── Latest por Ticker (la Fecha Balance más reciente de los deduplicados) ──
   function getLatestByTicker(dedupedRows){
     const map={};
-    dedupedRows.forEach(r=>{
-      const ticker=(r['Ticker']||'').trim().toUpperCase();
-      if(!ticker)return;
-      if(!map[ticker]||parseDate(r['Fecha Balance'])>parseDate(map[ticker]['Fecha Balance'])){
-        map[ticker]=r;
-      }
-    });
+    dedupedRows.forEach(r=>{const t=(r['Ticker']||'').trim().toUpperCase();if(!t)return;if(!map[t]||parseDate(r['Fecha Balance'])>parseDate(map[t]['Fecha Balance']))map[t]=r;});
     return Object.values(map);
   }
 
-  // ── Cargar datos ──
+  // ─────────────────────────────────────────────────────────────
+  // CARGA DE DATOS
+  // ─────────────────────────────────────────────────────────────
   window.loadExcelData=async function(){
     try{
+      // 1) Scoring sheet
       const res=await fetch(SHEET_URL_EXCEL);
       const text=await res.text();
-      console.log("[EXCEL] CSV inicio:", text.substring(0,300));
       const parsed=parseCSV(text);
-      console.log("[EXCEL] Filas:", parsed.length, "Keys:", parsed.length>0?Object.keys(parsed[0]).join("|"):"vacío");
-      if(parsed.length>0) console.log("[EXCEL] Row0:", JSON.stringify(parsed[0]));
       const raw=parsed.map(normalizeRow);
-      console.log("[EXCEL] Keys norm:", raw.length>0?Object.keys(raw[0]).join("|"):"");
       window.EXCEL_DATA=deduplicateExcel(raw);
-      console.log("[EXCEL] Dedup:", window.EXCEL_DATA.length);
 
-      // Cargar hoja CUITs — completamente aislado, nunca rompe la carga principal
+      // 2) CUITs
       window.EXCEL_CUIT_MAP={};
       fetch(SHEET_URL_CUITS)
         .then(r=>r.text())
         .then(cuitText=>{
-          // Si Google devuelve HTML en vez de CSV, parseCSV produce array vacío — seguro
-          if(cuitText.trim().startsWith('<')){ console.warn('[CUITS] Hoja no publicada como CSV'); return; }
+          if(cuitText.trim().startsWith('<'))return;
           const cuitRows=parseCSV(cuitText);
           const map={};
           cuitRows.forEach(r=>{
             const ticker=(r['Ticker']||r['ticker']||'').trim().toUpperCase();
             const cuit=(r['CUIT']||r['cuit']||'').toString().replace(/-/g,'').trim();
-            if(ticker&&cuit) map[ticker]=cuit;
+            if(ticker&&cuit)map[ticker]=cuit;
           });
           window.EXCEL_CUIT_MAP=map;
-          console.log('[CUITS] Cargados:', Object.keys(map).length);
         })
-        .catch(e=>console.warn('[CUITS] Error (no crítico):', e.message));
+        .catch(e=>console.warn('[CUITS]',e.message));
+
+      // 3) Economatica
+      fetch(SHEET_URL_ECONOMATICA)
+        .then(r=>r.text())
+        .then(ecoText=>{
+          if(ecoText.trim().startsWith('<'))return;
+          window.ECO_DATA=parseEcoCSV(ecoText);
+          window.ECO_LOADED=true;
+          console.log('[ECO] Tickers cargados:',Object.keys(window.ECO_DATA).length);
+        })
+        .catch(e=>console.warn('[ECO]',e.message));
 
       window.EXCEL_DATA_LOADED=true;
-      // Fecha más reciente para el topbar
       const dates=raw.map(r=>(r['fecha_carga']||'').trim()).filter(Boolean).sort();
       const ld=dates[dates.length-1]||'';
       const dateEl=document.getElementById('excel-date');
-      if(dateEl&&ld) dateEl.textContent='Act. '+ld.substring(0,10);
+      if(dateEl&&ld)dateEl.textContent='Act. '+ld.substring(0,10);
       document.getElementById('excel-loading').style.display='none';
-      // Show welcome in buscar tab
       const welcome=document.getElementById('ear-welcome');
-      if(welcome) welcome.style.display='block';
-      // Build chips
+      if(welcome)welcome.style.display='block';
       _earBuildChips();
-      // Render sector tables (hidden until user switches tab)
       renderExcel();
     }catch(e){
       document.getElementById('excel-loading').innerHTML=
@@ -6393,51 +6514,53 @@ function renderEquity(){
     }
   };
 
-  // ── Tab switching ──
-  window.earShowTab = function(tab){
+  // ─────────────────────────────────────────────────────────────
+  // TAB SWITCHING
+  // ─────────────────────────────────────────────────────────────
+  window.earShowTab=function(tab){
     ['buscar','sector','deudores','mav'].forEach(t=>{
       const key=t.charAt(0).toUpperCase()+t.slice(1);
       const d=document.getElementById(`earTab${key}`);
-      if(d) d.style.display=tab===t?'block':'none';
+      if(d)d.style.display=tab===t?'block':'none';
     });
     const tabs={buscar:'earTabBuscarBtn',sector:'earTabSectorBtn',deudores:'earTabDeudoresBtn',mav:'earTabMavBtn'};
     Object.entries(tabs).forEach(([t,id])=>{
-      const b=document.getElementById(id); if(!b) return;
+      const b=document.getElementById(id);if(!b)return;
       b.style.background=tab===t?'#1E27F3':'transparent';
       b.style.color=tab===t?'#fff':'var(--text3)';
     });
-    if(tab==='deudores' && !window._deuInitialized) deuInit();
-    if(tab==='sector'){
-      const ec=document.getElementById('excel-content');
-      if(ec && window.EXCEL_DATA_LOADED) ec.style.display='block';
-    }
-    // Setup MAV global drop on first visit
-    if(tab==='mav') mavInitGlobalDrop();
+    if(tab==='deudores'&&!window._deuInitialized)deuInit();
+    if(tab==='sector'){const ec=document.getElementById('excel-content');if(ec&&window.EXCEL_DATA_LOADED)ec.style.display='block';}
+    if(tab==='mav')mavInitGlobalDrop();
   };
 
-  // ── Buscador Empresas AR — autocomplete ──
-  let _earAutoIdx = -1;
+  // ─────────────────────────────────────────────────────────────
+  // AUTOCOMPLETE BUSCADOR
+  // ─────────────────────────────────────────────────────────────
+  let _earAutoIdx=-1;
 
-  window.earAutoFilter = function(q){
-    const box = document.getElementById('ear-autocomplete'); if(!box) return;
-    const ql = (q||'').toLowerCase().trim();
-    if(!ql || !window.EXCEL_DATA_LOADED){ box.style.display='none'; return; }
-    const latest = getLatestByTicker(window.EXCEL_DATA);
-    const matches = latest.filter(r=>{
-      const t=(r['Ticker']||r['ticker']||'').toLowerCase();
-      const e=(r['Empresa']||r['empresa']||'').toLowerCase();
+  window.earAutoFilter=function(q){
+    const box=document.getElementById('ear-autocomplete');if(!box)return;
+    const ql=(q||'').toLowerCase().trim();
+    if(!ql||!window.EXCEL_DATA_LOADED){box.style.display='none';return;}
+    const latest=getLatestByTicker(window.EXCEL_DATA);
+    const matches=latest.filter(r=>{
+      const t=(r['Ticker']||'').toLowerCase();
+      const e=(r['Empresa']||'').toLowerCase();
       return t.includes(ql)||e.includes(ql);
-    }).slice(0,12);
-    if(!matches.length){ box.style.display='none'; return; }
+    }).slice(0,14);
+    if(!matches.length){box.style.display='none';return;}
     _earAutoIdx=-1;
-    box.innerHTML = matches.map((r,i)=>{
-      const ticker=(r['Ticker']||r['ticker']||'').trim();
-      const empresa=(r['Empresa']||r['empresa']||'').trim();
-      const sector=(r['sector']||r['Sector']||'').trim().replace(/_+/g,' ');
-      const score=parseFloat(r['Score']||r['score']||0);
+    box.innerHTML=matches.map((r,i)=>{
+      const ticker=(r['Ticker']||'').trim().toUpperCase();
+      const empresa=(r['Empresa']||'').trim();
+      const score=parseFloat(r['Score']||0);
       const sc=isNaN(score)?'—':score.toFixed(1);
       const scColor=score>=7?'#3fb950':score>=4?'#d97706':'#f85149';
-      return `<div data-ticker="${ticker}" data-idx="${i}"
+      // Intentar sector desde ECO_DATA si existe
+      const ecoEntry=(window.ECO_DATA[ticker]||[])[0];
+      const sector=ecoEntry?ecoEntry.sector:((r['sector']||r['Sector']||'').trim());
+      return`<div data-ticker="${ticker}" data-idx="${i}"
         onmousedown="earSelectCompany('${ticker}')"
         style="padding:10px 14px;cursor:pointer;font-family:var(--mono);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;"
         onmouseover="this.style.background='var(--accent-light)';_earAutoIdx=${i};"
@@ -6447,7 +6570,7 @@ function renderEquity(){
           <span style="font-size:12px;color:var(--text3);margin-left:8px;">${empresa}</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-size:10px;color:var(--text3);">${sector}</span>
+          <span style="font-size:10px;color:var(--text3);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${sector}</span>
           <span style="font-size:12px;font-weight:700;color:${scColor};">${sc}</span>
         </div>
       </div>`;
@@ -6455,157 +6578,645 @@ function renderEquity(){
     box.style.display='block';
   };
 
-  window.earAutoShow = function(){
-    const inp=document.getElementById('ear-search-input');
-    if(inp) earAutoFilter(inp.value);
-  };
-  window.earAutoHide = function(){
-    const box=document.getElementById('ear-autocomplete');
-    if(box) box.style.display='none';
-  };
-  window.earAutoKey = function(e){
+  window.earAutoShow=function(){const inp=document.getElementById('ear-search-input');if(inp)earAutoFilter(inp.value);};
+  window.earAutoHide=function(){const box=document.getElementById('ear-autocomplete');if(box)box.style.display='none';};
+  window.earAutoKey=function(e){
     const box=document.getElementById('ear-autocomplete');
     const items=box?box.querySelectorAll('[data-ticker]'):[];
     if(e.key==='ArrowDown'){e.preventDefault();_earAutoIdx=Math.min(_earAutoIdx+1,items.length-1);items.forEach((it,i)=>it.style.background=i===_earAutoIdx?'var(--accent-light)':'');}
     else if(e.key==='ArrowUp'){e.preventDefault();_earAutoIdx=Math.max(_earAutoIdx-1,0);items.forEach((it,i)=>it.style.background=i===_earAutoIdx?'var(--accent-light)':'');}
     else if(e.key==='Enter'){
-      if(_earAutoIdx>=0&&items[_earAutoIdx]){
-        earSelectCompany(items[_earAutoIdx].dataset.ticker);
-      } else {
-        const v=(document.getElementById('ear-search-input')?.value||'').trim().toUpperCase();
-        if(v) earSelectCompany(v);
-      }
+      if(_earAutoIdx>=0&&items[_earAutoIdx])earSelectCompany(items[_earAutoIdx].dataset.ticker);
+      else{const v=(document.getElementById('ear-search-input')?.value||'').trim().toUpperCase();if(v)earSelectCompany(v);}
     }
   };
 
-  window.earSelectCompany = function(ticker){
+  window.earSelectCompany=function(ticker){
     earAutoHide();
     const inp=document.getElementById('ear-search-input');
-    // Find the row to get full name
-    const latest=getLatestByTicker(window.EXCEL_DATA);
-    const row=latest.find(r=>(r['Ticker']||r['ticker']||'').trim().toUpperCase()===ticker.toUpperCase());
-    if(inp) inp.value=row?(row['Ticker']||ticker):ticker;
-
-    // Show welcome → results
+    if(inp)inp.value=ticker;
     const welcome=document.getElementById('ear-welcome');
     const results=document.getElementById('ear-company-results');
-    if(welcome) welcome.style.display='none';
-    if(results){ results.style.display='block'; results.innerHTML=''; }
-
-    // Reuse openExcelDetail logic — render into ear-company-results
-    _earRenderCompany(ticker);
+    if(welcome)welcome.style.display='none';
+    if(results){results.style.display='block';results.innerHTML='';}
+    _earRenderCompany(ticker.trim().toUpperCase());
   };
 
-  // Render company detail inline (same as detail panel but in ear-company-results)
-  function _earRenderCompany(ticker){
-    const results=document.getElementById('ear-company-results'); if(!results) return;
-    results.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:20px;color:var(--text3);font-family:var(--mono);font-size:11px;"><div class=\"spinner\"></div>Cargando...</div>';
-
-    const allForTicker=window.EXCEL_DATA.filter(r=>(r['Ticker']||r['ticker']||'').trim().toUpperCase()===ticker.toUpperCase());
-    if(!allForTicker.length){
-      results.innerHTML='<div style="padding:20px;color:var(--text3);font-family:var(--mono);font-size:12px;">No se encontraron datos para '+ticker+'</div>';
-      return;
-    }
-    const ref=allForTicker[0];
-    _currentExcelTicker=ticker;
-    _currentExcelEmpresa=(ref['Empresa']||ref['empresa']||ticker).trim();
-    _currentExcelSector=(ref['sector']||ref['Sector']||'').trim();
-
-    const hist=[...allForTicker].sort((a,b)=>parseDate(b['Fecha Balance'])-parseDate(a['Fecha Balance']));
-
-    // Build the same body as buildExcelDetailBody but into results div
-    results.innerHTML='';
-    const body=document.createElement('div');
-    results.appendChild(body);
-
-    // Header
-    const hdr=document.createElement('div');
-    hdr.style.cssText='display:flex;align-items:center;gap:14px;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--border);';
-    const empresa=_currentExcelEmpresa!==ticker?_currentExcelEmpresa:'';
-    const sector=_currentExcelSector.replace(/_+/g,' ');
-    const cuitForHdr = (window.EXCEL_CUIT_MAP||{})[ticker.toUpperCase()];
-    const cuitFmtHdr = cuitForHdr
-      ? cuitForHdr.slice(0,2)+'-'+cuitForHdr.slice(2,10)+'-'+cuitForHdr.slice(10)
-      : null;
-    const mavInputHdrId = `mav-hdr-input-${ticker}`;
-
-    hdr.innerHTML=`
-      <div>
-        <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;">
-          <div style="font-size:24px;font-weight:800;font-family:var(--mono);color:var(--text2);">${ticker}</div>
-          ${cuitFmtHdr?`
-            <span title="Click para copiar CUIT" onclick="(function(){navigator.clipboard.writeText('${cuitForHdr}');const el=document.getElementById('cuit-copied-${ticker}');if(el){el.style.opacity='1';setTimeout(()=>el.style.opacity='0',1500);}})()"
-              style="font-size:11px;color:var(--text3);font-family:var(--mono);cursor:pointer;padding:2px 8px;border:1px solid var(--border2);border-radius:4px;transition:border-color .15s;user-select:none;"
-              onmouseover="this.style.borderColor='#1E27F3';this.style.color='#a5b4fc'"
-              onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text3)'">
-              CUIT ${cuitFmtHdr}
-              <span id="cuit-copied-${ticker}" style="margin-left:4px;font-size:9px;color:#3fb950;opacity:0;transition:opacity .3s;">✓ copiado</span>
-            </span>`:''}
-        </div>
-        ${empresa?`<div style="font-size:14px;color:var(--text3);font-family:var(--mono);margin-top:2px;">${empresa}</div>`:''}
-        <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:2px;">${sector}</div>
-      </div>
-      <div style="flex:1;"></div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        ${cuitFmtHdr?`
-          <div style="position:relative;">
-            <button onclick="document.getElementById('${mavInputHdrId}').click()"
-              title="Cargar ZIP de MAV CENDEU"
-              style="padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid var(--border2);border-radius:6px;background:transparent;color:var(--text3);font-family:var(--mono);transition:all .15s;"
-              onmouseover="this.style.borderColor='#1E27F3';this.style.color='#a5b4fc'"
-              onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text3)'">
-              📂 MAV
-            </button>
-            <input type="file" id="${mavInputHdrId}" accept=".zip" style="display:none"
-              onchange="(function(f){const rid='mav-results-${ticker}';const did='mav-drop-${ticker}';const drop=document.getElementById(did);if(drop)drop.style.display='none';mavHandleFile(f,'${cuitForHdr}',rid);})(this.files[0])">
-          </div>`:''}
-        <button onclick="openExcelManual()"
-          style="padding:6px 16px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(30,39,243,0.4);border-radius:6px;background:transparent;color:#a5b4fc;font-family:var(--mono);">
-          + Cargar manual
-        </button>
-      </div>`;
-    body.appendChild(hdr);
-
-    // Reuse buildExcelDetailBody — render into body element
-    const detailContainer=document.createElement('div');
-    detailContainer.id='excel-detail-body'; // temp id so buildExcelDetailBody works
-    body.appendChild(detailContainer);
-    buildExcelDetailBody(hist);
-
-    // Clean up temp id after render
-    detailContainer.id='ear-detail-body-'+ticker;
-  }
-
-  // Build chips for ear buscador (same tickers as DEU_EMPRESAS)
+  // ─────────────────────────────────────────────────────────────
+  // CHIPS RÁPIDOS
+  // ─────────────────────────────────────────────────────────────
   function _earBuildChips(){
-    const chips=document.getElementById('ear-chips'); if(!chips||!window.EXCEL_DATA_LOADED) return;
+    const chips=document.getElementById('ear-chips');if(!chips||!window.EXCEL_DATA_LOADED)return;
     const latest=getLatestByTicker(window.EXCEL_DATA);
-    // Take first 12 tickers sorted by score desc as quick chips
-    const top=latest.sort((a,b)=>parseFloat(b['Score']||0)-parseFloat(a['Score']||0)).slice(0,12);
+    const top=latest.sort((a,b)=>parseFloat(b['Score']||0)-parseFloat(a['Score']||0)).slice(0,14);
     chips.innerHTML='<span style="font-size:10px;color:var(--text3);font-family:var(--mono);align-self:center;">Rápidos:</span>'+
       top.map(r=>{
-        const t=(r['Ticker']||r['ticker']||'').trim();
-        return `<button onclick="earSelectCompany('${t}')"
+        const t=(r['Ticker']||'').trim().toUpperCase();
+        return`<button onclick="earSelectCompany('${t}')"
           style="padding:4px 12px;border-radius:20px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);font-family:var(--mono);transition:all .15s;"
           onmouseover="this.style.borderColor='#1E27F3';this.style.color='#a5b4fc'"
           onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">${t}</button>`;
       }).join('');
   }
 
-  // ── Render principal: tablas por sector + buscador ──
-  let _excelSearchQuery = '';
-  window._excelSearchQuery = '';
-  // Proxy to keep in sync
-  Object.defineProperty(window, '_excelSearchQuery', {get(){return _excelSearchQuery;}, set(v){_excelSearchQuery=v;}});
+  // ─────────────────────────────────────────────────────────────
+  // RENDER FICHA EMPRESA
+  // ─────────────────────────────────────────────────────────────
+  function _earRenderCompany(ticker){
+    const results=document.getElementById('ear-company-results');if(!results)return;
+    results.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:20px;color:var(--text3);font-family:var(--mono);font-size:11px;"><div class="spinner"></div>Cargando...</div>';
+
+    _currentExcelTicker=ticker;
+
+    // Datos scoring
+    const allForTicker=window.EXCEL_DATA.filter(r=>(r['Ticker']||'').trim().toUpperCase()===ticker);
+    const hist=[...allForTicker].sort((a,b)=>parseDate(b['Fecha Balance'])-parseDate(a['Fecha Balance']));
+    const latestScore=hist[0]||{};
+
+    // Datos Economatica
+    const ecoHist=(window.ECO_DATA[ticker]||[]);
+    const ecoLatest=ecoHist[0]||null;
+
+    // Metadatos
+    _currentExcelEmpresa=ecoLatest?.nombre || (latestScore['Empresa']||ticker);
+    _currentExcelSector=ecoLatest?.sector  || (latestScore['sector']||latestScore['Sector']||'');
+    const cuit=(window.EXCEL_CUIT_MAP||{})[ticker];
+    const cuitFmt=cuit?cuit.slice(0,2)+'-'+cuit.slice(2,10)+'-'+cuit.slice(10):null;
+    const fechaBal=ecoLatest?.fechaBal||(latestScore['Fecha Balance']||'—').substring(0,10);
+    const score=parseFloat(latestScore['Score']||'');
+    const scColor=scoreColor(latestScore['Score']);
+    const scBg=scoreBg(latestScore['Score']);
+
+    results.innerHTML='';
+    const wrap=document.createElement('div');
+    results.appendChild(wrap);
+
+    // ── HEADER ──
+    const hdr=document.createElement('div');
+    hdr.style.cssText='padding-bottom:20px;border-bottom:1px solid var(--border);margin-bottom:0;';
+    hdr.innerHTML=`
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:16px;">
+        <div>
+          <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:4px;">
+            <span style="font-size:28px;font-weight:800;font-family:var(--mono);color:var(--text2);">${ticker}</span>
+            ${cuitFmt?`<span title="Click para copiar CUIT" onclick="navigator.clipboard.writeText('${cuit}')"
+              style="font-size:11px;color:var(--text3);font-family:var(--mono);cursor:pointer;padding:2px 8px;border:1px solid var(--border2);border-radius:4px;"
+              onmouseover="this.style.borderColor='#1E27F3';this.style.color='#a5b4fc'"
+              onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text3)'">CUIT ${cuitFmt}</span>`:''}
+          </div>
+          <div style="font-size:14px;color:var(--text);font-family:var(--mono);margin-bottom:2px;">${_currentExcelEmpresa!==ticker?_currentExcelEmpresa:''}</div>
+          <div style="font-size:11px;color:var(--text3);font-family:var(--mono);">${_currentExcelSector.replace(/_+/g,' ')} · Balance: ${fechaBal}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <!-- Badge Score -->
+          <div style="background:${scBg};border:2px solid ${scColor}44;border-radius:10px;padding:10px 18px;text-align:center;min-width:80px;">
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:${scColor};font-family:var(--mono);margin-bottom:3px;">Score</div>
+            <div style="font-size:22px;font-weight:800;color:${scColor};font-family:var(--mono);line-height:1;">${isNaN(score)?'—':score.toFixed(1)}</div>
+            <div style="font-size:9px;color:${scColor};font-family:var(--mono);opacity:.7;">/ 10</div>
+          </div>
+          <!-- Badge BCRA — se rellena async -->
+          <div id="bcra-badge-${ticker}" style="background:var(--bg2);border:2px solid var(--border2);border-radius:10px;padding:10px 18px;text-align:center;min-width:80px;">
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">BCRA</div>
+            <div style="font-size:22px;font-weight:800;color:var(--text3);font-family:var(--mono);line-height:1;">—</div>
+            <div style="font-size:9px;color:var(--text3);font-family:var(--mono);opacity:.7;">situación</div>
+          </div>
+          <!-- Botón carga manual -->
+          <button onclick="openExcelManual()"
+            style="padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(30,39,243,0.4);border-radius:6px;background:transparent;color:#a5b4fc;font-family:var(--mono);">
+            + Manual
+          </button>
+        </div>
+      </div>
+      <!-- KPI BAR -->
+      <div id="ear-kpi-bar-${ticker}"></div>`;
+    wrap.appendChild(hdr);
+
+    // ── PESTAÑAS INTERNAS ──
+    const tabBar=document.createElement('div');
+    tabBar.style.cssText='display:flex;border-bottom:1px solid var(--border);margin-bottom:24px;overflow-x:auto;';
+    const innerTabs=[
+      {id:'financials', label:'📊 Financials'},
+      {id:'ratios',     label:'📐 Ratios'},
+      {id:'deudas',     label:'🏛 Deudas'},
+    ];
+    tabBar.innerHTML=innerTabs.map((t,i)=>`
+      <button id="ficha-tab-btn-${ticker}-${t.id}" onclick="_fichaShowTab('${ticker}','${t.id}')"
+        style="padding:12px 20px;font-size:12px;font-weight:700;cursor:pointer;border:none;border-bottom:2px solid ${i===0?'#1E27F3':'transparent'};background:transparent;color:${i===0?'var(--text)':'var(--text3)'};font-family:var(--mono);white-space:nowrap;transition:all .15s;"
+        onmouseover="this.style.color='var(--text)'"
+        onmouseout="if(document.getElementById('ficha-tab-btn-${ticker}-${t.id}').style.borderBottomColor!=='rgb(30, 39, 243)')this.style.color='var(--text3)'"
+      >${t.label}</button>`).join('');
+    wrap.appendChild(tabBar);
+
+    // Contenedores de cada pestaña interna
+    const tabContents=document.createElement('div');
+    innerTabs.forEach((t,i)=>{
+      const div=document.createElement('div');
+      div.id=`ficha-tab-content-${ticker}-${t.id}`;
+      div.style.display=i===0?'block':'none';
+      tabContents.appendChild(div);
+    });
+    wrap.appendChild(tabContents);
+
+    // ── Render KPI bar ──
+    _renderKpiBar(ticker, ecoLatest);
+
+    // ── Render primera pestaña activa ──
+    _renderFichaFinancials(ticker, ecoHist);
+
+    // ── Fetch BCRA badge async ──
+    if(cuit) _fetchBcraBadge(ticker, cuit);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // CAMBIO DE PESTAÑA INTERNA
+  // ─────────────────────────────────────────────────────────────
+  window._fichaShowTab=function(ticker, tabId){
+    const innerTabs=['financials','ratios','deudas'];
+    innerTabs.forEach(t=>{
+      const btn=document.getElementById(`ficha-tab-btn-${ticker}-${t}`);
+      const con=document.getElementById(`ficha-tab-content-${ticker}-${t}`);
+      const active=t===tabId;
+      if(btn){btn.style.borderBottom=active?'2px solid #1E27F3':'2px solid transparent';btn.style.color=active?'var(--text)':'var(--text3)';}
+      if(con)con.style.display=active?'block':'none';
+    });
+    // Lazy render
+    const con=document.getElementById(`ficha-tab-content-${ticker}-${tabId}`);
+    if(!con||con.dataset.rendered)return;
+    const ecoHist=window.ECO_DATA[ticker]||[];
+    const cuit=(window.EXCEL_CUIT_MAP||{})[ticker];
+    if(tabId==='ratios')   _renderFichaRatios(ticker, ecoHist);
+    if(tabId==='deudas')   _renderFichaDeudas(ticker, cuit);
+    con.dataset.rendered='1';
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // KPI BAR CONFIGURABLE
+  // ─────────────────────────────────────────────────────────────
+  function _renderKpiBar(ticker, ecoLatest){
+    const el=document.getElementById(`ear-kpi-bar-${ticker}`);if(!el)return;
+    const kpiDefs=ECO_COLS.filter(c=>_kpiActive.includes(c.key));
+    el.innerHTML=`
+      <div style="display:flex;align-items:stretch;flex-wrap:wrap;border-top:1px solid rgba(30,39,243,0.1);margin-top:12px;">
+        ${kpiDefs.map(def=>{
+          const v=ecoLatest?ecoLatest[def.key]:null;
+          const disp=v!=null?fmtEco(def.key,v):'—';
+          return`<div style="padding:10px 18px;border-right:1px solid rgba(30,39,243,0.08);min-width:110px;">
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#4a5280;font-family:var(--mono);margin-bottom:3px;">${def.label}</div>
+            <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--text2);">${disp}</div>
+          </div>`;
+        }).join('')}
+        <button onclick="_toggleKpiPanel('${ticker}')" title="Configurar KPIs"
+          style="margin-left:auto;align-self:center;padding:5px 12px;border:1px solid rgba(30,39,243,0.2);border-radius:6px;background:transparent;color:#4a5280;font-size:10px;cursor:pointer;font-family:var(--mono);margin-right:4px;white-space:nowrap;">⚙ KPIs</button>
+      </div>
+      <div id="kpi-panel-${ticker}" style="display:${_kpiPanelOpen?'block':'none'};padding:12px 16px;border-top:1px solid rgba(30,39,243,0.1);background:#0b0f1e;">
+        <div style="font-size:10px;color:#4a5280;font-family:var(--mono);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;">Seleccioná los KPIs a mostrar:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${ECO_COLS.map(c=>`
+            <button onclick="_toggleKpi('${ticker}','${c.key}')" style="padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--mono);border:1px solid ${_kpiActive.includes(c.key)?'#1E27F3':'rgba(30,39,243,0.25)'};background:${_kpiActive.includes(c.key)?'rgba(30,39,243,0.15)':'transparent'};color:${_kpiActive.includes(c.key)?'#a5b4fc':'#4a5280'};">${c.label}</button>
+          `).join('')}
+        </div>
+      </div>`;
+  }
+
+  window._toggleKpiPanel=function(ticker){
+    _kpiPanelOpen=!_kpiPanelOpen;
+    const p=document.getElementById(`kpi-panel-${ticker}`);if(p)p.style.display=_kpiPanelOpen?'block':'none';
+  };
+  window._toggleKpi=function(ticker,key){
+    if(_kpiActive.includes(key))_kpiActive=_kpiActive.filter(k=>k!==key);
+    else _kpiActive.push(key);
+    const ecoLatest=(window.ECO_DATA[ticker]||[])[0]||null;
+    _renderKpiBar(ticker,ecoLatest);
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // BADGE BCRA ASYNC
+  // ─────────────────────────────────────────────────────────────
+  async function _fetchBcraBadge(ticker, cuit){
+    try{
+      const res=await fetch(`${window.DEU_WORKER||'https://central-deudores.tzuccotti.workers.dev'}/deudas/${cuit}/full`);
+      const json=await res.json();
+      const deudas=json.deudas?.results||json.deudas||null;
+      if(!deudas)return;
+      const risk=window._deuCalcRisk?window._deuCalcRisk(deudas):{nivel:'—',color:'var(--text3)',peorSit:0};
+      const badge=document.getElementById(`bcra-badge-${ticker}`);
+      if(!badge)return;
+      badge.style.background=`${risk.color}18`;
+      badge.style.borderColor=`${risk.color}55`;
+      badge.innerHTML=`
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:${risk.color};font-family:var(--mono);margin-bottom:3px;">BCRA</div>
+        <div style="font-size:22px;font-weight:800;color:${risk.color};font-family:var(--mono);line-height:1;">${risk.peorSit||'0'}</div>
+        <div style="font-size:9px;color:${risk.color};font-family:var(--mono);opacity:.8;">${risk.nivel}</div>`;
+    }catch(e){/* silencioso */}
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // TABLA GENÉRICA — filas=métricas, columnas=fechas de balance
+  // ─────────────────────────────────────────────────────────────
+  function _buildFichaTable(ecoHist, keysList, containerId){
+    const con=document.getElementById(containerId);if(!con)return;
+
+    // Columnas disponibles: fechas de balance ordenadas
+    let periods=[...ecoHist].sort((a,b)=>
+      _fichaColOrder==='desc'
+        ? parseDate(b.fechaBal)-parseDate(a.fechaBal)
+        : parseDate(a.fechaBal)-parseDate(b.fechaBal)
+    );
+
+    if(!periods.length){
+      con.innerHTML='<div style="padding:20px;color:var(--text3);font-family:var(--mono);font-size:12px;">Sin datos de Economatica para esta empresa.</div>';
+      return;
+    }
+
+    const thBase='padding:8px 14px;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border);font-family:var(--mono);white-space:nowrap;text-align:right;';
+    const tdBase=(extra)=>`padding:8px 14px;font-family:var(--mono);font-size:11px;border-bottom:1px solid var(--border);white-space:nowrap;text-align:right;color:var(--text2);${extra||''}`;
+
+    const cols=periods.map(p=>p.fechaBal.substring(0,10));
+
+    const rows=keysList.map(key=>{
+      const def=ECO_COLS.find(c=>c.key===key);if(!def)return'';
+      const cells=periods.map(p=>{
+        const v=p[key];
+        return`<td style="${tdBase()}">${v!=null?fmtEco(key,v):'—'}</td>`;
+      }).join('');
+      return`<tr onmouseover="this.querySelectorAll('td').forEach(td=>td.style.background='var(--accent-light)')" onmouseout="this.querySelectorAll('td').forEach(td=>td.style.background='')">
+        <td style="${tdBase('text-align:left;color:var(--text);font-weight:600;')}">${def.label}</td>
+        ${cells}
+      </tr>`;
+    }).join('');
+
+    con.innerHTML=`
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr>
+            <th style="${thBase}text-align:left;min-width:180px;">Métrica</th>
+            ${cols.map(c=>`<th style="${thBase}min-width:110px;">${c}</th>`).join('')}
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // RENDER PESTAÑA FINANCIALS
+  // ─────────────────────────────────────────────────────────────
+  function _renderFichaFinancials(ticker, ecoHist){
+    const con=document.getElementById(`ficha-tab-content-${ticker}-financials`);if(!con)return;
+    con.innerHTML='';
+
+    // Control de orden de columnas
+    const ctrlDiv=document.createElement('div');
+    ctrlDiv.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;';
+    ctrlDiv.innerHTML=`
+      <span style="font-size:10px;color:var(--text3);font-family:var(--mono);">Orden columnas:</span>
+      <div style="display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:5px;overflow:hidden;">
+        <button onclick="_setColOrder('${ticker}','desc')" id="col-order-desc-${ticker}"
+          style="padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;border:none;background:${_fichaColOrder==='desc'?'#1E27F3':'transparent'};color:${_fichaColOrder==='desc'?'#fff':'var(--text3)'};font-family:var(--mono);">Reciente →</button>
+        <button onclick="_setColOrder('${ticker}','asc')" id="col-order-asc-${ticker}"
+          style="padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;border:none;border-left:1px solid var(--border);background:${_fichaColOrder==='asc'?'#1E27F3':'transparent'};color:${_fichaColOrder==='asc'?'#fff':'var(--text3)'};font-family:var(--mono);">Antiguo →</button>
+      </div>`;
+    con.appendChild(ctrlDiv);
+
+    // Una sección por grupo
+    FIN_GROUPS.forEach(grp=>{
+      const secDiv=document.createElement('div');
+      secDiv.style.cssText='margin-bottom:28px;';
+      secDiv.innerHTML=`
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#1E27F3;font-family:var(--mono);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);">${grp.label}</div>
+        <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;" id="fin-table-${ticker}-${grp.id}"></div>`;
+      con.appendChild(secDiv);
+      _buildFichaTable(ecoHist, grp.keys, `fin-table-${ticker}-${grp.id}`);
+    });
+
+    // Tabla scoring (historial cargado manualmente)
+    const histForTicker=window.EXCEL_DATA.filter(r=>(r['Ticker']||'').trim().toUpperCase()===ticker)
+      .sort((a,b)=>parseDate(b['Fecha Balance'])-parseDate(a['Fecha Balance']));
+    if(histForTicker.length){
+      const scoringDiv=document.createElement('div');
+      scoringDiv.style.marginBottom='28px';
+      scoringDiv.innerHTML=`
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#1E27F3;font-family:var(--mono);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);">🏅 Scoring & Ratios Cargados</div>
+        <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;">
+          ${_buildScoringHistTable(histForTicker)}
+        </div>`;
+      con.appendChild(scoringDiv);
+    }
+  }
+
+  window._setColOrder=function(ticker,order){
+    _fichaColOrder=order;
+    // Re-render financials y ratios si ya están renderizados
+    const ecoHist=window.ECO_DATA[ticker]||[];
+    _renderFichaFinancials(ticker,ecoHist);
+    const ratCon=document.getElementById(`ficha-tab-content-${ticker}-ratios`);
+    if(ratCon&&ratCon.dataset.rendered){_renderFichaRatios(ticker,ecoHist);ratCon.dataset.rendered='1';}
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // RENDER PESTAÑA RATIOS
+  // ─────────────────────────────────────────────────────────────
+  function _renderFichaRatios(ticker, ecoHist){
+    const con=document.getElementById(`ficha-tab-content-${ticker}-ratios`);if(!con)return;
+    con.innerHTML='';
+    RAT_GROUPS.forEach(grp=>{
+      const secDiv=document.createElement('div');
+      secDiv.style.cssText='margin-bottom:28px;';
+      secDiv.innerHTML=`
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#1E27F3;font-family:var(--mono);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);">${grp.label}</div>
+        <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;" id="rat-table-${ticker}-${grp.id}"></div>`;
+      con.appendChild(secDiv);
+      _buildFichaTable(ecoHist, grp.keys, `rat-table-${ticker}-${grp.id}`);
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // TABLA HISTORIAL SCORING
+  // ─────────────────────────────────────────────────────────────
+  function _buildScoringHistTable(hist){
+    const thBase='padding:8px 12px;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border);font-family:var(--mono);white-space:nowrap;';
+    const tdBase='padding:9px 12px;font-family:var(--mono);font-size:11px;border-bottom:1px solid var(--border);white-space:nowrap;';
+    const rows=hist.map((r,i)=>{
+      const sc=parseFloat(r['Score']);
+      const scC=scoreColor(r['Score']);
+      const scB=scoreBg(r['Score']);
+      const isManual=(r['manual']||'').trim().toUpperCase()==='SI';
+      return`<tr>
+        <td style="${tdBase}color:${i===0?'var(--text)':'var(--text2)'};">
+          ${(r['Fecha Balance']||'—').substring(0,10)}
+          ${i===0?'<span style="margin-left:6px;font-size:9px;color:#1E27F3;background:rgba(30,39,243,0.12);padding:1px 6px;border-radius:8px;font-weight:600;">ÚLTIMO</span>':''}
+        </td>
+        <td style="${tdBase}text-align:right;">
+          <span style="display:inline-block;padding:2px 8px;border-radius:20px;font-weight:700;color:${scC};background:${scB};border:1px solid ${scC}33;">${isNaN(sc)?'—':sc.toFixed(1)}</span>
+        </td>
+        ${RATIOS.map(rat=>`<td style="${tdBase}text-align:right;color:var(--text2);">${fmtR(r[rat.key])}</td>`).join('')}
+        <td style="${tdBase}text-align:center;font-size:10px;">
+          ${isManual?'<span style="background:rgba(217,119,6,0.15);color:#d97706;border:1px solid rgba(217,119,6,0.35);padding:2px 8px;border-radius:8px;font-weight:700;">MANUAL</span>':'<span style="color:var(--text3);">AUTO</span>'}
+        </td>
+      </tr>`;
+    }).join('');
+    return`<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">
+      <thead><tr>
+        <th style="${thBase}text-align:left;">Fecha Balance</th>
+        <th style="${thBase}text-align:right;">Score</th>
+        ${RATIOS.map(rat=>`<th style="${thBase}text-align:right;">${rat.short}</th>`).join('')}
+        <th style="${thBase}text-align:center;">Origen</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // RENDER PESTAÑA DEUDAS (BCRA + MAV)
+  // ─────────────────────────────────────────────────────────────
+  function _renderFichaDeudas(ticker, cuit){
+    const con=document.getElementById(`ficha-tab-content-${ticker}-deudas`);if(!con)return;
+    con.innerHTML='';
+
+    // Sección BCRA
+    const bcraWrap=document.createElement('div');
+    bcraWrap.style.marginBottom='28px';
+    const bcraTitle='<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:14px;">Central de Deudores — BCRA</div>';
+
+    if(!cuit){
+      bcraWrap.innerHTML=bcraTitle+`<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:20px 24px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:18px;opacity:.5;">🏛</span>
+        <div>
+          <div style="font-size:12px;font-weight:600;color:var(--text2);font-family:var(--mono);">CUIT no cargado para ${ticker}</div>
+          <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:3px;">Agregá el CUIT en la hoja "CUIT" del Google Sheet.</div>
+        </div>
+      </div>`;
+    } else {
+      const bcraCid=`bcra-inline-${ticker}`;
+      const bcraLoadId=`bcra-load-inline-${ticker}`;
+      bcraWrap.innerHTML=bcraTitle+`
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+          <span style="font-size:10px;color:var(--text3);font-family:var(--mono);">CUIT ${cuit}</span>
+          <button onclick="_bcraRefreshInline('${ticker}','${cuit}','${bcraCid}','${bcraLoadId}')"
+            style="padding:3px 12px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--border2);border-radius:5px;background:transparent;color:var(--text3);font-family:var(--mono);">🔄 Actualizar</button>
+        </div>
+        <div id="${bcraLoadId}" style="display:flex;align-items:center;gap:10px;padding:14px;color:var(--text3);font-family:var(--mono);font-size:11px;">
+          <div class="spinner"></div>Consultando BCRA...
+        </div>
+        <div id="${bcraCid}"></div>`;
+      // Fetch asíncrono
+      _bcraFetchInline(ticker, cuit, bcraCid, bcraLoadId);
+    }
+    con.appendChild(bcraWrap);
+
+    // Sección MAV
+    if(typeof mavBuildCompanySection==='function'){
+      mavBuildCompanySection(ticker, cuit||null, con);
+    }
+  }
+
+  window._bcraRefreshInline=function(ticker,cuit,contentId,loadId){
+    const loadEl=document.getElementById(loadId);
+    const conEl=document.getElementById(contentId);
+    if(loadEl){loadEl.style.display='flex';loadEl.innerHTML='<div class="spinner"></div>Consultando BCRA...';}
+    if(conEl)conEl.innerHTML='';
+    _bcraFetchInline(ticker,cuit,contentId,loadId);
+  };
+
+  async function _bcraFetchInline(ticker,cuit,contentId,loadId){
+    const loadEl=document.getElementById(loadId);
+    const conEl=document.getElementById(contentId);
+    try{
+      const res=await fetch(`${window.DEU_WORKER||'https://central-deudores.tzuccotti.workers.dev'}/deudas/${cuit}/full`);
+      const json=await res.json();
+      if(loadEl)loadEl.style.display='none';
+      if(json.deudas?.errorMessages?.some(m=>m.toLowerCase().includes('mantenimiento'))){
+        if(conEl)conEl.innerHTML='<div style="padding:14px;color:var(--text3);font-family:var(--mono);font-size:11px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;">⏳ BCRA en mantenimiento.</div>';
+        return;
+      }
+      if(json.deudas?.status===404||json.error){
+        if(conEl)conEl.innerHTML='<div style="padding:14px;color:var(--text3);font-family:var(--mono);font-size:11px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;">Sin datos en Central de Deudores para CUIT '+cuit+'.</div>';
+        return;
+      }
+      const deudas=json.deudas?.results||json.deudas||null;
+      const hist=json.hist?.results||json.hist||null;
+      const cheques=json.cheques?.results||json.cheques||null;
+      if(!deudas||!conEl)return;
+      // Reusar render del módulo de deudores
+      const heroDiv=document.createElement('div');heroDiv.style.marginBottom='16px';
+      const sitDiv=document.createElement('div');sitDiv.style.marginBottom='16px';
+      const heatDiv=document.createElement('div');heatDiv.style.marginBottom='16px';
+      const chartDiv=document.createElement('div');chartDiv.style.marginBottom='16px';
+      const chkDiv=document.createElement('div');
+      conEl.appendChild(heroDiv);conEl.appendChild(sitDiv);conEl.appendChild(heatDiv);conEl.appendChild(chartDiv);conEl.appendChild(chkDiv);
+      const risk=window._deuCalcRisk?window._deuCalcRisk(deudas):{nivel:'—',color:'var(--text3)',bg:'var(--bg2)',causa:'',peorSit:0};
+      const entidades=(deudas.periodos?.[0]?.entidades||[]).filter(e=>e.situacion>0);
+      const montoTotal=entidades.reduce((s,e)=>s+(e.monto||0),0)*1000;
+      const periodo=deudas.periodos?.[0]?.periodo||'';
+      const periodLabel=periodo?`${periodo.slice(0,4)}/${periodo.slice(4,6)}`:'—';
+      heroDiv.innerHTML=`<div style="background:${risk.bg};border:1px solid ${risk.color}33;border-radius:12px;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+        <div>
+          <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">CUIT ${cuit} · Período: ${periodLabel}</div>
+          <div style="font-size:13px;color:var(--text2);font-family:var(--mono);">${entidades.length} entidades activas · Deuda total: <strong style="color:var(--text);">${window._deuFmtPesos?window._deuFmtPesos(montoTotal):('$'+(montoTotal/1e6).toFixed(1)+'M')}</strong></div>
+        </div>
+        <div style="text-align:center;background:${risk.color}22;border:2px solid ${risk.color};border-radius:10px;padding:10px 20px;min-width:120px;">
+          <div style="font-size:9px;color:${risk.color};font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;">Nivel de Riesgo</div>
+          <div style="font-size:18px;font-weight:800;color:${risk.color};font-family:var(--mono);">${risk.nivel}</div>
+        </div>
+      </div>`;
+      // Situación tabla
+      if(entidades.length){
+        const SIT_BG={0:'transparent',1:'#16a34a',2:'#ca8a04',3:'#ea580c',4:'#dc2626',5:'#7f1d1d'};
+        const SIT_TXT={0:'var(--text3)',1:'#fff',2:'#fff',3:'#fff',4:'#fff',5:'#fca5a5'};
+        const SIT_LBL={0:'Sin deuda',1:'Normal',2:'Riesgo Bajo',3:'Con Problemas',4:'Alto Riesgo',5:'Irrecuperable'};
+        const trows=entidades.sort((a,b)=>b.situacion-a.situacion).map(e=>`
+          <tr onmouseover="this.querySelectorAll('td').forEach(td=>td.style.background='var(--accent-light)')" onmouseout="this.querySelectorAll('td').forEach(td=>td.style.background='')">
+            <td style="padding:6px 12px;font-size:11px;color:var(--text2);font-family:var(--mono);border-bottom:1px solid var(--border);white-space:nowrap;">${e.entidad}</td>
+            <td style="padding:6px 10px;text-align:center;border-bottom:1px solid var(--border);">
+              <span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;background:${SIT_BG[e.situacion]||'var(--bg3)'};color:${SIT_TXT[e.situacion]||'var(--text)'};">${e.situacion} — ${SIT_LBL[e.situacion]||'—'}</span>
+            </td>
+            <td style="padding:6px 10px;font-size:11px;text-align:right;color:var(--text);font-family:var(--mono);border-bottom:1px solid var(--border);white-space:nowrap;">$${Math.round((e.monto||0)/1000).toLocaleString('es-AR')}M</td>
+            <td style="padding:6px 10px;font-size:11px;text-align:center;color:${(e.diasAtrasoPago||0)>0?'#f87171':'var(--text3)'};font-family:var(--mono);border-bottom:1px solid var(--border);">${(e.diasAtrasoPago||0)>0?e.diasAtrasoPago+'d':'—'}</td>
+          </tr>`).join('');
+        sitDiv.innerHTML=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono);margin-bottom:8px;">Situación Actual</div>
+          <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;overflow:hidden;"><div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;"><thead><tr style="background:var(--bg3);">
+            <th style="padding:7px 12px;font-size:10px;font-weight:600;color:var(--text2);text-align:left;border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;">Entidad</th>
+            <th style="padding:7px 10px;font-size:10px;font-weight:600;color:var(--text2);text-align:center;border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;">Situación</th>
+            <th style="padding:7px 10px;font-size:10px;font-weight:600;color:var(--text2);text-align:right;border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;">Monto</th>
+            <th style="padding:7px 10px;font-size:10px;font-weight:600;color:var(--text2);text-align:center;border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;">Atraso</th>
+          </tr></thead><tbody>${trows}</tbody></table></div></div>`;
+      }
+      // Heatmap 24m
+      if(hist?.periodos?.length){
+        const allP=[...new Set(hist.periodos.map(p=>p.periodo))].sort();
+        const entMap={};
+        hist.periodos.forEach(p=>p.entidades.forEach(e=>{if(e.situacion===0)return;if(!entMap[e.entidad])entMap[e.entidad]={};entMap[e.entidad][p.periodo]={situacion:e.situacion,monto:e.monto||0};}));
+        const ents=Object.keys(entMap).sort((a,b)=>Math.max(...Object.values(entMap[b]).map(x=>x.situacion))-Math.max(...Object.values(entMap[a]).map(x=>x.situacion)));
+        if(ents.length){
+          const HEAT={0:'var(--bg3)',1:'#14532d',2:'#713f12',3:'#7c2d12',4:'#7f1d1d',5:'#450a0a'};
+          const cW=32,lW=180;
+          heatDiv.innerHTML=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono);margin-bottom:8px;">Historial 24 Meses</div>
+            <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;overflow:hidden;"><div style="overflow-x:auto;">
+            <table style="border-collapse:collapse;table-layout:fixed;">
+              <colgroup><col style="width:${lW}px;">${allP.map(()=>`<col style="width:${cW}px;">`).join('')}</colgroup>
+              <thead><tr>
+                <th style="position:sticky;left:0;z-index:4;background:var(--bg3);border-bottom:1px solid var(--border);border-right:1px solid var(--border2);padding:4px 8px;font-size:10px;color:var(--text2);text-align:left;font-family:var(--mono);">Entidad</th>
+                ${allP.map(p=>`<th style="width:${cW}px;padding:3px 2px;font-size:8px;font-weight:600;color:var(--text3);text-align:center;font-family:var(--mono);background:var(--bg3);border-bottom:1px solid var(--border);white-space:nowrap;">${p.slice(4,6)}/${p.slice(2,4)}</th>`).join('')}
+              </tr></thead>
+              <tbody>${ents.map(ent=>{
+                const worst=Math.max(...Object.values(entMap[ent]).map(x=>x.situacion));
+                const cells=allP.map(p=>{const d=entMap[ent]?.[p];const sit=d?.situacion||0;return`<td style="width:${cW}px;height:22px;background:${sit>0?HEAT[sit]:'var(--bg3)'};border:1px solid rgba(0,0,0,0.1);"></td>`;}).join('');
+                const SBG={0:'transparent',1:'#16a34a',2:'#ca8a04',3:'#ea580c',4:'#dc2626',5:'#7f1d1d'};
+                const STXT={0:'var(--text3)',1:'#fff',2:'#fff',3:'#fff',4:'#fff',5:'#fca5a5'};
+                return`<tr><td style="position:sticky;left:0;z-index:3;background:var(--bg2);padding:2px 8px;font-size:10px;color:var(--text2);font-family:var(--mono);white-space:nowrap;border-bottom:1px solid var(--border);border-right:1px solid var(--border2);min-width:${lW}px;max-width:${lW}px;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;">
+                    <span style="overflow:hidden;text-overflow:ellipsis;">${ent}</span>
+                    <span style="flex-shrink:0;font-size:8px;padding:1px 5px;border-radius:5px;background:${SBG[worst]||'var(--bg3)'};color:${STXT[worst]||'var(--text)'};">${worst}</span>
+                  </div>
+                </td>${cells}</tr>`;
+              }).join('')}</tbody>
+            </table></div></div>`;
+        }
+      }
+      // Cheques
+      if(cheques?.causales?.length){
+        const allChq=[];
+        cheques.causales.forEach(c=>c.entidades.forEach(e=>e.detalle.forEach(d=>allChq.push({...d,causal:c.causal}))));
+        const sinReg=allChq.filter(c=>!c.fechaPago).length;
+        chkDiv.innerHTML=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono);margin-bottom:8px;">Cheques Rechazados</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:12px 18px;flex:1;min-width:100px;">
+              <div style="font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">Total</div>
+              <div style="font-size:20px;font-weight:700;color:var(--text);font-family:var(--mono);">${allChq.length}</div>
+            </div>
+            <div style="background:${sinReg?'rgba(248,81,73,0.08)':'rgba(63,185,80,0.08)'};border:1px solid ${sinReg?'rgba(248,81,73,0.3)':'rgba(63,185,80,0.25)'};border-radius:8px;padding:12px 18px;flex:1;min-width:100px;">
+              <div style="font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">Sin regularizar</div>
+              <div style="font-size:20px;font-weight:700;color:${sinReg?'#f87171':'#3fb950'};font-family:var(--mono);">${sinReg}</div>
+            </div>
+          </div>`;
+      }
+    }catch(e){
+      const loadEl2=document.getElementById(loadId);
+      const conEl2=document.getElementById(contentId);
+      if(loadEl2)loadEl2.style.display='none';
+      if(conEl2)conEl2.innerHTML=`<div style="padding:14px;color:var(--text3);font-family:var(--mono);font-size:11px;">Error al consultar BCRA: ${e.message}</div>`;
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // SECTORIAL — buildSectorCard (tabla 1: scoring)
+  // ─────────────────────────────────────────────────────────────
+  function ratioColor(key,val){
+    const v=parseFloat(val);if(isNaN(v)||val===''||val===null||val===undefined)return null;
+    const G='#00B050',A='#BF8F00',R='#C00000';
+    if(key==='Deuda N. / Patrimonio N.')return v<=1.5?G:v<=2.5?A:R;
+    if(key==='Deuda B. / Activo')       return v<=30?G:v<=50?A:R;
+    if(key==='Deuda N. / EBITDA')       return v<=5?G:v<=10?A:R;
+    if(key==='Ingresos Operativos / Deuda')return v>10?G:v>5?A:R;
+    if(key==='Deuda Fin. CP / EBITDA')  return v<=0?G:v<=2?A:R;
+    return null;
+  }
+
+  function buildSectorCard(sector,rows,sectorId){
+    const wrap=document.createElement('div');wrap.style.cssText='margin-bottom:28px;';
+    const hdr=document.createElement('div');hdr.style.cssText='display:flex;align-items:center;gap:12px;margin-bottom:12px;';
+    hdr.innerHTML=`<span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#1E27F3;font-family:var(--mono);">${sector.replace(/_+/g,' ').trim()}</span>
+      <span style="font-size:10px;color:#4a5280;font-family:var(--mono);">${rows.length} empresa${rows.length!==1?'s':''}</span>`;
+    wrap.appendChild(hdr);
+    const card=document.createElement('div');card.style.cssText='background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;';
+    const cols=[{key:'Ticker',label:'Ticker'},{key:'Empresa',label:'Empresa'},{key:'Score',label:'Score'},{key:'Fecha Balance',label:'Ult. Balance'},...RATIOS.map(r=>({key:r.key,label:r.short}))];
+    const thStyle=(align,w)=>`padding:9px 12px;text-align:${align};font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;white-space:nowrap;cursor:pointer;user-select:none;${w?'width:'+w+';':''}`;
+    const tdBase=(align,extra)=>`padding:8px 12px;text-align:${align};font-family:'DM Mono',monospace;font-size:11px;border-bottom:1px solid var(--border);white-space:nowrap;${extra||''}`;
+    if(!_excelSortKeys[sectorId]){_excelSortKeys[sectorId]='Score';_excelSortDirs[sectorId]=-1;}
+    function renderRows(){
+      const sk=_excelSortKeys[sectorId],sd=_excelSortDirs[sectorId];
+      const sorted=[...rows].sort((a,b)=>{
+        const isStr=(sk==='Ticker'||sk==='Empresa'||sk==='Fecha Balance');
+        const va=isStr?(a[sk]||''):(parseFloat(a[sk])||0);
+        const vb=isStr?(b[sk]||''):(parseFloat(b[sk])||0);
+        if(va<vb)return -1*sd;if(va>vb)return 1*sd;return 0;
+      });
+      const thead=card.querySelector('thead tr');
+      if(thead){
+        const aligns=['left','left','right','right','right','right','right','right','right'];
+        const widths=['70px','','72px','100px','90px','90px','90px','90px','90px'];
+        thead.innerHTML=cols.map((c,i)=>{
+          let arrow=_excelSortKeys[sectorId]===c.key?(_excelSortDirs[sectorId]===1?' ▲':' ▼'):' <span style="opacity:.35">⇅</span>';
+          return`<th style="${thStyle(aligns[i],widths[i])}">${c.label}${arrow}</th>`;
+        }).join('');
+        thead.querySelectorAll('th').forEach((th,i)=>{
+          th.onclick=()=>{if(_excelSortKeys[sectorId]===cols[i].key)_excelSortDirs[sectorId]*=-1;else{_excelSortKeys[sectorId]=cols[i].key;_excelSortDirs[sectorId]=1;}renderRows();};
+        });
+      }
+      const tbody=card.querySelector('tbody');if(!tbody)return;
+      tbody.innerHTML=sorted.map(r=>{
+        const sc=parseFloat(r['Score']),scC=scoreColor(r['Score']),scB=scoreBg(r['Score']);
+        const ticker=(r['Ticker']||'').trim().toUpperCase();
+        const fb=(r['Fecha Balance']||'').trim().substring(0,10)||'—';
+        const rCells=RATIOS.map(rat=>{const raw=r[rat.key];const color=ratioColor(rat.key,raw);return`<td style="${tdBase('right',color?`color:${color};font-weight:600;`:'color:#7a82a8;')}">${fmtR(raw)}</td>`;}).join('');
+        return`<tr style="cursor:pointer;" onclick="openExcelDetail('${ticker}')"
+          onmouseover="this.style.background='rgba(30,39,243,0.06)'" onmouseout="this.style.background='transparent'">
+          <td style="${tdBase('left','color:var(--text2);font-weight:700;')}">${ticker}</td>
+          <td style="${tdBase('left','color:var(--text);')}">${r['Empresa']||'—'}</td>
+          <td style="${tdBase('right','')}"><span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:'DM Mono',monospace;color:${scC};background:${scB};border:1px solid ${scC}33;">${isNaN(sc)?'—':sc.toFixed(1)}</span></td>
+          <td style="${tdBase('right','color:var(--text3);')}">${fb}</td>
+          ${rCells}
+        </tr>`;
+      }).join('');
+    }
+    const aligns0=['left','left','right','right','right','right','right','right','right'];
+    const widths0=['70px','','72px','100px','90px','90px','90px','90px','90px'];
+    card.innerHTML=`<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+      <thead><tr>${cols.map((c,i)=>`<th style="${thStyle(aligns0[i],widths0[i])}">${c.label} <span style="opacity:.35">⇅</span></th>`).join('')}</tr></thead>
+      <tbody></tbody></table></div>`;
+    renderRows();wrap.appendChild(card);return wrap;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // SECTORIAL — renderExcel (agrupa por sector + tabla 1)
+  // ─────────────────────────────────────────────────────────────
+  let _excelSearchQuery='';
+  Object.defineProperty(window,'_excelSearchQuery',{get(){return _excelSearchQuery;},set(v){_excelSearchQuery=v;}});
 
   function renderExcel(){
-    const container=document.getElementById('excel-content');
-    if(!container)return;
+    const container=document.getElementById('excel-content');if(!container)return;
     container.innerHTML='';
-
     const latest=getLatestByTicker(window.EXCEL_DATA);
-
-    // ── Buscador ──
     const searchWrap=document.createElement('div');
     searchWrap.style.cssText='margin-bottom:20px;position:relative;max-width:380px;';
     searchWrap.innerHTML=`
@@ -6618,569 +7229,38 @@ function renderEquity(){
       ${_excelSearchQuery?`<button onclick="window._excelSearchQuery='';document.getElementById('excel-search-input').value='';renderExcel()"
         style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px 4px;">✕</button>`:''}`;
     container.appendChild(searchWrap);
-
     const ql=(_excelSearchQuery||'').toLowerCase().trim();
-
-    // Filtrar si hay query
-    let filteredLatest=latest;
-    if(ql){
-      filteredLatest=latest.filter(r=>{
-        const ticker=(r['Ticker']||r['ticker']||'').toLowerCase();
-        const empresa=(r['Empresa']||r['empresa']||'').toLowerCase();
-        const sector=(r['sector']||r['Sector']||'').toLowerCase();
-        return ticker.includes(ql)||empresa.includes(ql)||sector.includes(ql);
-      });
-    }
-
-    // Agrupar por sector
+    let filtered=ql?latest.filter(r=>{const t=(r['Ticker']||'').toLowerCase();const e=(r['Empresa']||'').toLowerCase();const s=(r['sector']||r['Sector']||'').toLowerCase();return t.includes(ql)||e.includes(ql)||s.includes(ql);}):latest;
     const sectors={};
-    filteredLatest.forEach(r=>{
-      const sec=(r['sector']||r['Sector']||'Sin sector').trim();
-      if(!sectors[sec])sectors[sec]=[];
-      sectors[sec].push(r);
-    });
-
+    filtered.forEach(r=>{const sec=(r['sector']||r['Sector']||'Sin sector').trim();if(!sectors[sec])sectors[sec]=[];sectors[sec].push(r);});
     const sectorNames=Object.keys(sectors).sort();
-    if(sectorNames.length===0){
-      const msg=document.createElement('div');
-      msg.style.cssText='color:var(--text3);font-family:var(--mono);font-size:12px;text-align:center;padding:40px;';
-      msg.textContent=ql?`Sin resultados para "${ql}"` : 'Sin datos disponibles.';
-      container.appendChild(msg);
-      return;
+    if(!sectorNames.length){
+      const msg=document.createElement('div');msg.style.cssText='color:var(--text3);font-family:var(--mono);font-size:12px;text-align:center;padding:40px;';
+      msg.textContent=ql?`Sin resultados para "${ql}"` : 'Sin datos disponibles.';container.appendChild(msg);return;
     }
-
-    // Badge de resultados cuando hay búsqueda
-    if(ql){
-      const badge=document.createElement('div');
-      badge.style.cssText='font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:14px;';
-      badge.textContent=`${filteredLatest.length} empresa${filteredLatest.length!==1?'s':''} encontrada${filteredLatest.length!==1?'s':''}`;
-      container.appendChild(badge);
-    }
-
-    sectorNames.forEach((sec,si)=>{
-      const rows=sectors[sec];
-      const sectorId='sector-'+si;
-      if(!_excelSortKeys[sectorId]){_excelSortKeys[sectorId]='Score';_excelSortDirs[sectorId]=-1;}
-      container.appendChild(buildSectorCard(sec,rows,sectorId));
-    });
+    if(ql){const badge=document.createElement('div');badge.style.cssText='font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:14px;';badge.textContent=`${filtered.length} empresa${filtered.length!==1?'s':''} encontrada${filtered.length!==1?'s':''}`;container.appendChild(badge);}
+    sectorNames.forEach((sec,si)=>{const sectorId='sector-'+si;container.appendChild(buildSectorCard(sec,sectors[sec],sectorId));});
   }
 
-  function buildSectorCard(sector,rows,sectorId){
-    const wrap=document.createElement('div');
-    wrap.style.cssText='margin-bottom:28px;';
-    // Header del sector
-    const hdr=document.createElement('div');
-    hdr.style.cssText='display:flex;align-items:center;gap:12px;margin-bottom:12px;';
-    const sectorLabel=sector.replace(/_+/g,' ').trim();
-    hdr.innerHTML=`
-      <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#1E27F3;font-family:var(--mono);">${sectorLabel}</span>
-      <span style="font-size:10px;color:#4a5280;font-family:var(--mono);">${rows.length} empresa${rows.length!==1?'s':''}</span>`;
-    wrap.appendChild(hdr);
-
-    const card=document.createElement('div');
-    card.style.cssText='background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;';
-
-    const cols=[
-      {key:'Ticker',  label:'Ticker'},
-      {key:'Empresa', label:'Empresa'},
-      {key:'Score',   label:'Score'},
-      {key:'Fecha Balance', label:'Ult. Balance'},
-      ...RATIOS.map(r=>({key:r.key,label:r.short})),
-    ];
-
-    // ── Color helpers para ratios ──
-    function ratioColor(key, val){
-      const v=parseFloat(val);
-      if(isNaN(v)||val===''||val===null||val===undefined)return null;
-      const G='#00B050', A='#BF8F00', R='#C00000';
-      if(key==='Deuda N. / Patrimonio N.') return v<=1.5?G:v<=2.5?A:R;
-      if(key==='Deuda B. / Activo')        return v<=30?G:v<=50?A:R;
-      if(key==='Deuda N. / EBITDA')        return v<=5?G:v<=10?A:R;
-      if(key==='Ingresos Operativos / Deuda') return v>10?G:v>5?A:R;
-      if(key==='Deuda Fin. CP / EBITDA')   return v<=0?G:v<=2?A:R;
-      return null;
-    }
-
-    // anchos fijos: Ticker 70 | Empresa flex | Score 72 | Balance 100 | 5 ratios 90 c/u
-    const thStyle=(align,w)=>`padding:9px 12px;text-align:${align};font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;white-space:nowrap;cursor:pointer;user-select:none;${w?'width:'+w+';':''}`;
-    const tdBase=(align,extra)=>`padding:8px 12px;text-align:${align};font-family:'DM Mono',monospace;font-size:11px;border-bottom:1px solid var(--border);white-space:nowrap;${extra||''}`;
-
-    function renderRows(){
-      const sk=_excelSortKeys[sectorId];
-      const sd=_excelSortDirs[sectorId];
-      const sorted=[...rows].sort((a,b)=>{
-        const isStr=(sk==='Ticker'||sk==='Empresa'||sk==='Fecha Balance');
-        const va=isStr?(a[sk]||''):(parseFloat(a[sk])||0);
-        const vb=isStr?(b[sk]||''):(parseFloat(b[sk])||0);
-        if(va<vb)return -1*sd;
-        if(va>vb)return  1*sd;
-        return 0;
-      });
-
-      // thead
-      const thead=card.querySelector('thead tr');
-      if(thead){
-        const aligns=['left','left','right','right','right','right','right','right','right'];
-        const widths=['70px','','72px','100px','90px','90px','90px','90px','90px'];
-        thead.innerHTML=cols.map((c,i)=>{
-          let arrow='';
-          if(_excelSortKeys[sectorId]===c.key) arrow=_excelSortDirs[sectorId]===1?' ▲':' ▼';
-          else arrow=' <span style="opacity:.35">⇅</span>';
-          return`<th style="${thStyle(aligns[i],widths[i])}">${c.label}${arrow}</th>`;
-        }).join('');
-        thead.querySelectorAll('th').forEach((th,i)=>{
-          th.onclick=()=>{
-            if(_excelSortKeys[sectorId]===cols[i].key){_excelSortDirs[sectorId]*=-1;}
-            else{_excelSortKeys[sectorId]=cols[i].key;_excelSortDirs[sectorId]=1;}
-            renderRows();
-          };
-        });
-      }
-
-      const tbody=card.querySelector('tbody');
-      if(!tbody)return;
-      tbody.innerHTML=sorted.map(r=>{
-        const score=parseFloat(r['Score']);
-        const sc=isNaN(score)?'—':score.toFixed(1);
-        const scColor=scoreColor(r['Score']);
-        const scBg=scoreBg(r['Score']);
-        const fb=(r['Fecha Balance']||'').trim().substring(0,10)||'—';
-        const ticker=(r['Ticker']||'').trim().toUpperCase();
-        const ratiosCells=RATIOS.map(rat=>{
-          const raw=r[rat.key];
-          const color=ratioColor(rat.key,raw);
-          const display=fmtR(raw);
-          const style=tdBase('right', color?`color:${color};font-weight:600;`:'color:#7a82a8;');
-          return`<td style="${style}">${display}</td>`;
-        }).join('');
-        return`<tr style="cursor:pointer;" onclick="openExcelDetail('${ticker}')"
-          onmouseover="this.style.background='rgba(30,39,243,0.06)'" onmouseout="this.style.background='transparent'">
-          <td style="${tdBase('left','color:var(--text2);font-weight:700;')}">${ticker}</td>
-          <td style="${tdBase('left','color:var(--text);')}">${r['Empresa']||'—'}</td>
-          <td style="${tdBase('right','')}">
-            <span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:'DM Mono',monospace;color:${scColor};background:${scBg};border:1px solid ${scColor}33;">${sc}</span>
-          </td>
-          <td style="${tdBase('right','color:var(--text3);')}">${fb}</td>
-          ${ratiosCells}
-        </tr>`;
-      }).join('');
-    }
-
-    const aligns0=['left','left','right','right','right','right','right','right','right'];
-    const widths0=['70px','','72px','100px','90px','90px','90px','90px','90px'];
-    const theadHtml=cols.map((c,i)=>`<th style="${thStyle(aligns0[i],widths0[i])}">${c.label} <span style="opacity:.35">⇅</span></th>`).join('');
-    card.innerHTML=`
-      <div style="overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
-          <thead><tr>${theadHtml}</tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>`;
-
-    renderRows();
-    wrap.appendChild(card);
-    return wrap;
-  }
-
-  // ── Abrir detalle empresa ──
+  // ─────────────────────────────────────────────────────────────
+  // openExcelDetail — redirige a tab buscar con la ficha
+  // ─────────────────────────────────────────────────────────────
   window.openExcelDetail=function(ticker){
     ticker=ticker.trim().toUpperCase();
-    // Route to buscar tab and show inline
     earShowTab('buscar');
-    const inp=document.getElementById('ear-search-input');
-    if(inp) inp.value=ticker;
+    const inp=document.getElementById('ear-search-input');if(inp)inp.value=ticker;
     earSelectCompany(ticker);
-    // Scroll to top of app
-    const appEl=document.getElementById('app-excel');
-    if(appEl) appEl.scrollTop=0;
+    const appEl=document.getElementById('app-excel');if(appEl)appEl.scrollTop=0;
     window.scrollTo(0,0);
   };
 
-  window.closeExcelDetail=function(){
-    document.getElementById('excel-detail').style.display='none';
-    _currentExcelTicker=null;
-  };
-
-  function buildExcelDetailBody(hist){
-    const body=document.getElementById('excel-detail-body');
-    body.innerHTML='';
-
-    // Stat cards del último balance
-    const latest=hist[0];
-    const score=parseFloat(latest['Score']);
-    const scColor=scoreColor(latest['Score']);
-    const scBg=scoreBg(latest['Score']);
-
-    const cuitForCards = (window.EXCEL_CUIT_MAP||{})[_currentExcelTicker];
-    const bcraPlaceholderCards = cuitForCards ? `
-      <div id="kpi-bcra-risk-${_currentExcelTicker}" style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:14px 16px;">
-        <div style="font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);font-family:var(--mono);margin-bottom:8px;">Riesgo BCRA</div>
-        <div style="font-size:13px;font-weight:700;font-family:var(--mono);color:var(--text3);">...</div>
-      </div>
-      <div id="kpi-bcra-deuda-${_currentExcelTicker}" style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:14px 16px;">
-        <div style="font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);font-family:var(--mono);margin-bottom:8px;">Deuda Sistema</div>
-        <div style="font-size:13px;font-weight:700;font-family:var(--mono);color:var(--text3);">...</div>
-      </div>
-      <div id="kpi-bcra-ent-${_currentExcelTicker}" style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:14px 16px;">
-        <div style="font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);font-family:var(--mono);margin-bottom:8px;">Entidades</div>
-        <div style="font-size:13px;font-weight:700;font-family:var(--mono);color:var(--text3);">...</div>
-      </div>` : '';
-
-    const statsHtml=`
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:28px;">
-        <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:14px 16px;">
-          <div style="font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);font-family:var(--mono);margin-bottom:8px;">Score</div>
-          <div style="font-size:28px;font-weight:700;font-family:var(--mono);color:${scColor};">${isNaN(score)?'—':score.toFixed(1)}</div>
-          <div style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-top:4px;">/ 10</div>
-        </div>
-        <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:14px 16px;">
-          <div style="font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);font-family:var(--mono);margin-bottom:8px;">Último Balance</div>
-          <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:var(--text);">${(latest['Fecha Balance']||'—').trim().substring(0,10)}</div>
-        </div>
-        ${RATIOS.map(rat=>`
-        <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:14px 16px;">
-          <div style="font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);font-family:var(--mono);margin-bottom:8px;">${rat.short}</div>
-          <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:var(--text2);">${fmtR(latest[rat.key])}</div>
-        </div>`).join('')}
-        ${bcraPlaceholderCards}
-      </div>`;
-
-    // Tabla historial
-    const histTableHtml=`
-      <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;">
-        <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;gap:12px;">
-          <span style="font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);font-family:var(--mono);">Historial por Balance</span>
-          <span style="font-size:10px;color:#1E27F3;font-family:var(--mono);">${hist.length} registro${hist.length!==1?'s':''}</span>
-        </div>
-        <div style="overflow-x:auto;">
-          <table style="width:100%;border-collapse:collapse;">
-            <thead>
-              <tr>
-                <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border);font-family:var(--mono);white-space:nowrap;">Fecha Balance</th>
-                <th style="padding:8px 12px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border);font-family:var(--mono);white-space:nowrap;">Score</th>
-                ${RATIOS.map(rat=>`<th style="padding:8px 12px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border);font-family:var(--mono);white-space:nowrap;">${rat.short}</th>`).join('')}
-                <th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border);font-family:var(--mono);white-space:nowrap;">Origen</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${hist.map((r,i)=>{
-                const isManual=(r['manual']||'').trim().toUpperCase()==='SI';
-                const isUpdated=r._updated&&!isManual;
-                const scC=scoreColor(r['Score']);
-                const scB=scoreBg(r['Score']);
-                const sc=parseFloat(r['Score']);
-                return`<tr style="border-bottom:1px solid var(--border);">
-                  <td style="padding:9px 12px;text-align:left;font-family:var(--mono);font-size:11px;color:${i===0?'var(--text)':'var(--text2)'};white-space:nowrap;">
-                    ${(r['Fecha Balance']||'—').trim().substring(0,10)}
-                    ${i===0?'<span style="margin-left:6px;font-size:9px;color:#1E27F3;background:rgba(30,39,243,0.12);padding:1px 6px;border-radius:8px;font-weight:600;">ÚLTIMO</span>':''}
-                  </td>
-                  <td style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:11px;">
-                    <span style="display:inline-block;padding:2px 8px;border-radius:20px;font-weight:700;color:${scC};background:${scB};border:1px solid ${scC}33;">${isNaN(sc)?'—':sc.toFixed(1)}</span>
-                  </td>
-                  ${RATIOS.map(rat=>`<td style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:11px;color:var(--text2);">${fmtR(r[rat.key])}</td>`).join('')}
-                  <td style="padding:9px 12px;text-align:center;font-family:var(--mono);font-size:10px;">
-                    ${isManual
-                      ?'<span style="background:rgba(217,119,6,0.15);color:#d97706;border:1px solid rgba(217,119,6,0.35);padding:2px 8px;border-radius:8px;font-weight:700;">MANUAL</span>'
-                      :isUpdated
-                        ?'<span style="background:rgba(165,180,252,0.1);color:#a5b4fc;border:1px solid rgba(165,180,252,0.25);padding:2px 8px;border-radius:8px;font-weight:700;">REVISADO</span>'
-                        :'<span style="color:var(--text3);">AUTO</span>'
-                    }
-                  </td>
-                </tr>`;
-              }).join('')}
-            </tbody>
-          </table>
-        </div>
-      </div>`;
-
-    body.innerHTML=statsHtml+histTableHtml;
-
-    // ── Sección Central de Deudores ──────────────────────────────
-    const cuit=(window.EXCEL_CUIT_MAP||{})[_currentExcelTicker];
-
-    // Contenedor BCRA siempre visible debajo del historial
-    const bcraWrap=document.createElement('div');
-    bcraWrap.style.cssText='margin-top:28px;';
-    bcraWrap.id='excel-bcra-section';
-
-    const bcraTitle=`<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:14px;padding-bottom:8px;border-top:1px solid var(--border);padding-top:20px;">Central de Deudores — BCRA</div>`;
-
-    if(!cuit){
-      bcraWrap.innerHTML=bcraTitle+`
-        <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:20px 24px;display:flex;align-items:center;gap:12px;">
-          <span style="font-size:18px;opacity:.5;">🏛</span>
-          <div>
-            <div style="font-size:12px;font-weight:600;color:var(--text2);font-family:var(--mono);">CUIT no cargado para ${_currentExcelTicker}</div>
-            <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:3px;">Agregá el CUIT en la hoja "CUIT" del Google Sheet para ver la situación crediticia.</div>
-          </div>
-        </div>`;
-      body.appendChild(bcraWrap);
-      // Still show MAV section even without CUIT
-      if(typeof mavBuildCompanySection==='function'){
-        mavBuildCompanySection(_currentExcelTicker, null, body);
-      }
-      return;
-    }
-
-    // Tiene CUIT — mostrar spinner y consultar
-    const bcraCid=`bcra-content-${cuit}`;
-    const bcraLoadId=`bcra-load-${cuit}`;
-
-    bcraWrap.innerHTML=bcraTitle+`
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
-        <span style="font-size:10px;color:var(--text3);font-family:var(--mono);">CUIT ${cuit}</span>
-        <button onclick="mavBcraRefresh('${cuit}','${bcraCid}')"
-          style="padding:3px 12px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--border2);border-radius:5px;background:transparent;color:var(--text3);font-family:var(--mono);">🔄 Actualizar</button>
-      </div>
-      <div id="${bcraLoadId}" style="display:flex;align-items:center;gap:10px;padding:14px;color:var(--text3);font-family:var(--mono);font-size:11px;">
-        <div class="spinner"></div>Consultando BCRA...
-      </div>
-      <div id="${bcraCid}"></div>`;
-    body.appendChild(bcraWrap);
-
-    // Also add MAV section below BCRA
-    if(typeof mavBuildCompanySection==='function'){
-      mavBuildCompanySection(_currentExcelTicker, cuit, body);
-    }
-
-    // Fetch asíncrono
-    (async()=>{
-      const loadingEl=document.getElementById(bcraLoadId);
-      const contentEl=document.getElementById(bcraCid);
-      if(!contentEl) return;
-      try{
-        const res  = await fetch(`${window.DEU_WORKER||'https://central-deudores.tzuccotti.workers.dev'}/deudas/${cuit}/full`);
-        const json = await res.json();
-
-        if(loadingEl) loadingEl.style.display='none';
-
-        if(json.deudas?.errorMessages?.some(m=>m.toLowerCase().includes('mantenimiento'))){
-          contentEl.innerHTML=window._mavBcraErrorHtml?window._mavBcraErrorHtml(cuit,'La API del BCRA está en mantenimiento. Intentá más tarde.')
-            :`<div style="padding:14px;color:var(--text3);font-family:var(--mono);font-size:11px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;">⏳ BCRA en mantenimiento.</div>`;
-          return;
-        }
-        if(json.deudas?.status===404||json.error){
-          contentEl.innerHTML=`<div style="padding:14px;color:var(--text3);font-family:var(--mono);font-size:11px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;">Sin datos en Central de Deudores para CUIT ${cuit}.</div>`;
-          return;
-        }
-
-        const deudas  = json.deudas?.results  || json.deudas  || null;
-        const hist    = json.hist?.results     || json.hist    || null;
-        const cheques = json.cheques?.results  || json.cheques || null;
-
-        if(!deudas){ contentEl.innerHTML=''; return; }
-
-        // Reutilizar las funciones de renderizado de Central de Deudores
-        // Renderizamos en el contenedor inline
-        const heroDiv   = document.createElement('div'); heroDiv.style.marginBottom='16px';
-        const sitDiv    = document.createElement('div'); sitDiv.style.marginBottom='16px';
-        const heatDiv   = document.createElement('div'); heatDiv.style.marginBottom='16px';
-        const chartDiv  = document.createElement('div'); chartDiv.style.marginBottom='16px';
-        const chkDiv    = document.createElement('div');
-
-        contentEl.appendChild(heroDiv);
-        contentEl.appendChild(sitDiv);
-        contentEl.appendChild(heatDiv);
-        contentEl.appendChild(chartDiv);
-        contentEl.appendChild(chkDiv);
-
-        // Hero
-        const risk=window._deuCalcRisk?window._deuCalcRisk(deudas):{nivel:'—',color:'var(--text3)',bg:'var(--bg2)',causa:'',peorSit:0};
-        const denominacion=deudas.denominacion||_currentExcelEmpresa||_currentExcelTicker;
-        const entidades=(deudas.periodos?.[0]?.entidades||[]).filter(e=>e.situacion>0);
-        const montoTotal=entidades.reduce((s,e)=>s+(e.monto||0),0)*1000;
-        const periodo=deudas.periodos?.[0]?.periodo||'';
-        const periodLabel=periodo?`${periodo.slice(0,4)}/${periodo.slice(4,6)}`:'—';
-
-        heroDiv.innerHTML=`
-          <div style="background:${risk.bg};border:1px solid ${risk.color}33;border-radius:12px;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
-            <div>
-              <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">CUIT ${cuit} · Último período: ${periodLabel}</div>
-              <div style="font-size:13px;color:var(--text2);font-family:var(--mono);">${entidades.length} entidades activas · Deuda total: <strong style="color:var(--text);">${window._deuFmtPesos?window._deuFmtPesos(montoTotal):('$'+(montoTotal/1e6).toFixed(1)+'M')}</strong></div>
-            </div>
-            <div style="text-align:center;background:${risk.color}22;border:2px solid ${risk.color};border-radius:10px;padding:10px 20px;min-width:140px;">
-              <div style="font-size:9px;color:${risk.color};font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;">Nivel de Riesgo</div>
-              <div style="font-size:18px;font-weight:800;color:${risk.color};font-family:var(--mono);">${risk.nivel}</div>
-              <div style="font-size:9px;color:${risk.color};font-family:var(--mono);margin-top:3px;opacity:.8;">${risk.causa}</div>
-            </div>
-          </div>`;
-
-        // Situación actual — tabla compacta
-        if(entidades.length){
-          const SIT_BG ={0:'transparent',1:'#16a34a',2:'#ca8a04',3:'#ea580c',4:'#dc2626',5:'#7f1d1d'};
-          const SIT_TXT={0:'var(--text3)',1:'#fff',2:'#fff',3:'#fff',4:'#fff',5:'#fca5a5'};
-          const SIT_LBL={0:'Sin deuda',1:'Normal',2:'Riesgo Bajo',3:'Con Problemas',4:'Alto Riesgo',5:'Irrecuperable'};
-          const rows=entidades.sort((a,b)=>b.situacion-a.situacion).map(e=>`
-            <tr onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''">
-              <td style="padding:6px 12px;font-size:11px;color:var(--text2);font-family:var(--mono);border-bottom:1px solid var(--border);white-space:nowrap;">${e.entidad}</td>
-              <td style="padding:6px 10px;text-align:center;border-bottom:1px solid var(--border);">
-                <span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;background:${SIT_BG[e.situacion]||'var(--bg3)'};color:${SIT_TXT[e.situacion]||'var(--text)'};">${e.situacion} — ${SIT_LBL[e.situacion]||'—'}</span>
-              </td>
-              <td style="padding:6px 10px;font-size:11px;text-align:right;color:var(--text);font-family:var(--mono);border-bottom:1px solid var(--border);white-space:nowrap;">$${Math.round((e.monto||0)/1000).toLocaleString('es-AR')}M</td>
-              <td style="padding:6px 10px;font-size:11px;text-align:center;color:${(e.diasAtrasoPago||0)>0?'#f87171':'var(--text3)'};font-family:var(--mono);border-bottom:1px solid var(--border);">${(e.diasAtrasoPago||0)>0?e.diasAtrasoPago+'d':'—'}</td>
-            </tr>`).join('');
-          sitDiv.innerHTML=`
-            <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono);margin-bottom:8px;">Situación Actual</div>
-            <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;overflow:hidden;">
-              <div style="overflow-x:auto;">
-                <table style="width:100%;border-collapse:collapse;">
-                  <thead><tr style="background:var(--bg3);">
-                    <th style="padding:7px 12px;font-size:10px;font-weight:600;color:var(--text2);text-align:left;border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;">Entidad</th>
-                    <th style="padding:7px 10px;font-size:10px;font-weight:600;color:var(--text2);text-align:center;border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;">Situación</th>
-                    <th style="padding:7px 10px;font-size:10px;font-weight:600;color:var(--text2);text-align:right;border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;">Monto</th>
-                    <th style="padding:7px 10px;font-size:10px;font-weight:600;color:var(--text2);text-align:center;border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;">Atraso</th>
-                  </tr></thead>
-                  <tbody>${rows}</tbody>
-                </table>
-              </div>
-            </div>`;
-        }
-
-        // Cheques resumen
-        if(cheques?.causales?.length){
-          const allChq=[];
-          cheques.causales.forEach(c=>c.entidades.forEach(e=>e.detalle.forEach(d=>allChq.push({...d,causal:c.causal}))));
-          const sinReg=allChq.filter(c=>!c.fechaPago).length;
-          chkDiv.innerHTML=`
-            <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono);margin-bottom:8px;">Cheques Rechazados</div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;">
-              <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:12px 18px;flex:1;min-width:100px;">
-                <div style="font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">Total</div>
-                <div style="font-size:20px;font-weight:700;color:var(--text);font-family:var(--mono);">${allChq.length}</div>
-              </div>
-              <div style="background:${sinReg?'rgba(248,81,73,0.08)':'rgba(63,185,80,0.08)'};border:1px solid ${sinReg?'rgba(248,81,73,0.3)':'rgba(63,185,80,0.25)'};border-radius:8px;padding:12px 18px;flex:1;min-width:100px;">
-                <div style="font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">Sin regularizar</div>
-                <div style="font-size:20px;font-weight:700;color:${sinReg?'#f87171':'#3fb950'};font-family:var(--mono);">${sinReg}</div>
-              </div>
-            </div>`;
-        } else if(cheques!==null){
-          chkDiv.innerHTML=`
-            <div style="background:rgba(63,185,80,0.06);border:1px solid rgba(63,185,80,0.2);border-radius:8px;padding:14px 18px;display:flex;align-items:center;gap:10px;">
-              <span style="font-size:16px;">✅</span>
-              <div style="font-size:11px;font-weight:600;color:var(--text2);font-family:var(--mono);">Sin cheques rechazados</div>
-            </div>`;
-        }
-
-        // Gráfico de área apilada — deuda por banco a lo largo del tiempo
-        if(hist?.periodos?.length){
-          const chartId=`deu-inline-chart-${_currentExcelTicker}`;
-          chartDiv.innerHTML=`
-            <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono);margin-bottom:8px;">Exposición Crediticia — Deuda por Banco</div>
-            <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:16px;">
-              <canvas id="${chartId}" height="220"></canvas>
-            </div>`;
-
-          // Render chart after DOM is updated
-          setTimeout(()=>{
-            const cvs=document.getElementById(chartId); if(!cvs) return;
-            const allPeriodos=[...new Set(hist.periodos.map(p=>p.periodo))].sort();
-            const entityTotals={};
-            hist.periodos.forEach(p=>p.entidades.forEach(e=>{
-              if(e.situacion===0||!e.monto) return;
-              if(!entityTotals[e.entidad]) entityTotals[e.entidad]={};
-              entityTotals[e.entidad][p.periodo]=(entityTotals[e.entidad][p.periodo]||0)+e.monto;
-            }));
-            const sorted=Object.entries(entityTotals)
-              .map(([name,data])=>({name,total:Object.values(data).reduce((s,v)=>s+v,0),data}))
-              .sort((a,b)=>b.total-a.total).slice(0,12);
-            const PALETTE=['#1E27F3','#3fb950','#d4a017','#f85149','#a5b4fc','#0d9e6e','#8b5cf6','#f59e0b','#22c55e','#ec4899','#06b6d4','#84cc16'];
-            const labels=allPeriodos.map(p=>`${p.slice(0,4)}/${p.slice(4,6)}`);
-            const datasets=sorted.map((ent,i)=>({
-              label:ent.name,
-              data:allPeriodos.map(p=>+((ent.data[p]||0)/1e6).toFixed(2)),
-              backgroundColor:PALETTE[i%PALETTE.length]+'99',
-              borderColor:PALETTE[i%PALETTE.length],
-              borderWidth:1.5, fill:true, tension:0.3, pointRadius:0, pointHoverRadius:3,
-            }));
-            new Chart(cvs,{
-              type:'line', data:{labels,datasets},
-              options:{
-                responsive:true, maintainAspectRatio:false,
-                interaction:{mode:'index',intersect:false},
-                plugins:{
-                  legend:{display:true,position:'bottom',labels:{color:'#8b99c4',font:{size:9,family:'DM Mono'},boxWidth:10,padding:10}},
-                  tooltip:{backgroundColor:'#131929',borderColor:'rgba(30,39,243,0.3)',borderWidth:1,titleColor:'#e8eaf6',bodyColor:'#8b99c4',
-                    callbacks:{label:ctx=>`${ctx.dataset.label}: $${ctx.parsed.y.toFixed(1)}M`}}
-                },
-                scales:{
-                  x:{ticks:{color:'#8b99c4',font:{size:9},maxRotation:45},grid:{color:'rgba(30,39,243,0.06)'}},
-                  y:{stacked:true,ticks:{color:'#8b99c4',font:{size:9},callback:v=>'$'+v+'M'},grid:{color:'rgba(30,39,243,0.06)'}}
-                }
-              }
-            });
-          }, 50);
-        }
-
-        // Heatmap — solo si hay historial
-        if(hist?.periodos?.length){
-          const allPeriodos=[...new Set(hist.periodos.map(p=>p.periodo))].sort();
-          const entityMap={};
-          hist.periodos.forEach(p=>p.entidades.forEach(e=>{
-            if(e.situacion===0) return;
-            if(!entityMap[e.entidad]) entityMap[e.entidad]={};
-            entityMap[e.entidad][p.periodo]={situacion:e.situacion,monto:e.monto||0};
-          }));
-          const entities=Object.keys(entityMap).sort((a,b)=>{
-            const wA=Math.max(...Object.values(entityMap[a]).map(x=>x.situacion));
-            const wB=Math.max(...Object.values(entityMap[b]).map(x=>x.situacion));
-            return wB-wA||a.localeCompare(b);
-          });
-          if(entities.length){
-            const HEAT={0:'var(--bg3)',1:'#14532d',2:'#713f12',3:'#7c2d12',4:'#7f1d1d',5:'#450a0a'};
-            const SIT_BG2={0:'transparent',1:'#16a34a',2:'#ca8a04',3:'#ea580c',4:'#dc2626',5:'#7f1d1d'};
-            const SIT_TXT2={0:'var(--text3)',1:'#fff',2:'#fff',3:'#fff',4:'#fff',5:'#fca5a5'};
-            const SIT_LBL2={0:'Sin deuda',1:'Normal',2:'Riesgo Bajo',3:'Con Problemas',4:'Alto Riesgo',5:'Irrecuperable'};
-            const cellW=34,labelW=200;
-            const headerCells=allPeriodos.map(p=>`<th style="width:${cellW}px;min-width:${cellW}px;padding:3px 2px;font-size:8px;font-weight:600;color:var(--text3);text-align:center;font-family:var(--mono);background:var(--bg3);border-bottom:1px solid var(--border);white-space:nowrap;">${p.slice(4,6)}/${p.slice(2,4)}</th>`).join('');
-            const dataRows=entities.map(ent=>{
-              const worst=Math.max(...Object.values(entityMap[ent]).map(x=>x.situacion));
-              const cells=allPeriodos.map(p=>{
-                const d=entityMap[ent]?.[p];
-                const sit=d?.situacion||0;
-                const tt=`${ent} · ${p.slice(0,4)}/${p.slice(4,6)} · Sit.${sit} ${SIT_LBL2[sit]||''}`;
-                return `<td title="${tt.replace(/"/g,"'")}" style="width:${cellW}px;min-width:${cellW}px;height:24px;background:${sit>0?HEAT[sit]:'var(--bg3)'};border:1px solid rgba(0,0,0,0.12);cursor:default;"></td>`;
-              }).join('');
-              return `<tr>
-                <td style="position:sticky;left:0;z-index:3;background:var(--bg2);padding:2px 8px;font-size:10px;color:var(--text2);font-family:var(--mono);white-space:nowrap;border-bottom:1px solid var(--border);border-right:1px solid var(--border2);min-width:${labelW}px;max-width:${labelW}px;">
-                  <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;">
-                    <span style="overflow:hidden;text-overflow:ellipsis;font-size:10px;">${ent}</span>
-                    <span style="flex-shrink:0;font-size:8px;padding:1px 5px;border-radius:6px;background:${SIT_BG2[worst]||'var(--bg3)'};color:${SIT_TXT2[worst]||'var(--text)'};">${worst}</span>
-                  </div>
-                </td>${cells}
-              </tr>`;
-            }).join('');
-            heatDiv.innerHTML=`
-              <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono);margin-bottom:8px;">Historial 24 Meses</div>
-              <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;overflow:hidden;">
-                <div style="overflow-x:auto;">
-                  <table style="border-collapse:collapse;table-layout:fixed;">
-                    <colgroup><col style="width:${labelW}px;min-width:${labelW}px;">${allPeriodos.map(()=>`<col style="width:${cellW}px;min-width:${cellW}px;">`).join('')}</colgroup>
-                    <thead><tr>
-                      <th style="position:sticky;left:0;z-index:4;background:var(--bg3);border-bottom:1px solid var(--border);border-right:1px solid var(--border2);padding:4px 8px;font-size:10px;color:var(--text2);text-align:left;font-family:var(--mono);">Entidad</th>
-                      ${headerCells}
-                    </tr></thead>
-                    <tbody>${dataRows}</tbody>
-                  </table>
-                </div>
-              </div>`;
-          }
-        }
-
-      }catch(e){
-        const loadingEl=document.getElementById('excel-bcra-loading');
-        const contentEl=document.getElementById('excel-bcra-content');
-        if(loadingEl) loadingEl.style.display='none';
-        if(contentEl) contentEl.innerHTML=`<div style="padding:14px;color:var(--text3);font-family:var(--mono);font-size:11px;">Error al consultar BCRA: ${e.message}</div>`;
-      }
-    })();
-  }
-
-  // ── Modal carga manual ──
+  // ─────────────────────────────────────────────────────────────
+  // MODAL CARGA MANUAL (scoring) — sin cambios funcionales
+  // ─────────────────────────────────────────────────────────────
   window.openExcelManual=function(){
     if(!_currentExcelTicker)return;
     document.getElementById('excel-modal-company').textContent=
       _currentExcelTicker+(_currentExcelEmpresa&&_currentExcelEmpresa!==_currentExcelTicker?' · '+_currentExcelEmpresa:'');
-    // reset form
     document.getElementById('excel-modal-pass').style.display='block';
     document.getElementById('excel-modal-form').style.display='none';
     document.getElementById('excel-pass-input').value='';
@@ -7190,103 +7270,44 @@ function renderEquity(){
     document.getElementById('excel-modal-overlay').style.display='flex';
     setTimeout(()=>document.getElementById('excel-pass-input').focus(),100);
   };
-
-  window.closeExcelModal=function(){
-    document.getElementById('excel-modal-overlay').style.display='none';
-  };
-
+  window.closeExcelModal=function(){document.getElementById('excel-modal-overlay').style.display='none';};
   window.checkExcelPass=function(){
     const val=document.getElementById('excel-pass-input').value;
-    if(val==='RBMB'){
-      document.getElementById('excel-modal-pass').style.display='none';
-      document.getElementById('excel-modal-form').style.display='block';
-    } else {
-      document.getElementById('excel-pass-error').style.display='block';
-      document.getElementById('excel-pass-input').value='';
-      document.getElementById('excel-pass-input').focus();
-    }
+    if(val==='RBMB'){document.getElementById('excel-modal-pass').style.display='none';document.getElementById('excel-modal-form').style.display='block';}
+    else{document.getElementById('excel-pass-error').style.display='block';document.getElementById('excel-pass-input').value='';document.getElementById('excel-pass-input').focus();}
   };
-
   window.submitExcelManual=async function(){
-    const errEl=document.getElementById('excel-form-error');
-    const okEl=document.getElementById('excel-form-ok');
-    const btn=document.getElementById('excel-submit-btn');
-    errEl.style.display='none'; okEl.style.display='none';
-
-    const fb=document.getElementById('ef-fecha-balance').value;
-    const score=document.getElementById('ef-score').value;
-    if(!fb||score===''){
-      errEl.textContent='Fecha Balance y Score son obligatorios.';
-      errEl.style.display='block'; return;
-    }
-
+    const errEl=document.getElementById('excel-form-error');const okEl=document.getElementById('excel-form-ok');const btn=document.getElementById('excel-submit-btn');
+    errEl.style.display='none';okEl.style.display='none';
+    const fb=document.getElementById('ef-fecha-balance').value;const score=document.getElementById('ef-score').value;
+    if(!fb||score===''){errEl.textContent='Fecha Balance y Score son obligatorios.';errEl.style.display='block';return;}
     const today=new Date().toISOString().substring(0,10);
-    const payload={
-      fecha_carga: today,
-      sector: _currentExcelSector||'',
-      Ticker: _currentExcelTicker,
-      Empresa: _currentExcelEmpresa||_currentExcelTicker,
-      Score: score,
-      fecha_balance: fb,
-      deuda_n_patrimonio: document.getElementById('ef-ratio1').value,
-      deuda_b_activo:     document.getElementById('ef-ratio2').value,
-      deuda_n_ebitda:     document.getElementById('ef-ratio3').value,
-      ingresos_deuda:     document.getElementById('ef-ratio4').value,
-      deuda_cp_ebitda:    document.getElementById('ef-ratio5').value,
-      manual: 'SI'
-    };
-
-    btn.textContent='Guardando...'; btn.disabled=true;
+    const payload={fecha_carga:today,sector:_currentExcelSector||'',Ticker:_currentExcelTicker,Empresa:_currentExcelEmpresa||_currentExcelTicker,Score:score,fecha_balance:fb,
+      deuda_n_patrimonio:document.getElementById('ef-ratio1').value,deuda_b_activo:document.getElementById('ef-ratio2').value,
+      deuda_n_ebitda:document.getElementById('ef-ratio3').value,ingresos_deuda:document.getElementById('ef-ratio4').value,
+      deuda_cp_ebitda:document.getElementById('ef-ratio5').value,manual:'SI'};
+    btn.textContent='Guardando...';btn.disabled=true;
     try{
-      await fetch(SCRIPT_URL_EXCEL,{
-        method:'POST',
-        mode:'no-cors',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(payload)
-      });
-      // Agregar el registro localmente para que aparezca de inmediato sin recargar
-      const newRow={
-        'fecha_carga': today,
-        'sector': _currentExcelSector||'',
-        'Ticker': _currentExcelTicker,
-        'Empresa': _currentExcelEmpresa||_currentExcelTicker,
-        'Score': score,
-        'Fecha Balance': fb,
-        'Deuda N. / Patrimonio N.': document.getElementById('ef-ratio1').value,
-        'Deuda B. / Activo':        document.getElementById('ef-ratio2').value,
-        'Deuda N. / EBITDA':        document.getElementById('ef-ratio3').value,
-        'Ingresos Operativos / Deuda': document.getElementById('ef-ratio4').value,
-        'Deuda Fin. CP / EBITDA':   document.getElementById('ef-ratio5').value,
-        'manual': 'SI',
-        _updated: false
-      };
-      // Reemplazar en EXCEL_DATA si ya existe ese ticker+fecha, sino agregar
-      const idx=window.EXCEL_DATA.findIndex(r=>
-        (r['Ticker']||'').trim().toUpperCase()===_currentExcelTicker &&
-        (r['Fecha Balance']||'').trim()===fb
-      );
-      if(idx>=0){ window.EXCEL_DATA[idx]=newRow; }
-      else { window.EXCEL_DATA.push(newRow); }
-
-      // Actualizar el panel de historial
-      const allForTicker=window.EXCEL_DATA.filter(r=>(r['Ticker']||'').trim().toUpperCase()===_currentExcelTicker);
-      const hist=[...allForTicker].sort((a,b)=>parseDate(b['Fecha Balance'])-parseDate(a['Fecha Balance']));
-      buildExcelDetailBody(hist);
-      // Actualizar tabla principal
+      await fetch(SCRIPT_URL_EXCEL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const newRow={'fecha_carga':today,'sector':_currentExcelSector||'','Ticker':_currentExcelTicker,'Empresa':_currentExcelEmpresa||_currentExcelTicker,'Score':score,'Fecha Balance':fb,
+        'Deuda N. / Patrimonio N.':document.getElementById('ef-ratio1').value,'Deuda B. / Activo':document.getElementById('ef-ratio2').value,
+        'Deuda N. / EBITDA':document.getElementById('ef-ratio3').value,'Ingresos Operativos / Deuda':document.getElementById('ef-ratio4').value,
+        'Deuda Fin. CP / EBITDA':document.getElementById('ef-ratio5').value,'manual':'SI',_updated:false};
+      const idx=window.EXCEL_DATA.findIndex(r=>(r['Ticker']||'').trim().toUpperCase()===_currentExcelTicker&&(r['Fecha Balance']||'').trim()===fb);
+      if(idx>=0)window.EXCEL_DATA[idx]=newRow;else window.EXCEL_DATA.push(newRow);
+      // Re-render ficha activa
+      if(_currentExcelTicker)_earRenderCompany(_currentExcelTicker);
       renderExcel();
-
-      okEl.textContent='✓ Guardado correctamente en el Sheet.';
-      okEl.style.display='block';
-      btn.textContent='Guardar en Sheet →'; btn.disabled=false;
+      okEl.textContent='✓ Guardado correctamente.';okEl.style.display='block';
+      btn.textContent='Guardar en Sheet →';btn.disabled=false;
       setTimeout(()=>closeExcelModal(),1800);
-    }catch(e){
-      errEl.textContent='Error al guardar. Intentá de nuevo.';
-      errEl.style.display='block';
-      btn.textContent='Guardar en Sheet →'; btn.disabled=false;
-    }
+    }catch(e){errEl.textContent='Error al guardar. Intentá de nuevo.';errEl.style.display='block';btn.textContent='Guardar en Sheet →';btn.disabled=false;}
   };
 
-})();
+})()
+
+window.closeExcelDetail=function(){const el=document.getElementById('excel-detail');if(el)el.style.display='none';};
+
 // ══════════════════ PRECIOS A3 — TEST & LIVE ══════════════════
 const PX_WORKER = 'https://cashflows.tzuccotti.workers.dev/precios';
 let _pxLiveInterval = null;
