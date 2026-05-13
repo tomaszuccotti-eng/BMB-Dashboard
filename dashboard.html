@@ -6573,36 +6573,54 @@ function renderEquity(){
   window.earAutoFilter=function(q){
     const box=document.getElementById('ear-autocomplete');if(!box)return;
     const ql=(q||'').toLowerCase().trim();
-    if(!ql||!window.EXCEL_DATA_LOADED){box.style.display='none';return;}
-    const latest=getLatestByTicker(window.EXCEL_DATA);
-    const matches=latest.filter(r=>{
-      const t=(r['Ticker']||'').toLowerCase();
-      const e=(r['Empresa']||'').toLowerCase();
-      return t.includes(ql)||e.includes(ql);
+    if(!ql){box.style.display='none';return;}
+
+    // Construir universo unificado: EXCEL_DATA + ECO_DATA
+    const universe={};
+    // 1) Desde scoring
+    getLatestByTicker(window.EXCEL_DATA).forEach(r=>{
+      const t=(r['Ticker']||'').trim().toUpperCase();
+      if(!t)return;
+      if(!universe[t]) universe[t]={ticker:t,empresa:r['Empresa']||'',sector:r['sector']||r['Sector']||'',score:r['Score'],hasScore:true,hasEco:false};
+    });
+    // 2) Desde Economatica
+    Object.values(window.ECO_DATA||{}).forEach(arr=>{
+      if(!arr.length)return;
+      const e=arr[0];
+      const t=e.ticker;
+      if(!universe[t]){
+        universe[t]={ticker:t,empresa:e.nombre||'',sector:e.sector||'',score:null,hasScore:false,hasEco:true};
+      } else {
+        universe[t].hasEco=true;
+        if(!universe[t].empresa&&e.nombre) universe[t].empresa=e.nombre;
+        if(!universe[t].sector&&e.sector)  universe[t].sector=e.sector;
+      }
+    });
+
+    const matches=Object.values(universe).filter(u=>{
+      return u.ticker.toLowerCase().includes(ql)||u.empresa.toLowerCase().includes(ql);
     }).slice(0,14);
+
     if(!matches.length){box.style.display='none';return;}
     _earAutoIdx=-1;
-    box.innerHTML=matches.map((r,i)=>{
-      const ticker=(r['Ticker']||'').trim().toUpperCase();
-      const empresa=(r['Empresa']||'').trim();
-      const score=parseFloat(r['Score']||0);
-      const sc=isNaN(score)?'—':score.toFixed(1);
-      const scColor=score>=7?'#3fb950':score>=4?'#d97706':'#f85149';
-      // Intentar sector desde ECO_DATA si existe
-      const ecoEntry=(window.ECO_DATA[ticker]||[])[0];
-      const sector=ecoEntry?ecoEntry.sector:((r['sector']||r['Sector']||'').trim());
-      return`<div data-ticker="${ticker}" data-idx="${i}"
-        onmousedown="earSelectCompany('${ticker}')"
+    box.innerHTML=matches.map((u,i)=>{
+      const sc=parseFloat(u.score);
+      const scDisp=!isNaN(sc)?sc.toFixed(1):'—';
+      const scColor=!isNaN(sc)?(sc>=7?'#3fb950':sc>=4?'#d97706':'#f85149'):'var(--text3)';
+      const badge=u.hasEco?'<span style="font-size:9px;background:rgba(30,39,243,0.15);color:#a5b4fc;border:1px solid rgba(30,39,243,0.3);border-radius:4px;padding:1px 5px;font-family:var(--mono);">ECO</span>':'';
+      return`<div data-ticker="${u.ticker}" data-idx="${i}"
+        onmousedown="earSelectCompany('${u.ticker}')"
         style="padding:10px 14px;cursor:pointer;font-family:var(--mono);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;"
         onmouseover="this.style.background='var(--accent-light)';_earAutoIdx=${i};"
         onmouseout="this.style.background=''">
-        <div>
-          <span style="font-size:13px;font-weight:700;color:var(--text2);">${ticker}</span>
-          <span style="font-size:12px;color:var(--text3);margin-left:8px;">${empresa}</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:13px;font-weight:700;color:var(--text2);">${u.ticker}</span>
+          ${badge}
+          <span style="font-size:12px;color:var(--text3);">${u.empresa}</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-size:10px;color:var(--text3);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${sector}</span>
-          <span style="font-size:12px;font-weight:700;color:${scColor};">${sc}</span>
+          <span style="font-size:10px;color:var(--text3);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(u.sector||'').substring(0,40)}</span>
+          ${u.hasScore?`<span style="font-size:12px;font-weight:700;color:${scColor};">${scDisp}</span>`:''}
         </div>
       </div>`;
     }).join('');
@@ -6636,18 +6654,20 @@ function renderEquity(){
   // ─────────────────────────────────────────────────────────────
   // CHIPS RÁPIDOS
   // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────
+  // CHIPS RÁPIDOS — lista fija
+  // ─────────────────────────────────────────────────────────────
+  const CHIP_TICKERS = ['VITAL','GEME','MERA','YPFD','PAMP','GGAL','TGSU2','TXAR','LOMA','CEPU','ALUA','IRSA','CRES','MIRG'];
+
   function _earBuildChips(){
-    const chips=document.getElementById('ear-chips');if(!chips||!window.EXCEL_DATA_LOADED)return;
-    const latest=getLatestByTicker(window.EXCEL_DATA);
-    const top=latest.sort((a,b)=>parseFloat(b['Score']||0)-parseFloat(a['Score']||0)).slice(0,14);
+    const chips=document.getElementById('ear-chips');if(!chips)return;
     chips.innerHTML='<span style="font-size:10px;color:var(--text3);font-family:var(--mono);align-self:center;">Rápidos:</span>'+
-      top.map(r=>{
-        const t=(r['Ticker']||'').trim().toUpperCase();
-        return`<button onclick="earSelectCompany('${t}')"
+      CHIP_TICKERS.map(t=>
+        `<button onclick="earSelectCompany('${t}')"
           style="padding:4px 12px;border-radius:20px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);font-family:var(--mono);transition:all .15s;"
           onmouseover="this.style.borderColor='#1E27F3';this.style.color='#a5b4fc'"
-          onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">${t}</button>`;
-      }).join('');
+          onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">${t}</button>`
+      ).join('');
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -6659,34 +6679,60 @@ function renderEquity(){
 
     _currentExcelTicker=ticker;
 
-    // Datos scoring
+    // ── Qué datos tiene esta empresa ──
     const allForTicker=window.EXCEL_DATA.filter(r=>(r['Ticker']||'').trim().toUpperCase()===ticker);
     const hist=[...allForTicker].sort((a,b)=>parseDate(b['Fecha Balance'])-parseDate(a['Fecha Balance']));
-    const latestScore=hist[0]||{};
+    const latestScore=hist[0]||null;
+    const hasScore=!!latestScore;
 
-    // Datos Economatica
     const ecoHist=(window.ECO_DATA[ticker]||[]);
     const ecoLatest=ecoHist[0]||null;
+    const hasEco=ecoHist.length>0;
 
-    // Metadatos
-    _currentExcelEmpresa=ecoLatest?.nombre || (latestScore['Empresa']||ticker);
-    _currentExcelSector=ecoLatest?.sector  || (latestScore['sector']||latestScore['Sector']||'');
+    // Metadatos — prioridad Economatica, fallback scoring
+    _currentExcelEmpresa=ecoLatest?.nombre||(latestScore?.['Empresa']||ticker);
+    _currentExcelSector=ecoLatest?.sector||(latestScore?.['sector']||latestScore?.['Sector']||'');
     const cuit=(window.EXCEL_CUIT_MAP||{})[ticker];
     const cuitFmt=cuit?cuit.slice(0,2)+'-'+cuit.slice(2,10)+'-'+cuit.slice(10):null;
-    const fechaBal=ecoLatest?.fechaBal||(latestScore['Fecha Balance']||'—').substring(0,10);
-    const score=parseFloat(latestScore['Score']||'');
-    const scColor=scoreColor(latestScore['Score']);
-    const scBg=scoreBg(latestScore['Score']);
+    const fechaBal=ecoLatest?.fechaBal||(latestScore?.['Fecha Balance']||'—').substring(0,10);
+
+    const score=hasScore?parseFloat(latestScore['Score']||''):NaN;
+    const scColor=hasScore?scoreColor(latestScore['Score']):'var(--text3)';
+    const scBg=hasScore?scoreBg(latestScore['Score']):'var(--bg2)';
 
     results.innerHTML='';
     const wrap=document.createElement('div');
     results.appendChild(wrap);
 
     // ── HEADER ──
+    const badgesHTML=`
+      ${hasScore?`
+      <div style="background:${scBg};border:2px solid ${scColor}44;border-radius:10px;padding:10px 18px;text-align:center;min-width:80px;">
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:${scColor};font-family:var(--mono);margin-bottom:3px;">Score</div>
+        <div style="font-size:22px;font-weight:800;color:${scColor};font-family:var(--mono);line-height:1;">${isNaN(score)?'—':score.toFixed(1)}</div>
+        <div style="font-size:9px;color:${scColor};font-family:var(--mono);opacity:.7;">/ 10</div>
+      </div>`:''}
+      ${cuit?`
+      <div id="bcra-badge-${ticker}" style="background:var(--bg2);border:2px solid var(--border2);border-radius:10px;padding:10px 18px;text-align:center;min-width:80px;">
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">BCRA</div>
+        <div style="font-size:22px;font-weight:800;color:var(--text3);font-family:var(--mono);line-height:1;">—</div>
+        <div style="font-size:9px;color:var(--text3);font-family:var(--mono);opacity:.7;">situación</div>
+      </div>`:''}
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${hasScore?`<button onclick="openExcelManual()"
+          style="padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(30,39,243,0.4);border-radius:6px;background:transparent;color:#a5b4fc;font-family:var(--mono);white-space:nowrap;">
+          + Manual
+        </button>`:''}
+        ${cuit?`<button onclick="_bcraRefreshInline('${ticker}','${cuit}','bcra-inline-${ticker}','bcra-load-inline-${ticker}')"
+          style="padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(30,39,243,0.4);border-radius:6px;background:transparent;color:#a5b4fc;font-family:var(--mono);white-space:nowrap;">
+          ↺ BCRA
+        </button>`:''}
+      </div>`;
+
     const hdr=document.createElement('div');
     hdr.style.cssText='padding-bottom:20px;border-bottom:1px solid var(--border);margin-bottom:0;';
     hdr.innerHTML=`
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:16px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:${hasEco?'16px':'0'};">
         <div>
           <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:4px;">
             <span style="font-size:28px;font-weight:800;font-family:var(--mono);color:var(--text2);">${ticker}</span>
@@ -6696,46 +6742,20 @@ function renderEquity(){
               onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text3)'">CUIT ${cuitFmt}</span>`:''}
           </div>
           <div style="font-size:14px;color:var(--text);font-family:var(--mono);margin-bottom:2px;">${_currentExcelEmpresa!==ticker?_currentExcelEmpresa:''}</div>
-          <div style="font-size:11px;color:var(--text3);font-family:var(--mono);">${_currentExcelSector.replace(/_+/g,' ')} · Balance: ${fechaBal}</div>
+          <div style="font-size:11px;color:var(--text3);font-family:var(--mono);">${_currentExcelSector.replace(/_+/g,' ')}${fechaBal&&fechaBal!=='—'?' · Balance: '+fechaBal:''}</div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <!-- Badge Score -->
-          <div style="background:${scBg};border:2px solid ${scColor}44;border-radius:10px;padding:10px 18px;text-align:center;min-width:80px;">
-            <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:${scColor};font-family:var(--mono);margin-bottom:3px;">Score</div>
-            <div style="font-size:22px;font-weight:800;color:${scColor};font-family:var(--mono);line-height:1;">${isNaN(score)?'—':score.toFixed(1)}</div>
-            <div style="font-size:9px;color:${scColor};font-family:var(--mono);opacity:.7;">/ 10</div>
-          </div>
-          <!-- Badge BCRA — se rellena async -->
-          <div id="bcra-badge-${ticker}" style="background:var(--bg2);border:2px solid var(--border2);border-radius:10px;padding:10px 18px;text-align:center;min-width:80px;">
-            <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">BCRA</div>
-            <div style="font-size:22px;font-weight:800;color:var(--text3);font-family:var(--mono);line-height:1;">—</div>
-            <div style="font-size:9px;color:var(--text3);font-family:var(--mono);opacity:.7;">situación</div>
-          </div>
-          <!-- Botones acción -->
-          <div style="display:flex;flex-direction:column;gap:6px;">
-            <button onclick="openExcelManual()"
-              style="padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(30,39,243,0.4);border-radius:6px;background:transparent;color:#a5b4fc;font-family:var(--mono);">
-              + Manual
-            </button>
-            ${cuit?`<button onclick="_bcraRefreshInline('${ticker}','${cuit}','bcra-inline-${ticker}','bcra-load-inline-${ticker}')"
-              style="padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid var(--border2);border-radius:6px;background:transparent;color:var(--text3);font-family:var(--mono);">
-              🔄 BCRA
-            </button>`:''}
-          </div>
-        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">${badgesHTML}</div>
       </div>
-      <!-- KPI BAR -->
-      <div id="ear-kpi-bar-${ticker}"></div>`;
+      ${hasEco?`<div id="ear-kpi-bar-${ticker}"></div>`:''}`;
     wrap.appendChild(hdr);
 
-    // ── PESTAÑAS INTERNAS ──
+    // ── PESTAÑAS INTERNAS — condicionales ──
+    const innerTabs=[];
+    if(hasEco) innerTabs.push({id:'financials',label:'📊 Financials'},{id:'ratios',label:'📐 Ratios'});
+    innerTabs.push({id:'deudas',label:'🏛 Deudas'});
+
     const tabBar=document.createElement('div');
     tabBar.style.cssText='display:flex;border-bottom:1px solid var(--border);margin-bottom:24px;overflow-x:auto;';
-    const innerTabs=[
-      {id:'financials', label:'📊 Financials'},
-      {id:'ratios',     label:'📐 Ratios'},
-      {id:'deudas',     label:'🏛 Deudas'},
-    ];
     tabBar.innerHTML=innerTabs.map((t,i)=>`
       <button id="ficha-tab-btn-${ticker}-${t.id}" onclick="_fichaShowTab('${ticker}','${t.id}')"
         style="padding:12px 20px;font-size:12px;font-weight:700;cursor:pointer;border:none;border-bottom:2px solid ${i===0?'#1E27F3':'transparent'};background:transparent;color:${i===0?'var(--text)':'var(--text3)'};font-family:var(--mono);white-space:nowrap;transition:all .15s;"
@@ -6744,7 +6764,6 @@ function renderEquity(){
       >${t.label}</button>`).join('');
     wrap.appendChild(tabBar);
 
-    // Contenedores de cada pestaña interna
     const tabContents=document.createElement('div');
     innerTabs.forEach((t,i)=>{
       const div=document.createElement('div');
@@ -6754,13 +6773,14 @@ function renderEquity(){
     });
     wrap.appendChild(tabContents);
 
-    // ── Render KPI bar ──
-    _renderKpiBar(ticker, ecoLatest);
+    // ── Render KPI bar (solo si tiene Economatica) ──
+    if(hasEco) _renderKpiBar(ticker, ecoLatest);
 
-    // ── Render primera pestaña activa ──
-    _renderFichaFinancials(ticker, ecoHist);
+    // ── Render primera pestaña ──
+    if(hasEco) _renderFichaFinancials(ticker, ecoHist, hist);
+    else        _renderFichaDeudas(ticker, cuit);
 
-    // ── Fetch BCRA badge async ──
+    // ── Fetch BCRA badge async (solo si tiene CUIT) ──
     if(cuit) _fetchBcraBadge(ticker, cuit);
   }
 
@@ -6768,18 +6788,20 @@ function renderEquity(){
   // CAMBIO DE PESTAÑA INTERNA
   // ─────────────────────────────────────────────────────────────
   window._fichaShowTab=function(ticker, tabId){
-    const innerTabs=['financials','ratios','deudas'];
-    innerTabs.forEach(t=>{
+    const ecoHist=window.ECO_DATA[ticker]||[];
+    const hasEco=ecoHist.length>0;
+    const allTabs=hasEco?['financials','ratios','deudas']:['deudas'];
+    allTabs.forEach(t=>{
       const btn=document.getElementById(`ficha-tab-btn-${ticker}-${t}`);
       const con=document.getElementById(`ficha-tab-content-${ticker}-${t}`);
       const active=t===tabId;
       if(btn){btn.style.borderBottom=active?'2px solid #1E27F3':'2px solid transparent';btn.style.color=active?'var(--text)':'var(--text3)';}
       if(con)con.style.display=active?'block':'none';
     });
-    // Lazy render
     const con=document.getElementById(`ficha-tab-content-${ticker}-${tabId}`);
     if(!con||con.dataset.rendered)return;
-    const ecoHist=window.ECO_DATA[ticker]||[];
+    const scoringHist=window.EXCEL_DATA.filter(r=>(r['Ticker']||'').trim().toUpperCase()===ticker)
+      .sort((a,b)=>parseDate(b['Fecha Balance'])-parseDate(a['Fecha Balance']));
     const cuit=(window.EXCEL_CUIT_MAP||{})[ticker];
     if(tabId==='ratios')   _renderFichaRatios(ticker, ecoHist);
     if(tabId==='deudas')   _renderFichaDeudas(ticker, cuit);
@@ -6911,7 +6933,7 @@ function renderEquity(){
   // ─────────────────────────────────────────────────────────────
   // RENDER PESTAÑA FINANCIALS
   // ─────────────────────────────────────────────────────────────
-  function _renderFichaFinancials(ticker, ecoHist){
+  function _renderFichaFinancials(ticker, ecoHist, scoringHist){
     const con=document.getElementById(`ficha-tab-content-${ticker}-financials`);if(!con)return;
     con.innerHTML='';
 
@@ -6940,8 +6962,7 @@ function renderEquity(){
     });
 
     // Tabla scoring (historial cargado manualmente)
-    const histForTicker=window.EXCEL_DATA.filter(r=>(r['Ticker']||'').trim().toUpperCase()===ticker)
-      .sort((a,b)=>parseDate(b['Fecha Balance'])-parseDate(a['Fecha Balance']));
+    const histForTicker=scoringHist||[];
     if(histForTicker.length){
       const scoringDiv=document.createElement('div');
       scoringDiv.style.marginBottom='28px';
@@ -6956,9 +6977,10 @@ function renderEquity(){
 
   window._setColOrder=function(ticker,order){
     _fichaColOrder=order;
-    // Re-render financials y ratios si ya están renderizados
     const ecoHist=window.ECO_DATA[ticker]||[];
-    _renderFichaFinancials(ticker,ecoHist);
+    const scoringHist=window.EXCEL_DATA.filter(r=>(r['Ticker']||'').trim().toUpperCase()===ticker)
+      .sort((a,b)=>parseDate(b['Fecha Balance'])-parseDate(a['Fecha Balance']));
+    _renderFichaFinancials(ticker,ecoHist,scoringHist);
     const ratCon=document.getElementById(`ficha-tab-content-${ticker}-ratios`);
     if(ratCon&&ratCon.dataset.rendered){_renderFichaRatios(ticker,ecoHist);ratCon.dataset.rendered='1';}
   };
@@ -8762,12 +8784,8 @@ function renderCheques(cheques){
 
 })();
 </script>
-</body>
-</html>
-  .mav-dropzone {
-    border:2px dashed var(--border2);border-radius:10px;padding:40px 28px;
-    text-align:center;cursor:pointer;transition:border-color .2s,background .2s;font-family:var(--mono);
-  }
+<style>
+  .mav-dropzone{border:2px dashed var(--border2);border-radius:10px;padding:40px 28px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;font-family:var(--mono);}
   .mav-dropzone:hover,.mav-dropzone.drag{border-color:#1E27F3;background:var(--accent-light);}
   .mav-section-title{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
   .mav-kpi-grid{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px;}
@@ -8789,4 +8807,7 @@ function renderCheques(cheques){
   .mav-ven-bar-wrap{flex:1;background:var(--border);height:18px;position:relative;border-radius:2px;overflow:hidden;}
   .mav-ven-bar{height:100%;background:#1E27F3;opacity:.75;transition:width .4s ease;}
   .mav-ven-val{width:130px;text-align:right;color:var(--text);flex-shrink:0;}
+</style>
+</body>
+</html>
 
