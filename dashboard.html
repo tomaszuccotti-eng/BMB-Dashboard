@@ -6851,27 +6851,38 @@ function renderEquity(){
   // ─────────────────────────────────────────────────────────────
   // BADGE BCRA ASYNC
   // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────
+  // BCRA CACHE — un solo fetch por CUIT, resultado compartido
+  // entre badge del header y pestaña Deudas
+  // ─────────────────────────────────────────────────────────────
+  window._bcraCache = {};  // { cuit: Promise<json> }
+
+  function _bcraFetch(cuit){
+    // Si ya hay un fetch en vuelo o completo, devolver la misma Promise
+    if(window._bcraCache[cuit]) return window._bcraCache[cuit];
+    const p = fetch(`${window.DEU_WORKER||'https://central-deudores.tzuccotti.workers.dev'}/deudas/${cuit}/full`)
+      .then(r=>r.json())
+      .catch(e=>({_fetchError:e.message}));
+    window._bcraCache[cuit] = p;
+    return p;
+  }
+
   async function _fetchBcraBadge(ticker, cuit){
     try{
-      const res=await fetch(`${window.DEU_WORKER||'https://central-deudores.tzuccotti.workers.dev'}/deudas/${cuit}/full`);
-      const json=await res.json();
+      const json = await _bcraFetch(cuit);
+      if(!json || json._fetchError) return;
       const deudas=json.deudas?.results||json.deudas||null;
       if(!deudas)return;
-
-      // Calcular situación peor del período más reciente
       const entidades=(deudas.periodos?.[0]?.entidades||[]).filter(e=>e.situacion>0);
       const peorSit=entidades.length ? Math.max(...entidades.map(e=>e.situacion)) : 0;
-
       const SIT_COLOR={0:'var(--text3)',1:'#4ade80',2:'#fbbf24',3:'#fb923c',4:'#f87171',5:'#fca5a5'};
       const SIT_BG={0:'var(--bg2)',1:'rgba(22,163,74,0.12)',2:'rgba(202,138,4,0.12)',3:'rgba(234,88,12,0.12)',4:'rgba(220,38,38,0.12)',5:'rgba(127,29,29,0.25)'};
       const SIT_LBL={0:'Sin deuda',1:'Normal',2:'Riesgo Bajo',3:'Alerta',4:'Alto Riesgo',5:'Crítico'};
       const SIT_BORDER={0:'var(--border2)',1:'rgba(22,163,74,0.4)',2:'rgba(202,138,4,0.4)',3:'rgba(234,88,12,0.4)',4:'rgba(220,38,38,0.4)',5:'rgba(127,29,29,0.6)'};
-
       const color=SIT_COLOR[peorSit]||SIT_COLOR[0];
       const bg=SIT_BG[peorSit]||SIT_BG[0];
       const border=SIT_BORDER[peorSit]||SIT_BORDER[0];
       const lbl=SIT_LBL[peorSit]||'—';
-
       const badge=document.getElementById(`bcra-badge-${ticker}`);
       if(!badge)return;
       badge.style.background=bg;
@@ -6880,7 +6891,7 @@ function renderEquity(){
         <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:${color};font-family:var(--mono);margin-bottom:3px;">BCRA</div>
         <div style="font-size:22px;font-weight:800;color:${color};font-family:var(--mono);line-height:1;">${peorSit}</div>
         <div style="font-size:9px;color:${color};font-family:var(--mono);opacity:.85;">${lbl}</div>`;
-    }catch(e){/* silencioso — badge queda en gris */}
+    }catch(e){/* silencioso */}
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -7087,6 +7098,8 @@ function renderEquity(){
     const conEl=document.getElementById(contentId);
     if(loadEl){loadEl.style.display='flex';loadEl.innerHTML='<div class="spinner"></div>Consultando BCRA...';}
     if(conEl){conEl.innerHTML='';conEl.dataset.bcraRendered='';}
+    // Invalidar cache para forzar re-fetch en actualización manual
+    delete window._bcraCache[cuit];
     _bcraFetchInline(ticker,cuit,contentId,loadId);
   };
 
@@ -7095,8 +7108,8 @@ function renderEquity(){
     const conEl=document.getElementById(contentId);
     if(conEl&&conEl.dataset.bcraRendered==='1')return;
     try{
-      const res=await fetch(`${window.DEU_WORKER||'https://central-deudores.tzuccotti.workers.dev'}/deudas/${cuit}/full`);
-      const json=await res.json();
+      // Reusar el fetch del badge si ya está en vuelo — cero consultas extra
+      const json = await _bcraFetch(cuit);
       if(loadEl)loadEl.style.display='none';
       if(json.deudas?.errorMessages?.some(m=>m.toLowerCase().includes('mantenimiento'))){
         if(conEl)conEl.innerHTML='<div style="padding:14px;color:var(--text3);font-family:var(--mono);font-size:11px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;">\u23F3 BCRA en mantenimiento.</div>';
@@ -7191,7 +7204,7 @@ function renderEquity(){
     container.innerHTML=`
       <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono);margin-bottom:8px;">Exposición Crediticia — Deuda Total por Banco</div>
       <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:16px 20px;">
-        <div style="position:relative;height:260px;"><canvas id="${canvasId}"></canvas></div>
+        <div style="position:relative;height:380px;"><canvas id="${canvasId}"></canvas></div>
       </div>`;
     const canvas=document.getElementById(canvasId);
     if(!canvas||typeof Chart==='undefined')return;
@@ -7273,8 +7286,8 @@ function renderEquity(){
     const HEAT={0:'var(--bg3)',1:'#14532d',2:'#713f12',3:'#7c2d12',4:'#7f1d1d',5:'#450a0a'};
     const SBG={0:'transparent',1:'#16a34a',2:'#ca8a04',3:'#ea580c',4:'#dc2626',5:'#7f1d1d'};
     const STXT={0:'var(--text3)',1:'#fff',2:'#fff',3:'#fff',4:'#fff',5:'#fca5a5'};
-    const cW=32,lW=180;
-    container.innerHTML=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono);margin-bottom:8px;">Historial 24 Meses</div><div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;overflow:hidden;"><div style="overflow-x:auto;"><table style="border-collapse:collapse;table-layout:fixed;"><colgroup><col style="width:${lW}px;">${allP.map(()=>`<col style="width:${cW}px;">`).join('')}</colgroup><thead><tr><th style="position:sticky;left:0;z-index:4;background:var(--bg3);border-bottom:1px solid var(--border);border-right:1px solid var(--border2);padding:4px 8px;font-size:10px;color:var(--text2);text-align:left;font-family:var(--mono);">Entidad</th>${allP.map(p=>`<th style="width:${cW}px;padding:3px 2px;font-size:8px;font-weight:600;color:var(--text3);text-align:center;font-family:var(--mono);background:var(--bg3);border-bottom:1px solid var(--border);white-space:nowrap;">${p.slice(4,6)}/${p.slice(2,4)}</th>`).join('')}</tr></thead><tbody>${ents.map(ent=>{const worst=Math.max(...Object.values(entMap[ent]).map(x=>x.situacion));const cells=allP.map(p=>{const d=entMap[ent]?.[p];const sit=d?.situacion||0;return`<td style="width:${cW}px;height:22px;background:${sit>0?HEAT[sit]:'var(--bg3)'};border:1px solid rgba(0,0,0,0.1);"></td>`;}).join('');return`<tr><td style="position:sticky;left:0;z-index:3;background:var(--bg2);padding:2px 8px;font-size:10px;color:var(--text2);font-family:var(--mono);white-space:nowrap;border-bottom:1px solid var(--border);border-right:1px solid var(--border2);min-width:${lW}px;max-width:${lW}px;"><div style="display:flex;align-items:center;justify-content:space-between;gap:4px;"><span style="overflow:hidden;text-overflow:ellipsis;">${ent}</span><span style="flex-shrink:0;font-size:8px;padding:1px 5px;border-radius:5px;background:${SBG[worst]||'var(--bg3)'};color:${STXT[worst]||'var(--text)'};">${worst}</span></div></td>${cells}</tr>`;}).join('')}</tbody></table></div></div>`;
+    const cW=32,lW=160;
+    container.innerHTML=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono);margin-bottom:8px;">Historial 24 Meses</div><div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;overflow:hidden;width:100%;"><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;table-layout:fixed;"><colgroup><col style="width:${lW}px;">${allP.map(()=>`<col style="width:${cW}px;">`).join('')}</colgroup><thead><tr><th style="position:sticky;left:0;z-index:4;background:var(--bg3);border-bottom:1px solid var(--border);border-right:1px solid var(--border2);padding:4px 8px;font-size:10px;color:var(--text2);text-align:left;font-family:var(--mono);">Entidad</th>${allP.map(p=>`<th style="width:${cW}px;padding:3px 2px;font-size:8px;font-weight:600;color:var(--text3);text-align:center;font-family:var(--mono);background:var(--bg3);border-bottom:1px solid var(--border);white-space:nowrap;">${p.slice(4,6)}/${p.slice(2,4)}</th>`).join('')}</tr></thead><tbody>${ents.map(ent=>{const worst=Math.max(...Object.values(entMap[ent]).map(x=>x.situacion));const cells=allP.map(p=>{const d=entMap[ent]?.[p];const sit=d?.situacion||0;return`<td style="width:${cW}px;height:22px;background:${sit>0?HEAT[sit]:'var(--bg3)'};border:1px solid rgba(0,0,0,0.1);"></td>`;}).join('');return`<tr><td style="position:sticky;left:0;z-index:3;background:var(--bg2);padding:2px 8px;font-size:10px;color:var(--text2);font-family:var(--mono);white-space:nowrap;border-bottom:1px solid var(--border);border-right:1px solid var(--border2);min-width:${lW}px;max-width:${lW}px;"><div style="display:flex;align-items:center;justify-content:space-between;gap:4px;"><span style="overflow:hidden;text-overflow:ellipsis;">${ent}</span><span style="flex-shrink:0;font-size:8px;padding:1px 5px;border-radius:5px;background:${SBG[worst]||'var(--bg3)'};color:${STXT[worst]||'var(--text)'};">${worst}</span></div></td>${cells}</tr>`;}).join('')}</tbody></table></div></div>`;
   }
 
 
@@ -8611,12 +8624,12 @@ function renderCheques(cheques){
           onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text3)'">
           📋 Copiar CUIT
         </span>
-        <a href="https://mav-sa.com.ar/cendeu/" target="_blank" rel="noopener"
-          style="font-size:10px;padding:2px 8px;border:1px solid var(--border2);border-radius:4px;color:var(--text3);font-family:var(--mono);text-decoration:none;transition:all .15s;"
+        <button onclick="window.open('https://mav-sa.com.ar/cendeu/','_blank')"
+          style="font-size:10px;padding:2px 8px;border:1px solid var(--border2);border-radius:4px;color:var(--text3);font-family:var(--mono);cursor:pointer;background:transparent;transition:all .15s;"
           onmouseover="this.style.borderColor='#1E27F3';this.style.color='#a5b4fc'"
           onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text3)'">
           🔗 Ir a MAV →
-        </a>`:''}
+        </button>`:''}
     </div>`;
 
     const dropId=`mav-drop-${ticker}`;
