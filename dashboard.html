@@ -9128,10 +9128,12 @@ function renderCheques(cheques){
       </div>
       <div style="text-align:center;padding:10px;font-family:var(--mono);font-size:10px;color:var(--text3);">Precios via proxy API BYMA, lag de 2hs. Precio diferido.</div>`;
 
-    // Render charts + table
-    _earRefreshPrecios(ticker);
-    _earBuildVolChart(ticker);
-    _earBuildHistTable(ticker);
+    // Render charts + table — rAF garantiza que los canvas ya están en el DOM
+    requestAnimationFrame(()=>{
+      _earRefreshPrecios(ticker);
+      _earBuildVolChart(ticker);
+      _earBuildHistTable(ticker);
+    });
   }
 
   function _earGetSlice(ticker){
