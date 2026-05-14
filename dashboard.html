@@ -2881,6 +2881,10 @@ let eqActiveCcy = 'ARS';
 let eqPriceChart = null;
 let eqVolChart = null;
 let eqMepMap = {}, eqCclMap = {}, eqFxDates = [];
+// Exponer al window para reutilización en Empresas AR
+window.eqMepMap = eqMepMap;
+window.eqCclMap = eqCclMap;
+window.eqFxDates = eqFxDates;
 
 // ── FX ──
 async function eqLoadFx() {
@@ -7364,6 +7368,10 @@ function renderEquity(){
     const ecoLatest=ecoHist[0]||null;
     const hasEco=ecoHist.length>0;
 
+    // ── Tickers con histórico de precios en data912 ──
+    const EQ_HIST_TICKERS=new Set(['AGRO','ALUA','AUSO','BBAR','BHIP','BMA','BOLT','BPAT','BYMA','CADO','CAPX','CARC','CECO2','CELU','CEPU','CGPA2','COME','CRES','CTIO','CVH','DGCU2','DOME','EDN','FERR','FIPL','GAMI','GARO','GBAN','GCDI','GCLA','GGAL','GRIM','HARG','HAVA','HSAT','INTR','INVJ','IRSA','LEDE','LOMA','LONG','METR','MIRG','MOLA','MOLI','MORI','OEST','PAMP','PATA','RICH','RIGO','ROSE','SAMI','SEMI','SUPV','TECO2','TGNO4','TGSU2','TRAN','TXAR','VALO','YPFD']);
+    const hasHist=EQ_HIST_TICKERS.has(ticker);
+
     // Metadatos — prioridad Economatica, fallback scoring
     _currentExcelEmpresa=ecoLatest?.nombre||(latestScore?.['Empresa']||ticker);
     _currentExcelSector=ecoLatest?.sector||(latestScore?.['sector']||latestScore?.['Sector']||'');
@@ -7428,6 +7436,7 @@ function renderEquity(){
     const innerTabs=[];
     if(hasEco) innerTabs.push({id:'financials',label:'📊 Financials'},{id:'ratios',label:'📐 Ratios'});
     innerTabs.push({id:'deudas',label:'🏛 Deudas'});
+    if(hasHist) innerTabs.push({id:'precios',label:'📈 Precios'});
 
     const tabBar=document.createElement('div');
     tabBar.style.cssText='display:flex;border-bottom:1px solid var(--border);margin-bottom:24px;overflow-x:auto;';
@@ -7465,7 +7474,11 @@ function renderEquity(){
   window._fichaShowTab=function(ticker, tabId){
     const ecoHist=window.ECO_DATA[ticker]||[];
     const hasEco=ecoHist.length>0;
-    const allTabs=hasEco?['financials','ratios','deudas']:['deudas'];
+    const _EQH=new Set(['AGRO','ALUA','AUSO','BBAR','BHIP','BMA','BOLT','BPAT','BYMA','CADO','CAPX','CARC','CECO2','CELU','CEPU','CGPA2','COME','CRES','CTIO','CVH','DGCU2','DOME','EDN','FERR','FIPL','GAMI','GARO','GBAN','GCDI','GCLA','GGAL','GRIM','HARG','HAVA','HSAT','INTR','INVJ','IRSA','LEDE','LOMA','LONG','METR','MIRG','MOLA','MOLI','MORI','OEST','PAMP','PATA','RICH','RIGO','ROSE','SAMI','SEMI','SUPV','TECO2','TGNO4','TGSU2','TRAN','TXAR','VALO','YPFD']);
+    const allTabs=[];
+    if(hasEco) allTabs.push('financials','ratios');
+    allTabs.push('deudas');
+    if(_EQH.has(ticker)) allTabs.push('precios');
     allTabs.forEach(t=>{
       const btn=document.getElementById(`ficha-tab-btn-${ticker}-${t}`);
       const con=document.getElementById(`ficha-tab-content-${ticker}-${t}`);
@@ -7475,11 +7488,10 @@ function renderEquity(){
     });
     const con=document.getElementById(`ficha-tab-content-${ticker}-${tabId}`);
     if(!con||con.dataset.rendered)return;
-    const scoringHist=window.EXCEL_DATA.filter(r=>(r['Ticker']||'').trim().toUpperCase()===ticker)
-      .sort((a,b)=>parseDate(b['Fecha Balance'])-parseDate(a['Fecha Balance']));
     const cuit=(window.EXCEL_CUIT_MAP||{})[ticker];
     if(tabId==='ratios')   _renderFichaRatios(ticker, ecoHist);
     if(tabId==='deudas')   _renderFichaDeudas(ticker, cuit);
+    if(tabId==='precios')  _renderFichaPrecios(ticker);
     con.dataset.rendered='1';
   };
 
@@ -9018,7 +9030,245 @@ function renderCheques(cheques){
         </table>
       </div>
     </div>`;
-}
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // PESTAÑA PRECIOS — histórico data912 con charts y MEP/CCL
+  // ─────────────────────────────────────────────────────────────
+  const _earPriceCharts={};  // ticker → { priceChart, volChart }
+  const _earPriceState={};   // ticker → { allData, range, ccy }
+
+  async function _renderFichaPrecios(ticker){
+    const con=document.getElementById(`ficha-tab-content-${ticker}-precios`);
+    if(!con)return;
+    con.innerHTML=`<div style="display:flex;align-items:center;gap:10px;padding:32px 0;color:var(--text3);font-family:var(--mono);font-size:11px;"><div class="spinner"></div>Cargando histórico de precios...</div>`;
+
+    try{
+      const res=await fetch(`https://data912.com/historical/stocks/${ticker}`);
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const raw=await res.json();
+      const arr=(Array.isArray(raw)?raw:(raw?.data||[])).filter(d=>d.date&&d.c!=null).sort((a,b)=>a.date.localeCompare(b.date));
+      if(!arr.length) throw new Error('Sin datos históricos para '+ticker);
+
+      _earPriceState[ticker]={allData:arr, range:365, ccy:'ARS'};
+      _earBuildPriciosUI(ticker, con);
+    }catch(e){
+      con.innerHTML=`<div style="padding:32px 0;color:var(--red);font-family:var(--mono);font-size:12px;">Error: ${e.message}</div>`;
+    }
+  }
+
+  function _earBuildPriciosUI(ticker, con){
+    const st=_earPriceState[ticker];
+    const last=st.allData[st.allData.length-1];
+    const first=st.allData[0];
+
+    con.innerHTML=`
+      <!-- Stats rápidos -->
+      <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px;">
+        ${[
+          ['Último cierre', last.c!=null?last.c.toLocaleString('es-AR',{minimumFractionDigits:2})+'':'—'],
+          ['Var % día',     last.dr!=null?((last.dr>=0?'+':'')+last.dr.toFixed(2)+'%'):'—', last.dr>=0?'var(--green)':'var(--red)'],
+          ['Registros',     st.allData.length],
+          ['Desde',         first.date],
+        ].map(([l,v,c])=>`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:110px;">
+          <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">${l}</div>
+          <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:${c||'var(--text2)'};">${v}</div>
+        </div>`).join('')}
+      </div>
+
+      <!-- Gráfico precio -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;flex-wrap:wrap;gap:8px;">
+          <span style="font-size:11px;font-weight:600;font-family:var(--mono);color:var(--text2);">Precio de cierre</span>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <div style="display:flex;gap:3px;" id="ear-range-btns-${ticker}">
+              ${['1M','3M','6M','1A','TODO'].map((l,i)=>`<button
+                onclick="_earSetRange('${ticker}',${[30,90,180,365,9999][i]},this)"
+                style="padding:3px 8px;font-size:10px;font-family:var(--mono);cursor:pointer;border-radius:3px;border:1px solid var(--border2);background:${l==='1A'?'var(--accent)':'transparent'};color:${l==='1A'?'#fff':'var(--text3)'};">${l}</button>`).join('')}
+            </div>
+            <div style="width:1px;height:14px;background:var(--border2);"></div>
+            <div style="display:flex;gap:3px;">
+              ${['ARS','MEP','CCL'].map(c=>`<button
+                id="ear-ccy-${ticker}-${c}"
+                onclick="_earSetCcy('${ticker}','${c}',this)"
+                style="padding:3px 8px;font-size:10px;font-family:var(--mono);cursor:pointer;border-radius:3px;border:1px solid var(--border2);background:${c==='ARS'?'var(--accent)':'transparent'};color:${c==='ARS'?'#fff':'var(--text3)'};">${c}</button>`).join('')}
+            </div>
+          </div>
+        </div>
+        <div id="ear-fx-warn-${ticker}" style="font-size:10px;font-family:var(--mono);color:var(--yellow);padding:0 16px 4px;min-height:16px;"></div>
+        <div style="position:relative;width:100%;height:260px;padding:8px 16px 16px;">
+          <canvas id="ear-price-chart-${ticker}"></canvas>
+        </div>
+      </div>
+
+      <!-- Gráfico volumen -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:14px;">
+        <div style="padding:14px 16px 8px;font-size:11px;font-weight:600;font-family:var(--mono);color:var(--text2);">Volumen diario</div>
+        <div style="position:relative;width:100%;height:130px;padding:4px 16px 16px;">
+          <canvas id="ear-vol-chart-${ticker}"></canvas>
+        </div>
+      </div>
+
+      <!-- Tabla histórica -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;">
+        <div style="padding:14px 16px 10px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:11px;font-weight:600;font-family:var(--mono);color:var(--text2);">Datos históricos</span>
+          <span id="ear-hist-badge-${ticker}" style="font-size:10px;font-family:var(--mono);color:var(--accent);font-weight:600;"></span>
+        </div>
+        <div style="max-height:340px;overflow-y:auto;">
+          <table class="data-table" style="width:100%;">
+            <thead><tr>
+              <th style="text-align:left;">Fecha</th>
+              <th>Apertura</th><th>Máximo</th><th>Mínimo</th>
+              <th>Cierre</th><th>Volumen</th><th>Retorno %</th>
+            </tr></thead>
+            <tbody id="ear-hist-tbody-${ticker}"></tbody>
+          </table>
+        </div>
+      </div>
+      <div style="text-align:center;padding:10px;font-family:var(--mono);font-size:10px;color:var(--text3);">Precios via proxy API BYMA, lag de 2hs. Precio diferido.</div>`;
+
+    // Render charts + table
+    _earRefreshPrecios(ticker);
+    _earBuildVolChart(ticker);
+    _earBuildHistTable(ticker);
+  }
+
+  function _earGetSlice(ticker){
+    const st=_earPriceState[ticker];
+    if(st.range>=9999) return st.allData;
+    const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-st.range);
+    return st.allData.filter(d=>d.date>=cutoff.toISOString().slice(0,10));
+  }
+
+  function _earGetConverted(ticker){
+    const st=_earPriceState[ticker];
+    const slice=_earGetSlice(ticker);
+    const warnEl=document.getElementById(`ear-fx-warn-${ticker}`);
+    if(warnEl) warnEl.textContent='';
+    if(st.ccy==='ARS') return {dates:slice.map(d=>d.date), closes:slice.map(d=>d.c), ccy:'ARS'};
+    // Reutiliza los mapas FX del engine de Renta Variable (expuestos en window)
+    const mepM=window.eqMepMap||{}, cclM=window.eqCclMap||{}, fxD=window.eqFxDates||[];
+    const map=st.ccy==='MEP'?mepM:cclM;
+    const firstFxDate=fxD.find(d=>map[d]);
+    if(!firstFxDate){
+      if(warnEl) warnEl.textContent=`⚠ Serie ${st.ccy} no disponible. Cargá Renta Variable primero para activar el FX.`;
+      return {dates:slice.map(d=>d.date), closes:slice.map(d=>null), ccy:st.ccy};
+    }
+    const sliceFx=slice.filter(d=>d.date>=firstFxDate);
+    if(warnEl&&sliceFx.length<slice.length) warnEl.textContent=`⚠ Rango recortado: datos ${st.ccy} disponibles desde ${firstFxDate}.`;
+    // ffill: para cada fecha busca el valor FX más cercano anterior
+    function ffill(date){ if(map[date])return map[date]; const b=fxD.filter(d=>d<=date); return b.length?map[b[b.length-1]]:null; }
+    return{
+      dates:sliceFx.map(d=>d.date),
+      closes:sliceFx.map(d=>{ const fx=ffill(d.date); return(d.c!=null&&fx!=null)?d.c/fx:null; }),
+      ccy:st.ccy
+    };
+  }
+
+  function _earRefreshPrecios(ticker){
+    const {dates,closes,ccy}=_earGetConverted(ticker);
+    if(_earPriceCharts[ticker]?.priceChart) _earPriceCharts[ticker].priceChart.destroy();
+    const ctx=document.getElementById(`ear-price-chart-${ticker}`)?.getContext('2d');
+    if(!ctx)return;
+    const valid=closes.filter(v=>v!=null);
+    const isUp=valid.length>1?valid[valid.length-1]>=valid[0]:true;
+    const color=isUp?'#3fb950':'#f85149';
+    const grad=ctx.createLinearGradient(0,0,0,240);
+    grad.addColorStop(0,isUp?'rgba(63,185,80,.16)':'rgba(248,81,73,.16)');
+    grad.addColorStop(1,'rgba(0,0,0,0)');
+    const prefix=ccy==='ARS'?'ARS $':ccy==='MEP'?'USD MEP ':'USD CCL ';
+    const tickPfx=ccy==='ARS'?'$':'U$D ';
+    const chart=new Chart(ctx,{
+      type:'line',
+      data:{labels:dates,datasets:[{data:closes,borderColor:color,borderWidth:1.8,backgroundColor:grad,fill:true,tension:.3,pointRadius:0,pointHoverRadius:4,pointHoverBackgroundColor:color,spanGaps:false}]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        plugins:{legend:{display:false},tooltip:{
+          backgroundColor:'var(--bg2,#0d1020)',borderColor:'#1E27F3',borderWidth:1,
+          titleFont:{family:"'DM Mono'",size:11},bodyFont:{family:"'DM Mono'",size:12},
+          titleColor:'#a5b4fc',bodyColor:'#e8eaf6',
+          callbacks:{label:c=>c.parsed.y!=null?' '+prefix+c.parsed.y.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}
+        }},
+        scales:{
+          x:{grid:{color:'rgba(30,39,243,0.08)'},ticks:{font:{family:"'DM Mono'",size:10},color:'#4a5280',maxTicksLimit:8,maxRotation:0},border:{color:'rgba(30,39,243,0.14)'}},
+          y:{grid:{color:'rgba(30,39,243,0.08)'},ticks:{font:{family:"'DM Mono'",size:10},color:'#4a5280',callback:v=>tickPfx+v.toLocaleString('es-AR',{maximumFractionDigits:2})},border:{color:'rgba(30,39,243,0.14)'}}
+        }
+      }
+    });
+    if(!_earPriceCharts[ticker]) _earPriceCharts[ticker]={};
+    _earPriceCharts[ticker].priceChart=chart;
+  }
+
+  function _earBuildVolChart(ticker){
+    const data=_earGetSlice(ticker);
+    if(_earPriceCharts[ticker]?.volChart) _earPriceCharts[ticker].volChart.destroy();
+    const ctx=document.getElementById(`ear-vol-chart-${ticker}`)?.getContext('2d');
+    if(!ctx)return;
+    const chart=new Chart(ctx,{
+      type:'bar',
+      data:{labels:data.map(d=>d.date),datasets:[{
+        data:data.map(d=>d.v),
+        backgroundColor:data.map(d=>d.dr==null?'rgba(74,82,128,.4)':d.dr>=0?'rgba(63,185,80,.35)':'rgba(248,81,73,.35)'),
+        borderWidth:0,borderRadius:2
+      }]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{
+          backgroundColor:'#0d1020',borderColor:'rgba(30,39,243,0.28)',borderWidth:1,
+          titleFont:{family:"'DM Mono'",size:11},bodyFont:{family:"'DM Mono'",size:12},
+          titleColor:'#a5b4fc',bodyColor:'#e8eaf6',
+          callbacks:{label:c=>{const v=c.parsed.y;return' Vol: '+(v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':Math.round(v)+'');}}
+        }},
+        scales:{
+          x:{grid:{display:false},ticks:{font:{family:"'DM Mono'",size:10},color:'#4a5280',maxTicksLimit:6,maxRotation:0},border:{color:'rgba(30,39,243,0.14)'}},
+          y:{grid:{color:'rgba(30,39,243,0.08)'},ticks:{font:{family:"'DM Mono'",size:10},color:'#4a5280',callback:v=>{return v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':Math.round(v)+''}},border:{color:'rgba(30,39,243,0.14)'}}
+        }
+      }
+    });
+    if(!_earPriceCharts[ticker]) _earPriceCharts[ticker]={};
+    _earPriceCharts[ticker].volChart=chart;
+  }
+
+  function _earBuildHistTable(ticker){
+    const st=_earPriceState[ticker];
+    const desc=[...st.allData].reverse();
+    const badge=document.getElementById(`ear-hist-badge-${ticker}`);
+    if(badge) badge.textContent=desc.length+' filas';
+    const fmt=n=>n!=null?n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
+    const fmtV=n=>n!=null?(n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(0)+'K':Math.round(n)+''):'—';
+    const fmtP=n=>n!=null?((n>=0?'+':'')+n.toFixed(2)+'%'):'—';
+    const tbody=document.getElementById(`ear-hist-tbody-${ticker}`);
+    if(!tbody)return;
+    tbody.innerHTML=desc.map(d=>`<tr>
+      <td style="text-align:left;">${d.date}</td>
+      <td>${fmt(d.o)}</td><td>${fmt(d.h)}</td><td>${fmt(d.l)}</td>
+      <td>${fmt(d.c)}</td><td>${fmtV(d.v)}</td>
+      <td class="${d.dr==null?'':d.dr>=0?'pos':'neg'}">${fmtP(d.dr)}</td>
+    </tr>`).join('');
+  }
+
+  window._earSetRange=function(ticker, days, btn){
+    _earPriceState[ticker].range=days;
+    const wrap=document.getElementById(`ear-range-btns-${ticker}`);
+    if(wrap) wrap.querySelectorAll('button').forEach(b=>{
+      const active=b===btn;
+      b.style.background=active?'var(--accent)':'transparent';
+      b.style.color=active?'#fff':'var(--text3)';
+    });
+    _earRefreshPrecios(ticker);
+    _earBuildVolChart(ticker);
+  };
+
+  window._earSetCcy=function(ticker, ccy, btn){
+    _earPriceState[ticker].ccy=ccy;
+    ['ARS','MEP','CCL'].forEach(c=>{
+      const b=document.getElementById(`ear-ccy-${ticker}-${c}`);
+      if(b){b.style.background=c===ccy?'var(--accent)':'transparent';b.style.color=c===ccy?'#fff':'var(--text3)';}
+    });
+    _earRefreshPrecios(ticker);
+  };
 
 })();
 </script>
