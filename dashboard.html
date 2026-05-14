@@ -7489,10 +7489,9 @@ function renderEquity(){
     const con=document.getElementById(`ficha-tab-content-${ticker}-${tabId}`);
     if(!con||con.dataset.rendered)return;
     const cuit=(window.EXCEL_CUIT_MAP||{})[ticker];
-    if(tabId==='ratios')   _renderFichaRatios(ticker, ecoHist);
-    if(tabId==='deudas')   _renderFichaDeudas(ticker, cuit);
-    if(tabId==='precios')  _renderFichaPrecios(ticker);
-    con.dataset.rendered='1';
+    if(tabId==='ratios')  { _renderFichaRatios(ticker, ecoHist); con.dataset.rendered='1'; }
+    if(tabId==='deudas')  { _renderFichaDeudas(ticker, cuit);    con.dataset.rendered='1'; }
+    if(tabId==='precios') { con.dataset.rendered='1'; _renderFichaPrecios(ticker); }
   };
 
   // ─────────────────────────────────────────────────────────────
@@ -9128,12 +9127,12 @@ function renderCheques(cheques){
       </div>
       <div style="text-align:center;padding:10px;font-family:var(--mono);font-size:10px;color:var(--text3);">Precios via proxy API BYMA, lag de 2hs. Precio diferido.</div>`;
 
-    // Render charts + table — rAF garantiza que los canvas ya están en el DOM
-    requestAnimationFrame(()=>{
+    // setTimeout garantiza que el innerHTML ya fue parseado y los canvas están en el DOM
+    setTimeout(()=>{
       _earRefreshPrecios(ticker);
       _earBuildVolChart(ticker);
       _earBuildHistTable(ticker);
-    });
+    }, 0);
   }
 
   function _earGetSlice(ticker){
