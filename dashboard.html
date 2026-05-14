@@ -3066,12 +3066,12 @@ function eqBuildHeatmap(tab) {
   st.heatBuilt = true;
   const wrap = document.getElementById('eq-hm-'+tab);
   wrap.querySelectorAll('.eq-heat-cell').forEach(el=>el.remove());
-  const items = st.data.filter(r=>r.volume!=null&&r.volume>0);
+  const items = st.data.filter(r=>r.volume!=null&&r.volume>0&&r.last!=null&&r.last>0);
   if(!items.length || typeof d3==='undefined') return;
 
   const W = wrap.clientWidth||wrap.offsetWidth||1200, H = wrap.clientHeight||wrap.offsetHeight||300;
   const root = d3.hierarchy({children:items}, d=>d.children)
-    .sum(d=>d.volume??0).sort((a,b)=>(b.value??0)-(a.value??0));
+    .sum(d=>(d.volume??0)*(d.last??0)).sort((a,b)=>(b.value??0)-(a.value??0));
   d3.treemap().size([W,H]).paddingInner(2).paddingOuter(2).tile(d3.treemapSquarify)(root);
 
   root.leaves().forEach(node=>{
@@ -3363,7 +3363,7 @@ const _eqRO = new ResizeObserver(entries => {
           <div style="width:48px;height:48px;background:rgba(30,39,243,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1E27F3" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           </div>
-          <div class="af-card-title">Balances</div>
+          <div class="af-card-title">Empresas USA</div>
           <div class="af-card-desc">Análisis de estados financieros desde SEC EDGAR. Ratios, gráficos interactivos y comparación entre empresas.</div>
           <div class="af-card-footer">NYSE · NASDAQ · AMEX →</div>
         </div>
@@ -3634,7 +3634,7 @@ const _eqRO = new ResizeObserver(entries => {
       style="padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border2);border-radius:6px;background:transparent;color:var(--text2);font-family:var(--mono);transition:all .15s;"
       onmouseover="this.style.background='#1E27F3';this.style.color='#fff';this.style.borderColor='#1E27F3';"
       onmouseout="this.style.background='transparent';this.style.color='var(--text2)';this.style.borderColor='var(--border2)';">← Volver</button>
-    <span style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);">Balances</span>
+    <span style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);">Empresas USA</span>
     <span style="font-size:10px;font-family:var(--mono);color:#1E27F3;background:rgba(30,39,243,0.1);padding:2px 10px;border-radius:10px;border:1px solid rgba(30,39,243,0.3);">SEC EDGAR · GRATIS · SIN KEY</span>
     <div style="flex:1"></div>
     <span style="font-size:11px;color:var(--text3);font-family:var(--mono);">NYSE · NASDAQ · AMEX</span>
@@ -5223,16 +5223,41 @@ function openDetail(especie){
   function _seriesQ(ns, gaapKey, ...ifrsKeys){
     const {gaap,ifrs} = ns;
     const all = _getEntries(gaap, ifrs, gaapKey, ifrsKeys);
-    const arr=all
-      .filter(x=>(x.form==='10-Q'||x.form==='10-K'||x.form==='6-K'||x.form==='20-F')&&x.end&&x.start)
-      .filter(x=>{const d=(new Date(x.end)-new Date(x.start))/(1000*86400);return(d>=60&&d<=100)||(d>=300&&d<=420&&(x.form==='10-K'||x.form==='20-F'));})
+
+    // Solo 10-Q (Q1, Q2, Q3) — rango ~60-100 días
+    const quarters = all
+      .filter(x=>(x.form==='10-Q'||x.form==='6-K')&&x.end&&x.start)
+      .filter(x=>{ const d=(new Date(x.end)-new Date(x.start))/(1000*86400); return d>=60&&d<=105; })
       .sort((a,b)=>a.end>b.end?1:-1);
-    const seen=new Set(),out=[];
-    for(const item of arr){
+
+    const seen=new Set(), out=[];
+    for(const item of quarters){
       const label=`${item.end.slice(0,4)}Q${Math.ceil(parseInt(item.end.slice(5,7))/3)}`;
-      if(!seen.has(label)){seen.add(label);out.push({yr:label,val:item.val,date:item.end});}
+      if(!seen.has(label)){ seen.add(label); out.push({yr:label,val:item.val,date:item.end}); }
     }
-    return out;
+
+    // Calcular Q4 implícito = 10-K anual - Q1 - Q2 - Q3
+    const annuals = all
+      .filter(x=>(x.form==='10-K'||x.form==='20-F'||x.form==='10-K/A'||x.form==='20-F/A')&&x.end&&x.start)
+      .filter(x=>{ const d=(new Date(x.end)-new Date(x.start))/(1000*86400); return d>=300&&d<=420; })
+      .sort((a,b)=>a.end>b.end?1:-1);
+
+    for(const ann of annuals){
+      const yr = ann.end.slice(0,4);
+      const q4Label = `${yr}Q4`;
+      if(seen.has(q4Label)) continue; // ya existe el 10-Q de Q4 (raro pero posible)
+      // Buscar Q1+Q2+Q3 del mismo año fiscal
+      const q1 = out.find(x=>x.yr===`${yr}Q1`);
+      const q2 = out.find(x=>x.yr===`${yr}Q2`);
+      const q3 = out.find(x=>x.yr===`${yr}Q3`);
+      if(q1&&q2&&q3){
+        const q4val = ann.val - q1.val - q2.val - q3.val;
+        seen.add(q4Label);
+        out.push({yr:q4Label, val:q4val, date:ann.end});
+      }
+    }
+
+    return out.sort((a,b)=>a.date>b.date?1:-1);
   }
   function _seriesBSAnnual(ns, gaapKey, ...ifrsKeys){
     const {gaap,ifrs} = ns;
