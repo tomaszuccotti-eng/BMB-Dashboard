@@ -6,6 +6,7 @@
 <title>Bull Market — Dashboard v7.6.0</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -655,17 +656,17 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
         <div class="mosaic-badge" style="background:var(--bg3);color:var(--text3);">MERCADOS AR</div>
       </div>
 
-      <!-- Renta Variable → fila inferior derecha (estilo apagado) -->
-      <div class="mosaic-card" onclick="enterEquity()" style="cursor:pointer;background:var(--bg2);border-color:var(--border);">
-        <div class="mosaic-icon" style="background:rgba(30,39,243,0.07);">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text3);">
+      <!-- Renta Variable → fila inferior derecha (activo) -->
+      <div class="mosaic-card active-module" onclick="enterEquity()" style="cursor:pointer;">
+        <div class="mosaic-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
             <polyline points="16 7 22 7 22 13"/>
           </svg>
         </div>
-        <div class="mosaic-name" style="color:var(--text2);">Renta Variable</div>
+        <div class="mosaic-name">Renta Variable</div>
         <div class="mosaic-desc">Acciones del mercado argentino con precios y variaciones.</div>
-        <div class="mosaic-badge" style="background:var(--bg3);color:var(--text3);">MERCADOS AR</div>
+        <div class="mosaic-badge">MERCADOS AR</div>
       </div>
     </div>
   </div>
@@ -2566,174 +2567,731 @@ window.enterTest=function(){
 </script>
 
 <!-- ══════════════════ APP ══════════════════ -->
-<div id="app" style="display:none;flex-direction:column;min-height:100vh;">
-
-  <!-- Header -->
+<div id="app">
   <div class="header">
     <div class="header-left">
       <div class="logo" onclick="backToLanding()" style="gap:0;">
         <img id="bm-logo-app" src="" alt="Bull Market" style="height:28px;width:auto;margin-right:10px;mix-blend-mode:screen;">
-        <span style="font-size:11px;font-family:var(--mono);color:var(--text3);font-weight:400;">— MERCADOS</span>
+        <span style="font-size:11px;font-family:var(--mono);color:var(--text3);font-weight:400;">— RENTA FIJA</span>
       </div>
-    </div>
-    <div class="header-right">
-      <div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.06em;" id="mrc-fx-status">—</div>
-      <div style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--text3);">
-        <div class="status-dot"></div>
-        LIVE · lag ~2hs
-      </div>
-      <button onclick="toggleTheme()" class="theme-btn-small">
-        <span class="theme-btn-icon">☀</span><span class="theme-btn-lbl">Modo Claro</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- Main tabs -->
-  <div class="tabs-bar" id="mrc-tabs-bar">
-    <div class="tab active" onclick="mrcSwitchMain('argy',this)">ARGY</div>
-    <div class="tab" onclick="mrcSwitchMain('adr',this)">ADR</div>
-    <div class="tab" onclick="mrcSwitchMain('cedear',this)">CEDEARs</div>
-    <div class="tab" onclick="mrcSwitchMain('usa',this)">USA</div>
-  </div>
-
-  <!-- Sections -->
-  <div class="main" style="padding:16px 20px;">
-
-    <div id="mrc-section-argy">
-      <div class="card" style="margin-bottom:12px;">
-        <div style="position:relative;width:100%;height:260px;" id="mrc-hm-argy"></div>
-        <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text3);">
-          <span>−10%</span>
-          <div style="flex:1;max-width:160px;height:6px;border-radius:3px;background:linear-gradient(to right,var(--red),var(--bg3),var(--green));"></div>
-          <span>+10%</span>
-          <span style="margin-left:auto;">Tamaño = volumen · clic para histórico</span>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Acciones AR</div>
-          <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
-            <input type="text" id="mrc-search-argy" placeholder="Buscar..." oninput="mrcFilterTab('argy')"
-              style="font-family:var(--mono);font-size:11px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:4px 9px;border-radius:4px;outline:none;width:140px;">
-            <span style="font-family:var(--mono);font-size:10px;color:var(--text3);" id="mrc-badge-argy">—</span>
-          </div>
-        </div>
-        <div id="mrc-loading-argy" class="loading-state" style="height:100px;"><div class="spinner"></div></div>
-        <div style="overflow-x:auto;max-height:420px;overflow-y:auto;display:none;" id="mrc-wrap-argy">
-          <table class="data-table"><thead><tr id="mrc-thead-argy"></tr></thead><tbody id="mrc-tbody-argy"></tbody></table>
-        </div>
-      </div>
-    </div>
-
-    <div id="mrc-section-adr" style="display:none;">
-      <div class="card" style="margin-bottom:12px;">
-        <div style="position:relative;width:100%;height:260px;" id="mrc-hm-adr"></div>
-        <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text3);">
-          <span>−10%</span>
-          <div style="flex:1;max-width:160px;height:6px;border-radius:3px;background:linear-gradient(to right,var(--red),var(--bg3),var(--green));"></div>
-          <span>+10%</span>
-          <span style="margin-left:auto;">Tamaño = volumen</span>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">ADRs</div>
-          <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
-            <input type="text" id="mrc-search-adr" placeholder="Buscar..." oninput="mrcFilterTab('adr')"
-              style="font-family:var(--mono);font-size:11px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:4px 9px;border-radius:4px;outline:none;width:140px;">
-            <span style="font-family:var(--mono);font-size:10px;color:var(--text3);" id="mrc-badge-adr">—</span>
-          </div>
-        </div>
-        <div id="mrc-loading-adr" class="loading-state" style="height:100px;"><div class="spinner"></div></div>
-        <div style="overflow-x:auto;max-height:420px;overflow-y:auto;display:none;" id="mrc-wrap-adr">
-          <table class="data-table"><thead><tr id="mrc-thead-adr"></tr></thead><tbody id="mrc-tbody-adr"></tbody></table>
-        </div>
-      </div>
-    </div>
-
-    <div id="mrc-section-cedear" style="display:none;">
-      <div class="card" style="margin-bottom:12px;">
-        <div style="position:relative;width:100%;height:260px;" id="mrc-hm-cedear"></div>
-        <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text3);">
-          <span>−10%</span>
-          <div style="flex:1;max-width:160px;height:6px;border-radius:3px;background:linear-gradient(to right,var(--red),var(--bg3),var(--green));"></div>
-          <span>+10%</span>
-          <span style="margin-left:auto;">Tamaño = volumen · clic para histórico</span>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">CEDEARs</div>
-          <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
-            <input type="text" id="mrc-search-cedear" placeholder="Buscar..." oninput="mrcFilterTab('cedear')"
-              style="font-family:var(--mono);font-size:11px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:4px 9px;border-radius:4px;outline:none;width:140px;">
-            <span style="font-family:var(--mono);font-size:10px;color:var(--text3);" id="mrc-badge-cedear">—</span>
-          </div>
-        </div>
-        <div id="mrc-loading-cedear" class="loading-state" style="height:100px;"><div class="spinner"></div></div>
-        <div style="overflow-x:auto;max-height:420px;overflow-y:auto;display:none;" id="mrc-wrap-cedear">
-          <table class="data-table"><thead><tr id="mrc-thead-cedear"></tr></thead><tbody id="mrc-tbody-cedear"></tbody></table>
-        </div>
-      </div>
-    </div>
-
-    <div id="mrc-section-usa" style="display:none;">
-      <div class="card" style="margin-bottom:12px;">
-        <div style="position:relative;width:100%;height:260px;" id="mrc-hm-usa"></div>
-        <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text3);">
-          <span>−10%</span>
-          <div style="flex:1;max-width:160px;height:6px;border-radius:3px;background:linear-gradient(to right,var(--red),var(--bg3),var(--green));"></div>
-          <span>+10%</span>
-          <span style="margin-left:auto;">Tamaño = volumen</span>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Acciones USA</div>
-          <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
-            <input type="text" id="mrc-search-usa" placeholder="Buscar..." oninput="mrcFilterTab('usa')"
-              style="font-family:var(--mono);font-size:11px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:4px 9px;border-radius:4px;outline:none;width:140px;">
-            <span style="font-family:var(--mono);font-size:10px;color:var(--text3);" id="mrc-badge-usa">—</span>
-          </div>
-        </div>
-        <div id="mrc-loading-usa" class="loading-state" style="height:100px;"><div class="spinner"></div></div>
-        <div style="overflow-x:auto;max-height:420px;overflow-y:auto;display:none;" id="mrc-wrap-usa">
-          <table class="data-table"><thead><tr id="mrc-thead-usa"></tr></thead><tbody id="mrc-tbody-usa"></tbody></table>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</div>
-
-<!-- ══════════════════ APP RENTA VARIABLE ══════════════════ -->
-<div id="app-equity" style="display:none;flex-direction:column;min-height:100vh;">
-  <div class="header">
-    <div class="header-left">
-      <div class="logo" onclick="backToLanding()" style="gap:0;">
-        <img id="bm-logo-equity" src="" alt="Bull Market" style="height:28px;width:auto;margin-right:10px;mix-blend-mode:screen;">
-        <span style="font-size:11px;font-family:var(--mono);color:var(--text3);font-weight:400;">— RENTA VARIABLE</span>
-      </div>
-      <div class="header-date" id="equity-date">—</div>
+      <div class="header-date" id="header-date">—</div>
     </div>
     <div class="header-right">
       <div class="status-dot"></div>
       <div class="plazo-toggle">
-        <button class="plazo-btn active" onclick="setEquityPlazo('C.I.')">C.I.</button>
-        <button class="plazo-btn" onclick="setEquityPlazo('24Hs.')">24Hs.</button>
+        <button class="plazo-btn active" onclick="setPlazo('C.I.')">C.I.</button>
+        <button class="plazo-btn" onclick="setPlazo('24Hs.')">24Hs.</button>
       </div>
       <button onclick="toggleTheme()" class="theme-btn-small">
         <span class="theme-btn-icon">☀</span> <span class="theme-btn-lbl">Modo Claro</span>
       </button>
     </div>
   </div>
-  <div class="main" id="equity-content">
-    <div class="loading-state" id="equity-loading">
+
+  <div class="tabs-bar">
+    <div class="tab active"  onclick="showTab('lecap',this)">LECAPs</div>
+    <div class="tab" onclick="showTab('boncap',this)">BONCAPs</div>
+    <div class="tab" onclick="showTab('boncer',this)">BONCERs</div>
+    <div class="tab" onclick="showTab('soberano',this)">Soberanos</div>
+    <div class="tab" onclick="showTab('dolar_linked',this)">Dólar Linked</div>
+    <div class="tab" onclick="showTab('bopreal',this)">BOPREALes</div>
+    <div class="tab" onclick="showTab('fixed_rate',this)">Fixed Rate</div>
+    <div class="tab" onclick="showTab('badlar',this)">BADLAR</div>
+    <div class="tab" onclick="showTab('dual',this)">Duales</div>
+  </div>
+
+  <div class="main" id="main-content">
+    <div class="loading-state" id="loading">
       <div class="spinner"></div>
       <div style="color:var(--text3);font-size:11px;font-family:var(--mono);">Cargando datos...</div>
     </div>
   </div>
 </div>
+
+<!-- ══════════════════ APP RENTA VARIABLE ══════════════════ -->
+<div id="app-equity" style="display:none;flex-direction:column;min-height:100vh;">
+
+  <!-- ══ HEADER ══ -->
+  <div style="position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px solid var(--border);box-shadow:0 1px 6px rgba(30,39,243,0.06);">
+    <div class="header" style="border-bottom:none;">
+      <div class="header-left">
+        <div class="logo" onclick="backToLanding()" style="gap:0;">
+          <img id="bm-logo-equity" src="" alt="Bull Market" style="height:28px;width:auto;margin-right:10px;mix-blend-mode:screen;">
+          <span style="font-size:11px;font-family:var(--mono);color:var(--text3);font-weight:400;">— RENTA VARIABLE</span>
+        </div>
+        <div style="height:20px;width:1px;background:var(--border);margin:0 4px;"></div>
+        <!-- TABS mercado en el header — se ocultan en vista ticker -->
+        <div id="eq-market-tabs" style="display:flex;">
+          <div class="tab active" id="eq-mtab-argy"   onclick="eqSwitchMain('argy',this)"   style="padding:0 14px;height:52px;display:flex;align-items:center;">ARGY</div>
+          <div class="tab"        id="eq-mtab-adr"    onclick="eqSwitchMain('adr',this)"    style="padding:0 14px;height:52px;display:flex;align-items:center;">ADR</div>
+          <div class="tab"        id="eq-mtab-cedear" onclick="eqSwitchMain('cedear',this)" style="padding:0 14px;height:52px;display:flex;align-items:center;">CEDEARs</div>
+          <div class="tab"        id="eq-mtab-usa"    onclick="eqSwitchMain('usa',this)"    style="padding:0 14px;height:52px;display:flex;align-items:center;">USA</div>
+        </div>
+        <!-- Boton volver visible solo en vista ticker -->
+        <div id="eq-back-tab" style="display:none;">
+          <div class="tab active" onclick="eqBackToPanel()" style="padding:0 14px;height:52px;display:flex;align-items:center;cursor:pointer;">← Volver</div>
+        </div>
+        <div id="eq-header-date" class="header-date" style="margin-left:8px;">—</div>
+      </div>
+      <div class="header-right">
+        <div class="status-dot" id="eq-status-dot" style="background:var(--red);box-shadow:0 0 6px var(--red);"></div>
+        <span id="eq-fx-status" style="font-size:10px;font-family:var(--mono);color:var(--text3);"></span>
+        <button onclick="toggleTheme()" class="theme-btn-small">
+          <span class="theme-btn-icon">☀</span> <span class="theme-btn-lbl">Modo Claro</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PANEL VIEW ══ -->
+  <div id="eq-view-panel" style="display:block;">
+    <div class="main" style="padding:20px 24px;">
+
+      <!-- ARGY -->
+      <div id="eq-section-argy">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><span class="card-title">Mapa de calor · ARGY</span><span style="font-size:10px;font-family:var(--mono);color:var(--text3);">Tamaño = volumen · clic para histórico</span></div>
+          <div style="position:relative;width:100%;height:300px;" id="eq-hm-argy"></div>
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text3);">
+            <span>−10%</span>
+            <div style="flex:1;max-width:180px;height:6px;border-radius:3px;background:linear-gradient(to right,var(--red),var(--bg3),var(--green));"></div>
+            <span>+10%</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Acciones ARGY</span>
+            <input type="text" id="eq-search-argy" placeholder="Buscar ticker..." oninput="eqFilterTab('argy')"
+              style="padding:4px 10px;font-size:11px;font-family:var(--mono);background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text);outline:none;width:160px;transition:border-color .2s;"
+              onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'">
+            <span id="eq-badge-argy" style="font-size:10px;font-family:var(--mono);color:var(--accent);font-weight:600;margin-left:4px;">—</span>
+            <span style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-left:auto;">Clic en columna para ordenar</span>
+          </div>
+          <div id="eq-loading-argy" class="loading-state"><div class="spinner"></div><div style="color:var(--text3);font-size:11px;font-family:var(--mono);">Cargando...</div></div>
+          <div class="table-scroll" id="eq-wrap-argy" style="display:none;max-height:420px;overflow-y:auto;">
+            <table class="data-table"><thead><tr id="eq-thead-argy"></tr></thead><tbody id="eq-tbody-argy"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ADR -->
+      <div id="eq-section-adr" style="display:none;">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><span class="card-title">Mapa de calor · ADR</span></div>
+          <div style="position:relative;width:100%;height:300px;" id="eq-hm-adr"></div>
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text3);">
+            <span>−10%</span>
+            <div style="flex:1;max-width:180px;height:6px;border-radius:3px;background:linear-gradient(to right,var(--red),var(--bg3),var(--green));"></div>
+            <span>+10%</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">ADR</span>
+            <input type="text" id="eq-search-adr" placeholder="Buscar ticker..." oninput="eqFilterTab('adr')"
+              style="padding:4px 10px;font-size:11px;font-family:var(--mono);background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text);outline:none;width:160px;"
+              onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'">
+            <span id="eq-badge-adr" style="font-size:10px;font-family:var(--mono);color:var(--accent);font-weight:600;margin-left:4px;">—</span>
+            <span style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-left:auto;">Sin histórico disponible</span>
+          </div>
+          <div id="eq-loading-adr" class="loading-state"><div class="spinner"></div><div style="color:var(--text3);font-size:11px;font-family:var(--mono);">Cargando...</div></div>
+          <div class="table-scroll" id="eq-wrap-adr" style="display:none;max-height:420px;overflow-y:auto;">
+            <table class="data-table"><thead><tr id="eq-thead-adr"></tr></thead><tbody id="eq-tbody-adr"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- CEDEARs -->
+      <div id="eq-section-cedear" style="display:none;">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><span class="card-title">Mapa de calor · CEDEARs</span><span style="font-size:10px;font-family:var(--mono);color:var(--text3);">Tamaño = volumen · clic para histórico</span></div>
+          <div style="position:relative;width:100%;height:300px;" id="eq-hm-cedear"></div>
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text3);">
+            <span>−10%</span>
+            <div style="flex:1;max-width:180px;height:6px;border-radius:3px;background:linear-gradient(to right,var(--red),var(--bg3),var(--green));"></div>
+            <span>+10%</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">CEDEARs</span>
+            <input type="text" id="eq-search-cedear" placeholder="Buscar ticker..." oninput="eqFilterTab('cedear')"
+              style="padding:4px 10px;font-size:11px;font-family:var(--mono);background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text);outline:none;width:160px;"
+              onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'">
+            <span id="eq-badge-cedear" style="font-size:10px;font-family:var(--mono);color:var(--accent);font-weight:600;margin-left:4px;">—</span>
+            <span style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-left:auto;">Clic en columna para ordenar</span>
+          </div>
+          <div id="eq-loading-cedear" class="loading-state"><div class="spinner"></div><div style="color:var(--text3);font-size:11px;font-family:var(--mono);">Cargando...</div></div>
+          <div class="table-scroll" id="eq-wrap-cedear" style="display:none;max-height:420px;overflow-y:auto;">
+            <table class="data-table"><thead><tr id="eq-thead-cedear"></tr></thead><tbody id="eq-tbody-cedear"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- USA -->
+      <div id="eq-section-usa" style="display:none;">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><span class="card-title">Mapa de calor · USA</span></div>
+          <div style="position:relative;width:100%;height:300px;" id="eq-hm-usa"></div>
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text3);">
+            <span>−10%</span>
+            <div style="flex:1;max-width:180px;height:6px;border-radius:3px;background:linear-gradient(to right,var(--red),var(--bg3),var(--green));"></div>
+            <span>+10%</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">USA Stocks</span>
+            <input type="text" id="eq-search-usa" placeholder="Buscar ticker..." oninput="eqFilterTab('usa')"
+              style="padding:4px 10px;font-size:11px;font-family:var(--mono);background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text);outline:none;width:160px;"
+              onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'">
+            <span id="eq-badge-usa" style="font-size:10px;font-family:var(--mono);color:var(--accent);font-weight:600;margin-left:4px;">—</span>
+            <span style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-left:auto;">Sin histórico disponible</span>
+          </div>
+          <div id="eq-loading-usa" class="loading-state"><div class="spinner"></div><div style="color:var(--text3);font-size:11px;font-family:var(--mono);">Cargando...</div></div>
+          <div class="table-scroll" id="eq-wrap-usa" style="display:none;max-height:420px;overflow-y:auto;">
+            <table class="data-table"><thead><tr id="eq-thead-usa"></tr></thead><tbody id="eq-tbody-usa"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ TICKER VIEW ══ -->
+  <div id="eq-view-ticker" style="display:none;">
+    <div class="main" style="padding:20px 24px;">
+
+      <!-- Ticker header -->
+      <div id="eq-ticker-header" style="margin-bottom:22px;opacity:0;transition:opacity .3s;">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:6px;flex-wrap:wrap;">
+          <div id="eq-h-ticker" style="font-family:var(--mono);font-size:28px;font-weight:700;color:var(--accent);">—</div>
+          <div id="eq-h-price"  style="font-family:var(--mono);font-size:22px;font-weight:400;color:var(--text);">—</div>
+          <div id="eq-h-change" style="font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:4px;">—</div>
+          <span style="display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;padding:3px 9px;border-radius:3px;background:var(--accent-light);color:var(--accent);border:1px solid var(--border2);">
+            <span style="width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 5px var(--green);animation:pulse 2s infinite;display:inline-block;"></span>LIVE
+          </span>
+        </div>
+        <div id="eq-h-lag-note" style="font-size:10px;font-family:var(--mono);color:var(--text3);"></div>
+      </div>
+
+      <!-- Stats grid -->
+      <div class="detail-grid" style="margin-bottom:20px;">
+        <div class="stat-card"><div class="stat-label">Precio live</div><div class="stat-value" id="eq-s-live">—</div></div>
+        <div class="stat-card"><div class="stat-label">Bid</div><div class="stat-value" id="eq-s-bid">—</div></div>
+        <div class="stat-card"><div class="stat-label">Ask</div><div class="stat-value" id="eq-s-ask">—</div></div>
+        <div class="stat-card"><div class="stat-label">Volumen</div><div class="stat-value" id="eq-s-vol">—</div></div>
+        <div class="stat-card"><div class="stat-label">Var % día</div><div class="stat-value" id="eq-s-dr">—</div></div>
+        <div class="stat-card"><div class="stat-label">Registros hist.</div><div class="stat-value" id="eq-s-count">—</div></div>
+      </div>
+
+      <!-- Price chart -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header" style="flex-wrap:wrap;gap:8px;">
+          <span class="card-title">Precio de cierre</span>
+          <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap;">
+            <div style="display:flex;gap:3px;">
+              <button class="hist-btn" onclick="eqSetRange(30,this)">1M</button>
+              <button class="hist-btn" onclick="eqSetRange(90,this)">3M</button>
+              <button class="hist-btn" onclick="eqSetRange(180,this)">6M</button>
+              <button class="hist-btn active" onclick="eqSetRange(365,this)">1A</button>
+              <button class="hist-btn" onclick="eqSetRange(9999,this)">TODO</button>
+            </div>
+            <div style="width:1px;height:16px;background:var(--border2);"></div>
+            <div style="display:flex;gap:3px;">
+              <button class="hist-btn active" id="eq-ccy-ars" onclick="eqSetCcy('ARS',this)">ARS</button>
+              <button class="hist-btn" id="eq-ccy-mep" onclick="eqSetCcy('MEP',this)" title="AL30 (ARS) ÷ AL30D (USD MEP)">MEP</button>
+              <button class="hist-btn" id="eq-ccy-ccl" onclick="eqSetCcy('CCL',this)" title="AL30 (ARS) ÷ AL30C (USD CCL)">CCL</button>
+            </div>
+          </div>
+        </div>
+        <div id="eq-fx-warning" style="font-size:10px;font-family:var(--mono);color:var(--yellow);padding:4px 16px;min-height:18px;"></div>
+        <div class="chart-wrap"><canvas id="eq-price-chart"></canvas></div>
+      </div>
+
+      <!-- Volume chart -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header"><span class="card-title">Volumen diario</span></div>
+        <div style="position:relative;width:100%;height:140px;padding:16px;">
+          <canvas id="eq-vol-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Historical table -->
+      <div class="card" style="margin-bottom:24px;">
+        <div class="card-header">
+          <span class="card-title">Datos históricos</span>
+          <span id="eq-t-badge" style="font-size:10px;font-family:var(--mono);color:var(--accent);font-weight:600;margin-left:8px;">—</span>
+        </div>
+        <div class="table-scroll" style="max-height:340px;overflow-y:auto;">
+          <table class="data-table">
+            <thead><tr>
+              <th style="text-align:left;">Fecha</th>
+              <th>Apertura</th><th>Máximo</th><th>Mínimo</th>
+              <th>Cierre</th><th>Volumen</th><th>Retorno %</th>
+            </tr></thead>
+            <tbody id="eq-hist-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style="text-align:center;padding:14px;font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.08em;">DATA912.COM · DATOS EDUCATIVOS · NO TIEMPO REAL · LAG ~2HS</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════
+   RENTA VARIABLE ENGINE — integrado con dashboard palette
+   Fuente de datos: data912.com
+══════════════════════════════════════════════════════ */
+(function(){
+
+const EQ_TAB_CFG = {
+  argy:  { url:'https://data912.com/live/arg_stocks',  hasHist:true,  histEndpoint:'https://data912.com/historical/stocks/' },
+  adr:   { url:'https://data912.com/live/usa_adrs',    hasHist:false, histEndpoint:null },
+  cedear:{ url:'https://data912.com/live/arg_cedears', hasHist:true,  histEndpoint:'https://data912.com/historical/cedears/' },
+  usa:   { url:'https://data912.com/live/usa_stocks',  hasHist:false, histEndpoint:null },
+};
+
+const EQ_COLS = [
+  { key:'symbol',  label:'Ticker',    right:false },
+  { key:'last',    label:'Último',    right:true  },
+  { key:'px_bid',  label:'Bid',       right:true  },
+  { key:'px_ask',  label:'Ask',       right:true  },
+  { key:'q_op',    label:'Operaciones',right:true },
+  { key:'change',  label:'Var %',     right:true  },
+  { key:'volume',  label:'Volumen',   right:true  },
+];
+
+const eqFmt    = n => n!=null ? n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+const eqFmtVol = n => n!=null ? (n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(0)+'K':Math.round(n)+'') : '—';
+const eqFmtPct = n => n!=null ? (n>=0?'+':'')+n.toFixed(2)+'%' : '—';
+const eqSafeArr = raw => Array.isArray(raw) ? raw : (raw?.data && Array.isArray(raw.data) ? raw.data : []);
+
+// ── State ──
+const eqTabState = { argy:{data:[],filtered:[],sortCol:'volume',sortAsc:false,loaded:false,heatBuilt:false},
+  adr:{data:[],filtered:[],sortCol:'volume',sortAsc:false,loaded:false,heatBuilt:false},
+  cedear:{data:[],filtered:[],sortCol:'volume',sortAsc:false,loaded:false,heatBuilt:false},
+  usa:{data:[],filtered:[],sortCol:'volume',sortAsc:false,loaded:false,heatBuilt:false} };
+
+let eqCurrentTab = 'argy';
+let eqLiveMap = {};
+let eqCurrentHistEndpoint = null;
+let eqAllData = [];
+let eqActiveRange = 365;
+let eqActiveCcy = 'ARS';
+let eqPriceChart = null;
+let eqVolChart = null;
+let eqMepMap = {}, eqCclMap = {}, eqFxDates = [];
+
+// ── FX ──
+async function eqLoadFx() {
+  try {
+    const r = await fetch('https://data912.com/historical/fx/al30');
+    if(!r.ok) return;
+    const raw = await r.json();
+    const arr = eqSafeArr(raw);
+    eqFxDates = arr.map(d=>d.date).sort();
+    arr.forEach(d=>{ if(d.mep!=null) eqMepMap[d.date]=d.mep; if(d.ccl!=null) eqCclMap[d.date]=d.ccl; });
+    const last = arr[arr.length-1];
+    const fxEl = document.getElementById('eq-fx-status');
+    if(fxEl && last) {
+      fxEl.textContent = `MEP $${eqFmt(last.mep)} · CCL $${eqFmt(last.ccl)}`;
+      fxEl.style.color = 'var(--text2)';
+    }
+  } catch(e) {}
+}
+
+function eqGetFx(date, ccy) {
+  const map = ccy==='MEP' ? eqMepMap : eqCclMap;
+  if(map[date]) return map[date];
+  const before = eqFxDates.filter(d=>d<=date);
+  return before.length ? map[before[before.length-1]] : null;
+}
+
+// ── Navigation ──
+window.eqShowView = function(view) {
+  document.getElementById('eq-view-panel').style.display  = view==='panel'  ? 'block' : 'none';
+  document.getElementById('eq-view-ticker').style.display = view==='ticker' ? 'block' : 'none';
+  document.getElementById('eq-market-tabs').style.display = view==='panel'  ? 'flex'  : 'none';
+  document.getElementById('eq-back-tab').style.display    = view==='ticker' ? 'flex'  : 'none';
+};
+
+window.eqSwitchMain = function(tab, el) {
+  eqCurrentTab = tab;
+  ['argy','adr','cedear','usa'].forEach(t=>{
+    document.getElementById('eq-section-'+t).style.display = t===tab ? '' : 'none';
+    document.getElementById('eq-mtab-'+t).classList.toggle('active', t===tab);
+  });
+  if(!eqTabState[tab].loaded) eqLoadTab(tab);
+  else {
+    // Rebuild heatmap after section is visible (clientWidth could be 0 if was hidden)
+    requestAnimationFrame(()=>eqBuildHeatmap(tab));
+  }
+};
+
+// ── Load tab data ──
+async function eqLoadTab(tab) {
+  const cfg = EQ_TAB_CFG[tab];
+  const loadEl = document.getElementById('eq-loading-'+tab);
+  const wrapEl = document.getElementById('eq-wrap-'+tab);
+  if(loadEl) { loadEl.style.display='flex'; }
+  if(wrapEl) { wrapEl.style.display='none'; }
+  try {
+    const r = await fetch(cfg.url);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const raw = await r.json();
+    const arr = eqSafeArr(raw);
+    eqTabState[tab].data = arr;
+    eqTabState[tab].filtered = [...arr];
+    arr.forEach(r=>{ if(r.symbol) eqLiveMap[r.symbol]=r; });
+    eqTabState[tab].loaded = true;
+    if(loadEl) loadEl.style.display='none';
+    if(wrapEl) wrapEl.style.display='';
+    // status dot green
+    const dot = document.getElementById('eq-status-dot');
+    if(dot) { dot.style.background='var(--green)'; dot.style.boxShadow='0 0 6px var(--green)'; }
+    // date
+    const dateEl = document.getElementById('eq-header-date');
+    if(dateEl) { const ts=arr.find(d=>d.timestamp)?.timestamp; dateEl.textContent=ts?new Date(ts).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})+'hs':'Live'; }
+    eqBuildThead(tab);
+    eqRenderTbody(tab);
+    eqBuildHeatmap(tab);
+  } catch(e) {
+    if(loadEl) loadEl.innerHTML=`<div style="color:var(--red);font-family:var(--mono);font-size:12px;padding:40px;">Error: ${e.message}</div>`;
+  }
+}
+
+function eqBuildThead(tab) {
+  document.getElementById('eq-thead-'+tab).innerHTML = EQ_COLS.map(c=>`
+    <th id="eq-th-${tab}-${c.key}" onclick="eqSortTab('${tab}','${c.key}')"
+        style="${c.right?'':'text-align:left'}">${c.label}</th>`).join('');
+}
+
+window.eqFilterTab = function(tab) {
+  const q = document.getElementById('eq-search-'+tab).value.trim().toUpperCase();
+  const st = eqTabState[tab];
+  st.filtered = q ? st.data.filter(r=>r.symbol?.includes(q)) : [...st.data];
+  eqRenderTbody(tab);
+};
+
+window.eqSortTab = function(tab, col) {
+  const st = eqTabState[tab];
+  if(st.sortCol===col) st.sortAsc=!st.sortAsc; else { st.sortCol=col; st.sortAsc=false; }
+  document.querySelectorAll(`#eq-thead-${tab} th`).forEach(th=>{ th.classList.remove('sorted-asc','sorted-desc'); });
+  const th = document.getElementById(`eq-th-${tab}-${col}`);
+  if(th) th.classList.add(st.sortAsc?'sorted-asc':'sorted-desc');
+  eqRenderTbody(tab);
+};
+
+function eqRenderTbody(tab) {
+  const st = eqTabState[tab], cfg = EQ_TAB_CFG[tab];
+  const sorted = [...st.filtered].sort((a,b)=>{
+    const av=a[st.sortCol], bv=b[st.sortCol];
+    if(av==null&&bv==null)return 0; if(av==null)return 1; if(bv==null)return-1;
+    if(typeof av==='string') return st.sortAsc?av.localeCompare(bv):bv.localeCompare(av);
+    return st.sortAsc?av-bv:bv-av;
+  });
+  const badge = document.getElementById('eq-badge-'+tab);
+  if(badge) badge.textContent = sorted.length+' instrumentos';
+  const maxVol = Math.max(...sorted.map(r=>r.volume??0));
+
+  document.getElementById('eq-tbody-'+tab).innerHTML = sorted.map(r=>{
+    const cc  = r.change==null?'':r.change>=0?'pos':'neg';
+    const bw  = maxVol>0&&r.volume!=null?(r.volume/maxVol*60):0;
+    const bc  = r.change==null?'var(--text3)':r.change>=0?'var(--green)':'var(--red)';
+    const cls = cfg.hasHist?'style="cursor:pointer;"':'';
+    const dta = cfg.hasHist?`data-sym="${r.symbol}" data-tab="${tab}"`:'';
+    return `<tr ${cls} ${dta}>
+      <td style="text-align:left;font-weight:600;color:var(--accent);cursor:${cfg.hasHist?'pointer':'default'}">${r.symbol??'—'}</td>
+      <td>${r.last  !=null?eqFmt(r.last)  :'—'}</td>
+      <td>${r.px_bid!=null?eqFmt(r.px_bid):'—'}</td>
+      <td>${r.px_ask!=null?eqFmt(r.px_ask):'—'}</td>
+      <td>${r.q_op  !=null?r.q_op         :'—'}</td>
+      <td class="${cc}">${eqFmtPct(r.change)}</td>
+      <td><div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;">
+        <span>${eqFmtVol(r.volume)}</span>
+        <div style="width:56px;height:4px;background:var(--border2);border-radius:2px;overflow:hidden;">
+          <div style="width:${bw}%;height:100%;background:${bc};opacity:.6;border-radius:2px;"></div>
+        </div>
+      </div></td>
+    </tr>`;
+  }).join('');
+
+  if(cfg.hasHist) {
+    document.getElementById('eq-tbody-'+tab).onclick = e => {
+      const tr = e.target.closest('tr[data-sym]');
+      if(tr) eqGoTicker(tr.dataset.sym, tr.dataset.tab);
+    };
+  }
+}
+
+// ── Heatmap ──
+function eqHeatColor(pct) {
+  if(pct==null) return 'var(--bg3)';
+  const t = Math.max(-10, Math.min(10, pct))/10;
+  if(t>=0) return `rgb(${Math.round(15+15*(1-t))},${Math.round(100+85*t)},${Math.round(60+10*(1-t))})`;
+  const u = -t;
+  return `rgb(${Math.round(180+68*u)},${Math.round(50-30*u)},${Math.round(60-40*u)})`;
+}
+
+function eqBuildHeatmap(tab) {
+  const st = eqTabState[tab], cfg = EQ_TAB_CFG[tab];
+  st.heatBuilt = true;
+  const wrap = document.getElementById('eq-hm-'+tab);
+  wrap.querySelectorAll('.eq-heat-cell').forEach(el=>el.remove());
+  const items = st.data.filter(r=>r.volume!=null&&r.volume>0);
+  if(!items.length || typeof d3==='undefined') return;
+
+  const W = wrap.clientWidth||wrap.offsetWidth||1200, H = wrap.clientHeight||wrap.offsetHeight||300;
+  const root = d3.hierarchy({children:items}, d=>d.children)
+    .sum(d=>d.volume??0).sort((a,b)=>(b.value??0)-(a.value??0));
+  d3.treemap().size([W,H]).paddingInner(2).paddingOuter(2).tile(d3.treemapSquarify)(root);
+
+  root.leaves().forEach(node=>{
+    const r=node.data, x=node.x0, y=node.y0, w=node.x1-node.x0, h=node.y1-node.y0;
+    if(w<4||h<4) return;
+    const cell = document.createElement('div');
+    cell.className = 'eq-heat-cell';
+    Object.assign(cell.style, {
+      position:'absolute', left:x+'px', top:y+'px', width:w+'px', height:h+'px',
+      background:eqHeatColor(r.change), border:'2px solid var(--bg)',
+      display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+      overflow:'hidden', cursor: cfg.hasHist?'pointer':'default',
+      transition:'filter .12s'
+    });
+    cell.title = `${r.symbol}  ${eqFmtPct(r.change)}  Vol: ${eqFmtVol(r.volume)}${!cfg.hasHist?' (sin histórico)':''}`;
+    if(w>28&&h>18) {
+      const fs=Math.max(8,Math.min(18,Math.sqrt(w*h)/7));
+      const fss=Math.max(7,fs*.72);
+      cell.innerHTML = `<div style="font-family:var(--mono);font-weight:600;color:rgba(255,255,255,.95);font-size:${fs}px;text-align:center;pointer-events:none;">${r.symbol}</div>`
+        +(h>32?`<div style="font-family:var(--mono);color:rgba(255,255,255,.72);font-size:${fss}px;text-align:center;pointer-events:none;">${eqFmtPct(r.change)}</div>`:'');
+    }
+    if(cfg.hasHist) {
+      cell.addEventListener('mouseenter',()=>cell.style.filter='brightness(1.28)');
+      cell.addEventListener('mouseleave',()=>cell.style.filter='');
+      cell.addEventListener('click',()=>eqGoTicker(r.symbol, tab));
+    }
+    wrap.appendChild(cell);
+  });
+}
+
+// ── Ticker view ──
+function eqGoTicker(symbol, tab) {
+  eqCurrentHistEndpoint = EQ_TAB_CFG[tab].histEndpoint;
+  eqShowView('ticker');
+  eqLoadTickerView(symbol);
+}
+
+window.eqBackToPanel = function() {
+  eqShowView('panel');
+};
+
+async function eqLoadTickerView(symbol) {
+  document.getElementById('eq-ticker-header').style.opacity='0';
+  ['eq-s-live','eq-s-bid','eq-s-ask','eq-s-vol','eq-s-dr','eq-s-count'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.textContent='…';
+  });
+  document.getElementById('eq-hist-tbody').innerHTML='';
+  document.getElementById('eq-fx-warning').textContent='';
+  if(eqPriceChart){eqPriceChart.destroy();eqPriceChart=null;}
+  if(eqVolChart){eqVolChart.destroy();eqVolChart=null;}
+  eqActiveCcy='ARS'; eqActiveRange=365;
+  document.querySelectorAll('#app-equity .hist-btn').forEach((b,i)=>{
+    if(b.id&&b.id.startsWith('eq-ccy')) b.classList.toggle('active',b.id==='eq-ccy-ars');
+    else if(!b.id) b.classList.toggle('active',i===3);
+  });
+  document.querySelectorAll('#eq-view-ticker .hist-btn:not([id])').forEach((b,i)=>b.classList.toggle('active',i===3));
+  document.getElementById('eq-ccy-ars')?.classList.add('active');
+  document.getElementById('eq-ccy-mep')?.classList.remove('active');
+  document.getElementById('eq-ccy-ccl')?.classList.remove('active');
+
+  try {
+    const res = await fetch(eqCurrentHistEndpoint+symbol);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const raw = await res.json();
+    const arr = eqSafeArr(raw);
+    if(!arr.length) throw new Error('Sin datos históricos para '+symbol);
+    eqAllData = arr.filter(d=>d.date&&d.c!=null).sort((a,b)=>a.date.localeCompare(b.date));
+    if(!eqAllData.length) throw new Error('Sin datos válidos para '+symbol);
+    eqRenderTickerView(symbol);
+  } catch(e) {
+    alert('Error cargando '+symbol+': '+e.message);
+    eqShowView('panel');
+  }
+}
+
+function eqRenderTickerView(symbol) {
+  const entry = eqLiveMap[symbol]??null;
+  const last = eqAllData[eqAllData.length-1];
+  const displayPrice = entry?.last??last.c;
+  const displayChange = entry?.change??last.dr;
+
+  document.getElementById('eq-h-ticker').textContent = symbol;
+  document.getElementById('eq-h-price').textContent  = eqFmt(displayPrice);
+  const chgEl = document.getElementById('eq-h-change');
+  chgEl.textContent = eqFmtPct(displayChange);
+  const isUp = (displayChange??0)>=0;
+  chgEl.style.color = isUp?'var(--green)':'var(--red)';
+  chgEl.style.background = isUp?'rgba(63,185,80,0.1)':'rgba(248,81,73,0.1)';
+  document.getElementById('eq-h-lag-note').textContent = entry
+    ?'⚠ Cotización con posible lag de hasta ~2hs · Solo fines educativos'
+    :'Sin precio live para este ticker · último cierre histórico ('+last.date+')';
+  document.getElementById('eq-ticker-header').style.opacity='1';
+
+  document.getElementById('eq-s-live').textContent  = eqFmt(displayPrice);
+  document.getElementById('eq-s-bid').textContent   = entry?.px_bid!=null?eqFmt(entry.px_bid):'—';
+  document.getElementById('eq-s-ask').textContent   = entry?.px_ask!=null?eqFmt(entry.px_ask):'—';
+  document.getElementById('eq-s-vol').textContent   = eqFmtVol(entry?.volume??last.v);
+  const drEl = document.getElementById('eq-s-dr');
+  drEl.textContent = eqFmtPct(displayChange);
+  drEl.style.color = isUp?'var(--green)':'var(--red)';
+  document.getElementById('eq-s-count').textContent = eqAllData.length;
+
+  eqRefreshPriceChart();
+  eqBuildVolChart(eqGetSlice(eqActiveRange));
+  eqBuildHistTable(eqAllData);
+}
+
+function eqGetSlice(days) {
+  if(days>=9999) return eqAllData;
+  const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-days);
+  return eqAllData.filter(d=>d.date>=cutoff.toISOString().slice(0,10));
+}
+
+function eqGetConvertedSlice() {
+  let slice = eqGetSlice(eqActiveRange);
+  const warnEl = document.getElementById('eq-fx-warning');
+  if(warnEl) warnEl.textContent='';
+  if(eqActiveCcy==='ARS') return {dates:slice.map(d=>d.date),closes:slice.map(d=>d.c),ccy:'ARS'};
+  const map = eqActiveCcy==='MEP'?eqMepMap:eqCclMap;
+  const firstFxDate = eqFxDates.find(d=>map[d]);
+  if(!firstFxDate) { if(warnEl) warnEl.textContent='⚠ Serie MEP/CCL no disponible.'; return {dates:slice.map(d=>d.date),closes:slice.map(d=>null),ccy:eqActiveCcy}; }
+  const originalStart = slice[0]?.date;
+  if(originalStart&&originalStart<firstFxDate) {
+    slice=slice.filter(d=>d.date>=firstFxDate);
+    if(warnEl&&(eqActiveRange===9999||(slice.length>0&&slice[0].date>originalStart)))
+      warnEl.textContent=`⚠ Rango recortado: datos ${eqActiveCcy} disponibles desde ${firstFxDate}.`;
+  }
+  return { dates:slice.map(d=>d.date), closes:slice.map(d=>{ const fx=eqGetFx(d.date,eqActiveCcy); return (d.c!=null&&fx!=null)?d.c/fx:null; }), ccy:eqActiveCcy };
+}
+
+function eqRefreshPriceChart() {
+  const {dates,closes,ccy} = eqGetConvertedSlice();
+  eqBuildPriceChart(dates,closes,ccy);
+}
+
+window.eqSetRange = function(days, btn) {
+  eqActiveRange=days;
+  document.querySelectorAll('#eq-view-ticker .hist-btn:not([id])').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  eqRefreshPriceChart();
+  eqBuildVolChart(eqGetSlice(days));
+};
+
+window.eqSetCcy = function(ccy, btn) {
+  eqActiveCcy=ccy;
+  ['eq-ccy-ars','eq-ccy-mep','eq-ccy-ccl'].forEach(id=>document.getElementById(id)?.classList.remove('active'));
+  btn.classList.add('active');
+  eqRefreshPriceChart();
+};
+
+function eqBuildPriceChart(dates,closes,ccy) {
+  if(eqPriceChart) eqPriceChart.destroy();
+  const ctx = document.getElementById('eq-price-chart').getContext('2d');
+  const valid = closes.filter(v=>v!=null);
+  const isUp = valid.length>1?valid[valid.length-1]>=valid[0]:true;
+  const color = isUp?'#3fb950':'#f85149';
+  const grad = ctx.createLinearGradient(0,0,0,280);
+  grad.addColorStop(0,isUp?'rgba(63,185,80,.18)':'rgba(248,81,73,.18)');
+  grad.addColorStop(1,'rgba(0,0,0,0)');
+  const prefix=ccy==='ARS'?'ARS $':ccy==='MEP'?'USD MEP ':'USD CCL ';
+  const tickPfx=ccy==='ARS'?'$':'U$D ';
+  const accent='#1E27F3';
+  eqPriceChart=new Chart(ctx,{
+    type:'line',
+    data:{labels:dates,datasets:[{
+      data:closes,borderColor:color,borderWidth:1.8,
+      backgroundColor:grad,fill:true,tension:.3,
+      pointRadius:0,pointHoverRadius:4,pointHoverBackgroundColor:color,spanGaps:false
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{
+        backgroundColor:'var(--bg2,#0d1020)',borderColor:accent,borderWidth:1,
+        titleFont:{family:"'DM Mono'",size:11},bodyFont:{family:"'DM Mono'",size:12},
+        titleColor:'#a5b4fc',bodyColor:'#e8eaf6',
+        callbacks:{label:c=>c.parsed.y!=null?' '+prefix+eqFmt(c.parsed.y):'—'}
+      }},
+      scales:{
+        x:{grid:{color:'rgba(30,39,243,0.08)'},ticks:{font:{family:"'DM Mono'",size:10},color:'#4a5280',maxTicksLimit:8,maxRotation:0},border:{color:'rgba(30,39,243,0.14)'}},
+        y:{grid:{color:'rgba(30,39,243,0.08)'},ticks:{font:{family:"'DM Mono'",size:10},color:'#4a5280',callback:v=>tickPfx+v.toLocaleString('es-AR',{maximumFractionDigits:2})},border:{color:'rgba(30,39,243,0.14)'}}
+      }
+    }
+  });
+}
+
+function eqBuildVolChart(data) {
+  if(eqVolChart) eqVolChart.destroy();
+  const ctx = document.getElementById('eq-vol-chart').getContext('2d');
+  eqVolChart=new Chart(ctx,{
+    type:'bar',
+    data:{labels:data.map(d=>d.date),datasets:[{
+      data:data.map(d=>d.v),
+      backgroundColor:data.map(d=>d.dr==null?'rgba(74,82,128,.4)':d.dr>=0?'rgba(63,185,80,.35)':'rgba(248,81,73,.35)'),
+      borderWidth:0,borderRadius:2
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{
+        backgroundColor:'#0d1020',borderColor:'rgba(30,39,243,0.28)',borderWidth:1,
+        titleFont:{family:"'DM Mono'",size:11},bodyFont:{family:"'DM Mono'",size:12},
+        titleColor:'#a5b4fc',bodyColor:'#e8eaf6',
+        callbacks:{label:c=>' Vol: '+eqFmtVol(c.parsed.y)}
+      }},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{family:"'DM Mono'",size:10},color:'#4a5280',maxTicksLimit:6,maxRotation:0},border:{color:'rgba(30,39,243,0.14)'}},
+        y:{grid:{color:'rgba(30,39,243,0.08)'},ticks:{font:{family:"'DM Mono'",size:10},color:'#4a5280',callback:v=>eqFmtVol(v)},border:{color:'rgba(30,39,243,0.14)'}}
+      }
+    }
+  });
+}
+
+function eqBuildHistTable(data) {
+  const desc = [...data].reverse();
+  const badge = document.getElementById('eq-t-badge');
+  if(badge) badge.textContent = desc.length+' filas';
+  document.getElementById('eq-hist-tbody').innerHTML = desc.map(d=>{
+    const dc=d.dr==null?'':d.dr>=0?'pos':'neg';
+    return `<tr>
+      <td style="text-align:left;">${d.date}</td>
+      <td>${eqFmt(d.o)}</td><td>${eqFmt(d.h)}</td><td>${eqFmt(d.l)}</td>
+      <td>${eqFmt(d.c)}</td><td>${eqFmtVol(d.v)}</td>
+      <td class="${dc}">${eqFmtPct(d.dr)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Init when entering equity ──
+window.enterEquity = function(){
+  document.getElementById('landing').style.display='none';
+  document.getElementById('app-equity').style.display='flex';
+  document.getElementById('app-equity').style.flexDirection='column';
+  if(document.getElementById('legal-footer')) document.getElementById('legal-footer').style.display='block';
+  const logoEq=document.getElementById('bm-logo-equity');
+  if(logoEq&&window.LOGO_B64) logoEq.src=window.LOGO_B64;
+  if(!eqTabState.argy.loaded) {
+    eqLoadTab('argy');
+    eqLoadFx();
+  }
+  eqShowView('panel');
+};
+
+})();
+</script>
 
 <!-- DETAIL OVERLAY -->
 <div class="detail-view" id="detail-view">
@@ -3263,28 +3821,12 @@ const COL_LABELS={fecha:'Fecha',especie:'Ticker',tir:'TIR',mod_duration:'MD',pre
 // ── LANDING ──
 function enterApp(){
   document.getElementById('landing').style.display='none';
-  const el=document.getElementById('app');
-  el.style.display='flex';
-  el.style.flexDirection='column';
-  document.getElementById('legal-footer').style.display='none';
-  if(!window._mercadosInited) window._initMercados();
-}
-function setEquityPlazo(p){
-  EQUITY_PLAZO=p;
-  document.querySelectorAll('#app-equity .plazo-btn').forEach(b=>b.classList.toggle('active',b.textContent===p));
-  renderEquity();
-}
-
-function enterEquity(){
-  document.getElementById('landing').style.display='none';
-  document.getElementById('app-equity').style.display='flex';
-  document.getElementById('app-equity').style.flexDirection='column';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('app').style.flexDirection='column';
   document.getElementById('legal-footer').style.display='block';
-  // sync logo
-  const logoEq=document.getElementById('bm-logo-equity');
-  if(logoEq&&LOGO_B64)logoEq.src=LOGO_B64;
-  if(!DATA_EQUITY_LOADED) loadEquityData();
+  if(!DATA_LOADED) loadData();
 }
+// enterEquity y setEquityPlazo fueron reemplazados por el engine de Renta Variable (data912)
 function enterBalancesMenu(){
   document.getElementById('landing').style.display='none';
   const menu=document.getElementById('app-balances-menu');
@@ -3321,7 +3863,6 @@ function backToLanding(){
   document.getElementById('app-balances-menu').style.display='none';
   document.getElementById('app-excel').style.display='none';
   document.getElementById('app-test').style.display='none';
-  // app-mercados now merged into app
   document.getElementById('legal-footer').style.display='none';
   if(window._secResetState) window._secResetState();
 }
@@ -8993,494 +9534,6 @@ function renderCheques(cheques){
   .mav-ven-bar{height:100%;background:#1E27F3;opacity:.75;transition:width .4s ease;}
   .mav-ven-val{width:130px;text-align:right;color:var(--text);flex-shrink:0;}
 </style>
-
-<script>
-/* ══════════════════════════════════════════
-   MÓDULO MERCADOS — integrado en #app
-══════════════════════════════════════════ */
-(function(){
-
-const mrcFmt    = n => n!=null ? n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
-const mrcFmtVol = n => n!=null ? (n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(0)+'K':Math.round(n)+'') : '—';
-const mrcFmtPct = n => n!=null ? (n>=0?'+':'')+n.toFixed(2)+'%' : '—';
-const mrcSafeArr= raw => Array.isArray(raw)?raw:(raw?.data&&Array.isArray(raw.data)?raw.data:[]);
-
-const MRC_CFG = {
-  argy:  { url:'https://data912.com/live/arg_stocks',  hasHist:true,  histUrl:'https://data912.com/historical/stocks/' },
-  adr:   { url:'https://data912.com/live/usa_adrs',    hasHist:false, histUrl:null },
-  cedear:{ url:'https://data912.com/live/arg_cedears', hasHist:true,  histUrl:'https://data912.com/historical/cedears/' },
-  usa:   { url:'https://data912.com/live/usa_stocks',  hasHist:false, histUrl:null },
-};
-
-const mrcTabState = {};
-Object.keys(MRC_CFG).forEach(k => {
-  mrcTabState[k] = { data:[], filtered:[], loaded:false, heatBuilt:false, sortCol:'change', sortAsc:false };
-});
-const mrcLiveMap = {};
-let mrcActiveTab='argy';
-let mrcAllData=[], mrcPriceChart=null, mrcVolChart=null;
-let mrcActiveRange=365, mrcActiveCcy='ARS', mrcCurrentHistUrl='', mrcCurrentHasHist=false;
-let mrcMepMap={}, mrcCclMap={}, mrcFxDates=[], mrcFxReady=false;
-
-window._mercadosInited = false;
-window._initMercados = function(){
-  window._mercadosInited = true;
-  const logo=document.getElementById('bm-logo-app');
-  if(logo&&window.LOGO_B64) logo.src=window.LOGO_B64;
-  Promise.all([mrcLoadTab('argy'), mrcLoadFx()]);
-};
-
-/* ── FX ── */
-async function mrcLoadFx(){
-  const el=document.getElementById('mrc-fx-status');
-  try{
-    const [rA,rM,rC]=await Promise.all([
-      fetch('https://data912.com/historical/bonds/AL30'),
-      fetch('https://data912.com/historical/bonds/AL30D'),
-      fetch('https://data912.com/historical/bonds/AL30C'),
-    ]);
-    const [dA,dM,dC]=await Promise.all([rA.ok?rA.json():[],rM.ok?rM.json():[],rC.ok?rC.json():[]]);
-    const toMap=arr=>{const m={};mrcSafeArr(arr).forEach(r=>{if(r.date&&r.c!=null)m[r.date]=r.c;});return m;};
-    const aM=toMap(dA),mM=toMap(dM),cM=toMap(dC);
-    const allD=[...new Set([...Object.keys(aM),...Object.keys(mM),...Object.keys(cM)])].sort();
-    allD.forEach(d=>{
-      if(aM[d]&&mM[d]&&mM[d]>0)mrcMepMap[d]=aM[d]/mM[d];
-      if(aM[d]&&cM[d]&&cM[d]>0)mrcCclMap[d]=aM[d]/cM[d];
-    });
-    mrcFxDates=allD.filter(d=>mrcMepMap[d]||mrcCclMap[d]);
-    mrcFxReady=true;
-    const lm=mrcMepMap[mrcFxDates.filter(d=>mrcMepMap[d]).at(-1)]??null;
-    const lc=mrcCclMap[mrcFxDates.filter(d=>mrcCclMap[d]).at(-1)]??null;
-    if(el)el.textContent=lm?`MEP $${Math.round(lm).toLocaleString('es-AR')} · CCL $${Math.round(lc??lm).toLocaleString('es-AR')}`:'';
-  }catch(e){console.warn('MRC FX',e);}
-}
-function mrcFfill(date,map){
-  if(map[date])return map[date];
-  for(let i=mrcFxDates.length-1;i>=0;i--){
-    if(mrcFxDates[i]<=date)return map[mrcFxDates[i]]??null;
-  }
-  return null;
-}
-function mrcGetFx(date,ccy){
-  if(ccy==='ARS')return 1;
-  return mrcFfill(date,ccy==='MEP'?mrcMepMap:mrcCclMap);
-}
-
-/* ── Tab nav ── */
-window.mrcSwitchMain=function(tab,el){
-  mrcActiveTab=tab;
-  document.querySelectorAll('#mrc-tabs-bar .tab').forEach(t=>t.classList.remove('active'));
-  if(el)el.classList.add('active');
-  Object.keys(MRC_CFG).forEach(k=>{
-    document.getElementById('mrc-section-'+k).style.display=k===tab?'block':'none';
-  });
-  const st=mrcTabState[tab];
-  if(!st.loaded)mrcLoadTab(tab);
-  else if(!st.heatBuilt)mrcBuildHeatmap(tab);
-};
-
-/* ── Load ── */
-async function mrcLoadTab(tab){
-  const cfg=MRC_CFG[tab],st=mrcTabState[tab];
-  try{
-    const res=await fetch(cfg.url);
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    const raw=await res.json();
-    st.data=mrcSafeArr(raw).map(r=>{
-      const row={symbol:r.symbol??'',last:r.c??null,change:r.pct_change??null,
-                 volume:r.v??null,px_bid:r.px_bid??null,px_ask:r.px_ask??null,q_op:r.q_op??null};
-      if(row.symbol)mrcLiveMap[row.symbol]={...row,tab};
-      return row;
-    }).filter(r=>r.symbol);
-    st.filtered=[...st.data];
-    st.loaded=true;
-    document.getElementById('mrc-loading-'+tab).style.display='none';
-    document.getElementById('mrc-wrap-'+tab).style.display='block';
-    mrcRenderThead(tab);
-    mrcRenderTbody(tab);
-    mrcBuildHeatmap(tab);
-  }catch(e){
-    const el=document.getElementById('mrc-loading-'+tab);
-    if(el)el.innerHTML=`<span style="color:var(--red);font-family:var(--mono);font-size:11px;">Error: ${e.message}</span>`;
-  }
-}
-
-/* ── Table ── */
-const MRC_COLS=[
-  {key:'symbol',label:'Ticker',right:false},
-  {key:'last',  label:'Precio',right:true},
-  {key:'px_bid',label:'Bid',   right:true},
-  {key:'px_ask',label:'Ask',   right:true},
-  {key:'q_op',  label:'Oper.', right:true},
-  {key:'change',label:'Var %', right:true},
-  {key:'volume',label:'Volumen',right:true},
-];
-
-function mrcRenderThead(tab){
-  document.getElementById('mrc-thead-'+tab).innerHTML=MRC_COLS.map(c=>
-    `<th id="mrc-th-${tab}-${c.key}" onclick="mrcSortTab('${tab}','${c.key}')"
-        style="${c.right?'':'text-align:left'}">${c.label}</th>`).join('');
-}
-
-window.mrcFilterTab=function(tab){
-  const q=document.getElementById('mrc-search-'+tab).value.trim().toUpperCase();
-  const st=mrcTabState[tab];
-  st.filtered=q?st.data.filter(r=>r.symbol.includes(q)):[...st.data];
-  mrcRenderTbody(tab);
-};
-
-window.mrcSortTab=function(tab,col){
-  const st=mrcTabState[tab];
-  if(st.sortCol===col)st.sortAsc=!st.sortAsc;else{st.sortCol=col;st.sortAsc=false;}
-  document.querySelectorAll(`#mrc-thead-${tab} th`).forEach(th=>th.classList.remove('sorted-asc','sorted-desc'));
-  const th=document.getElementById(`mrc-th-${tab}-${col}`);
-  if(th)th.classList.add(st.sortAsc?'sorted-asc':'sorted-desc');
-  mrcRenderTbody(tab);
-};
-
-function mrcRenderTbody(tab){
-  const st=mrcTabState[tab],cfg=MRC_CFG[tab];
-  const sorted=[...st.filtered].sort((a,b)=>{
-    const av=a[st.sortCol],bv=b[st.sortCol];
-    if(av==null&&bv==null)return 0;if(av==null)return 1;if(bv==null)return -1;
-    if(typeof av==='string')return st.sortAsc?av.localeCompare(bv):bv.localeCompare(av);
-    return st.sortAsc?av-bv:bv-av;
-  });
-  const badgeEl=document.getElementById('mrc-badge-'+tab);
-  if(badgeEl)badgeEl.textContent=sorted.length+' instrumentos';
-  const maxVol=Math.max(...sorted.map(r=>r.volume??0));
-
-  document.getElementById('mrc-tbody-'+tab).innerHTML=sorted.map(r=>{
-    const cc=r.change==null?'':r.change>=0?'pos':'neg';
-    const bw=maxVol>0&&r.volume!=null?(r.volume/maxVol*56):0;
-    const bc=r.change==null?'var(--text3)':r.change>=0?'var(--green)':'var(--red)';
-    const extra=cfg.hasHist?`data-sym="${r.symbol}" data-tab="${tab}"`:'';
-    return `<tr ${extra} style="${cfg.hasHist?'cursor:pointer':''}">
-      <td>${r.symbol}</td>
-      <td>${r.last  !=null?mrcFmt(r.last)  :'—'}</td>
-      <td>${r.px_bid!=null?mrcFmt(r.px_bid):'—'}</td>
-      <td>${r.px_ask!=null?mrcFmt(r.px_ask):'—'}</td>
-      <td>${r.q_op  !=null?r.q_op           :'—'}</td>
-      <td class="${cc}">${mrcFmtPct(r.change)}</td>
-      <td><div style="display:flex;align-items:center;gap:5px;justify-content:flex-end;">
-        <span>${mrcFmtVol(r.volume)}</span>
-        <div style="width:56px;height:3px;background:var(--border2);border-radius:2px;overflow:hidden;">
-          <div style="width:${bw}%;height:100%;background:${bc};opacity:.6;border-radius:2px;"></div>
-        </div>
-      </div></td>
-    </tr>`;
-  }).join('');
-
-  if(cfg.hasHist){
-    document.getElementById('mrc-tbody-'+tab).onclick=e=>{
-      const tr=e.target.closest('tr[data-sym]');
-      if(tr)mrcOpenTicker(tr.dataset.sym,tr.dataset.tab);
-    };
-  }
-}
-
-/* ── Heatmap ── */
-function mrcHeatColor(pct){
-  if(pct==null)return'var(--bg3)';
-  const t=Math.max(-10,Math.min(10,pct))/10;
-  if(t>=0)return`rgb(${Math.round(20+15*(1-t))},${Math.round(100+80*t)},${Math.round(40+10*(1-t))})`;
-  const u=-t;
-  return`rgb(${Math.round(140+100*u)},${Math.round(40-30*u)},${Math.round(40-25*u)})`;
-}
-
-function mrcBuildHeatmap(tab){
-  const st=mrcTabState[tab],cfg=MRC_CFG[tab];
-  st.heatBuilt=true;
-  const wrap=document.getElementById('mrc-hm-'+tab);
-  wrap.querySelectorAll('.mrc-heat-cell').forEach(el=>el.remove());
-  const items=st.data.filter(r=>r.volume!=null&&r.volume>0);
-  if(!items.length||!window.d3)return;
-  const W=wrap.clientWidth||1100,H=wrap.clientHeight||260;
-  const root=d3.hierarchy({children:items},d=>d.children)
-    .sum(d=>d.volume??0).sort((a,b)=>(b.value??0)-(a.value??0));
-  d3.treemap().size([W,H]).paddingInner(2).paddingOuter(2).tile(d3.treemapSquarify)(root);
-  root.leaves().forEach(node=>{
-    const r=node.data;
-    const x=node.x0,y=node.y0,w=node.x1-node.x0,h=node.y1-node.y0;
-    if(w<4||h<4)return;
-    const cell=document.createElement('div');
-    cell.className='mrc-heat-cell';
-    Object.assign(cell.style,{
-      position:'absolute',left:x+'px',top:y+'px',width:w+'px',height:h+'px',
-      background:mrcHeatColor(r.change),display:'flex',flexDirection:'column',
-      alignItems:'center',justifyContent:'center',overflow:'hidden',
-      border:'2px solid var(--bg)',borderRadius:'3px',transition:'filter .12s',
-      cursor:cfg.hasHist?'pointer':'default',
-    });
-    cell.title=`${r.symbol}  ${mrcFmtPct(r.change)}  Vol: ${mrcFmtVol(r.volume)}`;
-    if(w>28&&h>18){
-      const fs=Math.max(8,Math.min(16,Math.sqrt(w*h)/7));
-      const fss=Math.max(7,fs*.72);
-      cell.innerHTML=
-        `<div style="font-family:var(--mono);font-weight:600;color:rgba(255,255,255,.92);font-size:${fs}px;text-align:center;pointer-events:none;">${r.symbol}</div>`+
-        (h>32?`<div style="font-family:var(--mono);color:rgba(255,255,255,.7);font-size:${fss}px;text-align:center;pointer-events:none;">${mrcFmtPct(r.change)}</div>`:'');
-    }
-    if(cfg.hasHist){
-      cell.onmouseenter=()=>cell.style.filter='brightness(1.25)';
-      cell.onmouseleave=()=>cell.style.filter='';
-      cell.addEventListener('click',()=>mrcOpenTicker(r.symbol,tab));
-    }
-    wrap.appendChild(cell);
-  });
-}
-
-/* ── Ticker overlay ── */
-function mrcOpenTicker(symbol,tab){
-  mrcCurrentHistUrl=MRC_CFG[tab].histUrl;
-  mrcActiveCcy='ARS';mrcActiveRange=365;
-  document.querySelectorAll('#mrc-ccy-wrap .hist-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
-  document.querySelectorAll('#mrc-ticker-view .hist-controls .hist-btn').forEach((b,i)=>b.classList.toggle('active',i===3));
-  document.getElementById('mrc-ticker-view').classList.add('open');
-  document.getElementById('mrc-fx-warning').textContent='';
-  document.getElementById('mrc-hist-tbody').innerHTML='';
-  document.getElementById('mrc-t-badge').textContent='—';
-  ['mrc-s-live','mrc-s-bid','mrc-s-ask','mrc-s-vol','mrc-s-dr','mrc-s-count'].forEach(id=>
-    document.getElementById(id).textContent='…');
-  if(mrcPriceChart){mrcPriceChart.destroy();mrcPriceChart=null;}
-  if(mrcVolChart){mrcVolChart.destroy();mrcVolChart=null;}
-  mrcFetchTicker(symbol);
-}
-window.mrcCloseTickerView=function(){
-  document.getElementById('mrc-ticker-view').classList.remove('open');
-};
-
-async function mrcFetchTicker(symbol){
-  document.getElementById('mrc-h-ticker').textContent=symbol;
-  document.getElementById('mrc-h-meta').textContent='cargando...';
-  try{
-    const res=await fetch(mrcCurrentHistUrl+symbol);
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    const raw=await res.json();
-    const arr=mrcSafeArr(raw);
-    if(!arr.length)throw new Error('Sin datos históricos');
-    mrcAllData=arr.filter(d=>d.date&&d.c!=null).sort((a,b)=>a.date.localeCompare(b.date));
-    if(!mrcAllData.length)throw new Error('Sin datos válidos');
-    mrcRenderTicker(symbol);
-  }catch(e){
-    document.getElementById('mrc-h-meta').textContent='Error: '+e.message;
-  }
-}
-
-function mrcRenderTicker(symbol){
-  const live=mrcLiveMap[symbol]??null;
-  const last=mrcAllData[mrcAllData.length-1];
-  const displayPrice=live?.last??last.c;
-  const displayChange=live?.change??last.dr;
-  document.getElementById('mrc-h-ticker').textContent=symbol;
-  document.getElementById('mrc-h-meta').textContent=live
-    ?'⚠ Cotización con posible lag de hasta ~2hs · Solo fines educativos'
-    :'Último cierre histórico · '+last.date;
-  document.getElementById('mrc-s-live').textContent=mrcFmt(displayPrice);
-  document.getElementById('mrc-s-bid').textContent=live?.px_bid!=null?mrcFmt(live.px_bid):'—';
-  document.getElementById('mrc-s-ask').textContent=live?.px_ask!=null?mrcFmt(live.px_ask):'—';
-  document.getElementById('mrc-s-vol').textContent=mrcFmtVol(live?.volume??last.v);
-  const drEl=document.getElementById('mrc-s-dr');
-  drEl.textContent=mrcFmtPct(displayChange);
-  drEl.className='stat-value '+((displayChange??0)>=0?'pos':'neg');
-  document.getElementById('mrc-s-count').textContent=mrcAllData.length;
-  mrcRefreshPriceChart();
-  mrcBuildVolChart(mrcGetSlice(mrcActiveRange));
-  mrcBuildHistTable(mrcAllData);
-}
-
-function mrcGetSlice(days){
-  if(days>=9999)return mrcAllData;
-  const c=new Date();c.setDate(c.getDate()-days);
-  return mrcAllData.filter(d=>d.date>=c.toISOString().slice(0,10));
-}
-window.mrcSetRange=function(days,btn){
-  mrcActiveRange=days;
-  document.querySelectorAll('#mrc-ticker-view .hist-controls .hist-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  mrcRefreshPriceChart();
-  mrcBuildVolChart(mrcGetSlice(days));
-};
-window.mrcSetCcy=function(ccy,btn){
-  mrcActiveCcy=ccy;
-  document.querySelectorAll('#mrc-ccy-wrap .hist-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  mrcRefreshPriceChart();
-};
-
-function mrcGetConverted(){
-  let slice=mrcGetSlice(mrcActiveRange);
-  const wEl=document.getElementById('mrc-fx-warning');
-  wEl.textContent='';
-  if(mrcActiveCcy==='ARS')
-    return{dates:slice.map(d=>d.date),closes:slice.map(d=>d.c),ccy:'ARS'};
-  const map=mrcActiveCcy==='MEP'?mrcMepMap:mrcCclMap;
-  const firstFx=mrcFxDates.find(d=>map[d]);
-  if(!firstFx)return{dates:slice.map(d=>d.date),closes:slice.map(d=>null),ccy:mrcActiveCcy};
-  const orig0=slice[0]?.date;
-  if(orig0&&orig0<firstFx){
-    slice=slice.filter(d=>d.date>=firstFx);
-    wEl.textContent=`⚠ Rango recortado: datos ${mrcActiveCcy} disponibles desde ${firstFx} (AL30 emitido sep. 2020)`;
-  }
-  return{
-    dates:slice.map(d=>d.date),
-    closes:slice.map(d=>{const fx=mrcGetFx(d.date,mrcActiveCcy);return(d.c!=null&&fx!=null)?d.c/fx:null;}),
-    ccy:mrcActiveCcy
-  };
-}
-
-function mrcRefreshPriceChart(){
-  const {dates,closes,ccy}=mrcGetConverted();
-  if(mrcPriceChart)mrcPriceChart.destroy();
-  const ctx=document.getElementById('mrc-price-chart').getContext('2d');
-  const valid=closes.filter(v=>v!=null);
-  const isUp=valid.length>1?valid[valid.length-1]>=valid[0]:true;
-  const color=isUp?'#3fb950':'#f85149';
-  const grad=ctx.createLinearGradient(0,0,0,300);
-  grad.addColorStop(0,isUp?'rgba(63,185,80,.15)':'rgba(248,81,73,.15)');
-  grad.addColorStop(1,'rgba(0,0,0,0)');
-  const prefix=ccy==='ARS'?'ARS $':ccy==='MEP'?'USD MEP ':'USD CCL ';
-  const tickPfx=ccy==='ARS'?'$':'U$D ';
-  mrcPriceChart=new Chart(ctx,{
-    type:'line',
-    data:{labels:dates,datasets:[{
-      data:closes,borderColor:color,borderWidth:1.8,
-      backgroundColor:grad,fill:true,tension:.3,
-      pointRadius:0,pointHoverRadius:4,pointHoverBackgroundColor:color,spanGaps:false
-    }]},
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      interaction:{mode:'index',intersect:false},
-      plugins:{legend:{display:false},tooltip:{
-        backgroundColor:'var(--bg2)',borderColor:'var(--border2)',borderWidth:1,
-        titleFont:{family:"'DM Mono',monospace",size:11},bodyFont:{family:"'DM Mono',monospace",size:12},
-        callbacks:{label:c=>c.parsed.y!=null?' '+prefix+mrcFmt(c.parsed.y):'—'}
-      }},
-      scales:{
-        x:{grid:{color:'var(--border)'},ticks:{font:{family:"'DM Mono',monospace",size:10},color:'var(--text3)',maxTicksLimit:8,maxRotation:0},border:{color:'var(--border)'}},
-        y:{grid:{color:'var(--border)'},ticks:{font:{family:"'DM Mono',monospace",size:10},color:'var(--text3)',callback:v=>tickPfx+v.toLocaleString('es-AR',{maximumFractionDigits:2})},border:{color:'var(--border)'}}
-      }
-    }
-  });
-}
-
-function mrcBuildVolChart(data){
-  if(mrcVolChart)mrcVolChart.destroy();
-  const ctx=document.getElementById('mrc-vol-chart').getContext('2d');
-  mrcVolChart=new Chart(ctx,{
-    type:'bar',
-    data:{labels:data.map(d=>d.date),datasets:[{
-      data:data.map(d=>d.v),
-      backgroundColor:data.map(d=>d.dr==null?'rgba(74,85,104,.4)':d.dr>=0?'rgba(63,185,80,.35)':'rgba(248,81,73,.35)'),
-      borderWidth:0,borderRadius:2
-    }]},
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{
-        backgroundColor:'var(--bg2)',borderColor:'var(--border2)',borderWidth:1,
-        titleFont:{family:"'DM Mono',monospace",size:11},bodyFont:{family:"'DM Mono',monospace",size:12},
-        callbacks:{label:c=>' Vol: '+mrcFmtVol(c.parsed.y)}
-      }},
-      scales:{
-        x:{grid:{display:false},ticks:{font:{family:"'DM Mono',monospace",size:10},color:'var(--text3)',maxTicksLimit:6,maxRotation:0},border:{color:'var(--border)'}},
-        y:{grid:{color:'var(--border)'},ticks:{font:{family:"'DM Mono',monospace",size:10},color:'var(--text3)',callback:v=>mrcFmtVol(v)},border:{color:'var(--border)'}}
-      }
-    }
-  });
-}
-
-function mrcBuildHistTable(data){
-  const desc=[...data].reverse();
-  document.getElementById('mrc-t-badge').textContent=desc.length+' filas';
-  document.getElementById('mrc-hist-tbody').innerHTML=desc.map(d=>{
-    const dc=d.dr==null?'':d.dr>=0?'pos':'neg';
-    return`<tr onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''">
-      <td style="text-align:left;">${d.date}</td>
-      <td>${mrcFmt(d.o)}</td><td>${mrcFmt(d.h)}</td><td>${mrcFmt(d.l)}</td>
-      <td>${mrcFmt(d.c)}</td><td>${mrcFmtVol(d.v)}</td>
-      <td class="${dc}">${mrcFmtPct(d.dr)}</td>
-    </tr>`;
-  }).join('');
-}
-
-/* ── d3 lazy load ── */
-if(!window.d3){
-  const s=document.createElement('script');
-  s.src='https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js';
-  s.onload=()=>{
-    Object.keys(MRC_CFG).forEach(k=>{
-      const st=mrcTabState[k];
-      if(st.loaded){st.heatBuilt=false;mrcBuildHeatmap(k);}
-    });
-  };
-  document.head.appendChild(s);
-}
-
-})();
-</script>
-
-<!-- ══ TICKER DETAIL OVERLAY (Mercados) ══ -->
-<div class="detail-view" id="mrc-ticker-view">
-  <div class="detail-header">
-    <button class="back-btn" onclick="mrcCloseTickerView()">← Volver</button>
-    <div class="detail-ticker" id="mrc-h-ticker">—</div>
-    <div class="detail-meta" id="mrc-h-meta">—</div>
-    <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
-      <div style="display:flex;gap:3px;" id="mrc-ccy-wrap">
-        <button class="hist-btn active" onclick="mrcSetCcy('ARS',this)">ARS</button>
-        <button class="hist-btn" onclick="mrcSetCcy('MEP',this)"
-          title="MEP implícito = AL30 (ARS) ÷ AL30D (USD MEP)">MEP</button>
-        <button class="hist-btn" onclick="mrcSetCcy('CCL',this)"
-          title="CCL implícito = AL30 (ARS) ÷ AL30C (USD CCL)">CCL</button>
-      </div>
-    </div>
-  </div>
-  <div class="detail-body">
-    <div class="detail-grid">
-      <div class="stat-card"><div class="stat-label">Precio live</div><div class="stat-value" id="mrc-s-live">—</div></div>
-      <div class="stat-card"><div class="stat-label">Bid</div><div class="stat-value" id="mrc-s-bid">—</div></div>
-      <div class="stat-card"><div class="stat-label">Ask</div><div class="stat-value" id="mrc-s-ask">—</div></div>
-      <div class="stat-card"><div class="stat-label">Volumen</div><div class="stat-value" id="mrc-s-vol">—</div></div>
-      <div class="stat-card"><div class="stat-label">Var % día</div><div class="stat-value" id="mrc-s-dr">—</div></div>
-      <div class="stat-card"><div class="stat-label">Registros hist.</div><div class="stat-value" id="mrc-s-count">—</div></div>
-    </div>
-    <div id="mrc-fx-warning" style="font-family:var(--mono);font-size:10px;color:var(--yellow);margin-bottom:12px;min-height:14px;"></div>
-    <div class="card" style="margin-bottom:16px;">
-      <div class="card-header">
-        <div class="card-title">Precio de cierre</div>
-        <div style="display:flex;gap:4px;align-items:center;">
-          <div class="hist-controls">
-            <button class="hist-btn" onclick="mrcSetRange(30,this)">1M</button>
-            <button class="hist-btn" onclick="mrcSetRange(90,this)">3M</button>
-            <button class="hist-btn" onclick="mrcSetRange(180,this)">6M</button>
-            <button class="hist-btn active" onclick="mrcSetRange(365,this)">1A</button>
-            <button class="hist-btn" onclick="mrcSetRange(9999,this)">TODO</button>
-          </div>
-        </div>
-      </div>
-      <div class="chart-wrap"><div class="chart-canvas-wrap"><canvas id="mrc-price-chart"></canvas></div></div>
-    </div>
-    <div class="card" style="margin-bottom:16px;">
-      <div class="card-header"><div class="card-title">Volumen diario</div></div>
-      <div class="chart-wrap"><div class="chart-canvas-wrap" style="height:160px;"><canvas id="mrc-vol-chart"></canvas></div></div>
-    </div>
-    <div class="card" style="margin-bottom:32px;">
-      <div class="card-header">
-        <div class="card-title">Datos históricos</div>
-        <span style="font-family:var(--mono);font-size:10px;color:var(--text3);" id="mrc-t-badge">—</span>
-      </div>
-      <div style="overflow-x:auto;max-height:360px;overflow-y:auto;">
-        <table class="data-table">
-          <thead><tr>
-            <th style="text-align:left;">Fecha</th>
-            <th>Apertura</th><th>Máximo</th><th>Mínimo</th>
-            <th>Cierre</th><th>Volumen</th><th>Retorno %</th>
-          </tr></thead>
-          <tbody id="mrc-hist-tbody"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</div>
-
 </body>
 </html>
+
