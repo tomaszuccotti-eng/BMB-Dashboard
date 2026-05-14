@@ -9060,14 +9060,13 @@ function renderCheques(cheques){
       if(!arr.length) throw new Error('Sin datos históricos para '+ticker);
 
       _earPriceState[ticker]={allData:arr, range:365, ccy:'ARS'};
-      // Marcar como rendered solo si el fetch fue exitoso
       con.dataset.rendered='1';
       _earBuildPriciosUI(ticker, con);
     }catch(e){
-      // No marcamos rendered — el usuario puede reintentar
       con.innerHTML=`<div style="padding:32px 0;color:var(--red);font-family:var(--mono);font-size:12px;">Error cargando precios de ${ticker}: ${e.message}</div>`;
     }
   }
+  window._renderFichaPrecios = _renderFichaPrecios;
 
   function _earBuildPriciosUI(ticker, con){
     const st=_earPriceState[ticker];
