@@ -2903,7 +2903,8 @@ async function eqLoadFx() {
       if(aM[d]&&mM[d]&&mM[d]>0) eqMepMap[d]=aM[d]/mM[d];
       if(aM[d]&&cM[d]&&cM[d]>0) eqCclMap[d]=aM[d]/cM[d];
     });
-    eqFxDates = allD.filter(d=>eqMepMap[d]||eqCclMap[d]);
+    eqFxDates.length = 0;
+    allD.filter(d=>eqMepMap[d]||eqCclMap[d]).forEach(d=>eqFxDates.push(d));
     const lastMepDate = eqFxDates.filter(d=>eqMepMap[d]).at(-1);
     const lastCclDate = eqFxDates.filter(d=>eqCclMap[d]).at(-1);
     const lm = lastMepDate ? eqMepMap[lastMepDate] : null;
@@ -7491,7 +7492,11 @@ function renderEquity(){
     const cuit=(window.EXCEL_CUIT_MAP||{})[ticker];
     if(tabId==='ratios')  { _renderFichaRatios(ticker, ecoHist); con.dataset.rendered='1'; }
     if(tabId==='deudas')  { _renderFichaDeudas(ticker, cuit);    con.dataset.rendered='1'; }
-    if(tabId==='precios') { con.dataset.rendered='1'; _renderFichaPrecios(ticker); }
+    if(tabId==='precios') {
+      // No seteamos rendered acá — lo hace _renderFichaPrecios al terminar con éxito
+      // Si falla, el usuario puede re-intentar clickeando la tab de nuevo
+      _renderFichaPrecios(ticker);
+    }
   };
 
   // ─────────────────────────────────────────────────────────────
@@ -9040,6 +9045,11 @@ function renderCheques(cheques){
   async function _renderFichaPrecios(ticker){
     const con=document.getElementById(`ficha-tab-content-${ticker}-precios`);
     if(!con)return;
+    // Si ya tiene datos cargados, solo re-renderizar charts (sin refetch)
+    if(_earPriceState[ticker]?.allData?.length){
+      _earBuildPriciosUI(ticker, con);
+      return;
+    }
     con.innerHTML=`<div style="display:flex;align-items:center;gap:10px;padding:32px 0;color:var(--text3);font-family:var(--mono);font-size:11px;"><div class="spinner"></div>Cargando histórico de precios...</div>`;
 
     try{
@@ -9050,9 +9060,12 @@ function renderCheques(cheques){
       if(!arr.length) throw new Error('Sin datos históricos para '+ticker);
 
       _earPriceState[ticker]={allData:arr, range:365, ccy:'ARS'};
+      // Marcar como rendered solo si el fetch fue exitoso
+      con.dataset.rendered='1';
       _earBuildPriciosUI(ticker, con);
     }catch(e){
-      con.innerHTML=`<div style="padding:32px 0;color:var(--red);font-family:var(--mono);font-size:12px;">Error: ${e.message}</div>`;
+      // No marcamos rendered — el usuario puede reintentar
+      con.innerHTML=`<div style="padding:32px 0;color:var(--red);font-family:var(--mono);font-size:12px;">Error cargando precios de ${ticker}: ${e.message}</div>`;
     }
   }
 
