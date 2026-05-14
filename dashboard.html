@@ -2566,44 +2566,143 @@ window.enterTest=function(){
 </script>
 
 <!-- ══════════════════ APP ══════════════════ -->
-<div id="app">
+<div id="app" style="display:none;flex-direction:column;min-height:100vh;">
+
+  <!-- Header -->
   <div class="header">
     <div class="header-left">
       <div class="logo" onclick="backToLanding()" style="gap:0;">
         <img id="bm-logo-app" src="" alt="Bull Market" style="height:28px;width:auto;margin-right:10px;mix-blend-mode:screen;">
-        <span style="font-size:11px;font-family:var(--mono);color:var(--text3);font-weight:400;">— RENTA FIJA</span>
+        <span style="font-size:11px;font-family:var(--mono);color:var(--text3);font-weight:400;">— MERCADOS</span>
       </div>
-      <div class="header-date" id="header-date">—</div>
     </div>
     <div class="header-right">
-      <div class="status-dot"></div>
-      <div class="plazo-toggle">
-        <button class="plazo-btn active" onclick="setPlazo('C.I.')">C.I.</button>
-        <button class="plazo-btn" onclick="setPlazo('24Hs.')">24Hs.</button>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.06em;" id="mrc-fx-status">—</div>
+      <div style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--text3);">
+        <div class="status-dot"></div>
+        LIVE · lag ~2hs
       </div>
       <button onclick="toggleTheme()" class="theme-btn-small">
-        <span class="theme-btn-icon">☀</span> <span class="theme-btn-lbl">Modo Claro</span>
+        <span class="theme-btn-icon">☀</span><span class="theme-btn-lbl">Modo Claro</span>
       </button>
     </div>
   </div>
 
-  <div class="tabs-bar">
-    <div class="tab active"  onclick="showTab('lecap',this)">LECAPs</div>
-    <div class="tab" onclick="showTab('boncap',this)">BONCAPs</div>
-    <div class="tab" onclick="showTab('boncer',this)">BONCERs</div>
-    <div class="tab" onclick="showTab('soberano',this)">Soberanos</div>
-    <div class="tab" onclick="showTab('dolar_linked',this)">Dólar Linked</div>
-    <div class="tab" onclick="showTab('bopreal',this)">BOPREALes</div>
-    <div class="tab" onclick="showTab('fixed_rate',this)">Fixed Rate</div>
-    <div class="tab" onclick="showTab('badlar',this)">BADLAR</div>
-    <div class="tab" onclick="showTab('dual',this)">Duales</div>
+  <!-- Main tabs -->
+  <div class="tabs-bar" id="mrc-tabs-bar">
+    <div class="tab active" onclick="mrcSwitchMain('argy',this)">ARGY</div>
+    <div class="tab" onclick="mrcSwitchMain('adr',this)">ADR</div>
+    <div class="tab" onclick="mrcSwitchMain('cedear',this)">CEDEARs</div>
+    <div class="tab" onclick="mrcSwitchMain('usa',this)">USA</div>
   </div>
 
-  <div class="main" id="main-content">
-    <div class="loading-state" id="loading">
-      <div class="spinner"></div>
-      <div style="color:var(--text3);font-size:11px;font-family:var(--mono);">Cargando datos...</div>
+  <!-- Sections -->
+  <div class="main" style="padding:16px 20px;">
+
+    <div id="mrc-section-argy">
+      <div class="card" style="margin-bottom:12px;">
+        <div style="position:relative;width:100%;height:260px;" id="mrc-hm-argy"></div>
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text3);">
+          <span>−10%</span>
+          <div style="flex:1;max-width:160px;height:6px;border-radius:3px;background:linear-gradient(to right,var(--red),var(--bg3),var(--green));"></div>
+          <span>+10%</span>
+          <span style="margin-left:auto;">Tamaño = volumen · clic para histórico</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Acciones AR</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+            <input type="text" id="mrc-search-argy" placeholder="Buscar..." oninput="mrcFilterTab('argy')"
+              style="font-family:var(--mono);font-size:11px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:4px 9px;border-radius:4px;outline:none;width:140px;">
+            <span style="font-family:var(--mono);font-size:10px;color:var(--text3);" id="mrc-badge-argy">—</span>
+          </div>
+        </div>
+        <div id="mrc-loading-argy" class="loading-state" style="height:100px;"><div class="spinner"></div></div>
+        <div style="overflow-x:auto;max-height:420px;overflow-y:auto;display:none;" id="mrc-wrap-argy">
+          <table class="data-table"><thead><tr id="mrc-thead-argy"></tr></thead><tbody id="mrc-tbody-argy"></tbody></table>
+        </div>
+      </div>
     </div>
+
+    <div id="mrc-section-adr" style="display:none;">
+      <div class="card" style="margin-bottom:12px;">
+        <div style="position:relative;width:100%;height:260px;" id="mrc-hm-adr"></div>
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text3);">
+          <span>−10%</span>
+          <div style="flex:1;max-width:160px;height:6px;border-radius:3px;background:linear-gradient(to right,var(--red),var(--bg3),var(--green));"></div>
+          <span>+10%</span>
+          <span style="margin-left:auto;">Tamaño = volumen</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">ADRs</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+            <input type="text" id="mrc-search-adr" placeholder="Buscar..." oninput="mrcFilterTab('adr')"
+              style="font-family:var(--mono);font-size:11px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:4px 9px;border-radius:4px;outline:none;width:140px;">
+            <span style="font-family:var(--mono);font-size:10px;color:var(--text3);" id="mrc-badge-adr">—</span>
+          </div>
+        </div>
+        <div id="mrc-loading-adr" class="loading-state" style="height:100px;"><div class="spinner"></div></div>
+        <div style="overflow-x:auto;max-height:420px;overflow-y:auto;display:none;" id="mrc-wrap-adr">
+          <table class="data-table"><thead><tr id="mrc-thead-adr"></tr></thead><tbody id="mrc-tbody-adr"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <div id="mrc-section-cedear" style="display:none;">
+      <div class="card" style="margin-bottom:12px;">
+        <div style="position:relative;width:100%;height:260px;" id="mrc-hm-cedear"></div>
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text3);">
+          <span>−10%</span>
+          <div style="flex:1;max-width:160px;height:6px;border-radius:3px;background:linear-gradient(to right,var(--red),var(--bg3),var(--green));"></div>
+          <span>+10%</span>
+          <span style="margin-left:auto;">Tamaño = volumen · clic para histórico</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">CEDEARs</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+            <input type="text" id="mrc-search-cedear" placeholder="Buscar..." oninput="mrcFilterTab('cedear')"
+              style="font-family:var(--mono);font-size:11px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:4px 9px;border-radius:4px;outline:none;width:140px;">
+            <span style="font-family:var(--mono);font-size:10px;color:var(--text3);" id="mrc-badge-cedear">—</span>
+          </div>
+        </div>
+        <div id="mrc-loading-cedear" class="loading-state" style="height:100px;"><div class="spinner"></div></div>
+        <div style="overflow-x:auto;max-height:420px;overflow-y:auto;display:none;" id="mrc-wrap-cedear">
+          <table class="data-table"><thead><tr id="mrc-thead-cedear"></tr></thead><tbody id="mrc-tbody-cedear"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <div id="mrc-section-usa" style="display:none;">
+      <div class="card" style="margin-bottom:12px;">
+        <div style="position:relative;width:100%;height:260px;" id="mrc-hm-usa"></div>
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text3);">
+          <span>−10%</span>
+          <div style="flex:1;max-width:160px;height:6px;border-radius:3px;background:linear-gradient(to right,var(--red),var(--bg3),var(--green));"></div>
+          <span>+10%</span>
+          <span style="margin-left:auto;">Tamaño = volumen</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Acciones USA</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+            <input type="text" id="mrc-search-usa" placeholder="Buscar..." oninput="mrcFilterTab('usa')"
+              style="font-family:var(--mono);font-size:11px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:4px 9px;border-radius:4px;outline:none;width:140px;">
+            <span style="font-family:var(--mono);font-size:10px;color:var(--text3);" id="mrc-badge-usa">—</span>
+          </div>
+        </div>
+        <div id="mrc-loading-usa" class="loading-state" style="height:100px;"><div class="spinner"></div></div>
+        <div style="overflow-x:auto;max-height:420px;overflow-y:auto;display:none;" id="mrc-wrap-usa">
+          <table class="data-table"><thead><tr id="mrc-thead-usa"></tr></thead><tbody id="mrc-tbody-usa"></tbody></table>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -3164,10 +3263,11 @@ const COL_LABELS={fecha:'Fecha',especie:'Ticker',tir:'TIR',mod_duration:'MD',pre
 // ── LANDING ──
 function enterApp(){
   document.getElementById('landing').style.display='none';
-  document.getElementById('app').style.display='flex';
-  document.getElementById('app').style.flexDirection='column';
-  document.getElementById('legal-footer').style.display='block';
-  if(!DATA_LOADED) loadData();
+  const el=document.getElementById('app');
+  el.style.display='flex';
+  el.style.flexDirection='column';
+  document.getElementById('legal-footer').style.display='none';
+  if(!window._mercadosInited) window._initMercados();
 }
 function setEquityPlazo(p){
   EQUITY_PLAZO=p;
@@ -3221,6 +3321,7 @@ function backToLanding(){
   document.getElementById('app-balances-menu').style.display='none';
   document.getElementById('app-excel').style.display='none';
   document.getElementById('app-test').style.display='none';
+  // app-mercados now merged into app
   document.getElementById('legal-footer').style.display='none';
   if(window._secResetState) window._secResetState();
 }
@@ -8892,6 +8993,494 @@ function renderCheques(cheques){
   .mav-ven-bar{height:100%;background:#1E27F3;opacity:.75;transition:width .4s ease;}
   .mav-ven-val{width:130px;text-align:right;color:var(--text);flex-shrink:0;}
 </style>
+
+<script>
+/* ══════════════════════════════════════════
+   MÓDULO MERCADOS — integrado en #app
+══════════════════════════════════════════ */
+(function(){
+
+const mrcFmt    = n => n!=null ? n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+const mrcFmtVol = n => n!=null ? (n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(0)+'K':Math.round(n)+'') : '—';
+const mrcFmtPct = n => n!=null ? (n>=0?'+':'')+n.toFixed(2)+'%' : '—';
+const mrcSafeArr= raw => Array.isArray(raw)?raw:(raw?.data&&Array.isArray(raw.data)?raw.data:[]);
+
+const MRC_CFG = {
+  argy:  { url:'https://data912.com/live/arg_stocks',  hasHist:true,  histUrl:'https://data912.com/historical/stocks/' },
+  adr:   { url:'https://data912.com/live/usa_adrs',    hasHist:false, histUrl:null },
+  cedear:{ url:'https://data912.com/live/arg_cedears', hasHist:true,  histUrl:'https://data912.com/historical/cedears/' },
+  usa:   { url:'https://data912.com/live/usa_stocks',  hasHist:false, histUrl:null },
+};
+
+const mrcTabState = {};
+Object.keys(MRC_CFG).forEach(k => {
+  mrcTabState[k] = { data:[], filtered:[], loaded:false, heatBuilt:false, sortCol:'change', sortAsc:false };
+});
+const mrcLiveMap = {};
+let mrcActiveTab='argy';
+let mrcAllData=[], mrcPriceChart=null, mrcVolChart=null;
+let mrcActiveRange=365, mrcActiveCcy='ARS', mrcCurrentHistUrl='', mrcCurrentHasHist=false;
+let mrcMepMap={}, mrcCclMap={}, mrcFxDates=[], mrcFxReady=false;
+
+window._mercadosInited = false;
+window._initMercados = function(){
+  window._mercadosInited = true;
+  const logo=document.getElementById('bm-logo-app');
+  if(logo&&window.LOGO_B64) logo.src=window.LOGO_B64;
+  Promise.all([mrcLoadTab('argy'), mrcLoadFx()]);
+};
+
+/* ── FX ── */
+async function mrcLoadFx(){
+  const el=document.getElementById('mrc-fx-status');
+  try{
+    const [rA,rM,rC]=await Promise.all([
+      fetch('https://data912.com/historical/bonds/AL30'),
+      fetch('https://data912.com/historical/bonds/AL30D'),
+      fetch('https://data912.com/historical/bonds/AL30C'),
+    ]);
+    const [dA,dM,dC]=await Promise.all([rA.ok?rA.json():[],rM.ok?rM.json():[],rC.ok?rC.json():[]]);
+    const toMap=arr=>{const m={};mrcSafeArr(arr).forEach(r=>{if(r.date&&r.c!=null)m[r.date]=r.c;});return m;};
+    const aM=toMap(dA),mM=toMap(dM),cM=toMap(dC);
+    const allD=[...new Set([...Object.keys(aM),...Object.keys(mM),...Object.keys(cM)])].sort();
+    allD.forEach(d=>{
+      if(aM[d]&&mM[d]&&mM[d]>0)mrcMepMap[d]=aM[d]/mM[d];
+      if(aM[d]&&cM[d]&&cM[d]>0)mrcCclMap[d]=aM[d]/cM[d];
+    });
+    mrcFxDates=allD.filter(d=>mrcMepMap[d]||mrcCclMap[d]);
+    mrcFxReady=true;
+    const lm=mrcMepMap[mrcFxDates.filter(d=>mrcMepMap[d]).at(-1)]??null;
+    const lc=mrcCclMap[mrcFxDates.filter(d=>mrcCclMap[d]).at(-1)]??null;
+    if(el)el.textContent=lm?`MEP $${Math.round(lm).toLocaleString('es-AR')} · CCL $${Math.round(lc??lm).toLocaleString('es-AR')}`:'';
+  }catch(e){console.warn('MRC FX',e);}
+}
+function mrcFfill(date,map){
+  if(map[date])return map[date];
+  for(let i=mrcFxDates.length-1;i>=0;i--){
+    if(mrcFxDates[i]<=date)return map[mrcFxDates[i]]??null;
+  }
+  return null;
+}
+function mrcGetFx(date,ccy){
+  if(ccy==='ARS')return 1;
+  return mrcFfill(date,ccy==='MEP'?mrcMepMap:mrcCclMap);
+}
+
+/* ── Tab nav ── */
+window.mrcSwitchMain=function(tab,el){
+  mrcActiveTab=tab;
+  document.querySelectorAll('#mrc-tabs-bar .tab').forEach(t=>t.classList.remove('active'));
+  if(el)el.classList.add('active');
+  Object.keys(MRC_CFG).forEach(k=>{
+    document.getElementById('mrc-section-'+k).style.display=k===tab?'block':'none';
+  });
+  const st=mrcTabState[tab];
+  if(!st.loaded)mrcLoadTab(tab);
+  else if(!st.heatBuilt)mrcBuildHeatmap(tab);
+};
+
+/* ── Load ── */
+async function mrcLoadTab(tab){
+  const cfg=MRC_CFG[tab],st=mrcTabState[tab];
+  try{
+    const res=await fetch(cfg.url);
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const raw=await res.json();
+    st.data=mrcSafeArr(raw).map(r=>{
+      const row={symbol:r.symbol??'',last:r.c??null,change:r.pct_change??null,
+                 volume:r.v??null,px_bid:r.px_bid??null,px_ask:r.px_ask??null,q_op:r.q_op??null};
+      if(row.symbol)mrcLiveMap[row.symbol]={...row,tab};
+      return row;
+    }).filter(r=>r.symbol);
+    st.filtered=[...st.data];
+    st.loaded=true;
+    document.getElementById('mrc-loading-'+tab).style.display='none';
+    document.getElementById('mrc-wrap-'+tab).style.display='block';
+    mrcRenderThead(tab);
+    mrcRenderTbody(tab);
+    mrcBuildHeatmap(tab);
+  }catch(e){
+    const el=document.getElementById('mrc-loading-'+tab);
+    if(el)el.innerHTML=`<span style="color:var(--red);font-family:var(--mono);font-size:11px;">Error: ${e.message}</span>`;
+  }
+}
+
+/* ── Table ── */
+const MRC_COLS=[
+  {key:'symbol',label:'Ticker',right:false},
+  {key:'last',  label:'Precio',right:true},
+  {key:'px_bid',label:'Bid',   right:true},
+  {key:'px_ask',label:'Ask',   right:true},
+  {key:'q_op',  label:'Oper.', right:true},
+  {key:'change',label:'Var %', right:true},
+  {key:'volume',label:'Volumen',right:true},
+];
+
+function mrcRenderThead(tab){
+  document.getElementById('mrc-thead-'+tab).innerHTML=MRC_COLS.map(c=>
+    `<th id="mrc-th-${tab}-${c.key}" onclick="mrcSortTab('${tab}','${c.key}')"
+        style="${c.right?'':'text-align:left'}">${c.label}</th>`).join('');
+}
+
+window.mrcFilterTab=function(tab){
+  const q=document.getElementById('mrc-search-'+tab).value.trim().toUpperCase();
+  const st=mrcTabState[tab];
+  st.filtered=q?st.data.filter(r=>r.symbol.includes(q)):[...st.data];
+  mrcRenderTbody(tab);
+};
+
+window.mrcSortTab=function(tab,col){
+  const st=mrcTabState[tab];
+  if(st.sortCol===col)st.sortAsc=!st.sortAsc;else{st.sortCol=col;st.sortAsc=false;}
+  document.querySelectorAll(`#mrc-thead-${tab} th`).forEach(th=>th.classList.remove('sorted-asc','sorted-desc'));
+  const th=document.getElementById(`mrc-th-${tab}-${col}`);
+  if(th)th.classList.add(st.sortAsc?'sorted-asc':'sorted-desc');
+  mrcRenderTbody(tab);
+};
+
+function mrcRenderTbody(tab){
+  const st=mrcTabState[tab],cfg=MRC_CFG[tab];
+  const sorted=[...st.filtered].sort((a,b)=>{
+    const av=a[st.sortCol],bv=b[st.sortCol];
+    if(av==null&&bv==null)return 0;if(av==null)return 1;if(bv==null)return -1;
+    if(typeof av==='string')return st.sortAsc?av.localeCompare(bv):bv.localeCompare(av);
+    return st.sortAsc?av-bv:bv-av;
+  });
+  const badgeEl=document.getElementById('mrc-badge-'+tab);
+  if(badgeEl)badgeEl.textContent=sorted.length+' instrumentos';
+  const maxVol=Math.max(...sorted.map(r=>r.volume??0));
+
+  document.getElementById('mrc-tbody-'+tab).innerHTML=sorted.map(r=>{
+    const cc=r.change==null?'':r.change>=0?'pos':'neg';
+    const bw=maxVol>0&&r.volume!=null?(r.volume/maxVol*56):0;
+    const bc=r.change==null?'var(--text3)':r.change>=0?'var(--green)':'var(--red)';
+    const extra=cfg.hasHist?`data-sym="${r.symbol}" data-tab="${tab}"`:'';
+    return `<tr ${extra} style="${cfg.hasHist?'cursor:pointer':''}">
+      <td>${r.symbol}</td>
+      <td>${r.last  !=null?mrcFmt(r.last)  :'—'}</td>
+      <td>${r.px_bid!=null?mrcFmt(r.px_bid):'—'}</td>
+      <td>${r.px_ask!=null?mrcFmt(r.px_ask):'—'}</td>
+      <td>${r.q_op  !=null?r.q_op           :'—'}</td>
+      <td class="${cc}">${mrcFmtPct(r.change)}</td>
+      <td><div style="display:flex;align-items:center;gap:5px;justify-content:flex-end;">
+        <span>${mrcFmtVol(r.volume)}</span>
+        <div style="width:56px;height:3px;background:var(--border2);border-radius:2px;overflow:hidden;">
+          <div style="width:${bw}%;height:100%;background:${bc};opacity:.6;border-radius:2px;"></div>
+        </div>
+      </div></td>
+    </tr>`;
+  }).join('');
+
+  if(cfg.hasHist){
+    document.getElementById('mrc-tbody-'+tab).onclick=e=>{
+      const tr=e.target.closest('tr[data-sym]');
+      if(tr)mrcOpenTicker(tr.dataset.sym,tr.dataset.tab);
+    };
+  }
+}
+
+/* ── Heatmap ── */
+function mrcHeatColor(pct){
+  if(pct==null)return'var(--bg3)';
+  const t=Math.max(-10,Math.min(10,pct))/10;
+  if(t>=0)return`rgb(${Math.round(20+15*(1-t))},${Math.round(100+80*t)},${Math.round(40+10*(1-t))})`;
+  const u=-t;
+  return`rgb(${Math.round(140+100*u)},${Math.round(40-30*u)},${Math.round(40-25*u)})`;
+}
+
+function mrcBuildHeatmap(tab){
+  const st=mrcTabState[tab],cfg=MRC_CFG[tab];
+  st.heatBuilt=true;
+  const wrap=document.getElementById('mrc-hm-'+tab);
+  wrap.querySelectorAll('.mrc-heat-cell').forEach(el=>el.remove());
+  const items=st.data.filter(r=>r.volume!=null&&r.volume>0);
+  if(!items.length||!window.d3)return;
+  const W=wrap.clientWidth||1100,H=wrap.clientHeight||260;
+  const root=d3.hierarchy({children:items},d=>d.children)
+    .sum(d=>d.volume??0).sort((a,b)=>(b.value??0)-(a.value??0));
+  d3.treemap().size([W,H]).paddingInner(2).paddingOuter(2).tile(d3.treemapSquarify)(root);
+  root.leaves().forEach(node=>{
+    const r=node.data;
+    const x=node.x0,y=node.y0,w=node.x1-node.x0,h=node.y1-node.y0;
+    if(w<4||h<4)return;
+    const cell=document.createElement('div');
+    cell.className='mrc-heat-cell';
+    Object.assign(cell.style,{
+      position:'absolute',left:x+'px',top:y+'px',width:w+'px',height:h+'px',
+      background:mrcHeatColor(r.change),display:'flex',flexDirection:'column',
+      alignItems:'center',justifyContent:'center',overflow:'hidden',
+      border:'2px solid var(--bg)',borderRadius:'3px',transition:'filter .12s',
+      cursor:cfg.hasHist?'pointer':'default',
+    });
+    cell.title=`${r.symbol}  ${mrcFmtPct(r.change)}  Vol: ${mrcFmtVol(r.volume)}`;
+    if(w>28&&h>18){
+      const fs=Math.max(8,Math.min(16,Math.sqrt(w*h)/7));
+      const fss=Math.max(7,fs*.72);
+      cell.innerHTML=
+        `<div style="font-family:var(--mono);font-weight:600;color:rgba(255,255,255,.92);font-size:${fs}px;text-align:center;pointer-events:none;">${r.symbol}</div>`+
+        (h>32?`<div style="font-family:var(--mono);color:rgba(255,255,255,.7);font-size:${fss}px;text-align:center;pointer-events:none;">${mrcFmtPct(r.change)}</div>`:'');
+    }
+    if(cfg.hasHist){
+      cell.onmouseenter=()=>cell.style.filter='brightness(1.25)';
+      cell.onmouseleave=()=>cell.style.filter='';
+      cell.addEventListener('click',()=>mrcOpenTicker(r.symbol,tab));
+    }
+    wrap.appendChild(cell);
+  });
+}
+
+/* ── Ticker overlay ── */
+function mrcOpenTicker(symbol,tab){
+  mrcCurrentHistUrl=MRC_CFG[tab].histUrl;
+  mrcActiveCcy='ARS';mrcActiveRange=365;
+  document.querySelectorAll('#mrc-ccy-wrap .hist-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
+  document.querySelectorAll('#mrc-ticker-view .hist-controls .hist-btn').forEach((b,i)=>b.classList.toggle('active',i===3));
+  document.getElementById('mrc-ticker-view').classList.add('open');
+  document.getElementById('mrc-fx-warning').textContent='';
+  document.getElementById('mrc-hist-tbody').innerHTML='';
+  document.getElementById('mrc-t-badge').textContent='—';
+  ['mrc-s-live','mrc-s-bid','mrc-s-ask','mrc-s-vol','mrc-s-dr','mrc-s-count'].forEach(id=>
+    document.getElementById(id).textContent='…');
+  if(mrcPriceChart){mrcPriceChart.destroy();mrcPriceChart=null;}
+  if(mrcVolChart){mrcVolChart.destroy();mrcVolChart=null;}
+  mrcFetchTicker(symbol);
+}
+window.mrcCloseTickerView=function(){
+  document.getElementById('mrc-ticker-view').classList.remove('open');
+};
+
+async function mrcFetchTicker(symbol){
+  document.getElementById('mrc-h-ticker').textContent=symbol;
+  document.getElementById('mrc-h-meta').textContent='cargando...';
+  try{
+    const res=await fetch(mrcCurrentHistUrl+symbol);
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const raw=await res.json();
+    const arr=mrcSafeArr(raw);
+    if(!arr.length)throw new Error('Sin datos históricos');
+    mrcAllData=arr.filter(d=>d.date&&d.c!=null).sort((a,b)=>a.date.localeCompare(b.date));
+    if(!mrcAllData.length)throw new Error('Sin datos válidos');
+    mrcRenderTicker(symbol);
+  }catch(e){
+    document.getElementById('mrc-h-meta').textContent='Error: '+e.message;
+  }
+}
+
+function mrcRenderTicker(symbol){
+  const live=mrcLiveMap[symbol]??null;
+  const last=mrcAllData[mrcAllData.length-1];
+  const displayPrice=live?.last??last.c;
+  const displayChange=live?.change??last.dr;
+  document.getElementById('mrc-h-ticker').textContent=symbol;
+  document.getElementById('mrc-h-meta').textContent=live
+    ?'⚠ Cotización con posible lag de hasta ~2hs · Solo fines educativos'
+    :'Último cierre histórico · '+last.date;
+  document.getElementById('mrc-s-live').textContent=mrcFmt(displayPrice);
+  document.getElementById('mrc-s-bid').textContent=live?.px_bid!=null?mrcFmt(live.px_bid):'—';
+  document.getElementById('mrc-s-ask').textContent=live?.px_ask!=null?mrcFmt(live.px_ask):'—';
+  document.getElementById('mrc-s-vol').textContent=mrcFmtVol(live?.volume??last.v);
+  const drEl=document.getElementById('mrc-s-dr');
+  drEl.textContent=mrcFmtPct(displayChange);
+  drEl.className='stat-value '+((displayChange??0)>=0?'pos':'neg');
+  document.getElementById('mrc-s-count').textContent=mrcAllData.length;
+  mrcRefreshPriceChart();
+  mrcBuildVolChart(mrcGetSlice(mrcActiveRange));
+  mrcBuildHistTable(mrcAllData);
+}
+
+function mrcGetSlice(days){
+  if(days>=9999)return mrcAllData;
+  const c=new Date();c.setDate(c.getDate()-days);
+  return mrcAllData.filter(d=>d.date>=c.toISOString().slice(0,10));
+}
+window.mrcSetRange=function(days,btn){
+  mrcActiveRange=days;
+  document.querySelectorAll('#mrc-ticker-view .hist-controls .hist-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  mrcRefreshPriceChart();
+  mrcBuildVolChart(mrcGetSlice(days));
+};
+window.mrcSetCcy=function(ccy,btn){
+  mrcActiveCcy=ccy;
+  document.querySelectorAll('#mrc-ccy-wrap .hist-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  mrcRefreshPriceChart();
+};
+
+function mrcGetConverted(){
+  let slice=mrcGetSlice(mrcActiveRange);
+  const wEl=document.getElementById('mrc-fx-warning');
+  wEl.textContent='';
+  if(mrcActiveCcy==='ARS')
+    return{dates:slice.map(d=>d.date),closes:slice.map(d=>d.c),ccy:'ARS'};
+  const map=mrcActiveCcy==='MEP'?mrcMepMap:mrcCclMap;
+  const firstFx=mrcFxDates.find(d=>map[d]);
+  if(!firstFx)return{dates:slice.map(d=>d.date),closes:slice.map(d=>null),ccy:mrcActiveCcy};
+  const orig0=slice[0]?.date;
+  if(orig0&&orig0<firstFx){
+    slice=slice.filter(d=>d.date>=firstFx);
+    wEl.textContent=`⚠ Rango recortado: datos ${mrcActiveCcy} disponibles desde ${firstFx} (AL30 emitido sep. 2020)`;
+  }
+  return{
+    dates:slice.map(d=>d.date),
+    closes:slice.map(d=>{const fx=mrcGetFx(d.date,mrcActiveCcy);return(d.c!=null&&fx!=null)?d.c/fx:null;}),
+    ccy:mrcActiveCcy
+  };
+}
+
+function mrcRefreshPriceChart(){
+  const {dates,closes,ccy}=mrcGetConverted();
+  if(mrcPriceChart)mrcPriceChart.destroy();
+  const ctx=document.getElementById('mrc-price-chart').getContext('2d');
+  const valid=closes.filter(v=>v!=null);
+  const isUp=valid.length>1?valid[valid.length-1]>=valid[0]:true;
+  const color=isUp?'#3fb950':'#f85149';
+  const grad=ctx.createLinearGradient(0,0,0,300);
+  grad.addColorStop(0,isUp?'rgba(63,185,80,.15)':'rgba(248,81,73,.15)');
+  grad.addColorStop(1,'rgba(0,0,0,0)');
+  const prefix=ccy==='ARS'?'ARS $':ccy==='MEP'?'USD MEP ':'USD CCL ';
+  const tickPfx=ccy==='ARS'?'$':'U$D ';
+  mrcPriceChart=new Chart(ctx,{
+    type:'line',
+    data:{labels:dates,datasets:[{
+      data:closes,borderColor:color,borderWidth:1.8,
+      backgroundColor:grad,fill:true,tension:.3,
+      pointRadius:0,pointHoverRadius:4,pointHoverBackgroundColor:color,spanGaps:false
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{
+        backgroundColor:'var(--bg2)',borderColor:'var(--border2)',borderWidth:1,
+        titleFont:{family:"'DM Mono',monospace",size:11},bodyFont:{family:"'DM Mono',monospace",size:12},
+        callbacks:{label:c=>c.parsed.y!=null?' '+prefix+mrcFmt(c.parsed.y):'—'}
+      }},
+      scales:{
+        x:{grid:{color:'var(--border)'},ticks:{font:{family:"'DM Mono',monospace",size:10},color:'var(--text3)',maxTicksLimit:8,maxRotation:0},border:{color:'var(--border)'}},
+        y:{grid:{color:'var(--border)'},ticks:{font:{family:"'DM Mono',monospace",size:10},color:'var(--text3)',callback:v=>tickPfx+v.toLocaleString('es-AR',{maximumFractionDigits:2})},border:{color:'var(--border)'}}
+      }
+    }
+  });
+}
+
+function mrcBuildVolChart(data){
+  if(mrcVolChart)mrcVolChart.destroy();
+  const ctx=document.getElementById('mrc-vol-chart').getContext('2d');
+  mrcVolChart=new Chart(ctx,{
+    type:'bar',
+    data:{labels:data.map(d=>d.date),datasets:[{
+      data:data.map(d=>d.v),
+      backgroundColor:data.map(d=>d.dr==null?'rgba(74,85,104,.4)':d.dr>=0?'rgba(63,185,80,.35)':'rgba(248,81,73,.35)'),
+      borderWidth:0,borderRadius:2
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{
+        backgroundColor:'var(--bg2)',borderColor:'var(--border2)',borderWidth:1,
+        titleFont:{family:"'DM Mono',monospace",size:11},bodyFont:{family:"'DM Mono',monospace",size:12},
+        callbacks:{label:c=>' Vol: '+mrcFmtVol(c.parsed.y)}
+      }},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{family:"'DM Mono',monospace",size:10},color:'var(--text3)',maxTicksLimit:6,maxRotation:0},border:{color:'var(--border)'}},
+        y:{grid:{color:'var(--border)'},ticks:{font:{family:"'DM Mono',monospace",size:10},color:'var(--text3)',callback:v=>mrcFmtVol(v)},border:{color:'var(--border)'}}
+      }
+    }
+  });
+}
+
+function mrcBuildHistTable(data){
+  const desc=[...data].reverse();
+  document.getElementById('mrc-t-badge').textContent=desc.length+' filas';
+  document.getElementById('mrc-hist-tbody').innerHTML=desc.map(d=>{
+    const dc=d.dr==null?'':d.dr>=0?'pos':'neg';
+    return`<tr onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''">
+      <td style="text-align:left;">${d.date}</td>
+      <td>${mrcFmt(d.o)}</td><td>${mrcFmt(d.h)}</td><td>${mrcFmt(d.l)}</td>
+      <td>${mrcFmt(d.c)}</td><td>${mrcFmtVol(d.v)}</td>
+      <td class="${dc}">${mrcFmtPct(d.dr)}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ── d3 lazy load ── */
+if(!window.d3){
+  const s=document.createElement('script');
+  s.src='https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js';
+  s.onload=()=>{
+    Object.keys(MRC_CFG).forEach(k=>{
+      const st=mrcTabState[k];
+      if(st.loaded){st.heatBuilt=false;mrcBuildHeatmap(k);}
+    });
+  };
+  document.head.appendChild(s);
+}
+
+})();
+</script>
+
+<!-- ══ TICKER DETAIL OVERLAY (Mercados) ══ -->
+<div class="detail-view" id="mrc-ticker-view">
+  <div class="detail-header">
+    <button class="back-btn" onclick="mrcCloseTickerView()">← Volver</button>
+    <div class="detail-ticker" id="mrc-h-ticker">—</div>
+    <div class="detail-meta" id="mrc-h-meta">—</div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+      <div style="display:flex;gap:3px;" id="mrc-ccy-wrap">
+        <button class="hist-btn active" onclick="mrcSetCcy('ARS',this)">ARS</button>
+        <button class="hist-btn" onclick="mrcSetCcy('MEP',this)"
+          title="MEP implícito = AL30 (ARS) ÷ AL30D (USD MEP)">MEP</button>
+        <button class="hist-btn" onclick="mrcSetCcy('CCL',this)"
+          title="CCL implícito = AL30 (ARS) ÷ AL30C (USD CCL)">CCL</button>
+      </div>
+    </div>
+  </div>
+  <div class="detail-body">
+    <div class="detail-grid">
+      <div class="stat-card"><div class="stat-label">Precio live</div><div class="stat-value" id="mrc-s-live">—</div></div>
+      <div class="stat-card"><div class="stat-label">Bid</div><div class="stat-value" id="mrc-s-bid">—</div></div>
+      <div class="stat-card"><div class="stat-label">Ask</div><div class="stat-value" id="mrc-s-ask">—</div></div>
+      <div class="stat-card"><div class="stat-label">Volumen</div><div class="stat-value" id="mrc-s-vol">—</div></div>
+      <div class="stat-card"><div class="stat-label">Var % día</div><div class="stat-value" id="mrc-s-dr">—</div></div>
+      <div class="stat-card"><div class="stat-label">Registros hist.</div><div class="stat-value" id="mrc-s-count">—</div></div>
+    </div>
+    <div id="mrc-fx-warning" style="font-family:var(--mono);font-size:10px;color:var(--yellow);margin-bottom:12px;min-height:14px;"></div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-header">
+        <div class="card-title">Precio de cierre</div>
+        <div style="display:flex;gap:4px;align-items:center;">
+          <div class="hist-controls">
+            <button class="hist-btn" onclick="mrcSetRange(30,this)">1M</button>
+            <button class="hist-btn" onclick="mrcSetRange(90,this)">3M</button>
+            <button class="hist-btn" onclick="mrcSetRange(180,this)">6M</button>
+            <button class="hist-btn active" onclick="mrcSetRange(365,this)">1A</button>
+            <button class="hist-btn" onclick="mrcSetRange(9999,this)">TODO</button>
+          </div>
+        </div>
+      </div>
+      <div class="chart-wrap"><div class="chart-canvas-wrap"><canvas id="mrc-price-chart"></canvas></div></div>
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-header"><div class="card-title">Volumen diario</div></div>
+      <div class="chart-wrap"><div class="chart-canvas-wrap" style="height:160px;"><canvas id="mrc-vol-chart"></canvas></div></div>
+    </div>
+    <div class="card" style="margin-bottom:32px;">
+      <div class="card-header">
+        <div class="card-title">Datos históricos</div>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--text3);" id="mrc-t-badge">—</span>
+      </div>
+      <div style="overflow-x:auto;max-height:360px;overflow-y:auto;">
+        <table class="data-table">
+          <thead><tr>
+            <th style="text-align:left;">Fecha</th>
+            <th>Apertura</th><th>Máximo</th><th>Mínimo</th>
+            <th>Cierre</th><th>Volumen</th><th>Retorno %</th>
+          </tr></thead>
+          <tbody id="mrc-hist-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
-
