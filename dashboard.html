@@ -640,6 +640,771 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 .curves-grid .chart-canvas-wrap { height:220px; }
 .curves-divider { border-left:1px solid var(--border); }
 @media(max-width:700px){ .curves-grid{ grid-template-columns:1fr; } .curves-divider{border-left:none;border-top:1px solid var(--border);} }
+
+/* ── ONs CSS ── */
+
+
+
+
+
+
+/* HEADER */
+#app-calc-on .header {
+  height: 52px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 14px;
+  flex-shrink: 0;
+}
+#app-calc-on .logo {
+  font-family: var(--display);
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+#app-calc-on .logo-dot {
+  width: 8px; height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--accent);
+}
+#app-calc-on .divider-v { width:1px; height:20px; background:var(--border2); flex-shrink:0; }
+#app-calc-on .header-right { margin-left:auto; display:flex; align-items:center; gap:8px; flex-shrink:0; }
+#app-calc-on .pill {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 20px;
+  letter-spacing: .5px;
+  white-space: nowrap;
+}
+#app-calc-on .pill-blue { background:var(--accent-light); color:var(--accent2); border:1px solid var(--border2); }
+#app-calc-on .pill-green { background:rgba(63,185,80,.10);  color:var(--green);   border:1px solid rgba(63,185,80,.25); }
+
+#app-calc-on .btn {
+  display:flex; align-items:center; gap:6px;
+  padding:5px 12px;
+  border-radius:7px;
+  border:1px solid var(--border2);
+  background:transparent;
+  color:var(--text2);
+  font-family:var(--mono);
+  font-size:10px;
+  font-weight:500;
+  cursor:pointer;
+  transition:all .15s;
+  white-space:nowrap;
+}
+#app-calc-on .btn:hover { background:var(--accent-light); border-color:var(--accent2); color:var(--text); }
+#app-calc-on .btn svg { width:13px; height:13px; flex-shrink:0; }
+#app-calc-on .btn-accent {
+  background: var(--accent-light);
+  border-color: var(--accent2);
+  color: var(--text2);
+}
+#app-calc-on .btn-accent:hover { background: var(--accent-mid); }
+
+/* LAYOUT */
+#app-calc-on .layout { display:flex; flex:1; overflow:hidden; }
+
+/* SIDEBAR */
+#app-calc-on .sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#app-calc-on .sb-head {
+  padding: 14px 12px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#app-calc-on .sb-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 8px;
+}
+#app-calc-on .sb-upload {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#app-calc-on .sb-upload-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  border: 1px dashed var(--border2);
+  background: transparent;
+  color: var(--text3);
+  font-family: var(--mono);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all .15s;
+}
+#app-calc-on .sb-upload-btn:hover { border-color:var(--accent2); color:var(--text2); background:var(--accent-light); }
+#app-calc-on .sb-upload-btn.loaded { border-style:solid; border-color:var(--green); color:var(--green); }
+#app-calc-on .sb-upload-btn svg { width:12px; height:12px; flex-shrink:0; }
+#app-calc-on #fileInput { display:none; }
+
+#app-calc-on .sb-search {
+  margin: 8px 12px;
+  position: relative;
+  flex-shrink: 0;
+}
+#app-calc-on .sb-search input {
+  width: 100%;
+  background: var(--bg4);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 6px 10px 6px 28px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 10px;
+  outline: none;
+  transition: border-color .15s;
+}
+#app-calc-on .sb-search input:focus { border-color: var(--accent2); }
+#app-calc-on .sb-search input::placeholder { color: var(--text3); }
+#app-calc-on .sb-search-icon {
+  position: absolute;
+  left: 8px; top: 50%;
+  transform: translateY(-50%);
+  width: 12px; height: 12px;
+  color: var(--text3);
+  pointer-events: none;
+}
+
+#app-calc-on .sb-scroll {
+  flex:1;
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding: 8px 8px 12px;
+}
+#app-calc-on .sb-scroll::-webkit-scrollbar { width:3px; }
+#app-calc-on .sb-scroll::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+
+#app-calc-on .sb-msg {
+  padding: 20px 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  line-height: 1.8;
+  text-align: center;
+}
+
+/* Sectores sidebar */
+#app-calc-on .sector-wrap { margin-bottom: 2px; }
+#app-calc-on .sector-header {
+  display:flex; align-items:center; gap:8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text2);
+  transition: all .15s;
+  user-select: none;
+}
+#app-calc-on .sector-header:hover { background: var(--accent-light); }
+#app-calc-on .sector-header.open { color: var(--text); }
+#app-calc-on .sector-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+#app-calc-on .s-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; }
+#app-calc-on .s-cnt {
+  font-family:var(--mono); font-size:9px;
+  padding:2px 6px; border-radius:10px;
+  background:var(--bg4); color:var(--text3); flex-shrink:0;
+}
+#app-calc-on .chevron {
+  width:11px; height:11px; flex-shrink:0;
+  color:var(--text3); transition:transform .2s;
+}
+#app-calc-on .sector-header.open .chevron { transform:rotate(90deg); }
+
+#app-calc-on .sector-items { display:none; padding-left:6px; margin-top:1px; }
+#app-calc-on .sector-items.open { display:block; }
+
+#app-calc-on .on-item {
+  display:flex; align-items:center; gap:8px;
+  padding:6px 10px; border-radius:7px;
+  cursor:pointer; font-size:11px;
+  color:var(--text3); transition:all .15s;
+  position:relative; margin-bottom:1px;
+}
+#app-calc-on .on-item:hover { background:var(--accent-light); color:var(--text2); }
+#app-calc-on .on-item.active { background:var(--accent-mid); color:var(--text2); }
+#app-calc-on .on-item.active::before {
+  content:''; position:absolute;
+  left:0; top:50%; transform:translateY(-50%);
+  width:2px; height:60%;
+  background:var(--accent); border-radius:0 2px 2px 0;
+}
+#app-calc-on .on-ticker { font-family:var(--mono); font-size:9px; color:var(--text3); flex-shrink:0; }
+#app-calc-on .on-item.active .on-ticker { color:var(--accent2); }
+#app-calc-on .on-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#app-calc-on .on-tag {
+  font-family:var(--mono); font-size:8px;
+  padding:1px 5px; border-radius:4px;
+  flex-shrink:0;
+}
+#app-calc-on .tag-cable { background:rgba(63,185,80,.12); color:var(--green); }
+#app-calc-on .tag-mep { background:rgba(227,179,65,.12); color:var(--yellow); }
+
+/* MAIN */
+#app-calc-on .main { flex:1; display:flex; flex-direction:column; overflow:hidden; background:var(--bg3); }
+
+/* Estado vacío */
+#app-calc-on .empty-state {
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  color:var(--text3);
+}
+#app-calc-on .empty-state svg { width:40px; height:40px; opacity:.3; }
+#app-calc-on .empty-title { font-family:var(--display); font-size:16px; color:var(--text2); }
+#app-calc-on .empty-sub { font-family:var(--mono); font-size:10px; line-height:1.7; text-align:center; }
+
+/* Panel ON */
+#app-calc-on .on-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+
+/* Topbar del panel */
+#app-calc-on .on-topbar {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+  display:flex; align-items:center; gap:16px;
+  flex-shrink:0;
+}
+#app-calc-on .on-topbar-info { flex:1; min-width:0; }
+#app-calc-on .on-topbar-empresa {
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+#app-calc-on .on-topbar-meta {
+  display:flex; align-items:center; gap:8px;
+  margin-top:3px;
+  font-family:var(--mono); font-size:9px; color:var(--text3);
+}
+#app-calc-on .on-topbar-meta span { display:flex; align-items:center; gap:4px; }
+
+/* Controles precio y settlement */
+#app-calc-on .on-controls {
+  display:flex; align-items:center; gap:10px;
+  flex-shrink:0;
+}
+#app-calc-on .ctrl-group {
+  display:flex; flex-direction:column; gap:3px;
+}
+#app-calc-on .ctrl-label {
+  font-family:var(--mono); font-size:8px;
+  color:var(--text3); letter-spacing:.05em; text-transform:uppercase;
+}
+#app-calc-on .ctrl-input {
+  background: var(--bg4);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 5px 9px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  width: 90px;
+  outline: none;
+  transition: border-color .15s;
+  text-align: right;
+}
+#app-calc-on .ctrl-input:focus { border-color:var(--accent2); }
+
+/* Métricas */
+#app-calc-on .metrics-bar {
+  display:flex;
+  gap:1px;
+  background: var(--border);
+  border-bottom: 1px solid var(--border);
+  flex-shrink:0;
+}
+#app-calc-on .metric-cell {
+  flex:1;
+  background: var(--bg2);
+  padding: 10px 14px;
+  display:flex; flex-direction:column; gap:4px;
+}
+#app-calc-on .metric-label {
+  font-family:var(--mono); font-size:8px;
+  color:var(--text3); letter-spacing:.08em; text-transform:uppercase;
+}
+#app-calc-on .metric-value {
+  font-family:var(--mono); font-size:15px;
+  font-weight:500; color:var(--text);
+}
+#app-calc-on .metric-value.green { color:var(--green); }
+#app-calc-on .metric-value.yellow { color:var(--yellow); }
+#app-calc-on .metric-sub {
+  font-family:var(--mono); font-size:9px;
+  color:var(--text3);
+}
+
+/* Tabla cashflows */
+#app-calc-on .cf-wrap {
+  flex:1; overflow:auto;
+  padding: 16px 20px;
+}
+#app-calc-on .cf-wrap::-webkit-scrollbar { width:4px; height:4px; }
+#app-calc-on .cf-wrap::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+
+#app-calc-on .cf-table {
+  width:100%;
+  border-collapse:collapse;
+  font-family:var(--mono);
+  font-size:11px;
+}
+#app-calc-on .cf-table th {
+  padding: 6px 12px;
+  text-align:right;
+  font-size:8px;
+  font-weight:600;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--text3);
+  border-bottom:1px solid var(--border2);
+  white-space:nowrap;
+  position:sticky; top:0;
+  background:var(--bg3);
+  z-index:1;
+}
+#app-calc-on .cf-table th:first-child { text-align:left; }
+#app-calc-on .cf-table td {
+  padding: 7px 12px;
+  text-align:right;
+  color:var(--text2);
+  border-bottom:1px solid var(--border);
+  white-space:nowrap;
+}
+#app-calc-on .cf-table td:first-child { text-align:left; color:var(--text); }
+#app-calc-on .cf-table tbody tr:hover td { background:var(--accent-light); }
+#app-calc-on .cf-table tr.past td { color:var(--text3); opacity:.5; }
+#app-calc-on .cf-table tr.next-cf td { color:var(--text); }
+#app-calc-on .cf-table tr.next-cf td:first-child { color:var(--accent2); }
+#app-calc-on .cf-table .amort-cell { color:var(--yellow); }
+#app-calc-on .cf-table .total-cell { color:var(--text); font-weight:500; }
+#app-calc-on .cf-table tfoot td {
+  padding: 8px 12px;
+  border-top:1px solid var(--border2);
+  color:var(--text3);
+  font-size:9px;
+}
+
+/* Loading spinner */
+#app-calc-on .loading {
+  flex:1;
+  display:flex; align-items:center; justify-content:center;
+  gap:10px;
+  color:var(--text3);
+  font-family:var(--mono);
+  font-size:11px;
+}
+#app-calc-on .spinner {
+  width:16px; height:16px;
+  border:2px solid var(--border2);
+  border-top-color:var(--accent2);
+  border-radius:50%;
+  animation:spin .6s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* Error */
+#app-calc-on .error-bar {
+  padding:10px 20px;
+  background:rgba(248,81,73,.08);
+  border-bottom:1px solid rgba(248,81,73,.2);
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--red);
+  display:flex; align-items:center; gap:8px;
+}
+
+/* Sector view */
+#app-calc-on .sector-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+#app-calc-on .sector-topbar {
+  padding:12px 20px;
+  border-bottom:1px solid var(--border);
+  background:var(--bg2);
+  display:flex; align-items:center; gap:12px;
+  flex-shrink:0;
+}
+#app-calc-on .sector-topbar-title {
+  font-family:var(--display); font-size:15px; font-weight:700; color:var(--text);
+  flex:1;
+}
+#app-calc-on .sector-content { flex:1; overflow:auto; padding:16px 20px; }
+#app-calc-on .sector-content::-webkit-scrollbar { width:4px; }
+#app-calc-on .sector-content::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+
+#app-calc-on .sector-table {
+  width:100%;
+  border-collapse:collapse;
+  font-family:var(--mono);
+  font-size:11px;
+}
+#app-calc-on .sector-table th {
+  padding:6px 12px;
+  text-align:right;
+  font-size:8px; font-weight:600;
+  letter-spacing:.08em; text-transform:uppercase;
+  color:var(--text3);
+  border-bottom:1px solid var(--border2);
+  white-space:nowrap;
+  position:sticky; top:0;
+  background:var(--bg3); z-index:1;
+}
+#app-calc-on .sector-table th:first-child { text-align:left; }
+#app-calc-on .sector-table th:nth-child(2) { text-align:left; }
+#app-calc-on .sector-table td {
+  padding:8px 12px;
+  text-align:right;
+  color:var(--text2);
+  border-bottom:1px solid var(--border);
+  white-space:nowrap;
+  cursor:pointer;
+}
+#app-calc-on .sector-table td:first-child { text-align:left; color:var(--text); font-size:10px; }
+#app-calc-on .sector-table td:nth-child(2) { text-align:left; color:var(--text3); font-size:10px; }
+#app-calc-on .sector-table tbody tr:hover td { background:var(--accent-light); }
+#app-calc-on .sector-loading {
+  padding:30px;
+  text-align:center;
+  font-family:var(--mono); font-size:10px;
+  color:var(--text3);
+  display:flex; align-items:center; justify-content:center; gap:10px;
+}
+
+/* TABS */
+#app-calc-on .tabs-bar {
+  display:flex; align-items:center; gap:2px;
+  padding: 0 16px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink:0;
+  height: 38px;
+}
+#app-calc-on .tab-btn {
+  display:flex; align-items:center; gap:6px;
+  padding: 6px 14px;
+  border-radius: 6px 6px 0 0;
+  border: none;
+  background: transparent;
+  color: var(--text3);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+  letter-spacing:.04em;
+  position:relative;
+  white-space:nowrap;
+}
+#app-calc-on .tab-btn:hover { color:var(--text2); background:var(--accent-light); }
+#app-calc-on .tab-btn.active { color:var(--text); }
+#app-calc-on .tab-btn.active::after {
+  content:'';
+  position:absolute; bottom:-1px; left:0; right:0;
+  height:2px;
+  background:var(--accent);
+  border-radius:2px 2px 0 0;
+}
+
+/* TABLA COMPARATIVA */
+#app-calc-on .comp-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+#app-calc-on .comp-topbar {
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  display:flex; align-items:center; gap:8px;
+  flex-shrink:0;
+  flex-wrap:nowrap;
+  padding-left: 48px;
+  padding-right: 48px;
+}
+#app-calc-on .comp-filter-label {
+  font-family:var(--mono); font-size:8px;
+  color:var(--text3); text-transform:uppercase; letter-spacing:.1em;
+  white-space:nowrap; flex-shrink:0;
+}
+#app-calc-on .comp-select {
+  background: var(--bg4);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 4px 8px;
+  color: var(--text2);
+  font-family: var(--mono);
+  font-size: 10px;
+  outline: none;
+  cursor:pointer;
+  transition: border-color .15s;
+  flex-shrink:0;
+}
+#app-calc-on .comp-select:focus { border-color:var(--accent2); }
+#app-calc-on .comp-divider { width:1px; height:16px; background:var(--border2); flex-shrink:0; }
+#app-calc-on .comp-count {
+  font-family:var(--mono); font-size:9px; color:var(--text3);
+  margin-left:auto; flex-shrink:0;
+}
+
+#app-calc-on .comp-wrap { flex:1; overflow:auto; background:var(--bg); }
+#app-calc-on .comp-wrap::-webkit-scrollbar { width:4px; height:4px; }
+#app-calc-on .comp-wrap::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+
+#app-calc-on .comp-table {
+  width:100%;
+  border-collapse:collapse;
+  font-family:var(--mono);
+  font-size:11px;
+}
+#app-calc-on .comp-table th {
+  padding: 7px 10px;
+  text-align:right;
+  font-size:8px; font-weight:600;
+  letter-spacing:.08em; text-transform:uppercase;
+  color:var(--text3);
+  border-bottom:1px solid var(--border2);
+  white-space:nowrap;
+  position:sticky; top:0;
+  background:var(--bg); z-index:1;
+}
+#app-calc-on .comp-table th:first-child, #app-calc-on .comp-table th:nth-child(2) { text-align:left; }
+#app-calc-on .comp-table td {
+  padding: 7px 10px;
+  text-align:right;
+  color:var(--text2);
+  border-bottom:1px solid var(--border);
+  white-space:nowrap;
+}
+#app-calc-on .comp-table td:first-child { text-align:left; color:var(--text); font-size:10px; }
+#app-calc-on .comp-table td:nth-child(2) { text-align:left; }
+#app-calc-on .comp-table tbody tr:hover td { background:var(--accent-light); cursor:pointer; }
+#app-calc-on .comp-table .ticker-link {
+  font-family:var(--mono); font-size:10px;
+  color:var(--accent2); cursor:pointer;
+  text-decoration:none;
+  padding: 2px 6px;
+  border-radius:4px;
+  border:1px solid var(--border2);
+  transition:all .15s;
+  white-space:nowrap;
+}
+#app-calc-on .comp-table .ticker-link:hover {
+  background:var(--accent-mid); border-color:var(--accent2);
+}
+#app-calc-on .comp-table .price-inp {
+  background: var(--bg4);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 3px 7px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  width: 70px;
+  text-align:right;
+  outline:none;
+  transition: border-color .15s;
+}
+#app-calc-on .comp-table .price-inp:focus { border-color:var(--accent2); }
+#app-calc-on .ytm-high { color: var(--green) !important; }
+#app-calc-on .ytm-mid { color: var(--yellow) !important; }
+#app-calc-on .ytm-low { color: var(--text2) !important; }
+#app-calc-on .par-over { color: var(--yellow) !important; }
+#app-calc-on .par-under { color: var(--green) !important; }
+
+/* SIDEBAR empresa agrupada */
+#app-calc-on .empresa-wrap { margin-bottom:1px; }
+#app-calc-on .empresa-header {
+  display:flex; align-items:center; gap:8px;
+  padding: 5px 10px 5px 18px;
+  border-radius:6px;
+  cursor:pointer;
+  font-size:10px; font-weight:600;
+  color:var(--text2);
+  transition:all .15s;
+  user-select:none;
+}
+#app-calc-on .empresa-header:hover { background:var(--accent-light); }
+#app-calc-on .empresa-header.open { color:var(--text); }
+#app-calc-on .emp-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#app-calc-on .emp-cnt {
+  font-family:var(--mono); font-size:8px;
+  padding:1px 5px; border-radius:8px;
+  background:var(--bg4); color:var(--text3); flex-shrink:0;
+}
+#app-calc-on .empresa-items { display:none; padding-left:10px; }
+#app-calc-on .empresa-items.open { display:block; }
+#app-calc-on .on-item-sub {
+  display:flex; align-items:center; gap:8px;
+  padding:5px 10px; border-radius:6px;
+  cursor:pointer; font-size:10px;
+  color:var(--text3); transition:all .15s;
+  position:relative; margin-bottom:1px;
+}
+#app-calc-on .on-item-sub:hover { background:var(--accent-light); color:var(--text2); }
+#app-calc-on .on-item-sub.active { background:var(--accent-mid); color:var(--text2); }
+#app-calc-on .on-item-sub.active::before {
+  content:''; position:absolute;
+  left:0; top:50%; transform:translateY(-50%);
+  width:2px; height:55%;
+  background:var(--accent); border-radius:0 2px 2px 0;
+}
+#app-calc-on .on-item-sub .on-ticker { color:var(--text3); font-size:9px; }
+#app-calc-on .on-item-sub.active .on-ticker { color:var(--accent2); }
+
+/* GRÁFICO SCATTER */
+#app-calc-on .chart-panel {
+  flex-shrink:0;
+  border-bottom:1px solid var(--border);
+  background:var(--bg);
+  display:flex;
+  flex-direction:column;
+  height:300px;
+  min-height:300px;
+  max-height:300px;
+  padding-bottom:8px;
+}
+#app-calc-on .chart-controls {
+  display:flex; align-items:center; gap:8px;
+  padding:6px 48px;
+  border-bottom:1px solid var(--border);
+  background:var(--bg);
+  flex-shrink:0;
+}
+#app-calc-on .chart-axis-label {
+  font-family:var(--mono); font-size:8px;
+  color:var(--text3); text-transform:uppercase; letter-spacing:.1em;
+  white-space:nowrap;
+}
+#app-calc-on .chart-select {
+  background:var(--bg4);
+  border:1px solid var(--border2);
+  border-radius:5px;
+  padding:3px 8px;
+  color:var(--text2);
+  font-family:var(--mono);
+  font-size:10px;
+  outline:none;
+  cursor:pointer;
+  transition:border-color .15s;
+}
+#app-calc-on .chart-select:focus { border-color:var(--accent2); }
+#app-calc-on .chart-
+.chart-svg {
+  width:100%; height:100%;
+}
+#app-calc-on .chart-legend {
+  display:flex; align-items:center; gap:16px;
+  padding:5px 48px;
+  flex-shrink:0;
+  border-top:1px solid var(--border);
+  background:var(--bg);
+}
+#app-calc-on .legend-item {
+  display:flex; align-items:center; gap:5px;
+  font-family:var(--mono); font-size:9px; color:var(--text3);
+}
+#app-calc-on .legend-dot {
+  width:7px; height:7px;
+  border-radius:50%;
+  flex-shrink:0;
+}
+
+/* Tooltip */
+#app-calc-on .chart-tooltip {
+  position:fixed;
+  background:var(--bg4);
+  border:1px solid var(--border2);
+  border-radius:7px;
+  padding:8px 11px;
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--text);
+  pointer-events:none;
+  z-index:9999;
+  display:none;
+  white-space:nowrap;
+  box-shadow: 0 4px 20px rgba(0,0,0,.4);
+}
+#app-calc-on .chart-tooltip-ticker { font-size:12px; font-weight:600; color:var(--text); margin-bottom:3px; }
+#app-calc-on .chart-tooltip-empresa { font-size:9px; color:var(--text3); margin-bottom:5px; }
+#app-calc-on .chart-tooltip-row { display:flex; gap:8px; justify-content:space-between; color:var(--text2); }
+#app-calc-on .chart-tooltip-val { color:var(--text); font-weight:500; }
+
+/* SECCIÓN VENCIDAS */
+#app-calc-on .vencidas-divider {
+  margin: 10px 8px 4px;
+  border: none;
+  border-top: 1px solid var(--border2);
+}
+#app-calc-on .vencidas-header {
+  display:flex; align-items:center; gap:8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text3);
+  transition: all .15s;
+  user-select: none;
+  margin: 0 4px;
+}
+#app-calc-on .vencidas-header:hover { background:var(--accent-light); color:var(--text2); }
+#app-calc-on .vencidas-items { display:none; }
+#app-calc-on .vencidas-items.open { display:block; }
+#app-calc-on .vencidas-empresa-header {
+  display:flex; align-items:center; gap:6px;
+  padding: 4px 10px 4px 18px;
+  font-size: 10px;
+  color: var(--text3);
+  opacity: .6;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+#app-calc-on .vencidas-on {
+  display:flex; align-items:center; gap:8px;
+  padding: 4px 10px 4px 28px;
+  border-radius: 6px;
+  font-size: 10px;
+  color: var(--text3);
+  opacity: .5;
+  margin-bottom: 1px;
+}
+#app-calc-on .vencidas-on .on-ticker { font-family:var(--mono); font-size:9px; }
+#app-calc-on .vencidas-on .vto-badge {
+  font-family:var(--mono); font-size:8px;
+  color:var(--text3); margin-left:auto;
+}
+
 </style>
 </head>
 <body>
@@ -743,37 +1508,26 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
   </div>
 </div>
 
-<!-- ══════════════════ APP TEST → LECAP CALCULATOR ══════════════════ -->
 <!-- ══════════════════ APP CALC MENU ══════════════════ -->
 <div id="app-calc-menu" style="display:none;min-height:100vh;background:var(--bg);flex-direction:column;">
-  <!-- Header -->
   <div style="display:flex;align-items:center;padding:18px 32px;border-bottom:1px solid var(--border);background:var(--bg);gap:16px;">
     <button onclick="backToLanding()" style="padding:6px 14px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);">← Inicio</button>
-    <button onclick="toggleTheme()" class="theme-btn-small" style="margin-left:auto;">
-      <span class="theme-btn-icon">☀</span> <span class="theme-btn-lbl">Modo Claro</span>
-    </button>
+    <button onclick="toggleTheme()" class="theme-btn-small" style="margin-left:auto;"><span class="theme-btn-icon">☀</span> <span class="theme-btn-lbl">Modo Claro</span></button>
   </div>
-  <!-- Cards -->
   <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:60px 32px;">
     <div style="width:100%;max-width:900px;">
       <div style="font-family:var(--display);font-size:clamp(28px,4vw,52px);font-weight:800;color:var(--text);line-height:1.05;margin-bottom:16px;letter-spacing:-1px;">Calcula&shy;<br><span style="color:var(--accent);">doras.</span></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:32px;">
-        <!-- Bonos & Letras -->
         <div onclick="enterTest()" class="af-card">
-          <div style="width:48px;height:48px;background:rgba(30,39,243,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1E27F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-          </div>
+          <div style="width:48px;height:48px;background:rgba(30,39,243,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1E27F3" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
           <div class="af-card-title">Bonos &amp; Letras</div>
-          <div class="af-card-desc">Calculadora de LECAPs con curva de rendimientos, paridad, duration y comparativa de tickers.</div>
+          <div class="af-card-desc">Calculadora de LECAPs con curva de rendimientos, paridad y duration.</div>
           <div class="af-card-footer">LECAPs · BONCER · SOBERANOS →</div>
         </div>
-        <!-- Obligaciones Negociables -->
         <div onclick="enterCalcON()" class="af-card">
-          <div style="width:48px;height:48px;background:rgba(30,39,243,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1E27F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
-          </div>
+          <div style="width:48px;height:48px;background:rgba(30,39,243,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1E27F3" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg></div>
           <div class="af-card-title">Obligaciones Negociables</div>
-          <div class="af-card-desc">Calculadora de ONs corporativas. TIR, duration, precio limpio y flujos de caja.</div>
+          <div class="af-card-desc">TIR, duration, precio limpio y flujos de caja para ONs corporativas.</div>
           <div class="af-card-footer">ONs · CORPORATIVOS →</div>
         </div>
       </div>
@@ -783,36 +1537,147 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 
 <!-- ══════════════════ APP CALC ON ══════════════════ -->
 <div id="app-calc-on" style="display:none;min-height:100vh;background:var(--bg);flex-direction:column;">
-  <!-- Header -->
-  <div style="display:flex;align-items:center;padding:18px 32px;border-bottom:1px solid var(--border);background:var(--bg);gap:16px;">
-    <button onclick="backToCalcMenu()" style="padding:6px 14px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;" onmouseover="this.style.background='var(--accent)';this.style.color='#fff';this.style.borderColor='var(--accent)';" onmouseout="this.style.background='transparent';this.style.color='var(--text3)';this.style.borderColor='var(--border2)';">← Volver</button>
+  <div style="height:52px;display:flex;align-items:center;padding:0 24px;border-bottom:1px solid var(--border);background:var(--bg);gap:14px;flex-shrink:0;position:sticky;top:0;z-index:50;">
+    <button onclick="backToCalcMenu()" style="padding:5px 13px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;" onmouseover="this.style.background='var(--accent)';this.style.color='#fff';" onmouseout="this.style.background='transparent';this.style.color='var(--text3)';">← Volver</button>
     <span style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);">Obligaciones Negociables</span>
-    <button onclick="toggleTheme()" class="theme-btn-small" style="margin-left:auto;">
-      <span class="theme-btn-icon">☀</span> <span class="theme-btn-lbl">Modo Claro</span>
-    </button>
+    <button onclick="toggleTheme()" class="theme-btn-small" style="margin-left:auto;"><span class="theme-btn-icon">☀</span><span class="theme-btn-lbl">Modo Claro</span></button>
   </div>
-  <!-- Body -->
-  <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:60px 32px;">
-    <div style="width:100%;max-width:900px;margin:0 auto;">
-      <div style="font-family:var(--display);font-size:clamp(28px,4vw,52px);font-weight:800;color:var(--text);line-height:1.05;margin-bottom:16px;letter-spacing:-1px;">Oblig. Ne&shy;<br><span style="color:var(--accent);">gociables.</span></div>
-      <div style="font-size:14px;color:var(--text3);font-family:var(--mono);line-height:1.7;max-width:520px;">Calculadora de ONs corporativas en construcción. TIR, duration, precio limpio y flujos de caja.</div>
-      <div style="margin-top:48px;background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:48px 40px;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center;">
-        <div style="width:56px;height:56px;background:var(--accent-light);border-radius:14px;display:flex;align-items:center;justify-content:center;">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="7" width="20" height="14" rx="2"/>
-            <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
-            <line x1="12" y1="12" x2="12" y2="16"/>
-            <line x1="10" y1="14" x2="14" y2="14"/>
-          </svg>
-        </div>
-        <div style="font-family:var(--display);font-size:20px;font-weight:700;color:var(--text);">En desarrollo</div>
-        <div style="font-size:12px;color:var(--text3);font-family:var(--mono);line-height:1.7;max-width:380px;">La calculadora de ONs va a estar disponible próximamente.</div>
-        <div style="font-size:9px;font-family:var(--mono);font-weight:700;letter-spacing:.1em;color:var(--accent);background:var(--accent-light);border:1px solid var(--border2);padding:4px 14px;border-radius:20px;margin-top:4px;">COMING SOON</div>
+  <div style="flex:1;display:flex;overflow:hidden;height:calc(100vh - 52px);">
+
+
+
+
+<div class="layout" style="flex:1;overflow:hidden">
+
+  <!-- SIDEBAR — siempre visible -->
+  <div class="sidebar">
+    <div class="sb-head">
+      <div class="sb-label">Índice de ONs</div>
+      <div id="sbStatus" style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text3);">
+        <div class="spinner" style="width:11px;height:11px;border-width:1.5px;flex-shrink:0"></div>
+        Cargando…
       </div>
     </div>
+    <div class="sb-search" id="sbSearch" style="display:none">
+      <svg class="sb-search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="6.5" cy="6.5" r="4"/><path d="M11 11l2.5 2.5"/>
+      </svg>
+      <input type="text" id="ons_searchInput" placeholder="Buscar empresa o ticker…">
+    </div>
+    <div class="sb-scroll" id="sbScroll">
+      <div class="sb-msg">Cargando ONs…</div>
+    </div>
+  </div>
+
+  <!-- PANEL DERECHO -->
+  <div class="main" id="main" style="flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative">
+
+    <!-- VISTA: TABLA COMPARATIVA + GRÁFICO (default) -->
+    <div id="view-tabla" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+
+      <!-- FILTROS -->
+      <div class="comp-topbar">
+        <span class="comp-filter-label">Sector</span>
+        <select class="comp-select" id="filterSector" onchange="ons_onFilterSector()">
+          <option value="">Todos los sectores</option>
+        </select>
+        <div class="comp-divider" id="divEmpresa" style="display:none"></div>
+        <span class="comp-filter-label" id="lblEmpresa" style="display:none">Empresa</span>
+        <select class="comp-select" id="filterEmpresa" style="display:none" onchange="ons_onFilterChange()">
+          <option value="">Todas</option>
+        </select>
+        <div class="comp-divider"></div>
+        <span class="comp-filter-label">Ley</span>
+        <select class="comp-select" id="filterLey" onchange="ons_onFilterChange()">
+          <option value="">Todas</option>
+          <option value="NY">NY</option>
+          <option value="ARG">ARG</option>
+        </select>
+        <div class="comp-divider"></div>
+        <span class="comp-filter-label">Moneda</span>
+        <select class="comp-select" id="filterMoneda" onchange="ons_onFilterChange()">
+          <option value="">Todas</option>
+          <option value="CABLE">CABLE</option>
+          <option value="MEP">MEP</option>
+        </select>
+        <span class="comp-count" id="compCount"></span>
+      </div>
+
+      <!-- GRÁFICO -->
+      <div class="chart-panel">
+        <div class="chart-controls">
+          <span class="chart-axis-label">Eje Y</span>
+          <select class="chart-select" id="chartY" onchange="ons_renderChart()">
+            <option value="tasa">Tasa Cupón</option>
+            <option value="ytm">YTM</option>
+          </select>
+          <div style="width:1px;height:14px;background:var(--border2);margin:0 4px"></div>
+          <span class="chart-axis-label">Eje X</span>
+          <select class="chart-select" id="chartX" onchange="ons_renderChart()">
+            <option value="dtm">Days to Maturity</option>
+            <option value="dur">Duration</option>
+            <option value="md">Duration Modificada</option>
+          </select>
+        </div>
+        <div class="chart-body" id="chartBody">
+          <svg class="chart-svg" id="chartSvg"></svg>
+        </div>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#3fb950"></div>CABLE</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#e3b341"></div>MEP</div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:var(--text3);opacity:.5"></div>
+            <span>* Tasa step-up vigente</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABLA -->
+      <div class="comp-wrap" style="flex:1">
+        <div style="padding:0 32px 16px">
+          <table class="comp-table" id="compTable">
+            <thead>
+              <tr>
+                <th style="text-align:left">Empresa</th>
+                <th style="text-align:left">Ticker</th>
+                <th>Precio</th>
+                <th>Tasa Cupón</th>
+                <th>YTM</th>
+                <th>DM</th>
+                <th>Paridad</th>
+                <th>Int. Corridos</th>
+                <th>Próx. CF</th>
+                <th>Vto.</th>
+                <th>Ley</th>
+                <th>Moneda</th>
+                <th>Frec.</th>
+              </tr>
+            </thead>
+            <tbody id="compTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div><!-- /view-tabla -->
+
+    <!-- VISTA: DETALLE ON -->
+    <div id="view-on" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+      <!-- contenido inyectado por ons_renderONPanel -->
+    </div>
+
+  </div><!-- /panel derecho -->
+
+</div><!-- /layout -->
+
+<!-- TOOLTIP -->
+<div class="chart-tooltip" id="chartTooltip"></div>
+
+
+
   </div>
 </div>
 
+
+<!-- ══════════════════ APP TEST → LECAP CALCULATOR ══════════════════ -->
 <div id="app-test" style="display:none;min-height:100vh;flex-direction:column;background:var(--bg);">
 
   <!-- Header + Tabs combined, sticky -->
@@ -4112,37 +4977,26 @@ function enterExcel(){
   if(!window.EXCEL_DATA_LOADED) loadExcelData();
 }
 function backToLanding(){
+  ['app','app-equity','app-balances','app-balances-menu','app-excel',
+   'app-test','app-informes','app-calc-menu','app-calc-on','legal-footer'
+  ].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   document.getElementById('landing').style.display='flex';
-  document.getElementById('app').style.display='none';
-  document.getElementById('app-equity').style.display='none';
-  document.getElementById('app-balances').style.display='none';
-  document.getElementById('app-balances-menu').style.display='none';
-  document.getElementById('app-excel').style.display='none';
-  document.getElementById('app-test').style.display='none';
-  document.getElementById('app-informes').style.display='none';
-  document.getElementById('app-calc-menu').style.display='none';
-  document.getElementById('app-calc-on').style.display='none';
-  document.getElementById('legal-footer').style.display='none';
   if(window._secResetState) window._secResetState();
 }
 function enterCalcMenu(){
   document.getElementById('landing').style.display='none';
-  const el=document.getElementById('app-calc-menu');
-  el.style.display='flex';
-  el.style.flexDirection='column';
+  document.getElementById('app-calc-menu').style.display='flex';
 }
 function enterCalcON(){
   document.getElementById('app-calc-menu').style.display='none';
-  const el=document.getElementById('app-calc-on');
-  el.style.display='flex';
-  el.style.flexDirection='column';
+  document.getElementById('app-calc-on').style.display='flex';
+  if(window.ons_init) window.ons_init();
 }
 function backToCalcMenu(){
-  document.getElementById('app-test').style.display='none';
-  document.getElementById('app-calc-on').style.display='none';
-  const el=document.getElementById('app-calc-menu');
-  el.style.display='flex';
-  el.style.flexDirection='column';
+  ['app-test','app-calc-on'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.style.display='none';
+  });
+  document.getElementById('app-calc-menu').style.display='flex';
 }
 function enterInformes(){
   document.getElementById('landing').style.display='none';
@@ -10279,6 +11133,957 @@ function renderCheques(cheques){
   .mav-ven-bar{height:100%;background:#1E27F3;opacity:.75;transition:width .4s ease;}
   .mav-ven-val{width:130px;text-align:right;color:var(--text);flex-shrink:0;}
 </style>
+
+<script>
+/* ── ONs JS ── */
+
+// ─── Config ───────────────────────────────────────────────────────────────────
+const WORKER_URL = 'https://silent-silence-ebb9.tzuccotti.workers.dev/';
+
+// ─── Estado global ───────────────────────────────────────────────────────────
+const onsState = {
+  ons: [],           // todas las ONs del index
+  grouped: {},       // agrupadas por sector
+  selected: null,    // ON actualmente seleccionada
+  cfCache: {},       // cache de cashflows por ticker (parseados)
+  bundle: null,      // bundle crudo del Worker
+  prices: {},        // precios ingresados por el usuario (default 100)
+  settlements: {},   // settlements por ticker
+};
+
+// ─── Colores por sector ───────────────────────────────────────────────────────
+const SECTOR_COLORS = {
+  'OIL AND GAS':                    '#3fb950',
+  'GENERACION ELECTRICA':           '#58a6ff',
+  'INFRAESTRUCTURA Y LOGÍSTICA':    '#e3b341',
+  'CONSTRUCCIÓN Y REAL ESTATE':     '#f78166',
+  'TELECOMUNICACIONES':             '#bc8cff',
+  'AGRO E INDUSTRIA ALIMENTARIA':   '#56d364',
+  'INDUSTRIA Y MANUFACTURA':        '#ffa657',
+  'FINANZAS Y SERVICIOS FINANCIEROS': '#79c0ff',
+};
+function ons_sectorColor(s) {
+  return SECTOR_COLORS[s?.toUpperCase?.()] || '#4a5280';
+}
+
+// ─── Parseo CSV genérico ──────────────────────────────────────────────────────
+function ons_parseCSV(text, doubleHeader = false) {
+  const lines = text.trim().split('\n').filter(l => l.trim());
+  if (!lines.length) return [];
+  // Si doubleHeader=true, la fila 1 es cabecera de grupo y la fila 2 son los nombres reales
+  const headerLine = doubleHeader ? 1 : 0;
+  const dataStart  = doubleHeader ? 2 : 1;
+  const headers = lines[headerLine].split(',').map(h => h.trim().replace(/^\uFEFF/, ''));
+  return lines.slice(dataStart).map(line => {
+    const vals = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = vals[i] ?? '');
+    return obj;
+  });
+}
+
+// ─── Parseo específico del CSV de cashflows (doble header, columnas fijas) ────
+// Fila 0: headers de grupo  (los ignoramos)
+// Fila 1: headers reales    (#, Efectiva, Amortización (vn), Valor residual,
+//                            Tasa de interés, Interés (vn), Amortización, Interés, Total, ...)
+// Filas 2+: datos
+// Como hay nombres duplicados, leemos por índice de columna, no por nombre
+function ons_parseCSVCashflow(text) {
+  const lines = text.trim().split('\n').filter(l => l.trim());
+  if (lines.length < 3) return [];
+  return lines.slice(2).map(line => {
+    const v = line.split(',').map(c => c.trim());
+    return {
+      cupon:      v[0]  ?? '',   // #
+      fecha:      v[1]  ?? '',   // Efectiva (ISO date)
+      amort_pct:  v[2]  ?? '0',  // Amortización (vn)  con %
+      vr_pct:     v[3]  ?? '0',  // Valor residual      con %
+      tasa:       v[4]  ?? '0',  // Tasa de interés     con %
+      interes_vn: v[5]  ?? '0',  // Interés (vn)        con % pero es monto sobre 100VN
+      cf_amort:   v[6]  ?? '0',  // Amortización sobre 100VN (sin %)
+      cf_interes: v[7]  ?? '0',  // Interés sobre 100VN (sin %)
+      cf_total:   v[8]  ?? '0',  // Total sobre 100VN (sin %)
+    };
+  });
+}
+
+// ─── Fetch cashflows desde Drive ─────────────────────────────────────────────
+function ons_fetchCashflows(on) {
+  if (onsState.cfCache[on.ticker]) return onsState.cfCache[on.ticker];
+  const text = onsState.bundle?.cashflows?.[on.ticker];
+  if (!text) throw new Error(`Sin datos para ${on.ticker}`);
+  // El CSV tiene doble fila de header:
+  //   fila 0: nombres de grupo  → "Cupón", "Fecha de pago", "Amortización", ...
+  //   fila 1: nombres reales    → "#", "Efectiva", "Amortización (vn)", ...
+  // Usamos fila 1 como headers (doubleHeader=true)
+  // Columnas reales: #, Efectiva, Amortización (vn), Valor residual,
+  //                  Tasa de interés, Interés (vn), Amortización, Interés, Total
+  // Ojo: hay columnas duplicadas (Amortización, Interés, Total aparecen 2 veces)
+  // La primera "Amortización" es sobre 100VN, la primera "Interés" es sobre 100VN,
+  // el primer "Total" es sobre 100VN — que son las cols 6,7,8 (índice 0-based)
+  const rows = ons_parseCSVCashflow(text);
+  const cfs = rows.map(r => ({
+    cupon:      parseFloat(r.cupon || 0),
+    fecha:      new Date(r.fecha),
+    amort_pct:  parseFloat((r.amort_pct || '0').replace('%','')) / 100,
+    vr_pct:     parseFloat((r.vr_pct   || '0').replace('%','')) / 100,
+    tasa_cupon: parseFloat((r.tasa     || '0').replace('%','')) / 100,
+    interes_vn: parseFloat((r.interes_vn || '0').replace('%','')),
+    cf_total:   parseFloat(r.cf_total  || 0),
+  })).filter(r => !isNaN(r.fecha.getTime()));
+  onsState.cfCache[on.ticker] = cfs;
+  return cfs;
+}
+
+// ─── Cálculos financieros ─────────────────────────────────────────────────────
+
+// T+1 hábil (simplificado: salta sábados y domingos)
+function ons_settlement(date) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + 1);
+  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+  return d;
+}
+
+function ons_diffDays(a, b) {
+  return Math.round((b - a) / 86400000);
+}
+
+// Input: precio LIMPIO ingresado por el usuario
+// El dirty se calcula internamente sumando el devengado
+function ons_calcMetrics(cfs, cleanPrice, settleDate, frecuencia) {
+  const today = settleDate;
+  const futuros = cfs.filter(cf => cf.fecha > today);
+  if (!futuros.length) return null;
+
+  const pasados = cfs.filter(cf => cf.fecha <= today);
+
+  // ── Interés devengado ────────────────────────────────────────────────────
+  // Tomamos directamente el interes_vn del próximo cupón * fracción transcurrida
+  let devengado = 0;
+  const proximo = futuros[0];
+  if (pasados.length && proximo) {
+    const ultimo = pasados[pasados.length - 1];
+    const diasPeriodo = ons_diffDays(ultimo.fecha, proximo.fecha);
+    const diasTranscurridos = ons_diffDays(ultimo.fecha, today);
+    if (diasPeriodo > 0) {
+      // interes_vn ya está en términos de 100 VN para el período completo
+      devengado = proximo.interes_vn * (diasTranscurridos / diasPeriodo);
+    }
+  }
+
+  const dirtyPrice = cleanPrice + devengado;
+
+  // ── Flujos futuros ────────────────────────────────────────────────────────
+  // Usamos los valores precalculados del CSV (amort + interes ya sobre VN residual)
+  const flujos = futuros.map(cf => {
+    const amort   = cf.amort_pct * 100;          // amortización sobre 100 VN original
+    const interes = cf.interes_vn;               // interés del período ya calculado en CSV
+    return {
+      fecha:   cf.fecha,
+      dias:    ons_diffDays(today, cf.fecha),
+      monto:   amort + interes,
+      amort,
+      interes,
+      vr:      cf.vr_pct,
+      tasa:    cf.tasa_cupon,
+      cupon:   cf.cupon,
+    };
+  });
+
+  // ── YTM por Newton-Raphson ────────────────────────────────────────────────
+  // Descontamos con exponente continuo en días / 365 (método TIR real)
+  function ons_npv(r) {
+    return flujos.reduce((s, f) => {
+      const t = f.dias / 365;
+      return s + f.monto / Math.pow(1 + r, t);
+    }, 0) - dirtyPrice;
+  }
+
+  let ytm = 0.08;
+  for (let i = 0; i < 200; i++) {
+    const fv  = ons_npv(ytm);
+    const dfv = (ons_npv(ytm + 1e-7) - fv) / 1e-7;
+    if (Math.abs(dfv) < 1e-14) break;
+    const ytm2 = ytm - fv / dfv;
+    if (Math.abs(ytm2 - ytm) < 1e-9) { ytm = ytm2; break; }
+    // Clamp para evitar divergencia
+    ytm = Math.max(-0.99, Math.min(50, ytm2));
+  }
+
+  // ── Duration Macaulay y Duration Modificada ───────────────────────────────
+  const sumPV = flujos.reduce((s, f) => {
+    const t = f.dias / 365;
+    return s + f.monto / Math.pow(1 + ytm, t);
+  }, 0);
+  const duration = flujos.reduce((s, f) => {
+    const t  = f.dias / 365;
+    const pv = f.monto / Math.pow(1 + ytm, t);
+    return s + t * pv;
+  }, 0) / sumPV;
+  const modDuration = duration / (1 + ytm);
+
+  // ── Vida promedio (weighted average life) ────────────────────────────────
+  const totalAmort = flujos.reduce((s, f) => s + f.amort, 0);
+  const vidaPromedio = totalAmort > 0
+    ? flujos.reduce((s, f) => s + (f.dias / 365) * f.amort, 0) / totalAmort
+    : 0;
+
+  // ── Paridad ───────────────────────────────────────────────────────────────
+  // Precio limpio sobre valor residual actual × 100
+  const vrActual = proximo.vr_pct;
+  const paridad  = vrActual > 0 ? cleanPrice / (vrActual * 100) * 100 : 100;
+
+  return {
+    dirtyPrice,
+    cleanPrice,
+    devengado,
+    ytm,
+    modDuration,
+    duration,
+    vidaPromedio,
+    paridad,
+    proxCF: proximo,
+    flujos,
+    futuros,
+    pasados,
+  };
+}
+
+
+
+// ─── Seleccionar ON ───────────────────────────────────────────────────────────
+function ons_selectON(ticker) {
+  const on = onsState.ons.find(o => o.ticker === ticker);
+  if (!on) return;
+  onsState.selected = on;
+
+  // Marcar activo en sidebar (tanto on-item como on-item-sub)
+  document.querySelectorAll('.on-item,.on-item-sub').forEach(el => {
+    el.classList.toggle('active', el.dataset.ticker === ticker);
+  });
+
+  try {
+    const cfs = ons_fetchCashflows(on);
+    ons_renderONPanel(on, cfs);
+    ons_showON();
+  } catch(e) {
+    const vOn = document.getElementById('view-on');
+    vOn.innerHTML = `<div class="error-bar">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="8" cy="8" r="7"/><path d="M8 5v3M8 11h.01"/>
+      </svg>
+      Error: ${e.message}</div>`;
+    ons_showON();
+  }
+}
+
+// ─── Render panel ON ──────────────────────────────────────────────────────────
+function ons_renderONPanel(on, cfs) {
+  const cleanPrice = onsState.prices[on.ticker] ?? 100;
+  const settle = onsState.settles?.[on.ticker] ?? ons_settlement(new Date());
+  const metrics = ons_calcMetrics(cfs, cleanPrice, settle, on.frecuencia);
+
+  const vOn = document.getElementById('view-on');
+
+  if (!metrics) {
+    vOn.innerHTML = `<div class="empty-onsState"><div class="empty-sub">Esta ON ya venció o no tiene flujos futuros.</div></div>`;
+    return;
+  }
+
+  const fmt2 = v => isNaN(v) ? '-' : v.toFixed(2);
+  const fmtPct = v => isNaN(v) ? '-' : (v * 100).toFixed(2) + '%';
+  const fmtDate = d => d instanceof Date && !isNaN(d) ? d.toLocaleDateString('es-AR', {day:'2-digit',month:'2-digit',year:'numeric'}) : '-';
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  // Tabla de cashflows: pasados grises + futuros activos
+  const allRows = cfs.map(cf => {
+    const isPast = cf.fecha <= settle;
+    const isNext = !isPast && metrics.futuros[0]?.fecha.getTime() === cf.fecha.getTime();
+    const monto = cf.amort_pct * 100 + cf.tasa_cupon * cf.vr_pct * 100;
+    return `
+      <tr class="${isPast ? 'past' : ''}${isNext ? ' next-cf' : ''}">
+        <td>${fmtDate(cf.fecha)}</td>
+        <td>${cf.cupon || '-'}</td>
+        <td class="amort-cell">${fmt2(cf.amort_pct * 100)}</td>
+        <td>${fmt2(cf.vr_pct * 100)}</td>
+        <td>${fmtPct(cf.tasa_cupon)}</td>
+        <td>${fmt2(cf.tasa_cupon * cf.vr_pct * 100)}</td>
+        <td class="total-cell">${fmt2(monto)}</td>
+      </tr>`;
+  }).join('');
+
+  vOn.innerHTML = `
+    <div class="on-panel">
+      <div class="on-topbar">
+        <button onclick="ons_showTabla()" style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-family:var(--mono);font-size:10px;cursor:pointer;flex-shrink:0;transition:all .15s" onmouseover="this.style.color='var(--text2)';this.style.borderColor='var(--accent2)'" onmouseout="this.style.color='var(--text3)';this.style.borderColor='var(--border2)'">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 4l-4 4 4 4"/></svg>
+          Volver
+        </button>
+        <div class="on-topbar-info">
+          <div class="on-topbar-empresa">${on.empresa} <span style="font-size:12px;color:var(--text3);font-family:var(--mono)">${on.ticker}</span></div>
+          <div class="on-topbar-meta">
+            <span>${on.sector}</span>
+            <span style="color:var(--border2)">·</span>
+            <span>Vto: ${fmtDate(new Date(on.vencimiento))}</span>
+            <span style="color:var(--border2)">·</span>
+            <span>${on.frecuencia}</span>
+            <span style="color:var(--border2)">·</span>
+            <span>Ley ${on.ley}</span>
+          </div>
+        </div>
+        <div class="on-controls">
+          <div class="ctrl-group">
+            <div class="ctrl-label">Precio Limpio</div>
+            <input class="ctrl-input" id="priceInput" type="number" step="0.01" value="${cleanPrice}"
+              onchange="ons_updatePrice('${on.ticker}', this.value)">
+          </div>
+          <div class="ctrl-group">
+            <div class="ctrl-label">Settlement</div>
+            <input class="ctrl-input" id="settleInput" type="date"
+              value="${settle.toISOString().slice(0,10)}"
+              onchange="ons_updateSettle('${on.ticker}', this.value)">
+          </div>
+        </div>
+      </div>
+
+      <div class="metrics-bar">
+        <div class="metric-cell">
+          <div class="metric-label">YTM (anual)</div>
+          <div class="metric-value green" id="m-ytm">${fmtPct(metrics.ytm)}</div>
+          <div class="metric-sub">T+1</div>
+        </div>
+        <div class="metric-cell">
+          <div class="metric-label">Precio Dirty</div>
+          <div class="metric-value" id="m-clean">${fmt2(metrics.dirtyPrice)}</div>
+          <div class="metric-sub">Dev: ${fmt2(metrics.devengado)}</div>
+        </div>
+        <div class="metric-cell">
+          <div class="metric-label">Paridad</div>
+          <div class="metric-value yellow" id="m-par">${fmt2(metrics.paridad)}%</div>
+          <div class="metric-sub">Sobre VR actual</div>
+        </div>
+        <div class="metric-cell">
+          <div class="metric-label">Dur. Modificada</div>
+          <div class="metric-value" id="m-dur">${fmt2(metrics.modDuration)}</div>
+          <div class="metric-sub">Duration: ${fmt2(metrics.duration)}</div>
+        </div>
+        <div class="metric-cell">
+          <div class="metric-label">Vida Promedio</div>
+          <div class="metric-value" id="m-vp">${fmt2(metrics.vidaPromedio)} años</div>
+          <div class="metric-sub">Próx CF: ${fmtDate(metrics.proxCF?.fecha)}</div>
+        </div>
+        <div class="metric-cell">
+          <div class="metric-label">Int. Corridos</div>
+          <div class="metric-value" id="m-dev">${fmt2(metrics.devengado)}</div>
+          <div class="metric-sub">${metrics.pasados.length ? fmt2(ons_diffDays(metrics.pasados[metrics.pasados.length-1].fecha, settle) / ons_diffDays(metrics.pasados[metrics.pasados.length-1].fecha, metrics.proxCF.fecha) * 100) + '% del período' : 'Primer cupón'}</div>
+        </div>
+      </div>
+
+      <div class="cf-wrap">
+        <table class="cf-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Cupón #</th>
+              <th>Amort.</th>
+              <th>V. Residual</th>
+              <th>Tasa</th>
+              <th>Interés</th>
+              <th>Total CF</th>
+            </tr>
+          </thead>
+          <tbody>${allRows}</tbody>
+          <tfoot>
+            <tr>
+              <td colspan="7">
+                Los cupones pasados se muestran en gris · La fila resaltada es el próximo cashflow
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ─── Actualizar precio y recalcular ──────────────────────────────────────────
+function ons_updatePrice(ticker, val) {
+  const price = parseFloat(val);
+  if (isNaN(price) || price <= 0) return;
+  onsState.prices[ticker] = price;
+  const on = onsState.ons.find(o => o.ticker === ticker);
+  const cfs = onsState.cfCache[ticker];
+  if (on && cfs) {
+    ons_renderONPanel(on, cfs);
+    // Restaurar foco en el input de precio
+    setTimeout(() => {
+      const pi = document.getElementById('priceInput');
+      if (pi) { pi.value = price; pi.focus(); }
+    }, 0);
+  }
+}
+
+function ons_updateSettle(ticker, val) {
+  if (!onsState.settles) onsState.settles = {};
+  onsState.settles[ticker] = new Date(val + 'T12:00:00');
+  const on = onsState.ons.find(o => o.ticker === ticker);
+  const cfs = onsState.cfCache[ticker];
+  if (on && cfs) {
+    ons_renderONPanel(on, cfs);
+    setTimeout(() => {
+      const si = document.getElementById('settleInput');
+      if (si) si.value = val;
+    }, 0);
+  }
+}
+
+// ─── Carga desde Worker ───────────────────────────────────────────────────────
+async function ons_initFromWorker() {
+  try {
+    const resp = await fetch(WORKER_URL);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const bundle = await resp.json();
+    if (bundle.error) throw new Error(bundle.error);
+
+    onsState.bundle = bundle;
+    const allOnsFromIndex = bundle._index || [];
+
+    if (!allOnsFromIndex.length) throw new Error('El Worker no devolvió ONs');
+
+    // Separar vigentes y vencidas por fecha
+    const today = new Date(); today.setHours(0,0,0,0);
+    const vigentes  = allOnsFromIndex.filter(o => new Date(o.vencimiento) > today);
+    const vencidas  = allOnsFromIndex.filter(o => new Date(o.vencimiento) <= today);
+
+    onsState.ons        = vigentes;
+    onsState.vencidas   = vencidas;
+    onsState.cfCache    = {};
+    onsState.prices     = {};
+
+    // Agrupar vigentes por sector
+    onsState.grouped = {};
+    for (const on of vigentes) {
+      const s = on.sector?.toUpperCase() || 'OTROS';
+      if (!onsState.grouped[s]) onsState.grouped[s] = [];
+      onsState.grouped[s].push(on);
+    }
+
+    // UI — status OK
+    document.getElementById('sbStatus').innerHTML = `
+      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="var(--green)" stroke-width="2" style="flex-shrink:0">
+        <path d="M3 8l3.5 3.5L13 5"/>
+      </svg>
+      <span style="color:var(--green)">${vigentes.length} vigentes · <span style="color:var(--text3)">${vencidas.length} vencidas</span></span>`;
+    document.getElementById('pillStatus').textContent = `${vigentes.length} ONs`;
+    document.getElementById('pillStatus').className = 'pill pill-green';
+
+    ons_renderSidebar();
+    ons_populateFilterSector();
+    document.getElementById('sbSearch').style.display = '';
+    ons_renderCompTable();
+    requestAnimationFrame(() => requestAnimationFrame(ons_renderChart));
+
+  } catch(e) {
+    document.getElementById('sbStatus').innerHTML = `
+      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="var(--red)" stroke-width="2" style="flex-shrink:0">
+        <circle cx="8" cy="8" r="7"/><path d="M8 5v3M8 11h.01"/>
+      </svg>
+      <span style="color:var(--red)">Error: ${e.message}</span>`;
+    document.getElementById('sbScroll').innerHTML =
+      `<div class="sb-msg">No se pudo cargar el índice.<br>${e.message}</div>`;
+  }
+}
+
+// ons_showON — muestra el detalle de una ON en el panel derecho
+// ─── Navegación entre vistas ──────────────────────────────────────────────────
+function ons_showTabla() {
+  document.getElementById('view-tabla').style.display = 'flex';
+  document.getElementById('view-on').style.display    = 'none';
+  document.querySelectorAll('.on-item,.on-item-sub').forEach(el => el.classList.remove('active'));
+  onsState.selected = null;
+  requestAnimationFrame(() => requestAnimationFrame(ons_renderChart));
+}
+
+function ons_showON() {
+  document.getElementById('view-tabla').style.display = 'none';
+  document.getElementById('view-on').style.display    = 'flex';
+}
+
+// ─── Sidebar: Sector → Empresa → Tickers ─────────────────────────────────────
+function ons_renderSidebar(filter = '') {
+  const scroll = document.getElementById('sbScroll');
+  const f = filter.toLowerCase();
+  let html = '';
+  const sectors = Object.keys(onsState.grouped).sort();
+
+  for (const sector of sectors) {
+    const allOns = onsState.grouped[sector];
+    // Filtrar
+    const filtered = allOns.filter(on =>
+      !f || on.empresa.toLowerCase().includes(f) || on.ticker.toLowerCase().includes(f)
+    );
+    if (!filtered.length) continue;
+
+    // Agrupar por empresa dentro del sector
+    const byEmpresa = {};
+    for (const on of filtered) {
+      if (!byEmpresa[on.empresa]) byEmpresa[on.empresa] = [];
+      byEmpresa[on.empresa].push(on);
+    }
+
+    const color = ons_sectorColor(sector);
+    const sectorId = 'sec-' + sector.replace(/[^a-zA-Z0-9]/g,'-');
+    html += `
+      <div class="sector-wrap">
+        <div class="sector-header open" onclick="ons_toggleEl('${sectorId}',this)">
+          <div class="sector-dot" style="background:${color};box-shadow:0 0 5px ${color}40"></div>
+          <span class="s-name">${sector}</span>
+          <span class="s-cnt">${filtered.length}</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+        <div class="sector-items open" id="${sectorId}">`;
+
+    for (const [empresa, ons] of Object.entries(byEmpresa).sort()) {
+      const empId = 'emp-' + (sector+empresa).replace(/[^a-zA-Z0-9]/g,'-');
+      html += `
+        <div class="empresa-wrap">
+          <div class="empresa-header" onclick="ons_toggleEl('${empId}',this)">
+            <span class="emp-name">${empresa}</span>
+            <span class="emp-cnt">${ons.length}</span>
+            <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px"><path d="M6 4l4 4-4 4"/></svg>
+          </div>
+          <div class="empresa-items" id="${empId}">
+            ${ons.map(on => `
+              <div class="on-item-sub${onsState.selected?.ticker===on.ticker?' active':''}"
+                   onclick="ons_selectON('${on.ticker}')" data-ticker="${on.ticker}">
+                <span class="on-ticker">${on.ticker}</span>
+                <span class="on-tag ${on.moneda==='CABLE'?'tag-cable':'tag-mep'}">${on.moneda}</span>
+              </div>`).join('')}
+          </div>
+        </div>`;
+    }
+
+    html += `</div></div>`;
+  }
+
+  // ── Sección vencidas ────────────────────────────────────────────────────
+  const vencidas = (onsState.vencidas || []).filter(on =>
+    !f || on.empresa.toLowerCase().includes(f) || on.ticker.toLowerCase().includes(f)
+  );
+
+  if (vencidas.length) {
+    // Agrupar vencidas por empresa
+    const byEmp = {};
+    for (const on of vencidas) {
+      if (!byEmp[on.empresa]) byEmp[on.empresa] = [];
+      byEmp[on.empresa].push(on);
+    }
+
+    const fmtVto = s => {
+      const d = new Date(s);
+      return d.toLocaleDateString('es-AR', {day:'2-digit',month:'2-digit',year:'2-digit'});
+    };
+
+    html += `
+      <hr class="vencidas-divider">
+      <div class="vencidas-header" onclick="ons_toggleEl('vencidas-list',this)">
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="flex-shrink:0">
+          <circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/>
+        </svg>
+        Vencidas
+        <span class="s-cnt" style="margin-left:auto">${vencidas.length}</span>
+        <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4l4 4-4 4"/></svg>
+      </div>
+      <div class="vencidas-items" id="vencidas-list">
+        ${Object.entries(byEmp).sort().map(([empresa, ons]) => `
+          <div class="vencidas-empresa-header">${empresa}</div>
+          ${ons.sort((a,b) => new Date(b.vencimiento)-new Date(a.vencimiento)).map(on => `
+            <div class="vencidas-on">
+              <span class="on-ticker">${on.ticker}</span>
+              <span class="on-tag ${on.moneda==='CABLE'?'tag-cable':'tag-mep'}" style="opacity:.5">${on.moneda}</span>
+              <span class="vto-badge">vto ${fmtVto(on.vencimiento)}</span>
+            </div>`).join('')}
+        `).join('')}
+      </div>`;
+  }
+
+  scroll.innerHTML = html || '<div class="sb-msg">Sin resultados.</div>';
+}
+
+function ons_toggleEl(id, header) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('open');
+  header.classList.toggle('open');
+}
+
+// ─── Tabla Comparativa ────────────────────────────────────────────────────────
+// ─── Filtros tabla comparativa ────────────────────────────────────────────────
+function ons_populateFilterSector() {
+  const sel = document.getElementById('filterSector');
+  sel.innerHTML = '<option value="">Todos los sectores</option>';
+  Object.keys(onsState.grouped).sort().forEach(s => {
+    sel.innerHTML += `<option value="${s}">${s}</option>`;
+  });
+}
+
+function ons_onFilterSector() {
+  const sector = document.getElementById('filterSector').value;
+  const selEmp = document.getElementById('filterEmpresa');
+  const divEmp = document.getElementById('divEmpresa');
+  const lblEmp = document.getElementById('lblEmpresa');
+  if (sector) {
+    const empresas = [...new Set((onsState.grouped[sector]||[]).map(o => o.empresa))].sort();
+    selEmp.innerHTML = '<option value="">Todas</option>';
+    empresas.forEach(e => selEmp.innerHTML += `<option value="${e}">${e}</option>`);
+    selEmp.style.display = '';
+    divEmp.style.display = '';
+    lblEmp.style.display = '';
+  } else {
+    selEmp.style.display = 'none';
+    divEmp.style.display = 'none';
+    lblEmp.style.display = 'none';
+  }
+  ons_onFilterChange();
+}
+
+function ons_onFilterChange() {
+  ons_renderCompTable();
+  ons_renderChart();
+}
+
+function ons_getFilteredONs() {
+  const sector  = document.getElementById('filterSector')?.value  || '';
+  const empresa = document.getElementById('filterEmpresa')?.value || '';
+  const ley     = document.getElementById('filterLey')?.value     || '';
+  const moneda  = document.getElementById('filterMoneda')?.value  || '';
+  let ons = onsState.ons;
+  if (sector)  ons = ons.filter(o => o.sector?.toUpperCase() === sector);
+  if (empresa) ons = ons.filter(o => o.empresa === empresa);
+  if (ley)     ons = ons.filter(o => o.ley === ley);
+  if (moneda)  ons = ons.filter(o => o.moneda === moneda);
+  return ons;
+}
+
+// Devuelve tasa cupón vigente y si es step-up
+function ons_getTasaVigente(cfs, settle) {
+  const futuros = cfs.filter(cf => cf.fecha > settle);
+  if (!futuros.length) return { tasa: null, stepUp: false };
+  // Detectar step-up: si hay más de una tasa distinta entre todos los flujos
+  const tasas = [...new Set(cfs.map(cf => cf.tasa_cupon))];
+  const stepUp = tasas.length > 1;
+  return { tasa: futuros[0].tasa_cupon, stepUp };
+}
+
+// ─── Render tabla ─────────────────────────────────────────────────────────────
+function ons_renderCompTable() {
+  const ons    = ons_getFilteredONs();
+  const settle = ons_settlement(new Date());
+  const fmt2   = v => (v===null||isNaN(v)) ? '-' : v.toFixed(2);
+  const fmtPct = v => (v===null||isNaN(v)) ? '-' : (v*100).toFixed(2)+'%';
+  const fmtDate = d => d instanceof Date && !isNaN(d)
+    ? d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '-';
+
+  let rows = '';
+  for (const on of ons) {
+    let metrics = null; let cfs = null;
+    try { cfs = ons_fetchCashflows(on); const price = onsState.prices[on.ticker]??100; metrics = ons_calcMetrics(cfs, price, settle, on.frecuencia); } catch(e) {}
+    const price   = onsState.prices[on.ticker] ?? 100;
+    const ytm     = metrics?.ytm ?? null;
+    const par     = metrics?.paridad ?? null;
+    const dev     = metrics?.devengado ?? null;
+    const proxCF  = metrics?.proxCF?.fecha;
+    const ytmCls  = ytm===null?'': ytm>=0.08?'ytm-high': ytm>=0.05?'ytm-mid':'ytm-low';
+    const parCls  = par===null?'': par>100?'par-over':'par-under';
+    const tv      = cfs ? ons_getTasaVigente(cfs, settle) : {tasa:null,stepUp:false};
+    const tasaStr = tv.tasa===null ? '-' : fmtPct(tv.tasa) + (tv.stepUp ? ' *' : '');
+
+    rows += `<tr onclick="ons_goToTicker('${on.ticker}')">
+      <td>${on.empresa}</td>
+      <td><span class="ticker-link" onclick="event.stopPropagation();ons_goToTicker('${on.ticker}')">${on.ticker}</span></td>
+      <td onclick="event.stopPropagation()"><input class="price-inp" type="number" step="0.01" value="${price}" onchange="ons_updateCompPrice('${on.ticker}',this.value)" onclick="event.stopPropagation()"></td>
+      <td style="${tv.stepUp?'color:var(--yellow)':''}">${tasaStr}</td>
+      <td class="${ytmCls}">${fmtPct(ytm)}</td>
+      <td>${fmt2(metrics?.modDuration)}</td>
+      <td class="${parCls}">${fmt2(par)}%</td>
+      <td>${fmt2(dev)}</td>
+      <td>${fmtDate(proxCF)}</td>
+      <td>${fmtDate(new Date(on.vencimiento))}</td>
+      <td style="font-size:9px;color:var(--text3)">${on.ley}</td>
+      <td><span class="on-tag ${on.moneda==='CABLE'?'tag-cable':'tag-mep'}" style="display:inline-block">${on.moneda}</span></td>
+      <td style="color:var(--text3)">${on.frecuencia}</td>
+    </tr>`;
+  }
+  document.getElementById('compTbody').innerHTML = rows || `<tr><td colspan="13" style="text-align:center;padding:30px;color:var(--text3);font-family:var(--mono);font-size:10px">Sin resultados</td></tr>`;
+  document.getElementById('compCount').textContent = `${ons.length} ONs`;
+}
+
+function ons_updateCompPrice(ticker, val) {
+  const price = parseFloat(val);
+  if (isNaN(price)||price<=0) return;
+  onsState.prices[ticker] = price;
+  ons_renderCompTable();
+  ons_renderChart();
+}
+
+function ons_goToTicker(ticker) {
+  ons_selectON(ticker);
+  setTimeout(() => {
+    const el = document.querySelector(`[data-ticker="${ticker}"]`);
+    if (el) el.scrollIntoView({block:'center',behavior:'smooth'});
+  }, 50);
+}
+
+// ─── Gráfico scatter SVG ──────────────────────────────────────────────────────
+function ons_renderChart() {
+  const svg     = document.getElementById('chartSvg');
+  const body    = document.getElementById('chartBody');
+  const tooltip = document.getElementById('chartTooltip');
+  if (!svg || !body) return;
+
+  // Force layout if needed
+  const W = body.getBoundingClientRect().width  || body.offsetWidth  || 800;
+  const H = body.getBoundingClientRect().height || body.offsetHeight || 160;
+  if (W < 10 || H < 10) { setTimeout(ons_renderChart, 100); return; }
+  const PAD = { top:14, right:20, bottom:28, left:52 };
+  const settle = ons_settlement(new Date());
+
+  const axisY = document.getElementById('chartY')?.value || 'tasa';
+  const axisX = document.getElementById('chartX')?.value || 'dtm';
+
+  const ons = ons_getFilteredONs();
+
+  // Calcular puntos
+  const pts = [];
+  for (const on of ons) {
+    let cfs = null; let metrics = null;
+    try { cfs = ons_fetchCashflows(on); const price = onsState.prices[on.ticker]??100; metrics = ons_calcMetrics(cfs, price, settle, on.frecuencia); } catch(e) { continue; }
+    if (!metrics) continue;
+
+    // Y
+    let yVal = null; let stepUp = false;
+    if (axisY === 'tasa') {
+      const tv = ons_getTasaVigente(cfs, settle);
+      yVal = tv.tasa; stepUp = tv.stepUp;
+    } else {
+      yVal = metrics.ytm;
+    }
+
+    // X
+    let xVal = null;
+    const today = settle;
+    const vto   = new Date(on.vencimiento);
+    if (axisX === 'dtm') {
+      xVal = ons_diffDays(today, vto);
+    } else if (axisX === 'dur') {
+      xVal = metrics.duration;
+    } else {
+      xVal = metrics.modDuration;
+    }
+
+    if (yVal===null||xVal===null||isNaN(yVal)||isNaN(xVal)) continue;
+    pts.push({ on, xVal, yVal, stepUp, metrics });
+  }
+
+  if (!pts.length) {
+    svg.innerHTML = `<text x="${W/2}" y="${H/2}" text-anchor="middle" font-family="DM Mono, monospace" font-size="10" fill="#4a5280">Sin datos para graficar</text>`;
+    return;
+  }
+
+  const xMinRaw = Math.min(...pts.map(p=>p.xVal));
+  const xMaxRaw = Math.max(...pts.map(p=>p.xVal));
+  const yMinRaw = Math.min(...pts.map(p=>p.yVal));
+  const yMaxRaw = Math.max(...pts.map(p=>p.yVal));
+  const xRangeRaw = xMaxRaw - xMinRaw || 1;
+  const yRangeRaw = yMaxRaw - yMinRaw || 0.01;
+  // Padding del 10% en cada extremo para que los puntos no toquen los ejes
+  const xPad = xRangeRaw * 0.10;
+  const yPad = yRangeRaw * 0.15;
+  const xMin = xMinRaw - xPad;
+  const xMax = xMaxRaw + xPad;
+  const yMin = Math.max(0, yMinRaw - yPad);
+  const yMax = yMaxRaw + yPad;
+  const xRange = xMax - xMin;
+  const yRange = yMax - yMin;
+
+  const px = v => PAD.left + (v - xMin) / xRange * (W - PAD.left - PAD.right);
+  const py = v => PAD.top  + (1 - (v - yMin) / yRange) * (H - PAD.top - PAD.bottom);
+
+  // Grid lines
+  const nGridY = 4;
+  let gridLines = '';
+  for (let i=0; i<=nGridY; i++) {
+    const v = yMin + i * yRange / nGridY;
+    const y = py(v);
+    const label = axisY==='tasa'||axisY==='ytm' ? (v*100).toFixed(1)+'%' : v.toFixed(2);
+    gridLines += `<line x1="${PAD.left}" y1="${y}" x2="${W-PAD.right}" y2="${y}" stroke="rgba(30,39,243,0.1)" stroke-width="1"/>`;
+    gridLines += `<text x="${PAD.left-6}" y="${y+4}" text-anchor="end" font-size="8" font-family="DM Mono,monospace" fill="#4a5280">${label}</text>`;
+  }
+
+  // X axis labels
+  const nGridX = Math.min(5, pts.length);
+  let xLabels = '';
+  for (let i=0; i<=nGridX; i++) {
+    const v = xMin + i * xRange / nGridX;
+    const x = px(v);
+    const label = axisX==='dtm' ? Math.round(v)+'d' : v.toFixed(2);
+    xLabels += `<text x="${x}" y="${H-PAD.bottom+14}" text-anchor="middle" font-size="8" font-family="DM Mono,monospace" fill="#4a5280">${label}</text>`;
+  }
+
+  // ── Regresión polinómica ────────────────────────────────────────────────────
+  // Grado 2 (cuadrática) si eje Y = YTM, grado 1 (lineal) si eje Y = Tasa Cupón
+  const degree = axisY === 'ytm' ? 2 : 1;
+  let trendPath = '';
+
+  if (pts.length >= degree + 2) {
+    // Mínimos cuadrados para polinomio de grado `degree`
+    // Normalizamos X a [0,1] para mayor estabilidad numérica
+    const xs = pts.map(p => (p.xVal - xMin) / xRange);
+    const ys = pts.map(p => p.yVal);
+    const n  = xs.length;
+    const terms = degree + 1; // número de coeficientes
+
+    // Armar matriz de Vandermonde A y vector b
+    // A[i][j] = xs[i]^j
+    const A = xs.map(x => Array.from({length: terms}, (_, j) => Math.pow(x, j)));
+    const b = ys;
+
+    // Resolver sistema A'A * coef = A'b por eliminación gaussiana
+    // Calcular A'A (terms x terms) y A'b (terms)
+    const AtA = Array.from({length: terms}, () => new Array(terms).fill(0));
+    const Atb = new Array(terms).fill(0);
+    for (let i = 0; i < n; i++) {
+      for (let r = 0; r < terms; r++) {
+        Atb[r] += A[i][r] * b[i];
+        for (let s = 0; s < terms; s++) {
+          AtA[r][s] += A[i][r] * A[i][s];
+        }
+      }
+    }
+
+    // Eliminación gaussiana con pivoteo parcial
+    const aug = AtA.map((row, i) => [...row, Atb[i]]);
+    for (let col = 0; col < terms; col++) {
+      let maxRow = col;
+      for (let row = col+1; row < terms; row++) {
+        if (Math.abs(aug[row][col]) > Math.abs(aug[maxRow][col])) maxRow = row;
+      }
+      [aug[col], aug[maxRow]] = [aug[maxRow], aug[col]];
+      for (let row = col+1; row < terms; row++) {
+        if (Math.abs(aug[col][col]) < 1e-12) continue;
+        const factor = aug[row][col] / aug[col][col];
+        for (let k = col; k <= terms; k++) aug[row][k] -= factor * aug[col][k];
+      }
+    }
+    const coef = new Array(terms).fill(0);
+    for (let i = terms-1; i >= 0; i--) {
+      if (Math.abs(aug[i][i]) < 1e-12) continue;
+      coef[i] = aug[i][terms];
+      for (let j = i+1; j < terms; j++) coef[i] -= aug[i][j] * coef[j];
+      coef[i] /= aug[i][i];
+    }
+
+    // Evaluar polinomio en puntos del eje X y generar path SVG
+    const nSamples = 120;
+    const pathPts = [];
+    for (let i = 0; i <= nSamples; i++) {
+      const xNorm = i / nSamples;
+      const xReal = xMin + xNorm * xRange;
+      const yPred = coef.reduce((s, c, j) => s + c * Math.pow(xNorm, j), 0);
+      // Solo dibujar si está dentro del rango Y visible (con margen del 20%)
+      const margin = yRange * 0.2;
+      if (yPred < yMin - margin || yPred > yMax + margin) {
+        if (pathPts.length) pathPts.push(null); // romper el path
+        continue;
+      }
+      pathPts.push({ x: px(xReal), y: py(yPred) });
+    }
+
+    // Construir el path SVG (con soporte para segmentos rotos)
+    let d = '';
+    for (let i = 0; i < pathPts.length; i++) {
+      if (!pathPts[i]) { d += ' '; continue; }
+      d += (i === 0 || !pathPts[i-1]) ? `M ${pathPts[i].x.toFixed(1)} ${pathPts[i].y.toFixed(1)}` : ` L ${pathPts[i].x.toFixed(1)} ${pathPts[i].y.toFixed(1)}`;
+    }
+
+    if (d.trim()) {
+      trendPath = `<path d="${d}" fill="none" stroke="rgba(30,39,243,0.55)" stroke-width="1.5" stroke-dasharray="4 3" pointer-events="none"/>`;
+    }
+  }
+
+  // ── Puntos ───────────────────────────────────────────────────────────────────
+  let circles = '';
+  pts.forEach((p, i) => {
+    const x = px(p.xVal);
+    const y = py(p.yVal);
+    const col = p.on.moneda==='CABLE' ? '#3fb950' : '#e3b341';
+    const r = 5;
+    circles += `<circle cx="${x}" cy="${y}" r="${r}" fill="${col}" fill-opacity="0.85" stroke="${col}" stroke-width="1"
+      data-i="${i}" style="cursor:pointer;transition:r .1s"/>`;
+    if (p.stepUp) {
+      circles += `<text x="${x+6}" y="${y-5}" font-size="8" font-family="DM Mono,monospace" fill="#e3b341" pointer-events="none">*</text>`;
+    }
+  });
+
+  svg.innerHTML = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+    ${gridLines}
+    <line x1="${PAD.left}" y1="${PAD.top}" x2="${PAD.left}" y2="${H-PAD.bottom}" stroke="rgba(30,39,243,0.2)" stroke-width="1"/>
+    <line x1="${PAD.left}" y1="${H-PAD.bottom}" x2="${W-PAD.right}" y2="${H-PAD.bottom}" stroke="rgba(30,39,243,0.2)" stroke-width="1"/>
+    ${xLabels}
+    ${trendPath}
+    ${circles}
+  </svg>`;
+
+  // Tooltip events
+  svg.querySelectorAll('circle').forEach(el => {
+    const i = parseInt(el.dataset.i);
+    const p = pts[i];
+    el.addEventListener('mouseenter', (e) => {
+      el.setAttribute('r', '7');
+      const xLabel = axisX==='dtm' ? Math.round(p.xVal)+' días'
+                   : axisX==='dur' ? p.xVal.toFixed(2)+' años'
+                   : p.xVal.toFixed(2)+' años';
+      const yLabel = (p.yVal*100).toFixed(2)+'%' + (p.stepUp?' *':'');
+      const xAxisName = axisX==='dtm'?'Days to Mat.': axisX==='dur'?'Duration':'Dur. Mod.';
+      const yAxisName = axisY==='tasa'?'Tasa Cupón':'YTM';
+      tooltip.innerHTML = `
+        <div class="chart-tooltip-ticker">${p.on.ticker}</div>
+        <div class="chart-tooltip-empresa">${p.on.empresa}</div>
+        <div class="chart-tooltip-row"><span>${yAxisName}</span><span class="chart-tooltip-val">${yLabel}</span></div>
+        <div class="chart-tooltip-row"><span>${xAxisName}</span><span class="chart-tooltip-val">${xLabel}</span></div>
+        <div class="chart-tooltip-row"><span>Moneda</span><span class="chart-tooltip-val">${p.on.moneda}</span></div>`;
+      tooltip.style.display = 'block';
+    });
+    el.addEventListener('mousemove', (e) => {
+      tooltip.style.left = (e.clientX+14)+'px';
+      tooltip.style.top  = (e.clientY-10)+'px';
+    });
+    el.addEventListener('mouseleave', () => {
+      el.setAttribute('r', '5');
+      tooltip.style.display = 'none';
+    });
+    el.addEventListener('click', () => ons_goToTicker(p.on.ticker));
+  });
+}
+
+// ─── Búsqueda ─────────────────────────────────────────────────────────────────
+
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+
+window.ons_init = function() {
+  var el = document.getElementById('ons_searchInput');
+  if (el && !el._att) {
+    el.addEventListener('input', function() { ons_renderSidebar(this.value); });
+    el._att = true;
+  }
+  if (!window.ONS_LOADED) {
+    ons_initFromWorker();
+    window.ONS_LOADED = true;
+  }
+};
+
+</script>
 </body>
 </html>
 
