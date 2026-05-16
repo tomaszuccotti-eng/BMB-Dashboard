@@ -9084,7 +9084,7 @@ function renderEquity(){
         </div>
         <div id="${bcraCid}"></div>`;
       // Fetch asíncrono
-      _bcraFetchInline(ticker, cuit, bcraCid, bcraLoadId);
+      setTimeout(()=>_bcraFetchInline(ticker, cuit, bcraCid, bcraLoadId), 0);
     }
     con.appendChild(bcraWrap);
 
