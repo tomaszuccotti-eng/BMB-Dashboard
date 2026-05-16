@@ -692,7 +692,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
       </div>
 
       <!-- 3 — Calculadoras -->
-      <div class="mosaic-card active-module" onclick="enterTest()" style="cursor:pointer;">
+      <div class="mosaic-card active-module" onclick="enterCalcMenu()" style="cursor:pointer;">
         <div class="mosaic-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
@@ -744,13 +744,82 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 </div>
 
 <!-- ══════════════════ APP TEST → LECAP CALCULATOR ══════════════════ -->
+<!-- ══════════════════ APP CALC MENU ══════════════════ -->
+<div id="app-calc-menu" style="display:none;min-height:100vh;background:var(--bg);flex-direction:column;">
+  <!-- Header -->
+  <div style="display:flex;align-items:center;padding:18px 32px;border-bottom:1px solid var(--border);background:var(--bg);gap:16px;">
+    <button onclick="backToLanding()" style="padding:6px 14px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);">← Inicio</button>
+    <button onclick="toggleTheme()" class="theme-btn-small" style="margin-left:auto;">
+      <span class="theme-btn-icon">☀</span> <span class="theme-btn-lbl">Modo Claro</span>
+    </button>
+  </div>
+  <!-- Cards -->
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:60px 32px;">
+    <div style="width:100%;max-width:900px;">
+      <div style="font-family:var(--display);font-size:clamp(28px,4vw,52px);font-weight:800;color:var(--text);line-height:1.05;margin-bottom:16px;letter-spacing:-1px;">Calcula&shy;<br><span style="color:var(--accent);">doras.</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:32px;">
+        <!-- Bonos & Letras -->
+        <div onclick="enterTest()" class="af-card">
+          <div style="width:48px;height:48px;background:rgba(30,39,243,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1E27F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          </div>
+          <div class="af-card-title">Bonos &amp; Letras</div>
+          <div class="af-card-desc">Calculadora de LECAPs con curva de rendimientos, paridad, duration y comparativa de tickers.</div>
+          <div class="af-card-footer">LECAPs · BONCER · SOBERANOS →</div>
+        </div>
+        <!-- Obligaciones Negociables -->
+        <div onclick="enterCalcON()" class="af-card">
+          <div style="width:48px;height:48px;background:rgba(30,39,243,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1E27F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+          </div>
+          <div class="af-card-title">Obligaciones Negociables</div>
+          <div class="af-card-desc">Calculadora de ONs corporativas. TIR, duration, precio limpio y flujos de caja.</div>
+          <div class="af-card-footer">ONs · CORPORATIVOS →</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ APP CALC ON ══════════════════ -->
+<div id="app-calc-on" style="display:none;min-height:100vh;background:var(--bg);flex-direction:column;">
+  <!-- Header -->
+  <div style="display:flex;align-items:center;padding:18px 32px;border-bottom:1px solid var(--border);background:var(--bg);gap:16px;">
+    <button onclick="backToCalcMenu()" style="padding:6px 14px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;" onmouseover="this.style.background='var(--accent)';this.style.color='#fff';this.style.borderColor='var(--accent)';" onmouseout="this.style.background='transparent';this.style.color='var(--text3)';this.style.borderColor='var(--border2)';">← Volver</button>
+    <span style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);">Obligaciones Negociables</span>
+    <button onclick="toggleTheme()" class="theme-btn-small" style="margin-left:auto;">
+      <span class="theme-btn-icon">☀</span> <span class="theme-btn-lbl">Modo Claro</span>
+    </button>
+  </div>
+  <!-- Body -->
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:60px 32px;">
+    <div style="width:100%;max-width:900px;margin:0 auto;">
+      <div style="font-family:var(--display);font-size:clamp(28px,4vw,52px);font-weight:800;color:var(--text);line-height:1.05;margin-bottom:16px;letter-spacing:-1px;">Oblig. Ne&shy;<br><span style="color:var(--accent);">gociables.</span></div>
+      <div style="font-size:14px;color:var(--text3);font-family:var(--mono);line-height:1.7;max-width:520px;">Calculadora de ONs corporativas en construcción. TIR, duration, precio limpio y flujos de caja.</div>
+      <div style="margin-top:48px;background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:48px 40px;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center;">
+        <div style="width:56px;height:56px;background:var(--accent-light);border-radius:14px;display:flex;align-items:center;justify-content:center;">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="7" width="20" height="14" rx="2"/>
+            <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+            <line x1="12" y1="12" x2="12" y2="16"/>
+            <line x1="10" y1="14" x2="14" y2="14"/>
+          </svg>
+        </div>
+        <div style="font-family:var(--display);font-size:20px;font-weight:700;color:var(--text);">En desarrollo</div>
+        <div style="font-size:12px;color:var(--text3);font-family:var(--mono);line-height:1.7;max-width:380px;">La calculadora de ONs va a estar disponible próximamente.</div>
+        <div style="font-size:9px;font-family:var(--mono);font-weight:700;letter-spacing:.1em;color:var(--accent);background:var(--accent-light);border:1px solid var(--border2);padding:4px 14px;border-radius:20px;margin-top:4px;">COMING SOON</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="app-test" style="display:none;min-height:100vh;flex-direction:column;background:var(--bg);">
 
   <!-- Header + Tabs combined, sticky -->
   <div style="position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:1px solid var(--border);box-shadow:0 1px 6px rgba(30,39,243,0.06);">
     <div class="header" style="border-bottom:none;">
       <div class="header-left">
-        <div class="logo" onclick="backToLanding()" style="gap:0;">
+        <div class="logo" onclick="backToCalcMenu()" style="gap:0;">
           <img id="bm-logo-test" src="" alt="Bull Market" style="height:28px;width:auto;margin-right:10px;mix-blend-mode:screen;">
         </div>
         <div style="height:20px;width:1px;background:var(--border);margin:0 4px;"></div>
@@ -4051,8 +4120,29 @@ function backToLanding(){
   document.getElementById('app-excel').style.display='none';
   document.getElementById('app-test').style.display='none';
   document.getElementById('app-informes').style.display='none';
+  document.getElementById('app-calc-menu').style.display='none';
+  document.getElementById('app-calc-on').style.display='none';
   document.getElementById('legal-footer').style.display='none';
   if(window._secResetState) window._secResetState();
+}
+function enterCalcMenu(){
+  document.getElementById('landing').style.display='none';
+  const el=document.getElementById('app-calc-menu');
+  el.style.display='flex';
+  el.style.flexDirection='column';
+}
+function enterCalcON(){
+  document.getElementById('app-calc-menu').style.display='none';
+  const el=document.getElementById('app-calc-on');
+  el.style.display='flex';
+  el.style.flexDirection='column';
+}
+function backToCalcMenu(){
+  document.getElementById('app-test').style.display='none';
+  document.getElementById('app-calc-on').style.display='none';
+  const el=document.getElementById('app-calc-menu');
+  el.style.display='flex';
+  el.style.flexDirection='column';
 }
 function enterInformes(){
   document.getElementById('landing').style.display='none';
@@ -4240,6 +4330,7 @@ function enterInformes(){
 
 function enterTest(){
   document.getElementById('landing').style.display='none';
+  document.getElementById('app-calc-menu').style.display='none';
   const el=document.getElementById('app-test');
   el.style.display='flex';
   el.style.flexDirection='column';
