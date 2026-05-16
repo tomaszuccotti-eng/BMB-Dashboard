@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bull Market — Dashboard v7.6.0</title>
+<title>Research — Bull Market</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
@@ -129,6 +129,50 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
   max-width: 720px;
   width: 100%;
 }
+.mosaic-card.coming-soon {
+  opacity: 0.38;
+  cursor: default;
+  pointer-events: none;
+}
+#app-informes {
+  min-height: 100vh;
+  background: var(--bg);
+  flex-direction: column;
+}
+/* ── Informes sidebar ── */
+#inf-sb-scroll::-webkit-scrollbar { width:3px; }
+#inf-sb-scroll::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+.inf-folder-wrap { margin-bottom:3px; }
+.inf-folder-header {
+  display:flex; align-items:center; gap:8px;
+  padding:8px 10px; border-radius:8px; cursor:pointer;
+  font-size:12px; font-weight:600; color:var(--text2);
+  transition:all .15s; user-select:none;
+}
+.inf-folder-header:hover { background:var(--accent-light); }
+.inf-folder-header.open  { color:var(--text); }
+.inf-folder-header .inf-chevron { width:11px; height:11px; flex-shrink:0; color:var(--text3); transition:transform .2s; }
+.inf-folder-header.open .inf-chevron { transform:rotate(90deg); }
+.inf-folder-files { display:none; padding-left:8px; margin-top:2px; }
+.inf-folder-files.open { display:block; }
+.inf-file-item {
+  display:flex; align-items:center; gap:8px;
+  padding:7px 10px; border-radius:7px; cursor:pointer;
+  font-size:11.5px; color:var(--text3);
+  transition:all .15s; position:relative; margin-bottom:1px;
+}
+.inf-file-item:hover  { background:var(--accent-light); color:var(--text2); }
+.inf-file-item.active { background:var(--accent-mid);   color:var(--text2); }
+.inf-file-item.active::before {
+  content:''; position:absolute; left:0; top:50%; transform:translateY(-50%);
+  width:2px; height:60%; background:var(--accent); border-radius:0 2px 2px 0;
+}
+.inf-fi-icon { width:12px; height:12px; flex-shrink:0; opacity:.6; }
+.inf-file-item.active .inf-fi-icon { opacity:1; }
+.inf-fi-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.inf-fi-date { font-family:var(--mono); font-size:9px; color:var(--text3); flex-shrink:0; }
+.inf-fi-new  { width:5px; height:5px; border-radius:50%; background:var(--accent); box-shadow:0 0 4px var(--accent); flex-shrink:0; }
+.inf-f-cnt   { font-family:var(--mono); font-size:9px; padding:2px 6px; border-radius:10px; background:var(--bg4); color:var(--text3); flex-shrink:0; }
 .mosaic-card {
   background: var(--bg);
   border: 1.5px solid var(--border);
@@ -618,7 +662,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
     </div>
 
     <div class="mosaic">
-      <!-- Análisis Financiero → fila superior izquierda -->
+      <!-- 1 — Análisis Financiero -->
       <div class="mosaic-card active-module" onclick="enterBalancesMenu()" style="cursor:pointer;">
         <div class="mosaic-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -632,7 +676,22 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
         <div class="mosaic-desc">Explorador de balances & Scoring de solvencia.</div>
       </div>
 
-      <!-- Calculadoras → fila superior derecha -->
+      <!-- 2 — Informes -->
+      <div class="mosaic-card active-module" onclick="enterInformes()" style="cursor:pointer;">
+        <div class="mosaic-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+            <line x1="9" y1="7" x2="15" y2="7"/>
+            <line x1="9" y1="11" x2="15" y2="11"/>
+            <line x1="9" y1="15" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <div class="mosaic-name">Informes</div>
+        <div class="mosaic-desc">Research y reportes de mercado.</div>
+      </div>
+
+      <!-- 3 — Calculadoras -->
       <div class="mosaic-card active-module" onclick="enterTest()" style="cursor:pointer;">
         <div class="mosaic-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -643,7 +702,19 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
         <div class="mosaic-desc">LECAPs.</div>
       </div>
 
-      <!-- Renta Fija → fila inferior izquierda (estilo apagado) -->
+      <!-- 4 — Renta Variable -->
+      <div class="mosaic-card active-module" onclick="enterEquity()" style="cursor:pointer;">
+        <div class="mosaic-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
+            <polyline points="16 7 22 7 22 13"/>
+          </svg>
+        </div>
+        <div class="mosaic-name">Renta Variable</div>
+        <div class="mosaic-desc">Acciones del mercado argentino, ADR y CEDEARs.</div>
+      </div>
+
+      <!-- 5 — Renta Fija -->
       <div class="mosaic-card" onclick="enterApp()" style="cursor:pointer;background:var(--bg2);border-color:var(--border);">
         <div class="mosaic-icon" style="background:rgba(30,39,243,0.07);">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text3);">
@@ -656,16 +727,17 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
         <div class="mosaic-desc">LECAPs, BONCAPs, BONCERs, Soberanos, Duales y más.</div>
       </div>
 
-      <!-- Renta Variable → fila inferior derecha (activo) -->
-      <div class="mosaic-card active-module" onclick="enterEquity()" style="cursor:pointer;">
-        <div class="mosaic-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
-            <polyline points="16 7 22 7 22 13"/>
+      <!-- 6 — Próximamente -->
+      <div class="mosaic-card coming-soon">
+        <div class="mosaic-icon" style="background:rgba(30,39,243,0.04);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text3);">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
           </svg>
         </div>
-        <div class="mosaic-name">Renta Variable</div>
-        <div class="mosaic-desc">Acciones del mercado argentino, ADR y CEDEARs.</div>
+        <div class="mosaic-name" style="color:var(--text3);">Próximamente</div>
+        <div class="mosaic-desc">Nuevo módulo en desarrollo.</div>
+        <div class="mosaic-badge badge-soon">COMING SOON</div>
       </div>
     </div>
   </div>
@@ -3626,6 +3698,83 @@ const _eqRO = new ResizeObserver(entries => {
 </div>
 
 <!-- ══════════════════ APP BALANCES ══════════════════ -->
+
+<!-- ══════════════════ APP INFORMES ══════════════════ -->
+<div id="app-informes" style="display:none;">
+
+  <!-- Header -->
+  <div style="height:52px;display:flex;align-items:center;padding:0 24px;border-bottom:1px solid var(--border);background:var(--bg);gap:14px;position:sticky;top:0;z-index:50;flex-shrink:0;">
+    <button onclick="backToLanding()" style="padding:5px 13px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;white-space:nowrap;" onmouseover="this.style.background='var(--accent)';this.style.color='#fff';this.style.borderColor='var(--accent)';" onmouseout="this.style.background='transparent';this.style.color='var(--text3)';this.style.borderColor='var(--border2)';">← Inicio</button>
+    <div style="width:1px;height:20px;background:var(--border2);flex-shrink:0;"></div>
+    <!-- Breadcrumb -->
+    <div style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px;overflow:hidden;">
+      <span style="color:var(--text3);white-space:nowrap;">Informes</span>
+      <span id="inf-bcs2" style="color:var(--text3);opacity:.4;flex-shrink:0;display:none;">/</span>
+      <span id="inf-bc2"  style="color:var(--text2);white-space:nowrap;display:none;"></span>
+      <span id="inf-bcs3" style="color:var(--text3);opacity:.4;flex-shrink:0;display:none;">/</span>
+      <span id="inf-bc3"  style="color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none;"></span>
+    </div>
+    <!-- Pill estado -->
+    <span id="inf-pill" style="font-family:var(--mono);font-size:9px;font-weight:600;padding:3px 9px;border-radius:20px;letter-spacing:.5px;white-space:nowrap;background:var(--accent-light);color:var(--accent2);border:1px solid var(--border2);">Cargando…</span>
+    <div style="flex:1;"></div>
+    <!-- Botón Drive (oculto hasta que se abre un PDF) -->
+    <a id="inf-btn-drive" href="#" target="_blank" style="display:none;align-items:center;gap:6px;padding:5px 12px;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-family:var(--mono);font-size:10px;font-weight:500;cursor:pointer;transition:all .15s;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='var(--accent-light)';this.style.borderColor='var(--accent2)';this.style.color='var(--text)';" onmouseout="this.style.background='transparent';this.style.borderColor='var(--border2)';this.style.color='var(--text2)';">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      Drive
+    </a>
+    <button onclick="toggleTheme()" class="theme-btn-small">
+      <span class="theme-btn-icon">☀</span><span class="theme-btn-lbl">Modo Claro</span>
+    </button>
+  </div>
+
+  <!-- Layout split: sidebar + main -->
+  <div style="display:flex;height:calc(100vh - 52px);overflow:hidden;">
+
+    <!-- Sidebar -->
+    <div style="width:230px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+      <!-- Sidebar head -->
+      <div style="padding:12px 12px 10px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:8px;">
+        <span style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);flex:1;">Carpetas</span>
+        <span id="inf-sb-count" style="font-family:var(--mono);font-size:9px;color:var(--text3);white-space:nowrap;"></span>
+      </div>
+      <!-- Sidebar scroll -->
+      <div id="inf-sb-scroll" style="flex:1;overflow-y:auto;overflow-x:hidden;padding:10px 8px 12px;">
+        <div id="inf-sb-msg" style="padding:14px 10px;font-family:var(--mono);font-size:10px;color:var(--text3);line-height:1.7;text-align:center;">Cargando informes…</div>
+      </div>
+    </div>
+
+    <!-- Main -->
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg3);">
+
+      <!-- Barra PDF activo (oculta hasta selección) -->
+      <div id="inf-pdf-bar" style="display:none;background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 20px;flex-shrink:0;">
+        <div id="inf-pdf-name" style="font-family:var(--display);font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+        <div id="inf-pdf-meta" style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:3px;"></div>
+      </div>
+
+      <!-- Empty state -->
+      <div id="inf-empty" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:40px;">
+        <div style="width:56px;height:56px;background:var(--accent-light);border-radius:14px;display:flex;align-items:center;justify-content:center;opacity:.6;">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+        </div>
+        <div id="inf-empty-title" style="font-family:var(--display);font-size:16px;font-weight:700;color:var(--text2);">Seleccioná un informe</div>
+        <div id="inf-empty-sub" style="font-family:var(--mono);font-size:11px;color:var(--text3);line-height:1.7;">Los informes se cargan automáticamente<br>desde la Google Sheet.</div>
+      </div>
+
+      <!-- Iframe PDF -->
+      <div id="inf-pdf-viewer" style="display:none;flex:1;overflow:hidden;">
+        <iframe id="inf-iframe" title="Visor PDF" style="width:100%;height:100%;border:none;display:block;"></iframe>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 <div id="app-balances" style="display:none;min-height:100vh;background:var(--bg);">
 
   <!-- Topbar -->
@@ -3901,9 +4050,193 @@ function backToLanding(){
   document.getElementById('app-balances-menu').style.display='none';
   document.getElementById('app-excel').style.display='none';
   document.getElementById('app-test').style.display='none';
+  document.getElementById('app-informes').style.display='none';
   document.getElementById('legal-footer').style.display='none';
   if(window._secResetState) window._secResetState();
 }
+function enterInformes(){
+  document.getElementById('landing').style.display='none';
+  const el=document.getElementById('app-informes');
+  el.style.display='flex';
+  el.style.flexDirection='column';
+  if(!window.INF_LOADED) infFetchSheet();
+}
+
+// ── INFORMES VIEWER ───────────────────────────────────────────
+(function(){
+  var SHEET_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vQB_YqRM921hcWnekEmBMWOzx8A2l0KeG5EcPW-VGn1kGsrlnV6sb79of7JaFM5EL9_ANZC8e4njTZ4/pub?gid=0&single=true&output=csv';
+  var activeEl=null;
+
+  var PROXIES=[
+    function(u){ return u; },
+    function(u){ return 'https://api.allorigins.win/raw?url='+encodeURIComponent(u); },
+    function(u){ return 'https://corsproxy.io/?'+encodeURIComponent(u); },
+    function(u){ return 'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u); }
+  ];
+
+  window.infFetchSheet=function(){
+    infSetPill('Cargando…','blue');
+    infTryProxy(0);
+  };
+
+  function infTryProxy(idx){
+    if(idx>=PROXIES.length){ infShowError('No se pudo conectar. Verificá que la Sheet esté publicada.'); return; }
+    fetch(PROXIES[idx](SHEET_URL),{cache:'no-store'})
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
+      .then(function(txt){
+        if(!txt||txt.trim().length<10) throw new Error('Respuesta vacía');
+        infHandleText(txt);
+        window.INF_LOADED=true;
+      })
+      .catch(function(){ infTryProxy(idx+1); });
+  };
+
+  function infHandleText(txt){
+    var sep=txt.indexOf('\t')!==-1?'\t':',';
+    var rows=infParseSV(txt,sep);
+    if(!rows.length){ infShowError('Sin datos en la Sheet.'); return; }
+    infBuildSidebar(rows);
+    infSetPill(rows.length+' archivo'+(rows.length!==1?'s':''),'green');
+  }
+
+  function infParseSV(txt,sep){
+    var lines=txt.trim().split(/\r?\n/);
+    if(lines.length<2) return [];
+    var hdrs=lines[0].split(sep).map(function(h){ return h.trim().replace(/^"|"$/g,'').toLowerCase(); });
+    var rows=[];
+    for(var i=1;i<lines.length;i++){
+      var line=lines[i].trim(); if(!line) continue;
+      var cols=sep==='\t'?line.split('\t'):infSplitCSV(line);
+      var obj={};
+      hdrs.forEach(function(h,idx){ obj[h]=(cols[idx]||'').trim().replace(/^"|"$/g,''); });
+      if(obj.carpeta) rows.push(obj);
+    }
+    return rows;
+  }
+
+  function infSplitCSV(line){
+    var res=[],cur='',inQ=false;
+    for(var i=0;i<line.length;i++){
+      var c=line[i];
+      if(c==='"'){ inQ=!inQ; }
+      else if(c===','&&!inQ){ res.push(cur); cur=''; }
+      else{ cur+=c; }
+    }
+    res.push(cur); return res;
+  }
+
+  function infBuildSidebar(rows){
+    var map={},order=[];
+    rows.forEach(function(r){
+      var f=r.carpeta||'Sin carpeta';
+      if(!map[f]){ map[f]=[]; order.push(f); }
+      map[f].push(r);
+    });
+    document.getElementById('inf-sb-count').textContent=order.length+' carpeta'+(order.length!==1?'s':'');
+    var container=document.getElementById('inf-sb-scroll');
+    container.innerHTML='';
+    order.forEach(function(folder,fi){
+      var files=map[folder];
+      var wrap=document.createElement('div');
+      wrap.className='inf-folder-wrap';
+      var header=document.createElement('div');
+      header.className='inf-folder-header'+(fi===0?' open':'');
+      header.innerHTML=
+        '<svg style="width:14px;height:14px;flex-shrink:0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">'+
+          '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>'+
+        '</svg>'+
+        '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+infEsc(folder)+'</span>'+
+        '<span class="inf-f-cnt">'+files.length+'</span>'+
+        '<svg class="inf-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>';
+      var fileList=document.createElement('div');
+      fileList.className='inf-folder-files'+(fi===0?' open':'');
+      files.forEach(function(f,idx){
+        var item=document.createElement('div');
+        item.className='inf-file-item';
+        var dateStr=infFmtDate(f.fecha);
+        item.innerHTML=
+          '<svg class="inf-fi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">'+
+            '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>'+
+            '<polyline points="14 2 14 8 20 8"/>'+
+          '</svg>'+
+          '<span class="inf-fi-name">'+infEsc(f.nombre||'Archivo '+(idx+1))+'</span>'+
+          (dateStr?'<span class="inf-fi-date">'+dateStr+'</span>':'')+
+          (idx===0?'<span class="inf-fi-new"></span>':'');
+        item.addEventListener('click',function(e){
+          e.stopPropagation();
+          infOpenFile(f,folder,item);
+        });
+        fileList.appendChild(item);
+      });
+      header.addEventListener('click',function(){
+        header.classList.toggle('open');
+        fileList.classList.toggle('open');
+      });
+      wrap.appendChild(header);
+      wrap.appendChild(fileList);
+      container.appendChild(wrap);
+    });
+  }
+
+  function infOpenFile(f,folder,el){
+    var id=(f.id_drive||'').trim();
+    if(!id){ return; }
+    if(activeEl) activeEl.classList.remove('active');
+    activeEl=el; el.classList.add('active');
+    var nombre=f.nombre||'Informe';
+    // Breadcrumb
+    document.getElementById('inf-bc2').textContent=folder;
+    document.getElementById('inf-bc3').textContent=nombre;
+    ['inf-bcs2','inf-bc2','inf-bcs3','inf-bc3'].forEach(function(i){
+      document.getElementById(i).style.display='';
+    });
+    // Barra PDF
+    document.getElementById('inf-pdf-name').textContent=folder+' — '+nombre;
+    document.getElementById('inf-pdf-meta').textContent=folder+(f.fecha?' · '+f.fecha:'');
+    document.getElementById('inf-pdf-bar').style.display='block';
+    // Drive button
+    var btn=document.getElementById('inf-btn-drive');
+    btn.href='https://drive.google.com/file/d/'+id+'/view';
+    btn.style.display='flex';
+    // Iframe
+    document.getElementById('inf-iframe').src='https://drive.google.com/file/d/'+id+'/preview';
+    document.getElementById('inf-empty').style.display='none';
+    document.getElementById('inf-pdf-viewer').style.display='flex';
+    document.getElementById('inf-pdf-viewer').style.flex='1';
+  }
+
+  function infFmtDate(fecha){
+    if(!fecha) return '';
+    var p=fecha.split('-');
+    if(p.length!==3) return fecha;
+    var m=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    return p[2].replace(/^0/,'')+' '+(m[parseInt(p[1],10)-1]||'');
+  }
+
+  function infSetPill(txt,color){
+    var p=document.getElementById('inf-pill');
+    p.textContent=txt;
+    var styles={
+      blue:'background:var(--accent-light);color:var(--accent2);border-color:var(--border2);',
+      green:'background:rgba(63,185,80,.10);color:#3fb950;border-color:rgba(63,185,80,.25);',
+      red:'background:rgba(248,81,73,.10);color:#f85149;border-color:rgba(248,81,73,.25);'
+    };
+    p.style.cssText='font-family:var(--mono);font-size:9px;font-weight:600;padding:3px 9px;border-radius:20px;letter-spacing:.5px;white-space:nowrap;border:1px solid;'+styles[color];
+  }
+
+  function infShowError(msg){
+    document.getElementById('inf-sb-msg').style.display='block';
+    document.getElementById('inf-sb-msg').innerHTML=
+      '<span style="color:var(--red)">✗ Error</span><br>'+
+      '<span style="font-size:9px">'+infEsc(msg)+'</span>'+
+      '<br><span style="font-size:9px;color:var(--accent);cursor:pointer;text-decoration:underline;" onclick="infFetchSheet()">Reintentar</span>';
+    infSetPill('Sin conexión','red');
+  }
+
+  function infEsc(s){
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+})();
 
 function enterTest(){
   document.getElementById('landing').style.display='none';
@@ -8327,7 +8660,7 @@ function applyTheme(dark){
       .mosaic-card.active-module:hover {
         background: var(--bg3) !important;
       }
-      #app-balances-menu, #app-balances, #app-excel,
+      #app-balances-menu, #app-balances, #app-excel, #app-informes,
       #app-balances-menu > div, #app-excel > div:first-child,
       #app-balances > div:first-child { background: var(--bg) !important; }
       #app-balances input, #app-excel input, #app-balances select, #app-excel select {
