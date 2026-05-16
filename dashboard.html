@@ -8801,7 +8801,7 @@ function renderEquity(){
     if(!con||con.dataset.rendered)return;
     const cuit=(window.EXCEL_CUIT_MAP||{})[ticker];
     if(tabId==='ratios')  { _renderFichaRatios(ticker, ecoHist); con.dataset.rendered='1'; }
-    if(tabId==='deudas')  { _renderFichaDeudas(ticker, cuit);    con.dataset.rendered='1'; }
+    if(tabId==='deudas')  { _renderFichaDeudas(ticker, cuit);     }
     if(tabId==='precios') {
       // No seteamos rendered acá — lo hace _renderFichaPrecios al terminar con éxito
       // Si falla, el usuario puede re-intentar clickeando la tab de nuevo
