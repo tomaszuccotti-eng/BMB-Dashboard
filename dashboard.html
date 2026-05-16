@@ -1187,6 +1187,14 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
   font-family:var(--mono);
   font-size:11px;
 }
+#app-calc-on .comp-table th.th-sort {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+#app-calc-on .comp-table th.th-sort:hover { color: var(--accent2); background: var(--accent-light); }
+#app-calc-on .sort-arr { font-size: 8px; opacity: 0.4; margin-left: 3px; }
+#app-calc-on .sort-arr.active { opacity: 1; color: var(--accent); }
 #app-calc-on .comp-table th {
   padding: 7px 10px;
   text-align:right;
@@ -1289,9 +1297,9 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
   background:var(--bg);
   display:flex;
   flex-direction:column;
-  height:300px;
-  min-height:300px;
-  max-height:300px;
+  height:420px;
+  min-height:420px;
+  max-height:420px;
   padding-bottom:8px;
 }
 #app-calc-on .chart-controls {
@@ -1319,8 +1327,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
   transition:border-color .15s;
 }
 #app-calc-on .chart-select:focus { border-color:var(--accent2); }
-#app-calc-on .chart-
-.chart-svg {
+#app-calc-on .chart-svg {
   width:100%; height:100%;
 }
 #app-calc-on .chart-legend {
@@ -1619,7 +1626,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
             <option value="md">Duration Modificada</option>
           </select>
         </div>
-        <div class="chart-body" id="chartBody">
+        <div class="chart-body" id="chartBody" style="height:320px;min-height:320px;">
           <svg class="chart-svg" id="chartSvg"></svg>
         </div>
         <div class="chart-legend">
@@ -1636,21 +1643,21 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
       <div class="comp-wrap" style="flex:1">
         <div style="padding:0 32px 16px">
           <table class="comp-table" id="compTable">
-            <thead>
+            <thead id="compThead">
               <tr>
-                <th style="text-align:left">Empresa</th>
-                <th style="text-align:left">Ticker</th>
-                <th>Precio</th>
-                <th>Tasa Cupón</th>
-                <th>YTM</th>
-                <th>DM</th>
-                <th>Paridad</th>
-                <th>Int. Corridos</th>
-                <th>Próx. CF</th>
-                <th>Vto.</th>
-                <th>Ley</th>
-                <th>Moneda</th>
-                <th>Frec.</th>
+                <th style="text-align:left" onclick="ons_sortTable(0)" class="th-sort">Empresa <span class="sort-arr" id="sarr0"></span></th>
+                <th style="text-align:left" onclick="ons_sortTable(1)" class="th-sort">Ticker <span class="sort-arr" id="sarr1"></span></th>
+                <th onclick="ons_sortTable(2)" class="th-sort">Precio <span class="sort-arr" id="sarr2"></span></th>
+                <th onclick="ons_sortTable(3)" class="th-sort">Tasa Cupón <span class="sort-arr" id="sarr3"></span></th>
+                <th onclick="ons_sortTable(4)" class="th-sort">YTM <span class="sort-arr" id="sarr4"></span></th>
+                <th onclick="ons_sortTable(5)" class="th-sort">DM <span class="sort-arr" id="sarr5"></span></th>
+                <th onclick="ons_sortTable(6)" class="th-sort">Paridad <span class="sort-arr" id="sarr6"></span></th>
+                <th onclick="ons_sortTable(7)" class="th-sort">Int. Corridos <span class="sort-arr" id="sarr7"></span></th>
+                <th onclick="ons_sortTable(8)" class="th-sort">Próx. CF <span class="sort-arr" id="sarr8"></span></th>
+                <th onclick="ons_sortTable(9)" class="th-sort">Vto. <span class="sort-arr" id="sarr9"></span></th>
+                <th onclick="ons_sortTable(10)" class="th-sort">Ley <span class="sort-arr" id="sarr10"></span></th>
+                <th onclick="ons_sortTable(11)" class="th-sort">Moneda <span class="sort-arr" id="sarr11"></span></th>
+                <th onclick="ons_sortTable(12)" class="th-sort">Frec. <span class="sort-arr" id="sarr12"></span></th>
               </tr>
             </thead>
             <tbody id="compTbody"></tbody>
@@ -11138,7 +11145,7 @@ function renderCheques(cheques){
 /* ── ONs JS ── */
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const WORKER_URL = 'https://silent-silence-ebb9.tzuccotti.workers.dev/';
+const ONS_WORKER_URL = 'https://silent-silence-ebb9.tzuccotti.workers.dev/';
 
 // ─── Estado global ───────────────────────────────────────────────────────────
 const onsState = {
@@ -11149,6 +11156,7 @@ const onsState = {
   bundle: null,      // bundle crudo del Worker
   prices: {},        // precios ingresados por el usuario (default 100)
   settlements: {},   // settlements por ticker
+  sort: { col: null, dir: 1 }, // estado de ordenamiento de la tabla
 };
 
 // ─── Colores por sector ───────────────────────────────────────────────────────
@@ -11210,7 +11218,7 @@ function ons_parseCSVCashflow(text) {
 // ─── Fetch cashflows desde Drive ─────────────────────────────────────────────
 function ons_fetchCashflows(on) {
   if (onsState.cfCache[on.ticker]) return onsState.cfCache[on.ticker];
-  const text = onsState.bundle?.cashflows?.[on.ticker];
+  const text = onsState.bundle?.[on.ticker] ?? onsState.bundle?.cashflows?.[on.ticker];
   if (!text) throw new Error(`Sin datos para ${on.ticker}`);
   // El CSV tiene doble fila de header:
   //   fila 0: nombres de grupo  → "Cupón", "Fecha de pago", "Amortización", ...
@@ -11540,7 +11548,7 @@ function ons_updateSettle(ticker, val) {
 // ─── Carga desde Worker ───────────────────────────────────────────────────────
 async function ons_initFromWorker() {
   try {
-    const resp = await fetch(WORKER_URL);
+    const resp = await fetch(ONS_WORKER_URL);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const bundle = await resp.json();
     if (bundle.error) throw new Error(bundle.error);
@@ -11574,8 +11582,8 @@ async function ons_initFromWorker() {
         <path d="M3 8l3.5 3.5L13 5"/>
       </svg>
       <span style="color:var(--green)">${vigentes.length} vigentes · <span style="color:var(--text3)">${vencidas.length} vencidas</span></span>`;
-    document.getElementById('pillStatus').textContent = `${vigentes.length} ONs`;
-    document.getElementById('pillStatus').className = 'pill pill-green';
+    const _pill = document.getElementById('pillStatus');
+    if (_pill) { _pill.textContent = `${vigentes.length} ONs`; _pill.className = 'pill pill-green'; }
 
     ons_renderSidebar();
     ons_populateFilterSector();
@@ -11777,27 +11785,65 @@ function ons_getTasaVigente(cfs, settle) {
 
 // ─── Render tabla ─────────────────────────────────────────────────────────────
 function ons_renderCompTable() {
-  const ons    = ons_getFilteredONs();
+  let ons    = ons_getFilteredONs();
   const settle = ons_settlement(new Date());
   const fmt2   = v => (v===null||isNaN(v)) ? '-' : v.toFixed(2);
   const fmtPct = v => (v===null||isNaN(v)) ? '-' : (v*100).toFixed(2)+'%';
   const fmtDate = d => d instanceof Date && !isNaN(d)
     ? d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '-';
 
-  let rows = '';
-  for (const on of ons) {
+  // Calcular métricas para todas las ONs (necesario para sort)
+  const rows_data = ons.map(on => {
     let metrics = null; let cfs = null;
     try { cfs = ons_fetchCashflows(on); const price = onsState.prices[on.ticker]??100; metrics = ons_calcMetrics(cfs, price, settle, on.frecuencia); } catch(e) {}
-    const price   = onsState.prices[on.ticker] ?? 100;
-    const ytm     = metrics?.ytm ?? null;
-    const par     = metrics?.paridad ?? null;
-    const dev     = metrics?.devengado ?? null;
-    const proxCF  = metrics?.proxCF?.fecha;
-    const ytmCls  = ytm===null?'': ytm>=0.08?'ytm-high': ytm>=0.05?'ytm-mid':'ytm-low';
-    const parCls  = par===null?'': par>100?'par-over':'par-under';
-    const tv      = cfs ? ons_getTasaVigente(cfs, settle) : {tasa:null,stepUp:false};
-    const tasaStr = tv.tasa===null ? '-' : fmtPct(tv.tasa) + (tv.stepUp ? ' *' : '');
+    const price  = onsState.prices[on.ticker] ?? 100;
+    const tv     = cfs ? ons_getTasaVigente(cfs, settle) : {tasa:null,stepUp:false};
+    return { on, metrics, cfs, price, tv,
+      // valores raw para sort
+      _empresa: on.empresa, _ticker: on.ticker, _precio: price,
+      _tasa:    tv.tasa, _ytm: metrics?.ytm ?? null,
+      _dm:      metrics?.modDuration ?? null, _par: metrics?.paridad ?? null,
+      _dev:     metrics?.devengado ?? null,
+      _proxCF:  metrics?.proxCF?.fecha ?? null,
+      _vto:     new Date(on.vencimiento),
+      _ley:     on.ley, _moneda: on.moneda, _frec: on.frecuencia,
+    };
+  });
 
+  // Aplicar sort
+  const { col, dir } = onsState.sort;
+  const sortKeys = ['_empresa','_ticker','_precio','_tasa','_ytm','_dm','_par','_dev','_proxCF','_vto','_ley','_moneda','_frec'];
+  if (col !== null) {
+    const key = sortKeys[col];
+    rows_data.sort((a, b) => {
+      const av = a[key]; const bv = b[key];
+      if (av === null && bv === null) return 0;
+      if (av === null) return 1;
+      if (bv === null) return -1;
+      if (av instanceof Date && bv instanceof Date) return (av - bv) * dir;
+      if (typeof av === 'string') return av.localeCompare(bv) * dir;
+      return (av - bv) * dir;
+    });
+  }
+
+  // Actualizar flechas en thead
+  for (let i = 0; i < 13; i++) {
+    const el = document.getElementById(`sarr${i}`);
+    if (!el) continue;
+    if (col === i) { el.textContent = dir === 1 ? '▲' : '▼'; el.className = 'sort-arr active'; }
+    else { el.textContent = '⇅'; el.className = 'sort-arr'; }
+  }
+
+  let rows = '';
+  for (const r of rows_data) {
+    const { on, metrics, tv, price } = r;
+    const ytm    = metrics?.ytm ?? null;
+    const par    = metrics?.paridad ?? null;
+    const dev    = metrics?.devengado ?? null;
+    const proxCF = metrics?.proxCF?.fecha;
+    const ytmCls = ytm===null?'': ytm>=0.08?'ytm-high': ytm>=0.05?'ytm-mid':'ytm-low';
+    const parCls = par===null?'': par>100?'par-over':'par-under';
+    const tasaStr = tv.tasa===null ? '-' : fmtPct(tv.tasa) + (tv.stepUp ? ' *' : '');
     rows += `<tr onclick="ons_goToTicker('${on.ticker}')">
       <td>${on.empresa}</td>
       <td><span class="ticker-link" onclick="event.stopPropagation();ons_goToTicker('${on.ticker}')">${on.ticker}</span></td>
@@ -11816,6 +11862,16 @@ function ons_renderCompTable() {
   }
   document.getElementById('compTbody').innerHTML = rows || `<tr><td colspan="13" style="text-align:center;padding:30px;color:var(--text3);font-family:var(--mono);font-size:10px">Sin resultados</td></tr>`;
   document.getElementById('compCount').textContent = `${ons.length} ONs`;
+}
+
+function ons_sortTable(col) {
+  if (onsState.sort.col === col) {
+    onsState.sort.dir *= -1;
+  } else {
+    onsState.sort.col = col;
+    onsState.sort.dir = 1;
+  }
+  ons_renderCompTable();
 }
 
 function ons_updateCompPrice(ticker, val) {
@@ -11845,7 +11901,7 @@ function ons_renderChart() {
   const W = body.getBoundingClientRect().width  || body.offsetWidth  || 800;
   const H = body.getBoundingClientRect().height || body.offsetHeight || 160;
   if (W < 10 || H < 10) { setTimeout(ons_renderChart, 100); return; }
-  const PAD = { top:14, right:20, bottom:28, left:52 };
+  const PAD = { top:20, right:48, bottom:32, left:60 };
   const settle = ons_settlement(new Date());
 
   const axisY = document.getElementById('chartY')?.value || 'tasa';
@@ -11898,7 +11954,7 @@ function ons_renderChart() {
   const yRangeRaw = yMaxRaw - yMinRaw || 0.01;
   // Padding del 10% en cada extremo para que los puntos no toquen los ejes
   const xPad = xRangeRaw * 0.10;
-  const yPad = yRangeRaw * 0.15;
+  const yPad = yRangeRaw * 0.30;
   const xMin = xMinRaw - xPad;
   const xMax = xMaxRaw + xPad;
   const yMin = Math.max(0, yMinRaw - yPad);
@@ -11910,14 +11966,15 @@ function ons_renderChart() {
   const py = v => PAD.top  + (1 - (v - yMin) / yRange) * (H - PAD.top - PAD.bottom);
 
   // Grid lines
-  const nGridY = 4;
+  const nGridY = 5;
   let gridLines = '';
   for (let i=0; i<=nGridY; i++) {
     const v = yMin + i * yRange / nGridY;
     const y = py(v);
     const label = axisY==='tasa'||axisY==='ytm' ? (v*100).toFixed(1)+'%' : v.toFixed(2);
-    gridLines += `<line x1="${PAD.left}" y1="${y}" x2="${W-PAD.right}" y2="${y}" stroke="rgba(30,39,243,0.1)" stroke-width="1"/>`;
-    gridLines += `<text x="${PAD.left-6}" y="${y+4}" text-anchor="end" font-size="8" font-family="DM Mono,monospace" fill="#4a5280">${label}</text>`;
+    const isBase = i===0;
+    gridLines += `<line x1="${PAD.left}" y1="${y}" x2="${W-PAD.right}" y2="${y}" stroke="${isBase?'rgba(30,39,243,0.25)':'rgba(30,39,243,0.07)'}" stroke-width="${isBase?1.5:1}" stroke-dasharray="${isBase?'none':'4 3'}"/>`;
+    gridLines += `<text x="${PAD.left-8}" y="${y+3.5}" text-anchor="end" font-size="9" font-family="DM Mono,monospace" fill="rgba(100,110,180,0.8)" font-weight="${isBase?'600':'400'}">${label}</text>`;
   }
 
   // X axis labels
@@ -12007,7 +12064,7 @@ function ons_renderChart() {
     }
 
     if (d.trim()) {
-      trendPath = `<path d="${d}" fill="none" stroke="rgba(30,39,243,0.55)" stroke-width="1.5" stroke-dasharray="4 3" pointer-events="none"/>`;
+      trendPath = `<path d="${d}" fill="none" stroke="rgba(30,39,243,0.7)" stroke-width="2" stroke-dasharray="6 3" stroke-linecap="round" pointer-events="none"/>`;
     }
   }
 
@@ -12017,11 +12074,15 @@ function ons_renderChart() {
     const x = px(p.xVal);
     const y = py(p.yVal);
     const col = p.on.moneda==='CABLE' ? '#3fb950' : '#e3b341';
-    const r = 5;
-    circles += `<circle cx="${x}" cy="${y}" r="${r}" fill="${col}" fill-opacity="0.85" stroke="${col}" stroke-width="1"
-      data-i="${i}" style="cursor:pointer;transition:r .1s"/>`;
+    const r = 6;
+    circles += `<circle cx="${x}" cy="${y}" r="${r}" fill="${col}" fill-opacity="0.9" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"
+      data-i="${i}" style="cursor:pointer;"/>`;
+    // Label ticker siempre visible para pocos puntos, hover para muchos
+    if (pts.length <= 12) {
+      circles += `<text x="${x}" y="${y-10}" text-anchor="middle" font-size="8" font-family="DM Mono,monospace" fill="${col}" opacity="0.85" pointer-events="none">${p.on.ticker}</text>`;
+    }
     if (p.stepUp) {
-      circles += `<text x="${x+6}" y="${y-5}" font-size="8" font-family="DM Mono,monospace" fill="#e3b341" pointer-events="none">*</text>`;
+      circles += `<text x="${x+8}" y="${y-6}" font-size="8" font-family="DM Mono,monospace" fill="#e3b341" pointer-events="none">*</text>`;
     }
   });
 
@@ -12039,7 +12100,9 @@ function ons_renderChart() {
     const i = parseInt(el.dataset.i);
     const p = pts[i];
     el.addEventListener('mouseenter', (e) => {
-      el.setAttribute('r', '7');
+      el.setAttribute('r', '8');
+      el.setAttribute('stroke', 'rgba(255,255,255,0.6)');
+      el.setAttribute('stroke-width', '2');
       const xLabel = axisX==='dtm' ? Math.round(p.xVal)+' días'
                    : axisX==='dur' ? p.xVal.toFixed(2)+' años'
                    : p.xVal.toFixed(2)+' años';
@@ -12059,7 +12122,9 @@ function ons_renderChart() {
       tooltip.style.top  = (e.clientY-10)+'px';
     });
     el.addEventListener('mouseleave', () => {
-      el.setAttribute('r', '5');
+      el.setAttribute('r', '6');
+      el.setAttribute('stroke', 'rgba(255,255,255,0.25)');
+      el.setAttribute('stroke-width', '1.5');
       tooltip.style.display = 'none';
     });
     el.addEventListener('click', () => ons_goToTicker(p.on.ticker));
