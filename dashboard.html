@@ -11237,6 +11237,7 @@ function ons_fetchCashflows(on) {
     vr_pct:     parseFloat((r.vr_pct   || '0').replace('%','')) / 100,
     tasa_cupon: parseFloat((r.tasa     || '0').replace('%','')) / 100,
     interes_vn: parseFloat((r.interes_vn || '0').replace('%','')),
+    cf_interes: parseFloat(r.cf_interes || 0),
     cf_total:   parseFloat(r.cf_total  || 0),
   })).filter(r => !isNaN(r.fecha.getTime()));
   onsState.cfCache[on.ticker] = cfs;
