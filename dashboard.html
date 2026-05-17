@@ -11848,7 +11848,7 @@ function ons_renderCompTable() {
       <td>${on.empresa}</td>
       <td><span class="ticker-link" onclick="event.stopPropagation();ons_goToTicker('${on.ticker}')">${on.ticker}</span></td>
       <td onclick="event.stopPropagation()"><input class="price-inp" type="number" step="0.01" value="${price}" onchange="ons_updateCompPrice('${on.ticker}',this.value)" onclick="event.stopPropagation()"></td>
-      <td style="${tv.stepUp?'color:var(--yellow)':''}">${tasaStr}</td>
+      <td>${tasaStr}</td>
       <td class="${ytmCls}">${fmtPct(ytm)}</td>
       <td>${fmt2(metrics?.modDuration)}</td>
       <td>${fmt2(par)}%</td>
