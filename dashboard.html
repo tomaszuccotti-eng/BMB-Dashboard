@@ -11644,13 +11644,13 @@ function ons_renderSidebar(filter = '') {
     const sectorId = 'sec-' + sector.replace(/[^a-zA-Z0-9]/g,'-');
     html += `
       <div class="sector-wrap">
-        <div class="sector-header open" onclick="ons_toggleEl('${sectorId}',this)">
+        <div class="sector-header" onclick="ons_toggleEl('${sectorId}',this)">
           <div class="sector-dot" style="background:${color};box-shadow:0 0 5px ${color}40"></div>
           <span class="s-name">${sector}</span>
           <span class="s-cnt">${filtered.length}</span>
           <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4l4 4-4 4"/></svg>
         </div>
-        <div class="sector-items open" id="${sectorId}">`;
+        <div class="sector-items" id="${sectorId}">`;
 
     for (const [empresa, ons] of Object.entries(byEmpresa).sort()) {
       const empId = 'emp-' + (sector+empresa).replace(/[^a-zA-Z0-9]/g,'-');
