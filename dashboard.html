@@ -11843,7 +11843,6 @@ function ons_renderCompTable() {
     const dev    = metrics?.devengado ?? null;
     const proxCF = metrics?.proxCF?.fecha;
     const ytmCls = ytm===null?'': ytm>=0.08?'ytm-high': ytm>=0.05?'ytm-mid':'ytm-low';
-    const parCls = par===null?'': par>100?'par-over':'par-under';
     const tasaStr = tv.tasa===null ? '-' : fmtPct(tv.tasa) + (tv.stepUp ? ' *' : '');
     rows += `<tr onclick="ons_goToTicker('${on.ticker}')">
       <td>${on.empresa}</td>
@@ -11852,7 +11851,7 @@ function ons_renderCompTable() {
       <td style="${tv.stepUp?'color:var(--yellow)':''}">${tasaStr}</td>
       <td class="${ytmCls}">${fmtPct(ytm)}</td>
       <td>${fmt2(metrics?.modDuration)}</td>
-      <td class="${parCls}">${fmt2(par)}%</td>
+      <td>${fmt2(par)}%</td>
       <td>${fmt2(dev)}</td>
       <td>${fmtDate(proxCF)}</td>
       <td>${fmtDate(new Date(on.vencimiento))}</td>
