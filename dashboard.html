@@ -11408,7 +11408,7 @@ function ons_renderONPanel(on, cfs) {
   const allRows = cfs.map(cf => {
     const isPast = cf.fecha <= settle;
     const isNext = !isPast && metrics.futuros[0]?.fecha.getTime() === cf.fecha.getTime();
-    const monto = cf.amort_pct * 100 + cf.tasa_cupon * cf.vr_pct * 100;
+    const monto = parseFloat(cf.cf_total);
     return `
       <tr class="${isPast ? 'past' : ''}${isNext ? ' next-cf' : ''}">
         <td>${fmtDate(cf.fecha)}</td>
@@ -11416,7 +11416,7 @@ function ons_renderONPanel(on, cfs) {
         <td class="amort-cell">${fmt2(cf.amort_pct * 100)}</td>
         <td>${fmt2(cf.vr_pct * 100)}</td>
         <td>${fmtPct(cf.tasa_cupon)}</td>
-        <td>${fmt2(cf.tasa_cupon * cf.vr_pct * 100)}</td>
+        <td>${fmt2(parseFloat(cf.cf_interes))}</td>
         <td class="total-cell">${fmt2(monto)}</td>
       </tr>`;
   }).join('');
