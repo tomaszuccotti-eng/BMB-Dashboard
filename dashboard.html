@@ -813,6 +813,73 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 
 /* Sectores sidebar */
 #app-calc-on .sector-wrap { margin-bottom: 2px; }
+#app-calc-on .cal-day {
+  min-height: 70px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  padding: 6px;
+  background: var(--card);
+  position: relative;
+  transition: background .12s;
+}
+#app-calc-on .cal-day:hover { background: var(--accent-light); }
+#app-calc-on .cal-day.empty { background: transparent; border-color: transparent; }
+#app-calc-on .cal-day.today { border-color: var(--accent); }
+#app-calc-on .cal-day.past { background: rgba(255,255,255,0.015); border-color: rgba(255,255,255,0.04); }
+#app-calc-on .cal-day.past .cal-day-num { opacity: 0.3; }
+#app-calc-on .cal-day-num {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text3);
+  margin-bottom: 4px;
+}
+#app-calc-on .cal-day.today .cal-day-num { color: var(--accent); }
+#app-calc-on .cal-dots { display:flex; flex-wrap:wrap; gap:3px; align-content:flex-start; }
+#app-calc-on .cal-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform .1s;
+}
+#app-calc-on .cal-dot:hover { transform: scale(1.4); }
+#app-calc-on .cal-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: var(--accent-light);
+  border: 1px solid var(--border2);
+  cursor: pointer;
+  transition: background .12s;
+  max-width: 100%;
+}
+#app-calc-on .cal-chip:hover { background: var(--border2); }
+#app-calc-on .cal-chip-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+#app-calc-on .cal-chip-label {
+  font-family: var(--mono);
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#app-calc-on .cal-weekday {
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text3);
+  padding: 4px 0 8px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
 #app-calc-on .sector-header {
   display:flex; align-items:center; gap:8px;
   padding: 7px 10px;
@@ -1012,8 +1079,8 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 #app-calc-on .cf-table tr.past td { color:var(--text3); opacity:.5; }
 #app-calc-on .cf-table tr.next-cf td { color:var(--text); }
 #app-calc-on .cf-table tr.next-cf td:first-child { color:var(--accent2); }
-#app-calc-on .cf-table .amort-cell { color:var(--yellow); }
-#app-calc-on .cf-table .total-cell { color:var(--text); font-weight:500; }
+#app-calc-on .cf-table .amort-cell { color:var(--text); }
+#app-calc-on .cf-table .total-cell { color:var(--yellow); font-weight:500; }
 #app-calc-on .cf-table tfoot td {
   padding: 8px 12px;
   border-top:1px solid var(--border2);
@@ -1244,11 +1311,11 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
   transition: border-color .15s;
 }
 #app-calc-on .comp-table .price-inp:focus { border-color:var(--accent2); }
-#app-calc-on .ytm-high { color: var(--green) !important; }
-#app-calc-on .ytm-mid { color: var(--yellow) !important; }
-#app-calc-on .ytm-low { color: var(--text2) !important; }
-#app-calc-on .par-over { color: var(--yellow) !important; }
-#app-calc-on .par-under { color: var(--green) !important; }
+#app-calc-on .ytm-high { color: var(--text) !important; }
+#app-calc-on .ytm-mid { color: var(--text) !important; }
+#app-calc-on .ytm-low { color: var(--text) !important; }
+#app-calc-on .par-over { color: var(--text) !important; }
+#app-calc-on .par-under { color: var(--text) !important; }
 
 /* SIDEBAR empresa agrupada */
 #app-calc-on .empresa-wrap { margin-bottom:1px; }
@@ -1445,7 +1512,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
           </svg>
         </div>
         <div class="mosaic-name">Análisis Financiero</div>
-        <div class="mosaic-desc">Explorador de balances y deuda de Empresas US-AR.</div>
+        <div class="mosaic-desc">Explorador de balances & Scoring de solvencia.</div>
       </div>
 
       <!-- 2 — Informes -->
@@ -1460,7 +1527,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
           </svg>
         </div>
         <div class="mosaic-name">Informes</div>
-        <div class="mosaic-desc">Overview de empresas e informes de mercado.</div>
+        <div class="mosaic-desc">Research y reportes de mercado.</div>
       </div>
 
       <!-- 3 — Calculadoras -->
@@ -1471,7 +1538,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
           </svg>
         </div>
         <div class="mosaic-name">Calculadoras</div>
-        <div class="mosaic-desc">Bonos - Obligaciones Negociables.</div>
+        <div class="mosaic-desc">Bonos &amp; Obligaciones Negociables.</div>
       </div>
 
       <!-- 4 — Renta Variable -->
@@ -1496,7 +1563,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
           </svg>
         </div>
         <div class="mosaic-name" style="color:var(--text2);">Renta Fija</div>
-        <div class="mosaic-desc">Modulo viejo, desestimar.</div>
+        <div class="mosaic-desc">Módulo viejo, desestimar.</div>
       </div>
 
       <!-- 6 — Próximamente -->
@@ -1544,15 +1611,18 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 
 <!-- ══════════════════ APP CALC ON ══════════════════ -->
 <div id="app-calc-on" style="display:none;min-height:100vh;background:var(--bg);flex-direction:column;">
-  <div style="height:52px;display:flex;align-items:center;padding:0 24px;border-bottom:1px solid var(--border);background:var(--bg);gap:14px;flex-shrink:0;position:sticky;top:0;z-index:50;">
-    <button onclick="backToCalcMenu()" style="padding:5px 13px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;" onmouseover="this.style.background='var(--accent)';this.style.color='#fff';" onmouseout="this.style.background='transparent';this.style.color='var(--text3)';">← Volver</button>
-    <span style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);">Obligaciones Negociables</span>
+  <!-- HEADER CON TABS -->
+  <div style="height:52px;display:flex;align-items:center;padding:0 24px;border-bottom:1px solid var(--border);background:var(--bg);gap:0;flex-shrink:0;position:sticky;top:0;z-index:50;">
+    <button onclick="backToCalcMenu()" style="padding:5px 13px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;margin-right:14px;" onmouseover="this.style.background='var(--accent)';this.style.color='#fff';" onmouseout="this.style.background='transparent';this.style.color='var(--text3)';">← Volver</button>
+    <span style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);margin-right:20px;">Obligaciones Negociables</span>
+    <div style="height:20px;width:1px;background:var(--border);margin-right:4px;"></div>
+    <div id="ons-tab-index" onclick="ons_switchTab('index')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);transition:all .15s;">Índice</div>
+    <div id="ons-tab-cal" onclick="ons_switchTab('cal')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;">Calendario</div>
     <button onclick="toggleTheme()" class="theme-btn-small" style="margin-left:auto;"><span class="theme-btn-icon">☀</span><span class="theme-btn-lbl">Modo Claro</span></button>
   </div>
-  <div style="flex:1;display:flex;overflow:hidden;height:calc(100vh - 52px);">
 
-
-
+  <!-- VISTA ÍNDICE: layout con sidebar -->
+  <div id="view-ons-index" style="flex:1;display:flex;overflow:hidden;height:calc(100vh - 52px);">
 
 <div class="layout" style="flex:1;overflow:hidden">
 
@@ -1678,9 +1748,42 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 <!-- TOOLTIP -->
 <div class="chart-tooltip" id="chartTooltip"></div>
 
+  </div><!-- /view-ons-index -->
 
-
+  <!-- VISTA CALENDARIO: full width, sin sidebar -->
+  <div id="view-cal" style="display:none;flex-direction:column;flex:1;overflow:hidden;height:calc(100vh - 52px);">
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 20px;border-bottom:1px solid var(--border);flex-shrink:0;">
+      <button id="ons-cal-prev" onclick="ons_calPrevMonth()" style="padding:4px 10px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:13px;cursor:pointer;">‹</button>
+      <select id="ons-cal-sel-month" onchange="ons_calSelectMonth()" style="padding:4px 8px;border-radius:5px;border:1px solid var(--border2);background:var(--bg);color:var(--text);font-size:12px;font-family:var(--mono);cursor:pointer;-webkit-appearance:auto;"></select>
+      <select id="ons-cal-sel-year" onchange="ons_calSelectMonth()" style="padding:4px 8px;border-radius:5px;border:1px solid var(--border2);background:var(--bg);color:var(--text);font-size:12px;font-family:var(--mono);cursor:pointer;-webkit-appearance:auto;"></select>
+      <button onclick="ons_calNextMonth()" style="padding:4px 10px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:13px;cursor:pointer;">›</button>
+      <span id="ons-cal-summary" style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-left:4px;"></span>
+    </div>
+    <div style="overflow-y:auto;flex:1;padding:16px 32px;">
+      <div id="ons-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;"></div>
+      <div style="display:flex;align-items:center;gap:16px;padding:12px 0 4px;margin-top:8px;border-top:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text3);">
+          <div style="width:8px;height:8px;border-radius:50%;background:#3fb950;flex-shrink:0;"></div>CABLE
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text3);">
+          <div style="width:8px;height:8px;border-radius:50%;background:#e3b341;flex-shrink:0;"></div>MEP
+        </div>
+      </div>
+    </div>
+    <!-- Tooltip del calendario -->
+    <div id="ons-cal-tooltip" style="display:none;position:fixed;z-index:9999;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px 14px;box-shadow:0 8px 24px rgba(0,0,0,0.5);max-width:280px;pointer-events:none;"></div>
   </div>
+
+  <!-- MODAL DETALLE ON (desde calendario) -->
+  <div id="ons-cal-modal-overlay" onclick="ons_calCloseModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:1000;"></div>
+  <div id="ons-cal-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:92vw;max-width:1300px;height:90vh;background:var(--bg);border:1px solid var(--border2);border-radius:12px;box-shadow:0 24px 64px rgba(0,0,0,0.7);z-index:1001;flex-direction:column;overflow:hidden;">
+    <div style="display:flex;align-items:center;padding:0 20px;height:44px;border-bottom:1px solid var(--border);flex-shrink:0;gap:12px;background:var(--bg);">
+      <span id="ons-cal-modal-title" style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--text);flex:1;"></span>
+      <button onclick="ons_calCloseModal()" style="padding:4px 14px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;" onmouseover="this.style.background='var(--red)';this.style.color='#fff';this.style.borderColor='var(--red)';" onmouseout="this.style.background='transparent';this.style.color='var(--text3)';this.style.borderColor='var(--border2)';">✕ Cerrar</button>
+    </div>
+    <div id="ons-cal-modal-body" style="flex:1;overflow:hidden;display:flex;flex-direction:column;"></div>
+  </div>
+
 </div>
 
 
@@ -8801,7 +8904,7 @@ function renderEquity(){
     if(!con||con.dataset.rendered)return;
     const cuit=(window.EXCEL_CUIT_MAP||{})[ticker];
     if(tabId==='ratios')  { _renderFichaRatios(ticker, ecoHist); con.dataset.rendered='1'; }
-    if(tabId==='deudas')  { _renderFichaDeudas(ticker, cuit);     }
+    if(tabId==='deudas')  { _renderFichaDeudas(ticker, cuit);    con.dataset.rendered='1'; }
     if(tabId==='precios') {
       // No seteamos rendered acá — lo hace _renderFichaPrecios al terminar con éxito
       // Si falla, el usuario puede re-intentar clickeando la tab de nuevo
@@ -9084,7 +9187,7 @@ function renderEquity(){
         </div>
         <div id="${bcraCid}"></div>`;
       // Fetch asíncrono
-      setTimeout(()=>_bcraFetchInline(ticker, cuit, bcraCid, bcraLoadId), 0);
+      _bcraFetchInline(ticker, cuit, bcraCid, bcraLoadId);
     }
     con.appendChild(bcraWrap);
 
@@ -11409,7 +11512,7 @@ function ons_renderONPanel(on, cfs) {
   const allRows = cfs.map(cf => {
     const isPast = cf.fecha <= settle;
     const isNext = !isPast && metrics.futuros[0]?.fecha.getTime() === cf.fecha.getTime();
-    const monto = parseFloat(cf.cf_total || 0);
+    const monto = cf.amort_pct * 100 + cf.tasa_cupon * cf.vr_pct * 100;
     return `
       <tr class="${isPast ? 'past' : ''}${isNext ? ' next-cf' : ''}">
         <td>${fmtDate(cf.fecha)}</td>
@@ -11417,8 +11520,8 @@ function ons_renderONPanel(on, cfs) {
         <td class="amort-cell">${fmt2(cf.amort_pct * 100)}</td>
         <td>${fmt2(cf.vr_pct * 100)}</td>
         <td>${fmtPct(cf.tasa_cupon)}</td>
-        <td>${fmt2(parseFloat(cf.cf_interes || 0))}</td>
-        <td class="total-cell">${fmt2(parseFloat(cf.cf_total || 0))}</td>
+        <td>${fmt2(cf.tasa_cupon * cf.vr_pct * 100)}</td>
+        <td class="total-cell">${fmt2(monto)}</td>
       </tr>`;
   }).join('');
 
@@ -11843,6 +11946,7 @@ function ons_renderCompTable() {
     const dev    = metrics?.devengado ?? null;
     const proxCF = metrics?.proxCF?.fecha;
     const ytmCls = ytm===null?'': ytm>=0.08?'ytm-high': ytm>=0.05?'ytm-mid':'ytm-low';
+    const parCls = par===null?'': par>100?'par-over':'par-under';
     const tasaStr = tv.tasa===null ? '-' : fmtPct(tv.tasa) + (tv.stepUp ? ' *' : '');
     rows += `<tr onclick="ons_goToTicker('${on.ticker}')">
       <td>${on.empresa}</td>
@@ -11851,7 +11955,7 @@ function ons_renderCompTable() {
       <td>${tasaStr}</td>
       <td class="${ytmCls}">${fmtPct(ytm)}</td>
       <td>${fmt2(metrics?.modDuration)}</td>
-      <td>${fmt2(par)}%</td>
+      <td class="${parCls}">${fmt2(par)}%</td>
       <td>${fmt2(dev)}</td>
       <td>${fmtDate(proxCF)}</td>
       <td>${fmtDate(new Date(on.vencimiento))}</td>
@@ -11862,6 +11966,280 @@ function ons_renderCompTable() {
   }
   document.getElementById('compTbody').innerHTML = rows || `<tr><td colspan="13" style="text-align:center;padding:30px;color:var(--text3);font-family:var(--mono);font-size:10px">Sin resultados</td></tr>`;
   document.getElementById('compCount').textContent = `${ons.length} ONs`;
+}
+
+// ── Calendario ──────────────────────────────────────────────────────────────
+
+const ons_calState = { year: new Date().getFullYear(), month: new Date().getMonth() };
+
+function ons_switchTab(tab) {
+  const isIndex = tab === 'index';
+  // Tabs
+  document.getElementById('ons-tab-index').style.borderBottomColor = isIndex ? 'var(--accent)' : 'transparent';
+  document.getElementById('ons-tab-index').style.color = isIndex ? 'var(--accent)' : 'var(--text3)';
+  document.getElementById('ons-tab-cal').style.borderBottomColor = !isIndex ? 'var(--accent)' : 'transparent';
+  document.getElementById('ons-tab-cal').style.color = !isIndex ? 'var(--accent)' : 'var(--text3)';
+  // Vistas
+  const viewIndex = document.getElementById('view-ons-index');
+  const viewCal   = document.getElementById('view-cal');
+  if (isIndex) {
+    viewIndex.style.display = 'flex';
+    viewCal.style.display   = 'none';
+  } else {
+    viewIndex.style.display = 'none';
+    viewCal.style.display   = 'flex';
+    ons_renderCalendar();
+  }
+}
+
+function ons_calPrevMonth() {
+  ons_calState.month--;
+  if (ons_calState.month < 0) { ons_calState.month = 11; ons_calState.year--; }
+  ons_renderCalendar();
+}
+
+function ons_calNextMonth() {
+  ons_calState.month++;
+  if (ons_calState.month > 11) { ons_calState.month = 0; ons_calState.year++; }
+  ons_renderCalendar();
+}
+
+function ons_buildPaymentMap() {
+  // Devuelve { 'YYYY-MM-DD': [{ticker, empresa, moneda, cfTotal, interes, amort}] }
+  const map = {};
+  const settle = ons_settlement(new Date());
+  const ons = onsState.ons;
+  for (var i = 0; i < ons.length; i++) {
+    var on = ons[i];
+    var cfs = null;
+    try { cfs = ons_fetchCashflows(on); } catch(e) { continue; }
+    if (!cfs) continue;
+    for (var j = 0; j < cfs.length; j++) {
+      var cf = cfs[j];
+      if (cf.fecha <= settle) continue; // solo futuros
+      var key = cf.fecha.toISOString().slice(0,10);
+      if (!map[key]) map[key] = [];
+      map[key].push({
+        ticker:  on.ticker,
+        empresa: on.empresa,
+        moneda:  on.moneda,
+        cfTotal: parseFloat(cf.cf_total  || 0),
+        interes: parseFloat(cf.cf_interes || 0),
+        amort:   parseFloat(cf.cf_total  || 0) - parseFloat(cf.cf_interes || 0),
+      });
+    }
+  }
+  return map;
+}
+
+function ons_calPopulateSelectors() {
+  var selMonth = document.getElementById('ons-cal-sel-month');
+  var selYear  = document.getElementById('ons-cal-sel-year');
+  if (!selMonth || selMonth._populated) return;
+  var MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var curYear = new Date().getFullYear();
+  selMonth.innerHTML = '';
+  for (var m = 0; m < 12; m++) {
+    var opt = document.createElement('option');
+    opt.value = m; opt.textContent = MESES[m];
+    if (m === ons_calState.month) opt.selected = true;
+    selMonth.appendChild(opt);
+  }
+  selYear.innerHTML = '';
+  for (var y = curYear; y <= curYear + 10; y++) {
+    var opty = document.createElement('option');
+    opty.value = y; opty.textContent = y;
+    if (y === ons_calState.year) opty.selected = true;
+    selYear.appendChild(opty);
+  }
+  selMonth._populated = true;
+}
+
+function ons_calSelectMonth() {
+  var selMonth = document.getElementById('ons-cal-sel-month');
+  var selYear  = document.getElementById('ons-cal-sel-year');
+  var newMonth = parseInt(selMonth.value);
+  var newYear  = parseInt(selYear.value);
+  var now = new Date();
+  if (newYear < now.getFullYear() || (newYear === now.getFullYear() && newMonth < now.getMonth())) {
+    newMonth = now.getMonth(); newYear = now.getFullYear();
+    selMonth.value = newMonth; selYear.value = newYear;
+  }
+  ons_calState.month = newMonth;
+  ons_calState.year  = newYear;
+  ons_renderCalendar();
+}
+
+function ons_renderCalendar() {
+  ons_calPopulateSelectors();
+  const { year, month } = ons_calState;
+  const DIAS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  var selMonth = document.getElementById('ons-cal-sel-month');
+  var selYear  = document.getElementById('ons-cal-sel-year');
+  if (selMonth) selMonth.value = month;
+  if (selYear)  selYear.value  = year;
+
+  // Deshabilitar prev si estamos en el mes actual
+  var now = new Date();
+  var prevBtn = document.getElementById('ons-cal-prev');
+  if (prevBtn) {
+    var isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
+    prevBtn.disabled = isCurrentMonth;
+    prevBtn.style.opacity = isCurrentMonth ? '0.3' : '1';
+    prevBtn.style.cursor  = isCurrentMonth ? 'not-allowed' : 'pointer';
+  }
+
+  const map      = ons_buildPaymentMap();
+  const grid     = document.getElementById('ons-cal-grid');
+  const todayStr = now.toISOString().slice(0,10);
+
+  var totalPagos = 0; var diasConPagos = 0;
+  var monthKey = year + '-' + String(month+1).padStart(2,'0');
+  for (var key in map) {
+    if (key.slice(0,7) === monthKey) { diasConPagos++; totalPagos += map[key].length; }
+  }
+  document.getElementById('ons-cal-summary').textContent = diasConPagos + ' días con pagos · ' + totalPagos + ' cupones';
+
+  var html = '';
+  for (var d = 0; d < 7; d++) { html += '<div class="cal-weekday">' + DIAS[d] + '</div>'; }
+
+  var firstDay = new Date(year, month, 1).getDay();
+  firstDay = (firstDay + 6) % 7;
+  var daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  for (var e = 0; e < firstDay; e++) { html += '<div class="cal-day empty"></div>'; }
+
+  for (var day = 1; day <= daysInMonth; day++) {
+    var dateStr  = year + '-' + String(month+1).padStart(2,'0') + '-' + String(day).padStart(2,'0');
+    var isToday  = dateStr === todayStr;
+    var isPast   = dateStr < todayStr;
+    var payments = map[dateStr] || [];
+    var cls = 'cal-day' + (isToday ? ' today' : '') + (isPast ? ' past' : '');
+
+    var dots = '';
+    if (payments.length > 0) {
+      dots = '<div class="cal-dots">';
+      for (var p = 0; p < payments.length; p++) {
+        var col = payments[p].moneda === 'CABLE'
+          ? (isPast ? 'rgba(63,185,80,0.3)' : '#3fb950')
+          : (isPast ? 'rgba(227,179,65,0.3)' : '#e3b341');
+        dots += '<div class="cal-chip" onclick="ons_calOpenModal(\'' + payments[p].ticker + '\')" onmouseenter="ons_calShowTooltip(event,\'' + dateStr + '\',' + p + ')" onmouseleave="ons_calHideTooltip()">' +
+          '<div class="cal-chip-dot" style="background:' + col + ';"></div>' +
+          '<span class="cal-chip-label">' + payments[p].ticker + '</span>' +
+        '</div>';
+      }
+      dots += '</div>';
+    }
+
+    html += '<div class="' + cls + '"><div class="cal-day-num">' + day + '</div>' + dots + '</div>';
+  }
+
+  grid.innerHTML = html;
+  ons_calState._map = map;
+}
+
+function ons_calShowTooltip(event, dateStr, idx) {
+  var map = ons_calState._map || {};
+  var payments = map[dateStr] || [];
+  if (!payments.length) return;
+
+  var MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  var d = new Date(dateStr + 'T12:00:00');
+  var titulo = d.getDate() + ' ' + MESES[d.getMonth()] + ' ' + d.getFullYear();
+
+  idx = idx !== undefined ? parseInt(idx) : 0;
+  var showAll = idx === undefined;
+  var toShow = showAll ? payments : [payments[idx]].filter(Boolean);
+
+  var html = '<div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text);margin-bottom:8px;">' + titulo + '</div>';
+  for (var i = 0; i < toShow.length; i++) {
+    var p = toShow[i];
+    var col = p.moneda === 'CABLE' ? '#3fb950' : '#e3b341';
+    html += '<div style="margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border);">' +
+      '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">' +
+        '<div style="width:6px;height:6px;border-radius:50%;background:' + col + ';flex-shrink:0;"></div>' +
+        '<span style="font-weight:700;color:var(--text);font-size:10px;">' + p.ticker + '</span>' +
+        '<span style="color:var(--text3);font-size:9px;">' + p.empresa + '</span>' +
+      '</div>' +
+      '<div style="padding-left:12px;display:flex;gap:12px;font-size:10px;">' +
+        '<span style="color:var(--text3);">CF Total: <span style="color:var(--text);font-weight:700;">' + p.cfTotal.toFixed(2) + '</span></span>' +
+        '<span style="color:var(--text3);">Int: <span style="color:var(--text);font-weight:700;">' + p.interes.toFixed(2) + '</span></span>' +
+        (p.amort > 0.01 ? '<span style="color:var(--text3);">Amort: <span style="color:var(--text);font-weight:700;">' + p.amort.toFixed(2) + '</span></span>' : '') +
+      '</div>' +
+      '<div style="padding-left:12px;font-size:9px;color:var(--text3);margin-top:2px;">c/ 100 VN</div>' +
+    '</div>';
+  }
+
+  var tooltip = document.getElementById('ons-cal-tooltip');
+  tooltip.innerHTML = html;
+  tooltip.style.display = 'block';
+
+  var x = event.clientX + 12;
+  var y = event.clientY + 12;
+  if (x + 290 > window.innerWidth) x = event.clientX - 300;
+  if (y + 200 > window.innerHeight) y = event.clientY - 210;
+  tooltip.style.left = x + 'px';
+  tooltip.style.top  = y + 'px';
+}
+
+function ons_calOpenModal(ticker) {
+  const on = onsState.ons.find(function(o) { return o.ticker === ticker; });
+  if (!on) return;
+
+  // Título del modal
+  document.getElementById('ons-cal-modal-title').textContent = on.ticker + ' — ' + on.empresa;
+
+  // Renderizar el panel en el modal body en lugar del view-on
+  const modalBody = document.getElementById('ons-cal-modal-body');
+
+  try {
+    const cfs = ons_fetchCashflows(on);
+    const cleanPrice = onsState.prices[on.ticker] ?? 100;
+    const settle = onsState.settles?.[on.ticker] ?? ons_settlement(new Date());
+    const metrics = ons_calcMetrics(cfs, cleanPrice, settle, on.frecuencia);
+
+    // Temporalmente redirigir view-on al modal body
+    const realViewOn = document.getElementById('view-on');
+    const placeholder = document.createElement('div');
+    realViewOn.parentNode.insertBefore(placeholder, realViewOn);
+    modalBody.appendChild(realViewOn);
+    realViewOn.style.display = 'flex';
+
+    ons_renderONPanel(on, cfs);
+
+    // Guardar referencia al placeholder para restaurar al cerrar
+    document.getElementById('ons-cal-modal')._placeholder = placeholder;
+
+  } catch(e) {
+    modalBody.innerHTML = '<div style="padding:24px;color:var(--red);font-family:var(--mono);font-size:12px;">Error: ' + e.message + '</div>';
+  }
+
+  // Mostrar modal
+  document.getElementById('ons-cal-modal-overlay').style.display = 'block';
+  document.getElementById('ons-cal-modal').style.display = 'flex';
+}
+
+function ons_calCloseModal() {
+  const modal = document.getElementById('ons-cal-modal');
+  const modalBody = document.getElementById('ons-cal-modal-body');
+  const placeholder = modal._placeholder;
+
+  // Restaurar view-on a su posición original
+  const viewOn = document.getElementById('view-on');
+  if (viewOn && placeholder && placeholder.parentNode) {
+    placeholder.parentNode.insertBefore(viewOn, placeholder);
+    placeholder.parentNode.removeChild(placeholder);
+    viewOn.style.display = 'none';
+    viewOn.innerHTML = '';
+  }
+
+  document.getElementById('ons-cal-modal-overlay').style.display = 'none';
+  modal.style.display = 'none';
+  modal._placeholder = null;
+}
+
+function ons_calHideTooltip() {
+  document.getElementById('ons-cal-tooltip').style.display = 'none';
 }
 
 function ons_sortTable(col) {
@@ -12142,12 +12520,11 @@ window.ons_init = function() {
     el.addEventListener('input', function() { ons_renderSidebar(this.value); });
     el._att = true;
   }
-  if (!window.ONS_LOADED) {
-    ons_initFromWorker();
-    window.ONS_LOADED = true;
-  }
+  // Siempre refetchea para tener el bundle más actualizado del KV
+  ons_initFromWorker();
 };
 
 </script>
 </body>
 </html>
+
