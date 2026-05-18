@@ -11985,6 +11985,8 @@ function ons_switchTab(tab) {
   if (isIndex) {
     viewIndex.style.display = 'flex';
     viewCal.style.display   = 'none';
+    // Re-renderizar gráfico porque estuvo oculto y perdió dimensiones
+    requestAnimationFrame(function() { requestAnimationFrame(ons_renderChart); });
   } else {
     viewIndex.style.display = 'none';
     viewCal.style.display   = 'flex';
