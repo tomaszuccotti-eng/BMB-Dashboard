@@ -813,44 +813,6 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 
 /* Sectores sidebar */
 #app-calc-on .sector-wrap { margin-bottom: 2px; }
-#app-calc-on .cal-day {
-  min-height: 70px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  padding: 6px;
-  background: var(--card);
-  position: relative;
-  transition: background .12s;
-}
-#app-calc-on .cal-day:hover { background: var(--accent-light); }
-#app-calc-on .cal-day.empty { background: transparent; border-color: transparent; }
-#app-calc-on .cal-day.today { border-color: var(--accent); }
-#app-calc-on .cal-day-num {
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--text3);
-  margin-bottom: 4px;
-}
-#app-calc-on .cal-day.today .cal-day-num { color: var(--accent); }
-#app-calc-on .cal-dots { display:flex; flex-wrap:wrap; gap:3px; }
-#app-calc-on .cal-dot {
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: transform .1s;
-}
-#app-calc-on .cal-dot:hover { transform: scale(1.4); }
-#app-calc-on .cal-weekday {
-  text-align: center;
-  font-family: var(--mono);
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--text3);
-  padding: 4px 0 8px;
-  text-transform: uppercase;
-  letter-spacing: .5px;
-}
 #app-calc-on .sector-header {
   display:flex; align-items:center; gap:8px;
   padding: 7px 10px;
@@ -1483,7 +1445,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
           </svg>
         </div>
         <div class="mosaic-name">Análisis Financiero</div>
-        <div class="mosaic-desc">Explorador de balances & Scoring de solvencia.</div>
+        <div class="mosaic-desc">Explorador de balances y deuda de Empresas US-AR.</div>
       </div>
 
       <!-- 2 — Informes -->
@@ -1498,7 +1460,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
           </svg>
         </div>
         <div class="mosaic-name">Informes</div>
-        <div class="mosaic-desc">Research y reportes de mercado.</div>
+        <div class="mosaic-desc">Overview de empresas e informes de mercado.</div>
       </div>
 
       <!-- 3 — Calculadoras -->
@@ -1509,7 +1471,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
           </svg>
         </div>
         <div class="mosaic-name">Calculadoras</div>
-        <div class="mosaic-desc">LECAPs.</div>
+        <div class="mosaic-desc">Bonos - Obligaciones Negociables.</div>
       </div>
 
       <!-- 4 — Renta Variable -->
@@ -1534,7 +1496,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
           </svg>
         </div>
         <div class="mosaic-name" style="color:var(--text2);">Renta Fija</div>
-        <div class="mosaic-desc">LECAPs, BONCAPs, BONCERs, Soberanos, Duales y más.</div>
+        <div class="mosaic-desc">Modulo viejo, desestimar.</div>
       </div>
 
       <!-- 6 — Próximamente -->
@@ -1572,7 +1534,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
         <div onclick="enterCalcON()" class="af-card">
           <div style="width:48px;height:48px;background:rgba(30,39,243,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1E27F3" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg></div>
           <div class="af-card-title">Obligaciones Negociables</div>
-          <div class="af-card-desc">TIR, duration, precio limpio y flujos de caja para ONs corporativas.</div>
+          <div class="af-card-desc">ONs hard dollar (MEP-CCL).</div>
           <div class="af-card-footer">ONs · CORPORATIVOS →</div>
         </div>
       </div>
@@ -1616,12 +1578,6 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 
   <!-- PANEL DERECHO -->
   <div class="main" id="main" style="flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative">
-
-    <!-- TABS -->
-    <div id="ons-tabs" style="display:flex;align-items:center;gap:0;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0;padding:0 20px;">
-      <div id="ons-tab-index" onclick="ons_switchTab('index')" style="padding:0 16px;height:42px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);transition:all .15s;">Índice</div>
-      <div id="ons-tab-cal" onclick="ons_switchTab('cal')" style="padding:0 16px;height:42px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;">Calendario</div>
-    </div>
 
     <!-- VISTA: TABLA COMPARATIVA + GRÁFICO (default) -->
     <div id="view-tabla" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
@@ -1713,21 +1669,6 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
     <!-- VISTA: DETALLE ON -->
     <div id="view-on" style="display:none;flex-direction:column;flex:1;overflow:hidden">
       <!-- contenido inyectado por ons_renderONPanel -->
-    </div>
-
-    <!-- VISTA: CALENDARIO -->
-    <div id="view-cal" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
-      <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--border);flex-shrink:0;">
-        <button onclick="ons_calPrevMonth()" style="padding:4px 10px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:13px;cursor:pointer;">‹</button>
-        <span id="ons-cal-title" style="font-family:var(--display);font-size:14px;font-weight:700;color:var(--text);min-width:160px;text-align:center;"></span>
-        <button onclick="ons_calNextMonth()" style="padding:4px 10px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:13px;cursor:pointer;">›</button>
-        <span id="ons-cal-summary" style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-left:8px;"></span>
-      </div>
-      <div style="overflow-y:auto;flex:1;padding:16px 20px;">
-        <div id="ons-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;"></div>
-      </div>
-      <!-- Tooltip del calendario -->
-      <div id="ons-cal-tooltip" style="display:none;position:fixed;z-index:9999;background:var(--card);border:1px solid var(--border2);border-radius:8px;padding:10px 14px;box-shadow:0 4px 20px rgba(0,0,0,0.3);max-width:280px;pointer-events:none;"></div>
     </div>
 
   </div><!-- /panel derecho -->
@@ -8860,7 +8801,7 @@ function renderEquity(){
     if(!con||con.dataset.rendered)return;
     const cuit=(window.EXCEL_CUIT_MAP||{})[ticker];
     if(tabId==='ratios')  { _renderFichaRatios(ticker, ecoHist); con.dataset.rendered='1'; }
-    if(tabId==='deudas')  { _renderFichaDeudas(ticker, cuit);    con.dataset.rendered='1'; }
+    if(tabId==='deudas')  { _renderFichaDeudas(ticker, cuit);     }
     if(tabId==='precios') {
       // No seteamos rendered acá — lo hace _renderFichaPrecios al terminar con éxito
       // Si falla, el usuario puede re-intentar clickeando la tab de nuevo
@@ -9143,7 +9084,7 @@ function renderEquity(){
         </div>
         <div id="${bcraCid}"></div>`;
       // Fetch asíncrono
-      _bcraFetchInline(ticker, cuit, bcraCid, bcraLoadId);
+      setTimeout(()=>_bcraFetchInline(ticker, cuit, bcraCid, bcraLoadId), 0);
     }
     con.appendChild(bcraWrap);
 
@@ -11296,6 +11237,7 @@ function ons_fetchCashflows(on) {
     vr_pct:     parseFloat((r.vr_pct   || '0').replace('%','')) / 100,
     tasa_cupon: parseFloat((r.tasa     || '0').replace('%','')) / 100,
     interes_vn: parseFloat((r.interes_vn || '0').replace('%','')),
+    cf_interes: parseFloat(r.cf_interes || 0),
     cf_total:   parseFloat(r.cf_total  || 0),
   })).filter(r => !isNaN(r.fecha.getTime()));
   onsState.cfCache[on.ticker] = cfs;
@@ -11467,7 +11409,7 @@ function ons_renderONPanel(on, cfs) {
   const allRows = cfs.map(cf => {
     const isPast = cf.fecha <= settle;
     const isNext = !isPast && metrics.futuros[0]?.fecha.getTime() === cf.fecha.getTime();
-    const monto = cf.amort_pct * 100 + cf.tasa_cupon * cf.vr_pct * 100;
+    const monto = parseFloat(cf.cf_total || 0);
     return `
       <tr class="${isPast ? 'past' : ''}${isNext ? ' next-cf' : ''}">
         <td>${fmtDate(cf.fecha)}</td>
@@ -11475,8 +11417,8 @@ function ons_renderONPanel(on, cfs) {
         <td class="amort-cell">${fmt2(cf.amort_pct * 100)}</td>
         <td>${fmt2(cf.vr_pct * 100)}</td>
         <td>${fmtPct(cf.tasa_cupon)}</td>
-        <td>${fmt2(cf.tasa_cupon * cf.vr_pct * 100)}</td>
-        <td class="total-cell">${fmt2(monto)}</td>
+        <td>${fmt2(parseFloat(cf.cf_interes || 0))}</td>
+        <td class="total-cell">${fmt2(parseFloat(cf.cf_total || 0))}</td>
       </tr>`;
   }).join('');
 
@@ -11901,16 +11843,15 @@ function ons_renderCompTable() {
     const dev    = metrics?.devengado ?? null;
     const proxCF = metrics?.proxCF?.fecha;
     const ytmCls = ytm===null?'': ytm>=0.08?'ytm-high': ytm>=0.05?'ytm-mid':'ytm-low';
-    const parCls = par===null?'': par>100?'par-over':'par-under';
     const tasaStr = tv.tasa===null ? '-' : fmtPct(tv.tasa) + (tv.stepUp ? ' *' : '');
     rows += `<tr onclick="ons_goToTicker('${on.ticker}')">
       <td>${on.empresa}</td>
       <td><span class="ticker-link" onclick="event.stopPropagation();ons_goToTicker('${on.ticker}')">${on.ticker}</span></td>
       <td onclick="event.stopPropagation()"><input class="price-inp" type="number" step="0.01" value="${price}" onchange="ons_updateCompPrice('${on.ticker}',this.value)" onclick="event.stopPropagation()"></td>
-      <td style="${tv.stepUp?'color:var(--yellow)':''}">${tasaStr}</td>
+      <td>${tasaStr}</td>
       <td class="${ytmCls}">${fmtPct(ytm)}</td>
       <td>${fmt2(metrics?.modDuration)}</td>
-      <td class="${parCls}">${fmt2(par)}%</td>
+      <td>${fmt2(par)}%</td>
       <td>${fmt2(dev)}</td>
       <td>${fmtDate(proxCF)}</td>
       <td>${fmtDate(new Date(on.vencimiento))}</td>
@@ -11921,184 +11862,6 @@ function ons_renderCompTable() {
   }
   document.getElementById('compTbody').innerHTML = rows || `<tr><td colspan="13" style="text-align:center;padding:30px;color:var(--text3);font-family:var(--mono);font-size:10px">Sin resultados</td></tr>`;
   document.getElementById('compCount').textContent = `${ons.length} ONs`;
-}
-
-// ── Calendario ──────────────────────────────────────────────────────────────
-
-const ons_calState = { year: new Date().getFullYear(), month: new Date().getMonth() };
-
-function ons_switchTab(tab) {
-  const isIndex = tab === 'index';
-  // Tabs
-  document.getElementById('ons-tab-index').style.borderBottomColor = isIndex ? 'var(--accent)' : 'transparent';
-  document.getElementById('ons-tab-index').style.color = isIndex ? 'var(--accent)' : 'var(--text3)';
-  document.getElementById('ons-tab-cal').style.borderBottomColor = !isIndex ? 'var(--accent)' : 'transparent';
-  document.getElementById('ons-tab-cal').style.color = !isIndex ? 'var(--accent)' : 'var(--text3)';
-  // Vistas
-  const viewTabla = document.getElementById('view-tabla');
-  const viewCal   = document.getElementById('view-cal');
-  const viewOn    = document.getElementById('view-on');
-  if (isIndex) {
-    viewTabla.style.display = 'flex';
-    viewCal.style.display   = 'none';
-  } else {
-    viewTabla.style.display = 'none';
-    viewCal.style.display   = 'flex';
-    viewOn.style.display    = 'none';
-    ons_renderCalendar();
-  }
-}
-
-function ons_calPrevMonth() {
-  ons_calState.month--;
-  if (ons_calState.month < 0) { ons_calState.month = 11; ons_calState.year--; }
-  ons_renderCalendar();
-}
-
-function ons_calNextMonth() {
-  ons_calState.month++;
-  if (ons_calState.month > 11) { ons_calState.month = 0; ons_calState.year++; }
-  ons_renderCalendar();
-}
-
-function ons_buildPaymentMap() {
-  // Devuelve { 'YYYY-MM-DD': [{ticker, empresa, moneda, cfTotal, interes, amort}] }
-  const map = {};
-  const settle = ons_settlement(new Date());
-  const ons = onsState.ons;
-  for (var i = 0; i < ons.length; i++) {
-    var on = ons[i];
-    var cfs = null;
-    try { cfs = ons_fetchCashflows(on); } catch(e) { continue; }
-    if (!cfs) continue;
-    for (var j = 0; j < cfs.length; j++) {
-      var cf = cfs[j];
-      if (cf.fecha <= settle) continue; // solo futuros
-      var key = cf.fecha.toISOString().slice(0,10);
-      if (!map[key]) map[key] = [];
-      map[key].push({
-        ticker:  on.ticker,
-        empresa: on.empresa,
-        moneda:  on.moneda,
-        cfTotal: parseFloat(cf.cf_total  || 0),
-        interes: parseFloat(cf.cf_interes || 0),
-        amort:   parseFloat(cf.cf_total  || 0) - parseFloat(cf.cf_interes || 0),
-      });
-    }
-  }
-  return map;
-}
-
-function ons_renderCalendar() {
-  const { year, month } = ons_calState;
-  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const DIAS  = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-
-  document.getElementById('ons-cal-title').textContent = MESES[month] + ' ' + year;
-
-  const map      = ons_buildPaymentMap();
-  const grid     = document.getElementById('ons-cal-grid');
-  const today    = new Date();
-  const todayStr = today.toISOString().slice(0,10);
-
-  // Contar pagos del mes
-  var totalPagos = 0;
-  var diasConPagos = 0;
-  for (var key in map) {
-    if (key.slice(0,7) === year + '-' + String(month+1).padStart(2,'0')) {
-      diasConPagos++;
-      totalPagos += map[key].length;
-    }
-  }
-  document.getElementById('ons-cal-summary').textContent = diasConPagos + ' días con pagos · ' + totalPagos + ' cupones';
-
-  var html = '';
-
-  // Headers días de la semana
-  for (var d = 0; d < 7; d++) {
-    html += '<div class="cal-weekday">' + DIAS[d] + '</div>';
-  }
-
-  // Primer día del mes (0=Dom...6=Sáb → convertir a lun-dom)
-  var firstDay = new Date(year, month, 1).getDay();
-  firstDay = (firstDay + 6) % 7; // convertir a lunes=0
-  var daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  // Celdas vacías al inicio
-  for (var e = 0; e < firstDay; e++) {
-    html += '<div class="cal-day empty"></div>';
-  }
-
-  // Días del mes
-  for (var day = 1; day <= daysInMonth; day++) {
-    var dateStr = year + '-' + String(month+1).padStart(2,'0') + '-' + String(day).padStart(2,'0');
-    var isToday = dateStr === todayStr;
-    var payments = map[dateStr] || [];
-    var cls = 'cal-day' + (isToday ? ' today' : '');
-
-    var dots = '';
-    if (payments.length > 0) {
-      dots = '<div class="cal-dots">';
-      for (var p = 0; p < payments.length; p++) {
-        var col = payments[p].moneda === 'CABLE' ? '#3fb950' : '#e3b341';
-        dots += '<div class="cal-dot" style="background:' + col + ';" data-date="' + dateStr + '" data-idx="' + p + '" onmouseenter="ons_calShowTooltip(event,'' + dateStr + '')" onmouseleave="ons_calHideTooltip()"></div>';
-      }
-      dots += '</div>';
-    }
-
-    html += '<div class="' + cls + '">' +
-      '<div class="cal-day-num">' + day + '</div>' +
-      dots +
-    '</div>';
-  }
-
-  grid.innerHTML = html;
-
-  // Guardar el map en el state para el tooltip
-  ons_calState._map = map;
-}
-
-function ons_calShowTooltip(event, dateStr) {
-  var map = ons_calState._map || {};
-  var payments = map[dateStr] || [];
-  if (!payments.length) return;
-
-  var MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-  var d = new Date(dateStr + 'T12:00:00');
-  var titulo = d.getDate() + ' ' + MESES[d.getMonth()] + ' ' + d.getFullYear();
-
-  var html = '<div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text);margin-bottom:8px;">' + titulo + '</div>';
-  for (var i = 0; i < payments.length; i++) {
-    var p = payments[i];
-    var col = p.moneda === 'CABLE' ? '#3fb950' : '#e3b341';
-    html += '<div style="margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border);">' +
-      '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">' +
-        '<div style="width:6px;height:6px;border-radius:50%;background:' + col + ';flex-shrink:0;"></div>' +
-        '<span style="font-weight:700;color:var(--text);font-size:10px;">' + p.ticker + '</span>' +
-        '<span style="color:var(--text3);font-size:9px;">' + p.empresa + '</span>' +
-      '</div>' +
-      '<div style="padding-left:12px;display:flex;gap:12px;font-size:10px;">' +
-        '<span style="color:var(--text3);">CF Total: <span style="color:var(--text);font-weight:700;">' + p.cfTotal.toFixed(2) + '</span></span>' +
-        '<span style="color:var(--text3);">Int: <span style="color:var(--text);font-weight:700;">' + p.interes.toFixed(2) + '</span></span>' +
-        (p.amort > 0.01 ? '<span style="color:var(--text3);">Amort: <span style="color:var(--accent2);font-weight:700;">' + p.amort.toFixed(2) + '</span></span>' : '') +
-      '</div>' +
-    '</div>';
-  }
-
-  var tooltip = document.getElementById('ons-cal-tooltip');
-  tooltip.innerHTML = html;
-  tooltip.style.display = 'block';
-
-  var x = event.clientX + 12;
-  var y = event.clientY + 12;
-  if (x + 290 > window.innerWidth) x = event.clientX - 300;
-  if (y + 200 > window.innerHeight) y = event.clientY - 210;
-  tooltip.style.left = x + 'px';
-  tooltip.style.top  = y + 'px';
-}
-
-function ons_calHideTooltip() {
-  document.getElementById('ons-cal-tooltip').style.display = 'none';
 }
 
 function ons_sortTable(col) {
@@ -12319,7 +12082,7 @@ function ons_renderChart() {
       circles += `<text x="${x}" y="${y-10}" text-anchor="middle" font-size="8" font-family="DM Mono,monospace" fill="${col}" opacity="0.85" pointer-events="none">${p.on.ticker}</text>`;
     }
     if (p.stepUp) {
-      circles += `<text x="${x+8}" y="${y-6}" font-size="8" font-family="DM Mono,monospace" fill="#e3b341" pointer-events="none">*</text>`;
+      circles += `<text x="${x+8}" y="${y-6}" font-size="8" font-family="DM Mono,monospace" fill="${col}" pointer-events="none">*</text>`;
     }
   });
 
@@ -12379,11 +12142,12 @@ window.ons_init = function() {
     el.addEventListener('input', function() { ons_renderSidebar(this.value); });
     el._att = true;
   }
-  // Siempre refetchea para tener el bundle más actualizado del KV
-  ons_initFromWorker();
+  if (!window.ONS_LOADED) {
+    ons_initFromWorker();
+    window.ONS_LOADED = true;
+  }
 };
 
 </script>
 </body>
 </html>
-
