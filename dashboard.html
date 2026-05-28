@@ -1596,6 +1596,28 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 #app-rf .spinner{border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
 #app-rf .pos{color:var(--green)!important;}
 #app-rf .neg{color:var(--red)!important;}
+
+/* ── Calendario RF ── */
+#app-rf #rf-tab-index{padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);transition:all .15s;}
+#app-rf #rf-tab-cal{padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;}
+#app-rf #view-rf-cal{display:none;flex-direction:column;flex:1;overflow:hidden;height:calc(100vh - 52px);}
+#app-rf .rf-cal-day{min-height:80px;border-radius:6px;border:1px solid var(--border);padding:6px;background:var(--card);position:relative;transition:background .12s;}
+#app-rf .rf-cal-day:hover{background:var(--accent-light);}
+#app-rf .rf-cal-day.empty{background:transparent;border-color:transparent;}
+#app-rf .rf-cal-day.today{border-color:var(--accent);}
+#app-rf .rf-cal-day.past{background:rgba(255,255,255,0.015);border-color:rgba(255,255,255,0.04);}
+#app-rf .rf-cal-day.past .rf-cal-day-num{opacity:0.3;}
+#app-rf .rf-cal-day-num{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text3);margin-bottom:4px;}
+#app-rf .rf-cal-day.today .rf-cal-day-num{color:var(--accent);}
+#app-rf .rf-cal-dots{display:flex;flex-wrap:wrap;gap:3px;align-content:flex-start;}
+#app-rf .rf-cal-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 5px;border-radius:4px;background:var(--accent-light);border:1px solid var(--border2);cursor:pointer;transition:background .12s;max-width:100%;}
+#app-rf .rf-cal-chip:hover{background:var(--border2);}
+#app-rf .rf-cal-chip-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+#app-rf .rf-cal-chip-label{font-family:var(--mono);font-size:8px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#app-rf .rf-cal-weekday{text-align:center;font-family:var(--mono);font-size:9px;font-weight:700;color:var(--text3);padding:4px 0 8px;text-transform:uppercase;}
+/* Modal detalle: view-detalle y det-body scrolleables dentro del modal */
+#rf-cal-modal #view-detalle{overflow-y:auto;flex:1;}
+#rf-cal-modal #det-body{overflow:visible;}
 }
 #app-rf 50%{opacity:.35}}
 
@@ -1943,6 +1965,9 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
     <div style="height:20px;width:1px;background:var(--border);margin-right:8px;"></div>
     <div id="rf-tb-dot" style="width:6px;height:6px;border-radius:50%;background:var(--red);box-shadow:0 0 5px var(--red);transition:all .3s;flex-shrink:0;"></div>
     <div id="rf-tb-info" style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-left:8px;">—</div>
+    <div style="width:16px;flex-shrink:0;"></div>
+    <div id="rf-tab-index" onclick="rfSwitchTab('index')">Índice</div>
+    <div id="rf-tab-cal" onclick="rfSwitchTab('cal')">Calendario</div>
     <div style="flex:1;"></div>
     <button style="padding:5px 13px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--mono);transition:all .15s;" onclick="rfLoad()" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='transparent'">↻ Actualizar</button>
     <button style="padding:5px 13px;border-radius:6px;border:1px solid var(--yellow);background:transparent;color:var(--yellow);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--mono);transition:all .15s;opacity:.7;" onclick="rfRefreshBundle()" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.7'" title="Actualizar index y cashflows nuevos">⬆ Refresh index</button>
@@ -1950,7 +1975,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
   </div>
 
   <!-- Contenido: sidebar + panel -->
-  <div style="display:flex;flex:1;overflow:hidden;height:calc(100vh - 52px);">
+  <div id="rf-main-content" style="display:flex;flex:1;overflow:hidden;height:calc(100vh - 52px);">
 
     <!-- SIDEBAR -->
     <div class="sidebar" style="width:230px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
@@ -2072,6 +2097,48 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 
     </div><!-- /main -->
   </div><!-- /content -->
+
+  <!-- VISTA CALENDARIO RF: full width -->
+  <div id="view-rf-cal">
+    <!-- Controles de navegación -->
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 20px;border-bottom:1px solid var(--border);flex-shrink:0;">
+      <button id="rf-cal-prev" onclick="rfCalPrevMonth()" style="padding:4px 10px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:13px;cursor:pointer;">‹</button>
+      <select id="rf-cal-sel-month" onchange="rfCalSelectMonth()" style="padding:4px 8px;border-radius:5px;border:1px solid var(--border2);background:var(--bg);color:var(--text);font-size:12px;font-family:var(--mono);cursor:pointer;-webkit-appearance:auto;"></select>
+      <select id="rf-cal-sel-year" onchange="rfCalSelectMonth()" style="padding:4px 8px;border-radius:5px;border:1px solid var(--border2);background:var(--bg);color:var(--text);font-size:12px;font-family:var(--mono);cursor:pointer;-webkit-appearance:auto;"></select>
+      <button onclick="rfCalNextMonth()" style="padding:4px 10px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:13px;cursor:pointer;">›</button>
+      <span id="rf-cal-summary" style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-left:4px;"></span>
+      <!-- Leyenda -->
+      <div style="margin-left:auto;display:flex;align-items:center;gap:16px;">
+        <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text3);">
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;"></div>Pesos
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text3);">
+          <div style="width:8px;height:8px;border-radius:50%;background:#e3b341;flex-shrink:0;"></div>CER
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text3);">
+          <div style="width:8px;height:8px;border-radius:50%;background:#3fb950;flex-shrink:0;"></div>Dólar
+        </div>
+      </div>
+    </div>
+    <!-- Grilla -->
+    <div style="overflow-y:auto;flex:1;padding:16px 32px;">
+      <div id="rf-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;"></div>
+    </div>
+  </div>
+
+  <!-- Tooltip calendario RF -->
+  <div id="rf-cal-tooltip" style="display:none;position:fixed;z-index:9999;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px 14px;box-shadow:0 8px 24px rgba(0,0,0,0.5);max-width:300px;pointer-events:none;"></div>
+
+  <!-- Modal detalle desde calendario RF -->
+  <div id="rf-cal-modal-overlay" onclick="rfCalCloseModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;"></div>
+  <div id="rf-cal-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:92vw;max-width:1300px;height:90vh;background:var(--bg);border:1px solid var(--border2);border-radius:12px;box-shadow:0 24px 64px rgba(0,0,0,0.7);z-index:1001;flex-direction:column;overflow:hidden;">
+    <div style="height:44px;flex-shrink:0;display:flex;align-items:center;padding:0 16px;border-bottom:1px solid var(--border);gap:12px;">
+      <span id="rf-cal-modal-title" style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--text);flex:1;"></span>
+      <button onclick="rfCalCloseModal()" style="padding:4px 14px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;" onmouseover="this.style.background='var(--red)';this.style.color='#fff';this.style.borderColor='var(--red)';" onmouseout="this.style.background='transparent';this.style.color='var(--text3)';this.style.borderColor='var(--border2)';">✕ Cerrar</button>
+    </div>
+    <div id="rf-cal-modal-body" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;"></div>
+  </div>
+
 </div>
 
 <script>
@@ -6957,6 +7024,492 @@ window.rfLoad=async function(){
     document.getElementById('rf-tb-info').textContent=`Error: ${e.message}`;
     document.getElementById('sb-scroll').innerHTML=`<div class="sb-msg" style="color:var(--red);">✗ ${e.message}</div>`;
     console.error('[rfLoad]',e);
+  }
+};
+
+// ══════════════════════════════════════════════════════════
+//  CALENDARIO RF
+// ══════════════════════════════════════════════════════════
+
+const _rfCalState = { year: new Date().getFullYear(), month: new Date().getMonth(), _populated: false };
+
+// Color por tipo de instrumento
+function rfCalColor(tipo, isPast) {
+  // Azul: pesos nominales (lecap, boncap, tamar, dual_tamar, dual_boncap, fixed_rate)
+  // Amarillo: CER (boncer, boncer_bullet, dual_boncer)
+  // Verde: dólar (soberano, bopreal, dolarlinked)
+  const azul   = isPast ? 'rgba(30,39,243,0.3)'   : 'var(--accent)';
+  const amarillo = isPast ? 'rgba(227,179,65,0.3)' : '#e3b341';
+  const verde  = isPast ? 'rgba(63,185,80,0.3)'   : '#3fb950';
+  const t = (tipo||'').toLowerCase();
+  if (t==='boncer'||t==='boncer_bullet'||t==='dual_boncer') return amarillo;
+  if (t==='soberano'||t==='bopreal'||t==='dolarlinked')    return verde;
+  return azul; // lecap, boncap, tamar, dual_tamar, dual_boncap, fixed_rate
+}
+
+// Devuelve etiqueta del flujo y si es proyectado
+function rfCalFlujoLabel(tipo) {
+  const t = (tipo||'').toLowerCase();
+  if (t==='boncer_bullet'||t==='dual_boncer'||t==='dolarlinked') return '(proy.)';
+  if (t==='tamar'||t==='dual_tamar') return '(proy.)';
+  return '';
+}
+
+// Construye el mapa { 'YYYY-MM-DD': [{ticker, tipo, flujo, esProy, esAmort, esInteres}] }
+function rfCalBuildPaymentMap() {
+  if (!_bundle) return {};
+  const map    = {};
+  const tipos  = _bundle._tipos  || {};
+  const meta   = _bundle._meta   || {};
+  const allT   = _bundle._index  || [];
+  const hoy    = new Date();
+  const liqStr = defaultLiq(); // fecha de liquidación default (T+1 hábil)
+  const liq    = new Date(liqStr + 'T12:00:00');
+
+  for (const ticker of allT) {
+    const tipo = (tipos[ticker]||'').toLowerCase();
+    const m    = meta[ticker] || {};
+    if (!m.maturity) continue;
+    // Filtrar patas duales (_F) — se muestran a través del ticker base (dual_tamar)
+    if (ticker.endsWith('_F') || ticker.endsWith('_f')) continue;
+
+    // ── Bullets ──────────────────────────────────────────────────
+    if (tipo==='lecap'||tipo==='boncap') {
+      // flujoFinal viene del CF calculado (total100 del último cupón)
+      const cfs = getCfs(ticker);
+      const cf  = cfs&&cfs.length ? cfs[cfs.length-1] : null;
+      if (!cf) continue;
+      const key = m.maturity;
+      if (!map[key]) map[key] = [];
+      map[key].push({ ticker, tipo, flujo: cf.total100, esProy: false, label: '', interes: null, amort: null });
+      continue;
+    }
+
+    if (tipo==='boncer_bullet') {
+      // flujo proyectado = 100 × (cerActual / cerInicial)
+      if (!m.cerInicial) continue;
+      const cerActual = getCerForDate(restarHabiles(liqStr, _cerOffset));
+      if (!cerActual) continue;
+      const flujo = (cerActual / m.cerInicial) * 100;
+      const key   = m.maturity;
+      if (!map[key]) map[key] = [];
+      map[key].push({ ticker, tipo, flujo, esProy: true, label: '(proy.)', interes: null, amort: null });
+      continue;
+    }
+
+    if (tipo==='dolarlinked') {
+      // flujo proyectado = 100 USD × TC actual
+      const tc = window._tcManualVal ?? _tcUsd;
+      if (!tc) continue;
+      const flujo = 100 * tc;
+      const key   = m.maturity;
+      if (!map[key]) map[key] = [];
+      map[key].push({ ticker, tipo, flujo, esProy: true, label: '(proy. TC)', interes: null, amort: null });
+      continue;
+    }
+
+    if (tipo==='tamar') {
+      const tp = _tamarProms[ticker];
+      if (!tp) continue;
+      const calc = calcTamar(100, liqStr, m.maturity, tp);
+      if (!calc) continue;
+      const key = m.maturity;
+      if (!map[key]) map[key] = [];
+      map[key].push({ ticker, tipo, flujo: calc.flujoFinal, esProy: true, label: '(proy.)', interes: null, amort: null });
+      continue;
+    }
+
+    if (tipo==='dual_tamar') {
+      // Ganador: mayor flujo bruto sobre 100VN
+      const tickerFija = ticker + '_F';
+      const tipoFija   = (tipos[tickerFija]||'').toLowerCase();
+      const metaFija   = meta[tickerFija] || {};
+      const tp         = _tamarProms[ticker];
+
+      // Flujo TAMAR: calcTamar con precio=100 → flujoFinal sobre 100VN
+      let flujoTamar = null;
+      if (tp && m.maturity) {
+        const calcT = calcTamar(100, liqStr, m.maturity, tp);
+        if (calcT) flujoTamar = calcT.flujoFinal;
+      }
+
+      // Flujo pata fija: total100 directo del CSV (no calcLecap, no necesitamos precio)
+      let flujoFija = null;
+      if (tipoFija==='dual_boncap') {
+        const cfs = getCfs(tickerFija);
+        const cf  = cfs&&cfs.length ? cfs[cfs.length-1] : null;
+        if (cf) flujoFija = cf.total100;
+      } else if (tipoFija==='dual_boncer') {
+        if (metaFija.cerInicial && metaFija.maturity) {
+          const cerActual = getCerForDate(restarHabiles(liqStr, _cerOffset));
+          if (cerActual) flujoFija = (cerActual / metaFija.cerInicial) * 100;
+        }
+      }
+
+      // Ganador: mayor flujo
+      let flujo = null, ganadorLabel = '', esProy = true;
+      if (flujoTamar!=null && flujoFija!=null) {
+        if (flujoTamar >= flujoFija) {
+          flujo = flujoTamar; ganadorLabel = '(proy. TAMAR)'; esProy = true;
+        } else {
+          flujo = flujoFija;
+          ganadorLabel = tipoFija==='dual_boncer' ? '(proy. CER)' : '(fija BONCAP)';
+          esProy = tipoFija==='dual_boncer';
+        }
+      } else if (flujoTamar!=null) {
+        flujo = flujoTamar; ganadorLabel = '(proy. TAMAR)'; esProy = true;
+      } else if (flujoFija!=null) {
+        flujo = flujoFija;
+        ganadorLabel = tipoFija==='dual_boncer' ? '(proy. CER)' : '(fija BONCAP)';
+        esProy = tipoFija==='dual_boncer';
+      }
+
+      if (flujo==null) continue;
+      const key = m.maturity;
+      if (!map[key]) map[key] = [];
+      map[key].push({ ticker, tipo, flujo, esProy, label: ganadorLabel, interes: null, amort: null });
+      continue;
+    }
+
+    // ── Con CSV (múltiples cupones) ───────────────────────────────
+    if (tipo==='boncer') {
+      if (!_bundle[ticker]) continue;
+      const cupones = parseBoncerAmortCsv(_bundle[ticker]);
+      if (!cupones) continue;
+      for (const cp of cupones) {
+        if (!cp.fecha) continue;
+        if (!map[cp.fecha]) map[cp.fecha] = [];
+        // Para boncer amortizable el flujo ya viene ajustado CER del CSV
+        // amortPct es la fracción del VN amortizada; interes = flujo - amort(pesos)
+        const amortPesos = cp.amortPct > 0 ? cp.amortPct * 100 : 0;
+        map[cp.fecha].push({
+          ticker, tipo,
+          flujo:   cp.flujo,
+          interes: cp.flujo - amortPesos > 0.001 ? cp.flujo - amortPesos : 0,
+          amort:   amortPesos,
+          esProy:  false, label: '',
+        });
+      }
+      continue;
+    }
+
+    if (tipo==='soberano'||tipo==='bopreal'||tipo==='fixed_rate') {
+      if (!_bundle[ticker]) continue;
+      const cupones = parseSoberanoCsv(_bundle[ticker]);
+      if (!cupones) continue;
+      for (const cp of cupones) {
+        if (!cp.fecha) continue;
+        if (!map[cp.fecha]) map[cp.fecha] = [];
+        // amortPct ya viene en unidades c/100VN para estos parsers
+        const amort   = cp.amortPct || 0;
+        const interes = cp.total - amort;
+        map[cp.fecha].push({
+          ticker, tipo,
+          flujo:   cp.total,
+          interes: interes > 0.001 ? interes : 0,
+          amort,
+          esProy:  false, label: '',
+        });
+      }
+      continue;
+    }
+
+    if (tipo==='dual_boncap') {
+      // Bullet calculado desde CSV
+      const cfs = getCfs(ticker);
+      const cf  = cfs&&cfs.length ? cfs[cfs.length-1] : null;
+      if (!cf) continue;
+      const key = m.maturity;
+      if (!map[key]) map[key] = [];
+      map[key].push({ ticker, tipo, flujo: cf.total100, esProy: false, label: '', interes: null, amort: null });
+      continue;
+    }
+  }
+  return map;
+}
+
+function rfCalPopulateSelectors() {
+  if (_rfCalState._populated) return;
+  const selMonth = document.getElementById('rf-cal-sel-month');
+  const selYear  = document.getElementById('rf-cal-sel-year');
+  if (!selMonth || !selYear) return;
+  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const now = new Date();
+  const minYear = now.getFullYear() - 2;
+  const maxYear = now.getFullYear() + 10;
+  selMonth.innerHTML = '';
+  for (let m = 0; m < 12; m++) {
+    const opt = document.createElement('option');
+    opt.value = m; opt.textContent = MESES[m];
+    if (m === _rfCalState.month) opt.selected = true;
+    selMonth.appendChild(opt);
+  }
+  selYear.innerHTML = '';
+  for (let y = minYear; y <= maxYear; y++) {
+    const opt = document.createElement('option');
+    opt.value = y; opt.textContent = y;
+    if (y === _rfCalState.year) opt.selected = true;
+    selYear.appendChild(opt);
+  }
+  _rfCalState._populated = true;
+}
+
+window.rfCalSelectMonth = function() {
+  const selMonth = document.getElementById('rf-cal-sel-month');
+  const selYear  = document.getElementById('rf-cal-sel-year');
+  const now      = new Date();
+  const minYear  = now.getFullYear() - 2;
+  let newMonth   = parseInt(selMonth.value);
+  let newYear    = parseInt(selYear.value);
+  // Limitar al mínimo (hoy − 2 años)
+  if (newYear < minYear || (newYear === minYear && newMonth < now.getMonth())) {
+    newMonth = now.getMonth(); newYear = minYear;
+    selMonth.value = newMonth; selYear.value = newYear;
+  }
+  _rfCalState.month = newMonth;
+  _rfCalState.year  = newYear;
+  rfRenderCalendar();
+};
+
+window.rfCalPrevMonth = function() {
+  const now     = new Date();
+  const minYear = now.getFullYear() - 2;
+  const minMonth= now.getMonth();
+  _rfCalState.month--;
+  if (_rfCalState.month < 0) { _rfCalState.month = 11; _rfCalState.year--; }
+  // No pasar del límite
+  if (_rfCalState.year < minYear || (_rfCalState.year === minYear && _rfCalState.month < minMonth)) {
+    _rfCalState.year = minYear; _rfCalState.month = minMonth;
+  }
+  rfRenderCalendar();
+};
+
+window.rfCalNextMonth = function() {
+  _rfCalState.month++;
+  if (_rfCalState.month > 11) { _rfCalState.month = 0; _rfCalState.year++; }
+  rfRenderCalendar();
+};
+
+async function rfRenderCalendar() {
+  // Asegurar que los promedios TAMAR estén calculados antes de construir el mapa
+  if (_bundle && Object.keys(_tamarProms).length === 0) {
+    await calcularTamarProms();
+  }
+  rfCalPopulateSelectors();
+  const { year, month } = _rfCalState;
+  const DIAS  = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  const now   = new Date();
+  const minYear  = now.getFullYear() - 2;
+  const minMonth = now.getMonth();
+
+  const selMonth = document.getElementById('rf-cal-sel-month');
+  const selYear  = document.getElementById('rf-cal-sel-year');
+  if (selMonth) selMonth.value = month;
+  if (selYear)  selYear.value  = year;
+
+  // Deshabilitar prev si estamos en el límite mínimo
+  const prevBtn = document.getElementById('rf-cal-prev');
+  if (prevBtn) {
+    const atMin = year === minYear && month === minMonth;
+    prevBtn.disabled      = atMin;
+    prevBtn.style.opacity = atMin ? '0.3' : '1';
+    prevBtn.style.cursor  = atMin ? 'not-allowed' : 'pointer';
+  }
+
+  const map      = rfCalBuildPaymentMap();
+  const grid     = document.getElementById('rf-cal-grid');
+  const todayStr = now.toISOString().slice(0,10);
+
+  // Summary
+  const monthKey = year + '-' + String(month+1).padStart(2,'0');
+  let diasConPagos = 0, totalCupones = 0;
+  for (const key in map) {
+    if (key.slice(0,7) === monthKey) { diasConPagos++; totalCupones += map[key].length; }
+  }
+  document.getElementById('rf-cal-summary').textContent =
+    diasConPagos + ' días con pagos · ' + totalCupones + ' cupones';
+
+  // Grilla
+  let html = '';
+  for (let d = 0; d < 7; d++) html += `<div class="rf-cal-weekday">${DIAS[d]}</div>`;
+
+  let firstDay = new Date(year, month, 1).getDay();
+  firstDay = (firstDay + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  for (let e = 0; e < firstDay; e++) html += '<div class="rf-cal-day empty"></div>';
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr  = year + '-' + String(month+1).padStart(2,'0') + '-' + String(day).padStart(2,'0');
+    const isToday  = dateStr === todayStr;
+    const isPast   = dateStr < todayStr;
+    const payments = map[dateStr] || [];
+    const cls      = 'rf-cal-day' + (isToday ? ' today' : '') + (isPast ? ' past' : '');
+
+    let chips = '';
+    if (payments.length > 0) {
+      chips = '<div class="rf-cal-dots">';
+      for (let p = 0; p < payments.length; p++) {
+        const col = rfCalColor(payments[p].tipo, isPast);
+        chips += `<div class="rf-cal-chip" onclick="rfCalOpenModal('${payments[p].ticker}')" onmouseenter="rfCalShowTooltip(event,'${dateStr}',${p})" onmouseleave="rfCalHideTooltip()">` +
+          `<div class="rf-cal-chip-dot" style="background:${col};"></div>` +
+          `<span class="rf-cal-chip-label">${payments[p].ticker}</span>` +
+          `</div>`;
+      }
+      chips += '</div>';
+    }
+    html += `<div class="${cls}"><div class="rf-cal-day-num">${day}</div>${chips}</div>`;
+  }
+
+  grid.innerHTML = html;
+  _rfCalState._map = map;
+}
+
+window.rfCalShowTooltip = function(event, dateStr, idx) {
+  const map      = _rfCalState._map || {};
+  const payments = map[dateStr] || [];
+  if (!payments.length) return;
+
+  const MESES  = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const d      = new Date(dateStr + 'T12:00:00');
+  const titulo = d.getDate() + ' ' + MESES[d.getMonth()] + ' ' + d.getFullYear();
+
+  const p   = payments[parseInt(idx)] || payments[0];
+  const col = rfCalColor(p.tipo, false);
+
+  // Etiqueta amigable del tipo
+  const tipoLabels = {
+    lecap:'LECAP', boncap:'BONCAP', boncer:'BONCER', boncer_bullet:'BONCER',
+    soberano:'Soberano', dolarlinked:'Dólar Linked', bopreal:'BOPREAL',
+    fixed_rate:'Fixed Rate', tamar:'TAMAR', dual_tamar:'Dual TAMAR',
+    dual_boncap:'Dual BONCAP', dual_boncer:'Dual BONCER',
+  };
+  const tipoLabel = tipoLabels[p.tipo] || p.tipo;
+  const flujoFmt  = p.flujo!=null ? p.flujo.toFixed(2) : '—';
+  const tieneDesglose = p.interes != null && (p.interes > 0.001 || p.amort > 0.001);
+
+  let html = `<div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text);margin-bottom:8px;">${titulo}</div>`;
+  html += `<div style="margin-bottom:4px;">` +
+    `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">` +
+      `<div style="width:6px;height:6px;border-radius:50%;background:${col};flex-shrink:0;"></div>` +
+      `<span style="font-weight:700;color:var(--text);font-size:10px;">${p.ticker}</span>` +
+      `<span style="color:var(--text3);font-size:9px;">${tipoLabel}</span>` +
+    `</div>` +
+    `<div style="padding-left:12px;display:flex;gap:12px;font-size:10px;flex-wrap:wrap;">` +
+      `<span style="color:var(--text3);">CF: <span style="color:var(--text);font-weight:700;">${flujoFmt}</span></span>` +
+      (tieneDesglose && p.interes > 0.001 ? `<span style="color:var(--text3);">Int: <span style="color:var(--text);font-weight:700;">${p.interes.toFixed(2)}</span></span>` : '') +
+      (tieneDesglose && p.amort > 0.001   ? `<span style="color:var(--text3);">Amort: <span style="color:var(--text);font-weight:700;">${p.amort.toFixed(2)}</span></span>` : '') +
+      (p.label ? `<span style="color:var(--text3);font-style:italic;">${p.label}</span>` : '') +
+    `</div>` +
+    `<div style="padding-left:12px;font-size:9px;color:var(--text3);margin-top:2px;">c/ 100 VN</div>` +
+  `</div>`;
+
+  const tooltip = document.getElementById('rf-cal-tooltip');
+  tooltip.innerHTML = html;
+  tooltip.style.display = 'block';
+  let x = event.clientX + 12;
+  let y = event.clientY + 12;
+  if (x + 310 > window.innerWidth)  x = event.clientX - 320;
+  if (y + 160 > window.innerHeight) y = event.clientY - 170;
+  tooltip.style.left = x + 'px';
+  tooltip.style.top  = y + 'px';
+};
+
+window.rfCalHideTooltip = function() {
+  document.getElementById('rf-cal-tooltip').style.display = 'none';
+};
+
+window.rfCalOpenModal = async function(ticker) {
+  if (!_bundle) return;
+  rfCalHideTooltip();
+
+  const tipos = _bundle._tipos || {};
+  const tipo  = (tipos[ticker]||'').toLowerCase();
+
+  // Título del modal
+  const CAT = { lecap:'LECAP', boncap:'BONCAP', boncer:'BONCER', boncer_bullet:'BONCER',
+    soberano:'Soberano', dolarlinked:'Dólar Linked', bopreal:'BOPREAL',
+    fixed_rate:'Fixed Rate', tamar:'TAMAR', dual_tamar:'Dual TAMAR',
+    dual_boncap:'Dual BONCAP', dual_boncer:'Dual BONCER' };
+  document.getElementById('rf-cal-modal-title').textContent =
+    displayName(ticker) + (CAT[tipo] ? '  ·  ' + CAT[tipo] : '');
+
+  // Asegurar TAMAR cargado si es necesario
+  if ((tipo==='tamar'||tipo==='dual_tamar') && Object.keys(_tamarProms).length===0) {
+    await calcularTamarProms();
+  }
+
+  const modalBody = document.getElementById('rf-cal-modal-body');
+
+  // DOM-swap: mover #view-detalle al modal body
+  const viewDetalle = document.getElementById('view-detalle');
+  const viewTabla   = document.getElementById('rf-view-tabla');
+
+  // Guardar estado actual para restaurar al cerrar
+  const modal = document.getElementById('rf-cal-modal');
+  modal._prevTablaDisplay   = viewTabla.style.display;
+  modal._prevDetalleDisplay = viewDetalle.style.display;
+
+  // Insertar placeholder donde estaba view-detalle
+  const placeholder = document.createElement('div');
+  viewDetalle.parentNode.insertBefore(placeholder, viewDetalle);
+  modalBody.appendChild(viewDetalle);
+  modal._placeholder = placeholder;
+
+  // Ocultar la vista de tabla para que lcOpenDetail no la manipule
+  viewTabla.style.display   = 'none';
+  viewDetalle.style.display = 'flex';
+
+  // Llamar lcOpenDetail — renderiza el panel completo
+  lcOpenDetail(ticker);
+
+  // lcOpenDetail oculta view-detalle al final; aseguramos que se vea en el modal
+  viewDetalle.style.display = 'flex';
+
+  // Mostrar modal
+  document.getElementById('rf-cal-modal-overlay').style.display = 'block';
+  modal.style.display = 'flex';
+};
+
+window.rfCalCloseModal = function() {
+  const modal      = document.getElementById('rf-cal-modal');
+  const modalBody  = document.getElementById('rf-cal-modal-body');
+  const placeholder = modal._placeholder;
+
+  const viewDetalle = document.getElementById('view-detalle');
+  const viewTabla   = document.getElementById('rf-view-tabla');
+
+  // Restaurar view-detalle a su posición original
+  if (viewDetalle && placeholder && placeholder.parentNode) {
+    placeholder.parentNode.insertBefore(viewDetalle, placeholder);
+    placeholder.parentNode.removeChild(placeholder);
+  }
+  // Restaurar displays
+  viewDetalle.style.display = 'none';
+  viewTabla.style.display   = modal._prevTablaDisplay || 'none';
+
+  document.getElementById('rf-cal-modal-overlay').style.display = 'none';
+  modal.style.display  = 'none';
+  modal._placeholder   = null;
+};
+
+// Tab switch: alterna entre vista índice y calendario
+window.rfSwitchTab = function(tab) {
+  const isIndex = tab === 'index';
+  // Tabs
+  document.getElementById('rf-tab-index').style.borderBottomColor = isIndex ? 'var(--accent)' : 'transparent';
+  document.getElementById('rf-tab-index').style.color              = isIndex ? 'var(--accent)' : 'var(--text3)';
+  document.getElementById('rf-tab-cal').style.borderBottomColor   = !isIndex ? 'var(--accent)' : 'transparent';
+  document.getElementById('rf-tab-cal').style.color               = !isIndex ? 'var(--accent)' : 'var(--text3)';
+  // Vistas
+  const mainContent = document.getElementById('rf-main-content');
+  const viewCal     = document.getElementById('view-rf-cal');
+  if (isIndex) {
+    mainContent.style.display = 'flex';
+    viewCal.style.display     = 'none';
+  } else {
+    mainContent.style.display = 'none';
+    viewCal.style.display     = 'flex';
+    rfRenderCalendar();
   }
 };
 
