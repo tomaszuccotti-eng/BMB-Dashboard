@@ -717,7 +717,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 
 /* SIDEBAR */
 #app-calc-on .sidebar {
-  width: 240px;
+  width: 230px;
   flex-shrink: 0;
   background: var(--bg2);
   border-right: 1px solid var(--border);
@@ -893,6 +893,8 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 }
 #app-calc-on .sector-header:hover { background: var(--accent-light); }
 #app-calc-on .sector-header.open { color: var(--text); }
+#app-calc-on .sector-header.active { background:var(--accent-light); color:var(--accent); border-left:2px solid var(--accent); }
+#app-calc-on .empresa-header.active { color:var(--accent); font-weight:700; }
 #app-calc-on .sector-dot {
   width: 6px; height: 6px;
   border-radius: 50%;
@@ -1676,7 +1678,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
       </div>
 
       <!-- 3 — Calculadoras -->
-      <div class="mosaic-card active-module" onclick="enterCalcMenu()" style="cursor:pointer;">
+      <div class="mosaic-card active-module" onclick="enterTest()" style="cursor:pointer;">
         <div class="mosaic-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
@@ -1728,43 +1730,27 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
   </div>
 </div>
 
-<!-- ══════════════════ APP CALC MENU ══════════════════ -->
-<div id="app-calc-menu" style="display:none;min-height:100vh;background:var(--bg);flex-direction:column;">
-  <div style="display:flex;align-items:center;padding:18px 32px;border-bottom:1px solid var(--border);background:var(--bg);gap:16px;">
-    <button onclick="backToLanding()" style="padding:6px 14px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);">← Inicio</button>
-    <button onclick="toggleTheme()" class="theme-btn-small" style="margin-left:auto;"><span class="theme-btn-icon">☀</span> <span class="theme-btn-lbl">Modo Claro</span></button>
-  </div>
-  <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:60px 32px;">
-    <div style="width:100%;max-width:900px;">
-      <div style="font-family:var(--display);font-size:clamp(28px,4vw,52px);font-weight:800;color:var(--text);line-height:1.05;margin-bottom:16px;letter-spacing:-1px;">Calcula&shy;<br><span style="color:var(--accent);">doras.</span></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:32px;">
-        <div onclick="enterTest()" class="af-card">
-          <div style="width:48px;height:48px;background:rgba(30,39,243,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1E27F3" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
-          <div class="af-card-title">Bonos &amp; Letras</div>
-          <div class="af-card-desc">Calculadora de LECAPs con curva de rendimientos, paridad y duration.</div>
-          <div class="af-card-footer">LECAPs · BONCER · SOBERANOS →</div>
-        </div>
-        <div onclick="enterCalcON()" class="af-card">
-          <div style="width:48px;height:48px;background:rgba(30,39,243,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1E27F3" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg></div>
-          <div class="af-card-title">Obligaciones Negociables</div>
-          <div class="af-card-desc">ONs hard dollar (MEP-CCL).</div>
-          <div class="af-card-footer">ONs · CORPORATIVOS →</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- ══════════════════ APP CALC ON ══════════════════ -->
 <div id="app-calc-on" style="display:none;min-height:100vh;background:var(--bg);flex-direction:column;">
   <!-- HEADER CON TABS -->
-  <div style="height:52px;display:flex;align-items:center;padding:0 24px;border-bottom:1px solid var(--border);background:var(--bg);gap:0;flex-shrink:0;position:sticky;top:0;z-index:50;">
-    <button onclick="backToCalcMenu()" style="padding:5px 13px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;margin-right:14px;" onmouseover="this.style.background='var(--accent)';this.style.color='#fff';" onmouseout="this.style.background='transparent';this.style.color='var(--text3)';">← Volver</button>
-    <span style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);margin-right:20px;">Obligaciones Negociables</span>
-    <div style="height:20px;width:1px;background:var(--border);margin-right:4px;"></div>
-    <div id="ons-tab-index" onclick="ons_switchTab('index')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);transition:all .15s;">Índice</div>
-    <div id="ons-tab-cal" onclick="ons_switchTab('cal')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;">Calendario</div>
-    <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+  <div style="height:52px;display:flex;align-items:center;padding:0 0;border-bottom:1px solid var(--border);background:var(--bg);gap:0;flex-shrink:0;position:sticky;top:0;z-index:50;">
+    <!-- Zona izquierda: ancho del sidebar con módulo tabs -->
+    <div style="width:230px;flex-shrink:0;display:flex;align-items:stretch;border-right:1px solid var(--border);height:100%;padding:0 10px;gap:0;">
+      <button onclick="backToLanding()" style="padding:3px 7px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:9px;cursor:pointer;font-family:var(--mono);transition:all .15s;align-self:center;margin-right:8px;flex-shrink:0;" onmouseover="this.style.background='var(--accent-light)';" onmouseout="this.style.background='transparent';">⌂</button>
+      <div style="display:flex;align-items:stretch;flex:1;gap:0;">
+        <div onclick="enterTest()" style="flex:1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;height:100%;transition:all .15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text3)'">Bonos</div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:default;color:var(--accent);border-bottom:2px solid var(--accent);height:100%;">ONs</div>
+      </div>
+    </div>
+    <!-- Zona centro: tabs Índice / Calendario -->
+    <div style="display:flex;align-items:stretch;padding:0 20px;gap:0;height:100%;">
+      <div id="ons-tab-index" onclick="ons_switchTab('index')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);transition:all .15s;">Índice</div>
+      <div id="ons-tab-cal" onclick="ons_switchTab('cal')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;">Calendario</div>
+    </div>
+    <!-- Zona derecha: controles -->
+    <div style="flex:1;"></div>
+    <div style="display:flex;align-items:center;gap:10px;padding-right:20px;">
       <div id="ons-px-dot" style="width:6px;height:6px;border-radius:50%;background:var(--red);box-shadow:0 0 5px var(--red);transition:all .3s;flex-shrink:0;"></div>
       <div id="ons-px-info" style="font-size:10px;font-family:var(--mono);color:var(--text3);">—</div>
       <button onclick="ons_fetchPrecios()" id="ons-px-btn"
@@ -1786,10 +1772,11 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
   <div class="sidebar">
     <div class="sb-head">
       <div class="sb-label">Índice de ONs</div>
-      <div id="sbStatus" style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text3);">
+      <div id="sbStatus" style="font-family:var(--mono);font-size:10px;color:var(--text3);display:flex;align-items:center;gap:6px;">
         <div class="spinner" style="width:11px;height:11px;border-width:1.5px;flex-shrink:0"></div>
         Cargando…
       </div>
+      <div id="sbPriceStatus" style="font-family:var(--mono);font-size:10px;color:var(--text3);display:none;margin-top:2px;"></div>
     </div>
     <div class="sb-search" id="sbSearch" style="display:none">
       <svg class="sb-search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -1961,19 +1948,29 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 <div id="app-rf" style="display:none;min-height:100vh;flex-direction:column;background:var(--bg);">
 
   <!-- Header sticky -->
-  <div style="height:52px;display:flex;align-items:center;padding:0 24px;border-bottom:1px solid var(--border);background:var(--bg);gap:0;flex-shrink:0;position:sticky;top:0;z-index:50;">
-    <button onclick="backToCalcMenu()" style="padding:5px 13px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;margin-right:14px;" onmouseover="this.style.background='var(--accent)';this.style.color='#fff';" onmouseout="this.style.background='transparent';this.style.color='var(--text3)';">← Volver</button>
-    <span style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);margin-right:16px;">Bonos &amp; Letras</span>
-    <div style="height:20px;width:1px;background:var(--border);margin-right:8px;"></div>
-    <div id="rf-tb-dot" style="width:6px;height:6px;border-radius:50%;background:var(--red);box-shadow:0 0 5px var(--red);transition:all .3s;flex-shrink:0;"></div>
-    <div id="rf-tb-info" style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-left:8px;">—</div>
-    <div style="width:16px;flex-shrink:0;"></div>
-    <div id="rf-tab-index" onclick="rfSwitchTab('index')">Índice</div>
-    <div id="rf-tab-cal" onclick="rfSwitchTab('cal')">Calendario</div>
+  <div style="height:52px;display:flex;align-items:center;padding:0 0;border-bottom:1px solid var(--border);background:var(--bg);gap:0;flex-shrink:0;position:sticky;top:0;z-index:50;">
+    <!-- Zona izquierda: ancho del sidebar con módulo tabs -->
+    <div style="width:230px;flex-shrink:0;display:flex;align-items:stretch;border-right:1px solid var(--border);height:100%;padding:0 10px;gap:0;">
+      <button onclick="backToLanding()" style="padding:3px 7px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:9px;cursor:pointer;font-family:var(--mono);transition:all .15s;align-self:center;margin-right:8px;flex-shrink:0;" onmouseover="this.style.background='var(--accent-light)';" onmouseout="this.style.background='transparent';">⌂</button>
+      <div style="display:flex;align-items:stretch;flex:1;gap:0;">
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:default;color:var(--accent);border-bottom:2px solid var(--accent);height:100%;">Bonos</div>
+        <div onclick="enterCalcON()" style="flex:1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;height:100%;transition:all .15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text3)'">ONs</div>
+      </div>
+    </div>
+    <!-- Zona centro: tabs Índice / Calendario -->
+    <div style="display:flex;align-items:stretch;padding:0 20px;gap:0;height:100%;">
+      <div id="rf-tab-index" onclick="rfSwitchTab('index')">Índice</div>
+      <div id="rf-tab-cal" onclick="rfSwitchTab('cal')">Calendario</div>
+    </div>
+    <!-- Zona derecha: controles -->
     <div style="flex:1;"></div>
-    <button style="padding:5px 13px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--mono);transition:all .15s;" onclick="rfLoad()" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='transparent'">↻ Actualizar</button>
-    <button style="padding:5px 13px;border-radius:6px;border:1px solid var(--yellow);background:transparent;color:var(--yellow);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--mono);transition:all .15s;opacity:.7;" onclick="rfRefreshBundle()" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.7'" title="Actualizar index y cashflows nuevos">⬆ Refresh index</button>
-    <button onclick="toggleTheme()" class="theme-btn-small"><span class="theme-btn-icon">☀</span><span class="theme-btn-lbl">Modo Claro</span></button>
+    <div style="display:flex;align-items:center;gap:10px;padding-right:20px;">
+      <div id="rf-tb-dot" style="width:6px;height:6px;border-radius:50%;background:var(--red);box-shadow:0 0 5px var(--red);transition:all .3s;flex-shrink:0;"></div>
+      <div id="rf-tb-info" style="font-size:10px;font-family:var(--mono);color:var(--text3);">—</div>
+      <button style="padding:5px 13px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--mono);transition:all .15s;" onclick="rfLoad()" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='transparent'">↻ Actualizar precios</button>
+      <button style="padding:5px 13px;border-radius:6px;border:1px solid var(--yellow);background:transparent;color:var(--yellow);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--mono);transition:all .15s;opacity:.7;" onclick="rfRefreshBundle()" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.7'" title="Actualizar index y cashflows nuevos">⬆ Refresh index</button>
+      <button onclick="toggleTheme()" class="theme-btn-small"><span class="theme-btn-icon">☀</span><span class="theme-btn-lbl">Modo Claro</span></button>
+    </div>
   </div>
 
   <!-- Contenido: sidebar + panel -->
@@ -1983,10 +1980,11 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
     <div class="sidebar" style="width:230px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
       <div class="sb-head">
         <div class="sb-label">Instrumentos</div>
-        <div id="rf-sb-status" style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:8px;">
+        <div id="rf-sb-status" style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:4px;">
           <span class="spinner" style="width:11px;height:11px;border-width:1.5px;display:inline-block;flex-shrink:0;"></span>
           Cargando…
         </div>
+        <div id="rf-sb-price-status" style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:8px;display:none;"></div>
         <div class="sb-search">
           <svg class="sb-search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
             <circle cx="6.5" cy="6.5" r="4"/><path d="M11 11l2.5 2.5"/>
@@ -2346,7 +2344,8 @@ function calcLecap(cf, precioDirty, fechaLiqStr){
   const dur=mesesRest/12;
   const md=dur/(1+tem/100);
   const conv=(dur*dur)/Math.pow(1+tem/100,2);
-  return{flujoVto,vt,precioLimpio,paridad,tea,tem,tna,diasReal,dur,md,conv,fechaVto:cf.fechaPago,temOrig};
+  const rendPeriodo=(flujoVto/precioDirty-1)*100;
+  return{flujoVto,vt,precioLimpio,paridad,tea,tem,tna,rendPeriodo,diasReal,dur,md,conv,fechaVto:cf.fechaPago,temOrig};
 }
 
 // Cruzar bundle + precios → filas calculadas para un tipo
@@ -2388,7 +2387,8 @@ function calcBoncer(precio, fechaLiqStr, fechaVtoStr, cerInicial, fechaCerManual
   const duration    = diasReal/365;
   const modDuration = duration/(1+tea/100);
   const conv        = Math.pow(diasReal/365,2);
-  return{ vt,paridad,tea,tna,duration,md:modDuration,conv,diasReal,cerCorriente,fechaCer,cerInicial,fechaVto:fechaVtoStr };
+  const tem=(Math.pow(1+tea/100,1/12)-1)*100;
+  return{ vt,paridad,tea,tem,tna,duration,md:modDuration,conv,diasReal,cerCorriente,fechaCer,cerInicial,fechaVto:fechaVtoStr };
 }
 
 // ── Parser CSV boncer amortizable ──────────────────────────────────
@@ -2441,9 +2441,11 @@ function calcDolarLinked(precioPesos, fechaLiqStr, fechaVtoStr, tc) {
   const duration = dias / 365;
   const md       = duration / (1 + teaDec);
   const conv     = duration * duration;
+  const tem=(Math.pow(1+teaDec,1/12)-1)*100;
   return {
     dirtyUsd,
     tea,
+    tem,
     tna,
     tir:      tea,   // alias para compatibilidad con colorTNA / gráfico (usa calc.tna)
     duration,
@@ -2557,8 +2559,9 @@ function calcBoncerAmort(csvText, precioSucio, fechaLiqStr, cerInicial, fechaCer
   const diasReal=flujos[flujos.length-1].dias;
   const fechaVto=futuros[futuros.length-1].fecha;
 
+  const tem=(Math.pow(1+tea/100,1/12)-1)*100;
   return{
-    tea,tna,duration,md,conv,paridad,vt,intCorrido,precioLimpio,
+    tea,tem,tna,duration,md,conv,paridad,vt,intCorrido,precioLimpio,
     diasReal,fechaVto,vrActual,cerActual,cerPrimerFuturo,ratioActualiz,
     cerCorriente,cerInicial,fechaCer,flujos,precioSucio,
   };
@@ -2671,8 +2674,9 @@ function calcSoberano(csvText, precioSucio, fechaLiqStr){
   const fechaVto=futuros[futuros.length-1]?.fecha||'';
   const nextPayment=futuros[0]?.fecha||'';
 
+  const tem=(Math.pow(1+tea/100,1/12)-1)*100;
   return{
-    tea,tna,duration,md,conv,paridad,vt,intCorrido,precioLimpio,
+    tea,tem,tna,duration,md,conv,paridad,vt,intCorrido,precioLimpio,
     diasReal,fechaVto,nextPayment,vrActual,flujos,precioSucio,
   };
 }
@@ -2784,7 +2788,7 @@ function calcBopreal(csvText, precioSucio, fechaLiqStr){
   const nextPayment  = futuros[0]?.fecha || '';
 
   return {
-    tea, tna, duration, md, conv, paridad, vt, intCorrido, precioLimpio,
+    tea, tem:(Math.pow(1+tea/100,1/12)-1)*100, tna, duration, md, conv, paridad, vt, intCorrido, precioLimpio,
     diasReal, fechaVto, nextPayment, vrActual, flujos, precioSucio, tasaCupon,
   };
 }
@@ -2890,7 +2894,7 @@ function calcFixedRate(csvText, precioDirty, fechaLiqStr){
   const nextPayment = futuros[0]?.fecha||'';
 
   return{
-    tna, tea, duration, md, conv, paridad, vt, intCorrido, precioLimpio, precioDirty,
+    tna, tea, tem:(Math.pow(1+tea/100,1/12)-1)*100, duration, md, conv, paridad, vt, intCorrido, precioLimpio, precioDirty,
     diasReal, fechaVto, nextPayment, vrActual, flujos,
   };
 }
@@ -3174,8 +3178,8 @@ function cruzarDual(preciosMap, fechaLiq){
       calcTamar:calcT, calcFija, ganador,
       // Para compatibilidad con renderCurva (usa calc.tna y calc.md)
       calc: ganador==='tamar'
-        ? (calcT?{tna:calcT.tna,md:calcT.md||0,tipo:'tamar'}:null)
-        : (calcFija ?{tna:calcFija.tna, md:calcFija.md||0, tipo:'fija'}:null),
+        ? (calcT?{tna:calcT.tna,tea:calcT.tea,tem:calcT.tem,md:calcT.md||0,dur:calcT.duration??calcT.md,diasReal:calcT.diasReal,tipo:'tamar'}:null)
+        : (calcFija ?{tna:calcFija.tna,tea:calcFija.tea,tem:calcFija.tem,md:calcFija.md||0,dur:calcFija.duration??calcFija.md,diasReal:calcFija.diasReal,tipo:'fija'}:null),
     });
   }
   return rows;
@@ -3273,6 +3277,7 @@ function getCols(tipo){
     {key:'usd',     label:'Precio USD',left:false, sort:r=>r.calc?.dirtyUsd??-Infinity,    fmt:r=>r.calc?fmtN(r.calc.dirtyUsd,2):'—'},
     {key:'tna',     label:'TNA',       left:false, sort:r=>r.calc?.tna??-Infinity,         fmt:r=>r.calc?fmtPct(r.calc.tna,2):'—', colorTNA:true},
     {key:'tea',     label:'TEA',       left:false, sort:r=>r.calc?.tea??-Infinity,         fmt:r=>r.calc?fmtPct(r.calc.tea,2):'—'},
+    {key:'tem',    label:'TEM',      left:false, sort:r=>r.calc?.tem??-Infinity,            fmt:r=>r.calc?fmtPct(r.calc.tem,2):'—'},
     {key:'md',      label:'MD',        left:false, sort:r=>r.calc?.md??-Infinity,          fmt:r=>r.calc?fmtN(r.calc.md,2):'—'},
     {key:'dur',     label:'Duration',  left:false, sort:r=>r.calc?.duration??-Infinity,    fmt:r=>r.calc?fmtN(r.calc.duration,2):'—'},
     {key:'venc',    label:'Venc.',     left:false, sort:r=>r.calc?.fechaVto??'',           fmt:r=>r.calc?fmtDateShort(r.calc.fechaVto):'—'},
@@ -3285,6 +3290,7 @@ function getCols(tipo){
     {key:'precio', label:'Precio',   left:false, sort:r=>r.precio||0,                      fmt:r=>fmtN(r.precio,2)},
     {key:'tna',    label:'TNA',      left:false, sort:r=>r.calc?.tna??-Infinity,            fmt:r=>r.calc?fmtPct(r.calc.tna,2):'—', colorTNA:true},
     {key:'tea',    label:'TEA',  left:false, sort:r=>r.calc?.tea??-Infinity,            fmt:r=>r.calc?fmtPct(r.calc.tea,2):'—'},
+    {key:'tem',    label:'TEM',      left:false, sort:r=>r.calc?.tem??-Infinity,            fmt:r=>r.calc?fmtPct(r.calc.tem,2):'—'},
     {key:'par',    label:'Paridad',  left:false, sort:r=>r.calc?.paridad??-Infinity,        fmt:r=>r.calc?fmtPct(r.calc.paridad,2):'—'},
     {key:'vt',     label:'VT',       left:false, sort:r=>r.calc?.vt??-Infinity,             fmt:r=>r.calc?fmtN(r.calc.vt,2):'—'},
     {key:'pl',     label:'Px Limpio',left:false, sort:r=>r.calc?.precioLimpio??-Infinity,   fmt:r=>r.calc?fmtN(r.calc.precioLimpio,2):'—'},
@@ -3301,6 +3307,7 @@ function getCols(tipo){
     {key:'precio', label:'Precio',    left:false, sort:r=>r.precio||0,                       fmt:r=>fmtN(r.precio,2)},
     {key:'tna',    label:'TNA',       left:false, sort:r=>r.calc?.tna??-Infinity,            fmt:r=>r.calc?fmtPct(r.calc.tna,2):'—', colorTNA:true},
     {key:'tea',    label:'TEA',       left:false, sort:r=>r.calc?.tea??-Infinity,            fmt:r=>r.calc?fmtPct(r.calc.tea,2):'—'},
+    {key:'tem',    label:'TEM',      left:false, sort:r=>r.calc?.tem??-Infinity,            fmt:r=>r.calc?fmtPct(r.calc.tem,2):'—'},
     {key:'par',    label:'Paridad',   left:false, sort:r=>r.calc?.paridad??-Infinity,        fmt:r=>r.calc?fmtPct(r.calc.paridad,2):'—'},
     {key:'vt',     label:'VT',        left:false, sort:r=>r.calc?.vt??-Infinity,             fmt:r=>r.calc?fmtN(r.calc.vt,2):'—'},
     {key:'pl',     label:'Px Limpio', left:false, sort:r=>r.calc?.precioLimpio??-Infinity,   fmt:r=>r.calc?fmtN(r.calc.precioLimpio,2):'—'},
@@ -3320,6 +3327,7 @@ function getCols(tipo){
     {key:'precio', label:'Precio USD',  left:false, sort:r=>r.precio||0,                     fmt:r=>fmtN(r.precio,2)},
     {key:'tna',    label:'TNA',       left:false, sort:r=>r.calc?.tna??-Infinity,            fmt:r=>r.calc?fmtPct(r.calc.tna,2):'—', colorTNA:true},
     {key:'tea',    label:'TEA',       left:false, sort:r=>r.calc?.tea??-Infinity,            fmt:r=>r.calc?fmtPct(r.calc.tea,2):'—'},
+    {key:'tem',    label:'TEM',      left:false, sort:r=>r.calc?.tem??-Infinity,            fmt:r=>r.calc?fmtPct(r.calc.tem,2):'—'},
     {key:'par',    label:'Paridad',   left:false, sort:r=>r.calc?.paridad??-Infinity,        fmt:r=>r.calc?fmtPct(r.calc.paridad,2):'—'},
     {key:'vt',     label:'VT',        left:false, sort:r=>r.calc?.vt??-Infinity,             fmt:r=>r.calc?fmtN(r.calc.vt,2):'—'},
     {key:'pl',     label:'Px Limpio', left:false, sort:r=>r.calc?.precioLimpio??-Infinity,   fmt:r=>r.calc?fmtN(r.calc.precioLimpio,2):'—'},
@@ -3338,6 +3346,7 @@ function getCols(tipo){
     {key:'precio', label:'Precio',   left:false, sort:r=>r.precio||0,                      fmt:r=>fmtN(r.precio)},
     {key:'tna',    label:'TNA',      left:false, sort:r=>r.calc?.tna??-Infinity,            fmt:r=>r.calc?fmtPct(r.calc.tna,2):'—', colorTNA:true},
     {key:'tea',    label:'TEA',      left:false, sort:r=>r.calc?.tea??-Infinity,            fmt:r=>r.calc?fmtPct(r.calc.tea,2):'—'},
+    {key:'tem',    label:'TEM',      left:false, sort:r=>r.calc?.tem??-Infinity,            fmt:r=>r.calc?fmtPct(r.calc.tem,2):'—'},
     {key:'par',    label:'Paridad',  left:false, sort:r=>r.calc?.paridad??-Infinity,       fmt:r=>r.calc?fmtPct(r.calc.paridad,2):'—'},
     {key:'vt',     label:'VT',       left:false, sort:r=>r.calc?.vt??-Infinity,            fmt:r=>r.calc?fmtN(r.calc.vt,4):'—'},
     {key:'md',     label:'MD',       left:false, sort:r=>r.calc?.md??-Infinity,             fmt:r=>r.calc?fmtN(r.calc.md,4):'—'},
@@ -3354,6 +3363,7 @@ function getCols(tipo){
     {key:'tna',     label:'TNA',      left:false, sort:r=>r.calc?.tna??-Infinity,        fmt:r=>r.calc?fmtPct(r.calc.tna):'—'},
     {key:'tea',     label:'TEA',      left:false, sort:r=>r.calc?.tea??-Infinity,        fmt:r=>r.calc?fmtPct(r.calc.tea):'—'},
     {key:'tem',     label:'TEM',      left:false, sort:r=>r.calc?.tem??-Infinity,        fmt:r=>r.calc?fmtPct(r.calc.tem):'—'},
+    {key:'rendPer', label:'Rend. Per.',left:false, sort:r=>r.calc?.rendPeriodo??-Infinity, fmt:r=>r.calc?fmtPct(r.calc.rendPeriodo,2):'—'},
     {key:'par',     label:'Paridad',  left:false, sort:r=>r.calc?.paridad??-Infinity,    fmt:r=>r.calc?fmtPct(r.calc.paridad,2):'—'},
     {key:'vt',      label:'VT',       left:false, sort:r=>r.calc?.vt??-Infinity,         fmt:r=>r.calc?fmtN(r.calc.vt,4):'—'},
     {key:'md',      label:'MD',       left:false, sort:r=>r.calc?.md??-Infinity,         fmt:r=>r.calc?fmtN(r.calc.md,4):'—'},
@@ -3637,6 +3647,7 @@ function renderCurva(rows, cmpRows){
   });
 
   if(!allPts.length){
+    if(_chartInst){_chartInst.destroy();_chartInst=null;}
     document.getElementById('rf-curve-legend').innerHTML='<span style="font-size:9px;color:var(--text3);font-family:var(--mono);">Sin datos para graficar</span>';
     return;
   }
@@ -3828,9 +3839,11 @@ function renderCurva(rows, cmpRows){
       <div class="legend-item"><div class="legend-line" style="background:#0d9e6e;opacity:.8"></div>Tend. BONCAP/CER</div>
       <div class="legend-item"><div class="legend-dot" style="background:#0d9e6e"></div>BONCAP/CER</div>`;
   } else {
+    const hasDualesEnPts=_showDuales&&allPts.some(p=>p.tipo==='dual_tamar'||p.tipo==='dual_boncap'||p.tipo==='dual_boncer'||p.tipo==='duales');
     document.getElementById('rf-curve-legend').innerHTML=`
       <div class="legend-item"><div class="legend-line" style="background:#1E27F3"></div>Tendencia hoy</div>
       <div class="legend-item"><div class="legend-dot" style="background:#1E27F3"></div>${catLabel} <span style="color:var(--text3);font-size:9px;">(click para excluir)</span></div>
+      ${hasDualesEnPts?`<div class="legend-item"><div class="legend-dot" style="background:rgba(245,166,35,0.9)"></div>Duales</div>`:''}
       ${hasCmp?`<div class="legend-item"><div class="legend-line" style="background:#f59e0b;opacity:.8"></div>Tendencia ${_cmpDate}</div>
       <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>${catLabel} ${_cmpDate}</div>`:''}`;
   }
@@ -3878,6 +3891,12 @@ const RF_AXIS_DEFS = {
       {val:'tamarProm', label:'TAMAR Prom.'},
       {val:'margenReal',label:'Margen Real'},
     ],
+    lecap_boncap: [
+      {val:'tna',        label:'TIR TNA'},
+      {val:'tea',        label:'TIR TEA'},
+      {val:'tem',        label:'TIR TEM'},
+      {val:'rendPeriodo',label:'Rend. Período'},
+    ],
   },
   x: {
     default: [
@@ -3896,6 +3915,7 @@ function lcGetAxisVal(row, axis){
   if(axis==='tem')       return c.tem??NaN;
   if(axis==='tamarProm') return c.tamarPromTNA??NaN;
   if(axis==='margenReal')return c.margenReal??NaN;
+  if(axis==='rendPeriodo')return c.rendPeriodo??NaN;
   if(axis==='md')        return c.md??NaN;
   if(axis==='dur')       return (c.duration??c.dur)??NaN;
   if(axis==='dias')      return c.diasReal??NaN;
@@ -3903,13 +3923,14 @@ function lcGetAxisVal(row, axis){
 }
 
 function lcAxisLabel(axis){
-  const all=[...RF_AXIS_DEFS.y.default,...RF_AXIS_DEFS.y.tamar,...RF_AXIS_DEFS.x.default];
+  const all=[...RF_AXIS_DEFS.y.default,...RF_AXIS_DEFS.y.tamar,...RF_AXIS_DEFS.y.lecap_boncap,...RF_AXIS_DEFS.x.default];
   return all.find(a=>a.val===axis)?.label||axis;
 }
 
 window.lcUpdateAxisSelectors = function(){
   const isTamar = _catActiva==='tamar'||_catActiva==='dual_tamar'||_catActiva==='duales';
-  const yOpts   = isTamar ? RF_AXIS_DEFS.y.tamar : RF_AXIS_DEFS.y.default;
+  const isLecapBoncap = _catActiva==='lecap'||_catActiva==='boncap'||_catActiva==='dual_boncap';
+  const yOpts = isTamar ? RF_AXIS_DEFS.y.tamar : isLecapBoncap ? RF_AXIS_DEFS.y.lecap_boncap : RF_AXIS_DEFS.y.default;
   const xOpts   = RF_AXIS_DEFS.x.default;
 
   const selY = document.getElementById('rf-axis-y');
@@ -3934,7 +3955,7 @@ window.lcAxisChanged = function(){
   const selX = document.getElementById('rf-axis-x');
   if(selY) _chartAxisY = selY.value;
   if(selX) _chartAxisX = selX.value;
-  if(_chartInst) renderCurva(_rows, _cmpRows.length?_cmpRows:null);
+  if(_rows&&_rows.length) renderCurva(_rows, _cmpRows.length?_cmpRows:null);
 };
 
 window.lcSetCmp=function(mode){
@@ -4017,8 +4038,7 @@ function buildSidebar(){
   const nVigentes=totalInstr-nVencidos;
   const statusEl=document.getElementById('rf-sb-status');
   if(statusEl){
-    statusEl.innerHTML=`<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="var(--green)" stroke-width="2" style="flex-shrink:0"><path d="M3 8l3.5 3.5L13 5"/></svg>`
-      +`<span style="color:var(--green)">${nVigentes} instrumentos</span>`
+    statusEl.innerHTML=`<span style="color:var(--green)">${nVigentes} instrumentos</span>`
       +` · <span style="color:var(--text3)">${nVencidos} vencidos</span>`;
   }
 
@@ -4039,6 +4059,13 @@ function buildSidebar(){
       <path d="M4 2l4 4-4 4"/></svg><span>${label}</span><span class="cat-cnt">${tickers.length}</span>`;
     const items=document.createElement('div');items.className='cat-items'+(isOpen?' open':'');
     hdr.addEventListener('click',()=>{
+      // Si estamos en detalle, cerrar primero
+      if(_detTicker){
+        _detTicker=null;
+        document.querySelectorAll('.t-item').forEach(el=>el.classList.remove('active'));
+        document.getElementById('view-detalle').style.display='none';
+        document.getElementById('rf-view-tabla').style.display='flex';
+      }
       const nowOpen=!_catOpen[tipo];
       // Cerrar todas las demás categorías
       if(nowOpen){
@@ -4067,7 +4094,10 @@ function buildSidebar(){
       item.className='t-item'+(_detTicker===ticker?' active':'');
       item.dataset.ticker=ticker;item.dataset.tipo=tipo;
       item.innerHTML=`<span class="t-name">${displayName(ticker)}</span><span class="t-extra">${venc}</span>`;
-      item.addEventListener('click',e=>{e.stopPropagation();lcOpenDetail(ticker);});
+      item.addEventListener('click',e=>{
+        e.stopPropagation();
+        if(_detTicker===ticker){ lcCloseDetail(); } else { lcOpenDetail(ticker); }
+      });
       items.appendChild(item);
     }
     wrap.appendChild(hdr);wrap.appendChild(items);sb.appendChild(wrap);
@@ -4584,11 +4614,12 @@ function buildDetBody(row,fechaLiq){
       // Ranking + comparativa
       // Reutilizar el mismo buildRanking/buildComparativa de LECAP
       const RANK_METRICAS_B=[
-        {key:'tea',      label:'TEA',      get:r=>r.calc?.tea,      fmt:v=>fmtPct(v,2)},
-        {key:'tna',      label:'TNA',      get:r=>r.calc?.tna,      fmt:v=>fmtPct(v,2)},
-        {key:'paridad',  label:'Paridad',  get:r=>r.calc?.paridad,  fmt:v=>fmtPct(v,2)},
-        {key:'md',       label:'MD',       get:r=>r.calc?.md,       fmt:v=>fmtN(v,4)},
-        {key:'vol',      label:'Volumen',  get:r=>r.vol,            fmt:v=>fmtN(v,0)},
+        {key:'tea',        label:'TEA',        get:r=>r.calc?.tea,         fmt:v=>fmtPct(v,2)},
+        {key:'tna',        label:'TNA',        get:r=>r.calc?.tna,         fmt:v=>fmtPct(v,2)},
+        {key:'rendPeriodo',label:'Rend. Per.', get:r=>r.calc?.rendPeriodo, fmt:v=>fmtPct(v,2)},
+        {key:'paridad',    label:'Paridad',    get:r=>r.calc?.paridad,     fmt:v=>fmtPct(v,2)},
+        {key:'md',         label:'MD',         get:r=>r.calc?.md,          fmt:v=>fmtN(v,4)},
+        {key:'vol',        label:'Volumen',    get:r=>r.vol,               fmt:v=>fmtN(v,0)},
       ];
       let _rankMetricaB='tea';
       const rankCardB=document.createElement('div');
@@ -4644,11 +4675,12 @@ function buildDetBody(row,fechaLiq){
       const compWrapB=document.createElement('div');
       compWrapB.style.cssText='background:var(--bg);border:1px solid var(--border);border-radius:10px;overflow:hidden;';
       const METRICAS_B=[
-        {key:'tea',     label:'TEA',     get:r=>r.calc?.tea},
-        {key:'tna',     label:'TNA',     get:r=>r.calc?.tna},
-        {key:'paridad', label:'Paridad', get:r=>r.calc?.paridad},
-        {key:'md',      label:'MD',      get:r=>r.calc?.md},
-        {key:'vol',     label:'Volumen', get:r=>r.vol},
+        {key:'tea',        label:'TEA',        get:r=>r.calc?.tea},
+        {key:'tna',        label:'TNA',        get:r=>r.calc?.tna},
+        {key:'rendPeriodo',label:'Rend. Per.', get:r=>r.calc?.rendPeriodo},
+        {key:'paridad',    label:'Paridad',    get:r=>r.calc?.paridad},
+        {key:'md',         label:'MD',         get:r=>r.calc?.md},
+        {key:'vol',        label:'Volumen',    get:r=>r.vol},
       ];
       let _metricaActivaB='tea';
       function buildComparativaB(){
@@ -5343,14 +5375,15 @@ function buildDetBody(row,fechaLiq){
 
     // Card ranking — con selector de métrica
     const RANK_METRICAS=[
-      {key:'tna',      label:'TNA',      get:r=>r.calc?.tna,      fmt:v=>fmtPct(v,2), isPct:true},
-      {key:'tea',      label:'TEA',      get:r=>r.calc?.tea,      fmt:v=>fmtPct(v,2), isPct:true},
-      {key:'tem',      label:'TEM',      get:r=>r.calc?.tem,      fmt:v=>fmtPct(v,4), isPct:true},
-      {key:'paridad',  label:'Paridad',  get:r=>r.calc?.paridad,  fmt:v=>fmtPct(v,2), isPct:true},
-      {key:'md',       label:'MD',       get:r=>r.calc?.md,       fmt:v=>fmtN(v,4),   isPct:false},
-      {key:'duration', label:'Duration', get:r=>r.calc?.dur,      fmt:v=>fmtN(v,4),   isPct:false},
-      {key:'conv',     label:'Conv.',    get:r=>r.calc?.conv,     fmt:v=>fmtN(v,4),   isPct:false},
-      {key:'vol',      label:'Volumen',  get:r=>r.vol,            fmt:v=>fmtN(v,0),   isPct:false},
+      {key:'tna',        label:'TNA',          get:r=>r.calc?.tna,          fmt:v=>fmtPct(v,2), isPct:true},
+      {key:'tea',        label:'TEA',          get:r=>r.calc?.tea,          fmt:v=>fmtPct(v,2), isPct:true},
+      {key:'tem',        label:'TEM',          get:r=>r.calc?.tem,          fmt:v=>fmtPct(v,4), isPct:true},
+      {key:'rendPeriodo',label:'Rend. Per.',   get:r=>r.calc?.rendPeriodo,  fmt:v=>fmtPct(v,2), isPct:true},
+      {key:'paridad',    label:'Paridad',      get:r=>r.calc?.paridad,      fmt:v=>fmtPct(v,2), isPct:true},
+      {key:'md',         label:'MD',           get:r=>r.calc?.md,           fmt:v=>fmtN(v,4),   isPct:false},
+      {key:'duration',   label:'Duration',     get:r=>r.calc?.dur,          fmt:v=>fmtN(v,4),   isPct:false},
+      {key:'conv',       label:'Conv.',        get:r=>r.calc?.conv,         fmt:v=>fmtN(v,4),   isPct:false},
+      {key:'vol',        label:'Volumen',      get:r=>r.vol,                fmt:v=>fmtN(v,0),   isPct:false},
     ];
     let _rankMetrica='tna';
     const rankCard=document.createElement('div');
@@ -5457,14 +5490,15 @@ function buildDetBody(row,fechaLiq){
 
     // Métricas disponibles
     const METRICAS=[
-      {key:'tna',      label:'TNA',        get:r=>r.calc?.tna},
-      {key:'tea',      label:'TEA',        get:r=>r.calc?.tea},
-      {key:'tem',      label:'TEM',        get:r=>r.calc?.tem},
-      {key:'paridad',  label:'Paridad',    get:r=>r.calc?.paridad},
-      {key:'md',       label:'MD',         get:r=>r.calc?.md},
-      {key:'duration', label:'Duration',   get:r=>r.calc?.dur},
-      {key:'conv',     label:'Convexidad', get:r=>r.calc?.conv},
-      {key:'vol',      label:'Volumen',    get:r=>r.vol},
+      {key:'tna',        label:'TNA',        get:r=>r.calc?.tna},
+      {key:'tea',        label:'TEA',        get:r=>r.calc?.tea},
+      {key:'tem',        label:'TEM',        get:r=>r.calc?.tem},
+      {key:'rendPeriodo',label:'Rend. Per.', get:r=>r.calc?.rendPeriodo},
+      {key:'paridad',    label:'Paridad',    get:r=>r.calc?.paridad},
+      {key:'md',         label:'MD',         get:r=>r.calc?.md},
+      {key:'duration',   label:'Duration',   get:r=>r.calc?.dur},
+      {key:'conv',       label:'Convexidad', get:r=>r.calc?.conv},
+      {key:'vol',        label:'Volumen',    get:r=>r.vol},
     ];
     let _metricaActiva='tna';
 
@@ -7049,8 +7083,31 @@ window.rfLoad=async function(){
       console.warn('[data912]',e.message);
     }
     const ms1=Math.round(performance.now()-t1);
-    document.getElementById('rf-tb-info').textContent=`${nPx} precios vivos · Worker ${ms0}ms · data912 ${ms1}ms${d912Err?` ⚠${d912Err}`:''}`;
+    document.getElementById('rf-tb-info').textContent=`Conectado a BYMA · lag ~2hs${d912Err?` ⚠`:''}`;
     setDot('ok');
+    // Contar instrumentos con/sin precio en el sidebar
+    if(_bundle){
+      const allT=_bundle._index||Object.keys(_bundle).filter(k=>!k.startsWith('_'));
+      const hoyLiq=defaultLiq();
+      const vigentes=allT.filter(t=>{const m=(_bundle._meta||{})[t]?.maturity;return !m||m>hoyLiq;});
+      const conPrecio=vigentes.filter(t=>{
+        const tipo=((_bundle._tipos||{})[t]||'').toLowerCase();
+        const tu=t.toUpperCase();
+        let lk;
+        if(tipo==='soberano')         lk=tu+'D';
+        else if(tipo==='bopreal')     lk=BOPREAL_USD[tu]||tu;
+        else if(tipo==='fixed_rate')  lk=FIXED_RATE_PX_MAP[tu]||tu;
+        else if(tipo==='dual_boncap'||tipo==='dual_boncer') lk=tu.replace(/_F$/,'');
+        else                          lk=tu;
+        return _precios[lk]||_precios[tu]||_precios[t]||null;
+      }).length;
+      const sinPrecio=vigentes.length-conPrecio;
+      const pxEl=document.getElementById('rf-sb-price-status');
+      if(pxEl){
+        pxEl.style.display='';
+        pxEl.innerHTML=`<span style="color:var(--green)">${conPrecio} con precio</span> · <span style="color:var(--text3)">${sinPrecio} sin precio</span>`;
+      }
+    }
 
     // 3. CER + USD + Feriados en paralelo — silencioso si falla
     const añoHoy=new Date().getFullYear();
@@ -7079,15 +7136,12 @@ window.rfLoad=async function(){
     if(resCer.status==='fulfilled'&&resCer.value){
       const cerJson=resCer.value;
       _cerDatos=cerJson.datos||{};
-      const ult=cerJson.ultimaFecha, val=cerJson.ultimoValor;
-      if(ult&&val) document.getElementById('rf-tb-info').textContent+=` · CER ${ult}: ${fmtN(val,4)}`;
     }
     if(resUsd.status==='fulfilled'&&resUsd.value){
       const usdJson=resUsd.value;
       _tcUsd=usdJson.ultimoValor||null;
-      window._tcUsd=_tcUsd;  // exponer al scope global para debug y funciones window.*
+      window._tcUsd=_tcUsd;
       window._tcUsdFecha=usdJson.ultimaFecha||'';
-      if(_tcUsd) document.getElementById('rf-tb-info').textContent+=` · TC USD ${window._tcUsdFecha}: ${fmtN(_tcUsd,2)}`;
       tcUpdateChip();
     }
     _feriados=new Set();
@@ -9016,26 +9070,19 @@ function enterExcel(){
 }
 function backToLanding(){
   ['app','app-equity','app-balances','app-balances-menu','app-excel',
-   'app-rf','app-informes','app-calc-menu','app-calc-on','legal-footer'
+   'app-rf','app-informes','app-calc-on','legal-footer'
   ].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   document.getElementById('landing').style.display='flex';
   if(window._secResetState) window._secResetState();
 }
-function enterCalcMenu(){
-  document.getElementById('landing').style.display='none';
-  document.getElementById('app-calc-menu').style.display='flex';
-}
+// enterCalcMenu eliminado — acceso directo desde landing
 function enterCalcON(){
-  document.getElementById('app-calc-menu').style.display='none';
+  document.getElementById('landing').style.display='none';
+  ['app-rf','app-informes'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   document.getElementById('app-calc-on').style.display='flex';
   if(window.ons_init) window.ons_init();
 }
-function backToCalcMenu(){
-  ['app-rf','app-calc-on'].forEach(id=>{
-    const el=document.getElementById(id);if(el)el.style.display='none';
-  });
-  document.getElementById('app-calc-menu').style.display='flex';
-}
+// backToCalcMenu eliminado — usar backToLanding()
 function enterInformes(){
   document.getElementById('landing').style.display='none';
   const el=document.getElementById('app-informes');
@@ -9222,7 +9269,7 @@ function enterInformes(){
 
 function enterTest(){
   document.getElementById('landing').style.display='none';
-  document.getElementById('app-calc-menu').style.display='none';
+  document.getElementById('app-calc-on').style.display='none';
   const el=document.getElementById('app-rf');
   el.style.display='flex';
   el.style.flexDirection='column';
@@ -15617,11 +15664,7 @@ async function ons_initFromWorker() {
     }
 
     // UI — status OK
-    document.getElementById('sbStatus').innerHTML = `
-      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="var(--green)" stroke-width="2" style="flex-shrink:0">
-        <path d="M3 8l3.5 3.5L13 5"/>
-      </svg>
-      <span style="color:var(--green)">${vigentes.length} vigentes · <span style="color:var(--text3)">${vencidas.length} vencidas</span></span>`;
+    document.getElementById('sbStatus').innerHTML = `<span style="color:var(--green)">${vigentes.length} vigentes</span> · <span style="color:var(--text3)">${vencidas.length} vencidas</span>`;
     const _pill = document.getElementById('pillStatus');
     if (_pill) { _pill.textContent = `${vigentes.length} ONs`; _pill.className = 'pill pill-green'; }
 
@@ -15635,11 +15678,7 @@ async function ons_initFromWorker() {
     ons_fetchPrecios();
 
   } catch(e) {
-    document.getElementById('sbStatus').innerHTML = `
-      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="var(--red)" stroke-width="2" style="flex-shrink:0">
-        <circle cx="8" cy="8" r="7"/><path d="M8 5v3M8 11h.01"/>
-      </svg>
-      <span style="color:var(--red)">Error: ${e.message}</span>`;
+    document.getElementById('sbStatus').innerHTML = `<span style="color:var(--red)">Error: ${e.message}</span>`;
     document.getElementById('sbScroll').innerHTML =
       `<div class="sb-msg">No se pudo cargar el índice.<br>${e.message}</div>`;
   }
@@ -15686,7 +15725,7 @@ function ons_renderSidebar(filter = '') {
     const sectorId = 'sec-' + sector.replace(/[^a-zA-Z0-9]/g,'-');
     html += `
       <div class="sector-wrap">
-        <div class="sector-header" onclick="ons_toggleEl('${sectorId}',this)">
+        <div class="sector-header" onclick="ons_toggleEl('${sectorId}',this);ons_filterBySector('${sector.replace(/'/g,"\\'")}',this)">
           <div class="sector-dot" style="background:${color};box-shadow:0 0 5px ${color}40"></div>
           <span class="s-name">${sector}</span>
           <span class="s-cnt">${filtered.length}</span>
@@ -15698,7 +15737,7 @@ function ons_renderSidebar(filter = '') {
       const empId = 'emp-' + (sector+empresa).replace(/[^a-zA-Z0-9]/g,'-');
       html += `
         <div class="empresa-wrap">
-          <div class="empresa-header" onclick="ons_toggleEl('${empId}',this)">
+          <div class="empresa-header" onclick="ons_toggleEl('${empId}',this);ons_filterByEmpresa('${sector.replace(/'/g,"\\'")}','${empresa.replace(/'/g,"\\'")}',this)">
             <span class="emp-name">${empresa}</span>
             <span class="emp-cnt">${ons.length}</span>
             <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px"><path d="M6 4l4 4-4 4"/></svg>
@@ -15770,6 +15809,75 @@ function ons_toggleEl(id, header) {
 
 // ─── Tabla Comparativa ────────────────────────────────────────────────────────
 // ─── Filtros tabla comparativa ────────────────────────────────────────────────
+// ─── Filtrado desde sidebar ───────────────────────────────────────────────────
+function ons_filterBySector(sector, headerEl) {
+  // Si estamos en el view puntual, volver a la lista
+  if (document.getElementById('view-on').style.display !== 'none') {
+    document.getElementById('view-tabla').style.display = '';
+    document.getElementById('view-on').style.display    = 'none';
+    onsState.selected = null;
+    document.querySelectorAll('.on-item,.on-item-sub').forEach(el => el.classList.remove('active'));
+  }
+  const sel = document.getElementById('filterSector');
+  if (!sel) return;
+  // Toggle: si ya está activo, volver al general
+  const isSame = sel.value === sector;
+  // Limpiar activos previos
+  document.querySelectorAll('#app-calc-on .sector-header.active').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('#app-calc-on .empresa-header.active').forEach(el => el.classList.remove('active'));
+  if (isSame) {
+    sel.value = '';
+  } else {
+    sel.value = sector;
+    headerEl.classList.add('active');
+  }
+  ons_onFilterSector();
+  // Scroll tabla al tope
+  const tbl = document.getElementById('ons-comp-table-wrap');
+  if (tbl) tbl.scrollTop = 0;
+}
+
+function ons_filterByEmpresa(sector, empresa, headerEl) {
+  // Si estamos en el view puntual, volver a la lista
+  if (document.getElementById('view-on').style.display !== 'none') {
+    document.getElementById('view-tabla').style.display = '';
+    document.getElementById('view-on').style.display    = 'none';
+    onsState.selected = null;
+    document.querySelectorAll('.on-item,.on-item-sub').forEach(el => el.classList.remove('active'));
+  }
+  const selS = document.getElementById('filterSector');
+  const selE = document.getElementById('filterEmpresa');
+  if (!selS || !selE) return;
+  // Toggle: si ya está activo, volver al sector
+  const isSame = selS.value === sector && selE.value === empresa;
+  // Limpiar activos previos
+  document.querySelectorAll('#app-calc-on .empresa-header.active').forEach(el => el.classList.remove('active'));
+  // Asegurar sector seteado
+  selS.value = sector;
+  // Repoblar empresas del sector
+  const empresas = [...new Set((onsState.grouped[sector]||[]).map(o => o.empresa))].sort();
+  selE.innerHTML = '<option value="">Todas</option>';
+  empresas.forEach(e => selE.innerHTML += `<option value="${e}">${e}</option>`);
+  selE.style.display = '';
+  document.getElementById('divEmpresa').style.display = '';
+  document.getElementById('lblEmpresa').style.display = '';
+  if (isSame) {
+    selE.value = '';
+    // Marcar sector activo
+    document.querySelectorAll('#app-calc-on .sector-header.active').forEach(el => el.classList.remove('active'));
+    const sectorId = 'sec-' + sector.replace(/[^a-zA-Z0-9]/g,'-');
+    document.querySelector(`[onclick*="${sectorId}"]`)?.classList.add('active');
+  } else {
+    selE.value = empresa;
+    headerEl.classList.add('active');
+    // Marcar sector activo también
+    document.querySelectorAll('#app-calc-on .sector-header.active').forEach(el => el.classList.remove('active'));
+  }
+  ons_onFilterChange();
+  const tbl = document.getElementById('ons-comp-table-wrap');
+  if (tbl) tbl.scrollTop = 0;
+}
+
 function ons_populateFilterSector() {
   const sel = document.getElementById('filterSector');
   sel.innerHTML = '<option value="">Todos los sectores</option>';
@@ -16611,7 +16719,9 @@ window.ons_fetchPrecios = async function() {
 
     const ms = Math.round(performance.now() - t0);
     if(dot)  { dot.style.background='var(--green)'; dot.style.boxShadow='0 0 6px var(--green)'; }
-    if(info) info.textContent = `${nMatch} precios · ${nMiss} sin precio · ${ms}ms`;
+    if(info) info.textContent = `Conectado a BYMA · lag ~2hs`;
+    const priceStatus = document.getElementById('sbPriceStatus');
+    if(priceStatus){ priceStatus.style.display=''; priceStatus.innerHTML=`<span style="color:var(--green)">${nMatch} con precio</span> · <span style="color:var(--text3)">${nMiss} sin precio</span>`; }
 
     ons_renderCompTable();
     requestAnimationFrame(() => requestAnimationFrame(ons_renderChart));
@@ -16660,11 +16770,7 @@ window.ons_refreshBundle = async function() {
       onsState.grouped[s].push(on);
     }
 
-    document.getElementById('sbStatus').innerHTML = `
-      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="var(--green)" stroke-width="2" style="flex-shrink:0">
-        <path d="M3 8l3.5 3.5L13 5"/>
-      </svg>
-      <span style="color:var(--green)">${vigentes.length} vigentes · <span style="color:var(--text3)">${vencidas.length} vencidas · ${refreshed} · ${ms}ms</span></span>`;
+    document.getElementById('sbStatus').innerHTML = `<span style="color:var(--green)">${vigentes.length} vigentes</span> · <span style="color:var(--text3)">${vencidas.length} vencidas</span>`;
 
     ons_renderSidebar();
     ons_populateFilterSector();
@@ -16672,11 +16778,7 @@ window.ons_refreshBundle = async function() {
     requestAnimationFrame(() => requestAnimationFrame(ons_renderChart));
 
   } catch(e) {
-    document.getElementById('sbStatus').innerHTML = `
-      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="var(--red)" stroke-width="2" style="flex-shrink:0">
-        <circle cx="8" cy="8" r="7"/><path d="M8 5v3M8 11h.01"/>
-      </svg>
-      <span style="color:var(--red)">✗ ${e.message}</span>`;
+    document.getElementById('sbStatus').innerHTML = `<span style="color:var(--red)">Error: ${e.message}</span>`;
     console.error('[ons_refreshBundle]', e);
   }
 };
