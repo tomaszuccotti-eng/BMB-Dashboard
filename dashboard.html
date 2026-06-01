@@ -1747,6 +1747,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
     <div style="display:flex;align-items:stretch;padding:0 20px;gap:0;height:100%;">
       <div id="ons-tab-index" onclick="ons_switchTab('index')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);transition:all .15s;">Índice</div>
       <div id="ons-tab-cal" onclick="ons_switchTab('cal')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;">Calendario</div>
+      <div id="ons-tab-scoring" onclick="ons_switchTab('scoring')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;">Scoring</div>
     </div>
     <!-- Zona derecha: controles -->
     <div style="flex:1;"></div>
@@ -1908,6 +1909,13 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
   </div><!-- /view-ons-index -->
 
   <!-- VISTA CALENDARIO: full width, sin sidebar -->
+  <!-- VISTA: SCORING -->
+  <div id="view-ons-scoring" style="display:none;flex-direction:column;flex:1;overflow:hidden;height:calc(100vh - 52px);">
+    <div style="flex:1;overflow-y:auto;padding:28px 32px 60px;">
+      <div id="ons-scoring-content"></div>
+    </div>
+  </div>
+
   <div id="view-cal" style="display:none;flex-direction:column;flex:1;overflow:hidden;height:calc(100vh - 52px);">
     <div style="display:flex;align-items:center;gap:10px;padding:12px 20px;border-bottom:1px solid var(--border);flex-shrink:0;">
       <button id="ons-cal-prev" onclick="ons_calPrevMonth()" style="padding:4px 10px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:13px;cursor:pointer;">‹</button>
@@ -16022,27 +16030,211 @@ function ons_renderCompTable() {
 const ons_calState = { year: new Date().getFullYear(), month: new Date().getMonth() };
 
 function ons_switchTab(tab) {
-  const isIndex = tab === 'index';
-  // Tabs
-  document.getElementById('ons-tab-index').style.borderBottomColor = isIndex ? 'var(--accent)' : 'transparent';
-  document.getElementById('ons-tab-index').style.color = isIndex ? 'var(--accent)' : 'var(--text3)';
-  document.getElementById('ons-tab-cal').style.borderBottomColor = !isIndex ? 'var(--accent)' : 'transparent';
-  document.getElementById('ons-tab-cal').style.color = !isIndex ? 'var(--accent)' : 'var(--text3)';
+  const tabs = ['index','cal','scoring'];
+  // Tabs UI
+  tabs.forEach(t => {
+    const el = document.getElementById('ons-tab-'+t);
+    if (!el) return;
+    const active = t === tab;
+    el.style.borderBottomColor = active ? 'var(--accent)' : 'transparent';
+    el.style.color = active ? 'var(--accent)' : 'var(--text3)';
+  });
   // Vistas
-  const viewIndex = document.getElementById('view-ons-index');
-  const viewCal   = document.getElementById('view-cal');
-  if (isIndex) {
-    viewIndex.style.display = 'flex';
-    viewCal.style.display   = 'none';
-    // Re-renderizar gráfico porque estuvo oculto y perdió dimensiones
+  document.getElementById('view-ons-index').style.display   = tab==='index'   ? 'flex' : 'none';
+  document.getElementById('view-cal').style.display         = tab==='cal'     ? 'flex' : 'none';
+  document.getElementById('view-ons-scoring').style.display = tab==='scoring' ? 'flex' : 'none';
+
+  if (tab==='index') {
     requestAnimationFrame(function() { requestAnimationFrame(ons_renderChart); });
-  } else {
-    viewIndex.style.display = 'none';
-    viewCal.style.display   = 'flex';
+  } else if (tab==='cal') {
     ons_renderCalendar();
+  } else if (tab==='scoring') {
+    ons_renderScoring();
+  }}
+
+// ── Scoring ONs ───────────────────────────────────────────────────────────────
+const _onsScoring = { data: null, loading: false };
+
+async function ons_loadScoringData() {
+  if (_onsScoring.data) return _onsScoring.data;
+  if (_onsScoring.loading) return null;
+  _onsScoring.loading = true;
+  try {
+    const res = await fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vTG24q0SWcJ-Bxc171MibEHe5HepPR4ydhb7iVsUbyiytz4qJ8hvdn4fxCbgAiNhwdleSrYTgaXrQw7/pub?gid=0&single=true&output=csv', {cache:'no-store'});
+    const text = await res.text();
+    if (text.trim().startsWith('<')) throw new Error('Sheet no publicado o sin acceso');
+    const rows = parseCSV(text).map(r => { const out={}; Object.keys(r).forEach(k=>{out[k.trim()]=r[k];}); return out; });
+    // Deduplicar: quedarse con la fecha balance más reciente por ticker
+    const map = {};
+    rows.forEach(r => {
+      const t = (r['Ticker']||'').trim().toUpperCase();
+      const fb = (r['Fecha Balance']||'').trim();
+      if (!t || !fb) return;
+      const key = t + '|' + fb;
+      if (!map[key] || ons_parseDate(r['fecha_carga']) > ons_parseDate(map[key]['fecha_carga'])) map[key] = r;
+    });
+    const deduped = Object.values(map);
+    // Latest por ticker
+    const latest = {};
+    deduped.forEach(r => {
+      const t = (r['Ticker']||'').trim().toUpperCase();
+      if (!t) return;
+      if (!latest[t] || ons_parseDate(r['Fecha Balance']) > ons_parseDate(latest[t]['Fecha Balance'])) latest[t] = r;
+    });
+    _onsScoring.data = Object.values(latest);
+    return _onsScoring.data;
+  } catch(e) {
+    _onsScoring.loading = false;
+    throw e;
   }
 }
 
+async function ons_renderScoring() {
+  const con = document.getElementById('ons-scoring-content');
+  if (!con) return;
+
+  // Si ya tiene contenido renderizado no recargar
+  if (con.dataset.rendered === '1') return;
+
+  con.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:40px;color:var(--text3);font-family:var(--mono);font-size:11px;"><div class="spinner"></div>Cargando scoring…</div>`;
+
+  let scoringRows;
+  try {
+    scoringRows = await ons_loadScoringData();
+  } catch(e) {
+    con.innerHTML = `<div style="padding:40px;color:#f85149;font-family:var(--mono);font-size:11px;">Error al cargar scoring: ${e.message}</div>`;
+    return;
+  }
+
+  con.innerHTML = '';
+  con.dataset.rendered = '1';
+
+  // Construir mapa empresa → latest scoring row (match por nombre, case-insensitive)
+  const latestByEmpresa = {};
+  scoringRows.forEach(r => {
+    const emp = (r['Empresa']||'').trim().toLowerCase();
+    if (emp) latestByEmpresa[emp] = r;
+  });
+
+  function matchScore(empresaON) {
+    return latestByEmpresa[(empresaON||'').trim().toLowerCase()] || null;
+  }
+
+  // Agrupar ONs vigentes por sector → por empresa
+  const sectors = {};
+  for (const on of (onsState.ons||[])) {
+    const sec = on.sector?.toUpperCase() || 'OTROS';
+    if (!sectors[sec]) sectors[sec] = {};
+    if (!sectors[sec][on.empresa]) sectors[sec][on.empresa] = [];
+    sectors[sec][on.empresa].push(on);
+  }
+
+  // — Checker de match (temporal) ——————————————————————————————
+  const allEmpresas = [...new Set((onsState.ons||[]).map(o=>o.empresa))];
+  const matched = allEmpresas.filter(e => matchScore(e));
+  const unmatched = allEmpresas.filter(e => !matchScore(e));
+  const checkerDiv = document.createElement('div');
+  checkerDiv.style.cssText = 'background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:16px 20px;margin-bottom:28px;font-family:var(--mono);font-size:11px;';
+  checkerDiv.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;cursor:pointer;user-select:none;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+      <span style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);">🔍 Match checker (temporal)</span>
+      <span style="background:rgba(63,185,80,0.15);color:#3fb950;border:1px solid rgba(63,185,80,0.3);padding:2px 10px;border-radius:10px;font-weight:700;">${matched.length} match</span>
+      <span style="background:rgba(248,81,73,0.15);color:#f85149;border:1px solid rgba(248,81,73,0.3);padding:2px 10px;border-radius:10px;font-weight:700;">${unmatched.length} sin match</span>
+      <button onclick="event.stopPropagation();_onsScoring.data=null;_onsScoring.loading=false;document.getElementById('ons-scoring-content').dataset.rendered='';ons_renderScoring();" style="margin-left:auto;padding:2px 10px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:10px;cursor:pointer;font-family:var(--mono);">↻ Recargar</button>
+      <span style="color:var(--text3);font-size:10px;">▼</span>
+    </div>
+    <div style="display:none;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div>
+          <div style="color:#3fb950;font-weight:700;margin-bottom:6px;">✓ Con score</div>
+          ${matched.map(e=>`<div style="color:var(--text2);padding:2px 0;">${e}</div>`).join('')}
+        </div>
+        <div>
+          <div style="color:#f85149;font-weight:700;margin-bottom:6px;">✗ Sin score</div>
+          ${unmatched.map(e=>`<div style="color:var(--text3);padding:2px 0;">${e}</div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  con.appendChild(checkerDiv);
+
+  // — Tabla por sector ——————————————————————————————————————————
+  const ONS_RATIOS = [
+    {key:'Deuda N. / Patrimonio N.', short:'DN/PN'},
+    {key:'Deuda B. / Activo',        short:'DB/A'},
+    {key:'Deuda N. / EBITDA',        short:'DN/EBITDA'},
+    {key:'Ingresos Operativos / Deuda', short:'IO/D'},
+    {key:'Deuda Fin. CP / EBITDA',   short:'DCP/EBITDA'},
+  ];
+
+  function scoreColor(s){const v=parseFloat(s);if(isNaN(v))return'#4a5280';if(v>=7)return'#3fb950';if(v>=4)return'#d97706';return'#f85149';}
+  function scoreBg(s){const v=parseFloat(s);if(isNaN(v))return'rgba(74,82,128,0.12)';if(v>=7)return'rgba(63,185,80,0.12)';if(v>=4)return'rgba(217,119,6,0.12)';return'rgba(248,81,73,0.12)';}
+  function fmtR(v){const n=parseFloat(v);if(v===''||v===null||v===undefined||isNaN(n))return'—';return n.toFixed(2);}
+  function ratioColor(key,val){
+    const v=parseFloat(val);if(isNaN(v))return null;
+    const G='#3fb950',A='#d97706',R='#f85149';
+    if(key==='Deuda N. / Patrimonio N.')return v<=1.5?G:v<=2.5?A:R;
+    if(key==='Deuda B. / Activo')       return v<=30?G:v<=50?A:R;
+    if(key==='Deuda N. / EBITDA')       return v<=5?G:v<=10?A:R;
+    if(key==='Ingresos Operativos / Deuda')return v>10?G:v>5?A:R;
+    if(key==='Deuda Fin. CP / EBITDA')  return v<=0?G:v<=2?A:R;
+    return null;
+  }
+
+  const thS = 'padding:9px 12px;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border);font-family:var(--mono);white-space:nowrap;';
+  const tdS = (align,extra) => `padding:8px 12px;text-align:${align};font-family:var(--mono);font-size:11px;border-bottom:1px solid var(--border);white-space:nowrap;${extra||''}`;
+
+  Object.keys(sectors).sort().forEach(sec => {
+    const empresas = sectors[sec];
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'margin-bottom:28px;';
+    const nEmpresas = Object.keys(empresas).length;
+    const nONs = Object.values(empresas).reduce((a,b)=>a+b.length,0);
+    wrap.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+        <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-family:var(--mono);">${sec}</span>
+        <span style="font-size:10px;color:var(--text3);font-family:var(--mono);">${nEmpresas} empresa${nEmpresas!==1?'s':''} · ${nONs} ON${nONs!==1?'s':''}</span>
+      </div>`;
+
+    const card = document.createElement('div');
+    card.style.cssText = 'background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;';
+    const cols = ['Empresa','Score','Fecha Balance',...ONS_RATIOS.map(r=>r.short),'ONs vigentes'];
+    card.innerHTML = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">
+      <thead><tr>
+        <th style="${thS}text-align:left;">Empresa</th>
+        <th style="${thS}text-align:right;">Score</th>
+        <th style="${thS}text-align:right;">Ult. Balance</th>
+        ${ONS_RATIOS.map(r=>`<th style="${thS}text-align:right;">${r.short}</th>`).join('')}
+        <th style="${thS}text-align:right;">ONs</th>
+      </tr></thead>
+      <tbody>${Object.entries(empresas).sort(([a],[b])=>a.localeCompare(b)).map(([empresa, ons])=>{
+        const row = matchScore(empresa);
+        const sc = row ? parseFloat(row['Score']) : NaN;
+        const scC = row ? scoreColor(row['Score']) : 'var(--text3)';
+        const scB = row ? scoreBg(row['Score']) : 'transparent';
+        const fb  = row ? (row['Fecha Balance']||'').substring(0,10) : '—';
+        const rCells = ONS_RATIOS.map(rat=>{
+          const raw = row ? row[rat.key] : null;
+          const color = row ? ratioColor(rat.key, raw) : null;
+          return `<td style="${tdS('right', color?`color:${color};font-weight:600;`:'color:var(--text3);')}">${row?fmtR(raw):'—'}</td>`;
+        }).join('');
+        const nON = ons.length;
+        return `<tr onmouseover="this.style.background='rgba(30,39,243,0.05)'" onmouseout="this.style.background='transparent'">
+          <td style="${tdS('left','color:var(--text);font-weight:600;')}">${empresa}</td>
+          <td style="${tdS('right','')}">
+            ${row ? `<span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:var(--mono);color:${scC};background:${scB};border:1px solid ${scC}33;">${isNaN(sc)?'—':sc.toFixed(1)}</span>` : '<span style="color:var(--text3);">—</span>'}
+          </td>
+          <td style="${tdS('right','color:var(--text3);')}">${fb}</td>
+          ${rCells}
+          <td style="${tdS('right','color:var(--text3);')}">${nON}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>`;
+    wrap.appendChild(card);
+    con.appendChild(wrap);
+  });
+}
+
+function ons_parseDate(s){if(!s)return new Date(0);const d=new Date(s);return isNaN(d)?new Date(0):d;}
 function ons_calPrevMonth() {
   ons_calState.month--;
   if (ons_calState.month < 0) { ons_calState.month = 11; ons_calState.year--; }
