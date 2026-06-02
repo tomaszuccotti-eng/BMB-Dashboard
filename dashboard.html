@@ -7802,7 +7802,12 @@ function rfBuildHeatmaps() {
     const H = rect.height || 150;
     if (W < 10 || H < 10) return;
 
-    const items = rows.map(r => {
+    const HM_EXCLUDE = { fixed_rate: new Set(['TY30PP']) };
+    const exclude = HM_EXCLUDE[cat.id] || new Set();
+
+    const items = rows
+      .filter(r => !exclude.has(r.ticker.toUpperCase()))
+      .map(r => {
       const pxEntry  = getPrecio(r.ticker);
       const precio   = r.precio ?? pxEntry?.precio ?? NaN;
       const variacion = r.variacion ?? pxEntry?.variacion ?? null;
@@ -7812,6 +7817,12 @@ function rfBuildHeatmaps() {
     }).filter(r => r.monto > 0);
 
     if (!items.length) return;
+
+    // Floor: instrumentos sin vol real reciben al menos 5% del promedio de monto
+    const montoReal = items.filter(r => r.vol > 0).map(r => r.monto);
+    const avgMonto = montoReal.length ? montoReal.reduce((a,b)=>a+b,0)/montoReal.length : 1;
+    const floor = avgMonto * 0.05;
+    items.forEach(r => { if (r.vol === 0) r.monto = floor; });
 
     const root = d3.hierarchy({children: items}, d => d.children)
       .sum(d => d.monto)
