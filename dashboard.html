@@ -16116,8 +16116,52 @@ async function ons_renderScoring() {
     if (emp) latestByEmpresa[emp] = r;
   });
 
+  function ons_normalizeEmpresa(s) {
+    if (!s) return '';
+    // 1. Lowercase + quitar acentos
+    let n = s.toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/ñ/g, 'n');
+    // 2. Sacar sufijos legales (orden: más largo primero)
+    const sufijos = [
+      's\.a\.i\.c\.y\.f\.', 's\.a\.i\.c\.',
+      's\.a\.p\.e\.i\.', 's\.a\.p\.i\.',
+      's\.a\.u\.', 's\.c\.a\.', 's\.r\.l\.',
+      's\.a\.', 'saic', 'saicyf', 'sau', 'sca', 'srl',
+      'inc\.', 'ltd\.', 'llc\.', 'corp\.', 'co\.',
+      '\binc\b', '\bltd\b', '\bllc\b', '\bcorp\b',
+      '\bholding\b', '\bholdings\b', '\bgroup\b', '\bgrupo\b',
+      '\bcompania\b', '\bcia\b', '\bcia\.\b',
+      '\bsociedad anonima\b', '\bsociedad\b',
+    ];
+    sufijos.forEach(suf => { n = n.replace(new RegExp(suf, 'g'), ''); });
+    // 3. Sacar puntuación y espacios extra
+    n = n.replace(/[.,\-_()&/\\]/g, ' ').replace(/\s+/g, ' ').trim();
+    return n;
+  }
+
+  // Precalcular mapa normalizado
+  const latestByEmpresaNorm = {};
+  Object.entries(latestByEmpresa).forEach(([empLower, row]) => {
+    const norm = ons_normalizeEmpresa(empLower);
+    if (norm) latestByEmpresaNorm[norm] = row;
+  });
+
   function matchScore(empresaON) {
-    return latestByEmpresa[(empresaON||'').trim().toLowerCase()] || null;
+    // 1. Match exacto por nombre original
+    const direct = latestByEmpresa[(empresaON||'').trim().toLowerCase()];
+    if (direct) return direct;
+    // 2. Match normalizado
+    const normON = ons_normalizeEmpresa(empresaON);
+    if (!normON) return null;
+    // Exacto normalizado
+    if (latestByEmpresaNorm[normON]) return latestByEmpresaNorm[normON];
+    // Containment: el normalizado de la ON está contenido en el del Sheet, o viceversa
+    const entries = Object.entries(latestByEmpresaNorm);
+    for (const [normSheet, row] of entries) {
+      if (normSheet.includes(normON) || normON.includes(normSheet)) return row;
+    }
+    return null;
   }
 
   // Agrupar ONs vigentes por sector → por empresa
