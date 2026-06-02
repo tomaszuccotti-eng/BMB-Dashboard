@@ -7755,18 +7755,22 @@ const RF_HM_CATS = [
 ];
 
 function rfHmColor(pct) {
-  if (pct == null || isNaN(pct)) return '#2a2d4a';
-  const t = Math.max(-5, Math.min(5, pct)) / 5;
+  if (pct == null || isNaN(pct)) return '#1e2235';
+  // Escala ±1% — rango típico de variación diaria de bonos
+  const t = Math.max(-1, Math.min(1, pct)); // clamp ±1%
   if (t >= 0) {
-    const r = Math.round(20  - 5*t);
-    const g = Math.round(80  + 105*t);
-    const b = Math.round(60  - 20*t);
+    // 0% → verde oscuro neutro, +1% → verde brillante
+    const intensity = t; // 0→1
+    const r = Math.round(10  + 5*intensity);
+    const g = Math.round(80  + 110*intensity);
+    const b = Math.round(50  - 30*intensity);
     return `rgb(${r},${g},${b})`;
   } else {
-    const u = -t;
-    const r = Math.round(20  + 200*u);
-    const g = Math.round(80  - 60*u);
-    const b = Math.round(60  - 40*u);
+    // 0% → rojo oscuro neutro, -1% → rojo brillante
+    const intensity = -t; // 0→1
+    const r = Math.round(80  + 150*intensity);
+    const g = Math.round(20  - 10*intensity);
+    const b = Math.round(30  - 20*intensity);
     return `rgb(${r},${g},${b})`;
   }
 }
