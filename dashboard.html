@@ -3694,6 +3694,8 @@ function renderCurva(rows, cmpRows){
     const allYs=[...ys,...tYs],yPad=(Math.max(...allYs)-Math.min(...allYs))*0.18||1,xPad=(xMax-xMin)*0.12||0.02;
     return{xMin:xMin-xPad,xMax:xMax+xPad,yMin:Math.min(...allYs)-yPad,yMax:Math.max(...allYs)+yPad};
   }
+  function isSobLeyAR(ticker){ return ticker.toUpperCase().startsWith('A'); }
+
   function buildDs(){
     const ap=getAP(),ds=[];
     // Modo patas separadas para duales
@@ -3709,6 +3711,18 @@ function renderCurva(rows, cmpRows){
       ds.push({label:'TAMAR',data:ptsTamar,backgroundColor:'#1E27F3',borderColor:'#1E27F3',
         pointRadius:5,pointHoverRadius:8,showLine:false,order:2});
       ds.push({label:'BONCAP/CER',data:ptsFija,backgroundColor:'#0d9e6e',borderColor:'#0d9e6e',
+        pointRadius:5,pointHoverRadius:8,showLine:false,order:2});
+      return ds;
+    }
+    // Soberanos — split Ley AR (azul) vs Ley NY (verde)
+    if(_catActiva==='soberano'){
+      const ptsAR=ap.filter(p=>isSobLeyAR(p.label));
+      const ptsNY=ap.filter(p=>!isSobLeyAR(p.label));
+      const trAR=makeTrendDs(ptsAR,'#1E27F3');if(trAR){trAR.label='_trend_ar';ds.push(trAR);}
+      const trNY=makeTrendDs(ptsNY,'#22c55e');if(trNY){trNY.label='_trend_ny';ds.push(trNY);}
+      ds.push({label:'Ley AR',data:ptsAR,backgroundColor:'#1E27F3',borderColor:'#1E27F3',
+        pointRadius:5,pointHoverRadius:8,showLine:false,order:2});
+      ds.push({label:'Ley NY',data:ptsNY,backgroundColor:'#22c55e',borderColor:'#22c55e',
         pointRadius:5,pointHoverRadius:8,showLine:false,order:2});
       return ds;
     }
@@ -3754,6 +3768,13 @@ function renderCurva(rows, cmpRows){
       _chartInst.update('active');updatePips();return;
     }
     const ap=getAP(),range=getRange(ap);
+    // Soberanos: siempre reconstruir completo para mantener split AR/NY
+    if(_catActiva==='soberano'){
+      _chartInst.data.datasets=buildDs();
+      _chartInst.options.scales.y.min=range.yMin;_chartInst.options.scales.y.max=range.yMax;
+      _chartInst.options.scales.x.min=range.xMin;_chartInst.options.scales.x.max=range.xMax;
+      _chartInst.update('active');updatePips();return;
+    }
     const nt=makeTrendDs(ap,'#1E27F3');
     const nc=ap.map(p=>(p.tipo==='dual_tamar'||p.tipo==='dual_boncap'||p.tipo==='dual_boncer')?'rgba(245,166,35,0.9)':'#1E27F3');
     const nr=ap.map(()=>5);
@@ -3869,6 +3890,12 @@ function renderCurva(rows, cmpRows){
       <div class="legend-item"><div class="legend-dot" style="background:#1E27F3"></div>TAMAR</div>
       <div class="legend-item"><div class="legend-line" style="background:#0d9e6e;opacity:.8"></div>Tend. BONCAP/CER</div>
       <div class="legend-item"><div class="legend-dot" style="background:#0d9e6e"></div>BONCAP/CER</div>`;
+  } else if(_catActiva==='soberano'){
+    document.getElementById('rf-curve-legend').innerHTML=`
+      <div class="legend-item"><div class="legend-line" style="background:#1E27F3"></div>Tend. Ley AR</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#1E27F3"></div>Ley AR <span style="color:var(--text3);font-size:9px;">(click para excluir)</span></div>
+      <div class="legend-item"><div class="legend-line" style="background:#22c55e"></div>Tend. Ley NY</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>Ley NY <span style="color:var(--text3);font-size:9px;">(click para excluir)</span></div>`;
   } else {
     const hasDualesEnPts=_showDuales&&allPts.some(p=>p.tipo==='dual_tamar'||p.tipo==='dual_boncap'||p.tipo==='dual_boncer'||p.tipo==='duales');
     document.getElementById('rf-curve-legend').innerHTML=`
