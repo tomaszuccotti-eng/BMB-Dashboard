@@ -7926,10 +7926,7 @@ function rfBuildHeatmaps() {
       });
       cell.addEventListener('click', () => {
         tooltip.style.display = 'none';
-        rfSwitchTab('index');
-        const tipo = (_bundle._tipos||{})[r.ticker]?.toLowerCase();
-        if (tipo) { selectCategoria(tipo === 'boncer_bullet' ? 'boncer' : tipo); }
-        setTimeout(() => lcOpenDetail(r.ticker), 80);
+        rfCalOpenModal(r.ticker);
       });
       wrap.appendChild(cell);
     });
