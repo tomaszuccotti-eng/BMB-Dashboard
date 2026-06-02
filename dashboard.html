@@ -15703,7 +15703,7 @@ async function ons_initFromWorker() {
     ons_fetchPrecios();
 
     // Cargar scoring en background — cuando termina re-renderiza tabla y sidebar
-    if (!_onsScoring.data) {
+    if (!window._onsScoring.data) {
       ons_loadScoringData().then(() => {
         ons_renderSidebar();
         ons_renderCompTable();
@@ -16087,6 +16087,8 @@ function ons_switchTab(tab) {
     ons_renderScoring();
   }}
 
+window._onsScoring = { data: null, loading: false };
+
 // ── Scoring helpers globales (usados en tabla y sidebar) ─────────────────────
 const _ONS_ALIAS_GLOBAL = {
   'otamerica ebytem':          'oiltanking ebytem',
@@ -16180,12 +16182,10 @@ function ons_scoreBg(v){
 }
 
 // ── Scoring ONs ───────────────────────────────────────────────────────────────
-const _onsScoring = { data: null, loading: false };
-
 async function ons_loadScoringData() {
-  if (_onsScoring.data) return _onsScoring.data;
-  if (_onsScoring.loading) return null;
-  _onsScoring.loading = true;
+  if (window._onsScoring.data) return window._onsScoring.data;
+  if (window._onsScoring.loading) return null;
+  window._onsScoring.loading = true;
   try {
     const res = await fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vTG24q0SWcJ-Bxc171MibEHe5HepPR4ydhb7iVsUbyiytz4qJ8hvdn4fxCbgAiNhwdleSrYTgaXrQw7/pub?gid=0&single=true&output=csv', {cache:'no-store'});
     const text = await res.text();
@@ -16208,10 +16208,10 @@ async function ons_loadScoringData() {
       if (!t) return;
       if (!latest[t] || ons_parseDate(r['Fecha Balance']) > ons_parseDate(latest[t]['Fecha Balance'])) latest[t] = r;
     });
-    _onsScoring.data = Object.values(latest);
-    return _onsScoring.data;
+    window._onsScoring.data = Object.values(latest);
+    return window._onsScoring.data;
   } catch(e) {
-    _onsScoring.loading = false;
+    window._onsScoring.loading = false;
     throw e;
   }
 }
@@ -16335,7 +16335,7 @@ async function ons_renderScoring() {
       <span style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);">🔍 Match checker (temporal)</span>
       <span style="background:rgba(63,185,80,0.15);color:#3fb950;border:1px solid rgba(63,185,80,0.3);padding:2px 10px;border-radius:10px;font-weight:700;">${matched.length} match</span>
       <span style="background:rgba(248,81,73,0.15);color:#f85149;border:1px solid rgba(248,81,73,0.3);padding:2px 10px;border-radius:10px;font-weight:700;">${unmatched.length} sin match</span>
-      <button onclick="event.stopPropagation();_onsScoring.data=null;_onsScoring.loading=false;document.getElementById('ons-scoring-content').dataset.rendered='';ons_renderScoring();" style="margin-left:auto;padding:2px 10px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:10px;cursor:pointer;font-family:var(--mono);">↻ Recargar</button>
+      <button onclick="event.stopPropagation();window._onsScoring.data=null;window._onsScoring.loading=false;document.getElementById('ons-scoring-content').dataset.rendered='';ons_renderScoring();" style="margin-left:auto;padding:2px 10px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:10px;cursor:pointer;font-family:var(--mono);">↻ Recargar</button>
       <span style="color:var(--text3);font-size:10px;">▼</span>
     </div>
     <div style="display:none;">
