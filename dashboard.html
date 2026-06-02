@@ -829,7 +829,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 #app-calc-on .cal-day.past .cal-day-num { opacity: 0.3; }
 #app-calc-on .cal-day-num {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: clamp(13px,1.4vw,18px);
   font-weight: 700;
   color: var(--text3);
   margin-bottom: 4px;
@@ -846,9 +846,9 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 #app-calc-on .cal-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 5px;
-  border-radius: 4px;
+  gap: 5px;
+  padding: 3px 7px;
+  border-radius: 5px;
   background: var(--accent-light);
   border: 1px solid var(--border2);
   cursor: pointer;
@@ -863,22 +863,25 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 }
 #app-calc-on .cal-chip-label {
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: clamp(9px,0.9vw,13px);
   font-weight: 700;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+#app-calc-on .cal-weekday.weekend,#app-calc-on .cal-day.weekend,#app-calc-on .cal-day.weekend-empty{display:none;}
 #app-calc-on .cal-weekday {
   text-align: center;
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: clamp(12px,1.3vw,18px);
   font-weight: 700;
-  color: var(--text3);
-  padding: 4px 0 8px;
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-transform: uppercase;
-  letter-spacing: .5px;
+  letter-spacing: .06em;
 }
 #app-calc-on .sector-header {
   display:flex; align-items:center; gap:8px;
@@ -1614,14 +1617,16 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 #app-rf .rf-cal-day.today{border-color:var(--accent);}
 #app-rf .rf-cal-day.past{background:rgba(255,255,255,0.015);border-color:rgba(255,255,255,0.04);}
 #app-rf .rf-cal-day.past .rf-cal-day-num{opacity:0.3;}
-#app-rf .rf-cal-day-num{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text3);margin-bottom:4px;}
+#app-rf .rf-cal-day-num{font-family:var(--mono);font-size:clamp(13px,1.4vw,18px);font-weight:700;color:var(--text3);margin-bottom:4px;}
 #app-rf .rf-cal-day.today .rf-cal-day-num{color:var(--accent);}
-#app-rf .rf-cal-dots{display:flex;flex-wrap:wrap;gap:3px;align-content:flex-start;}
-#app-rf .rf-cal-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 5px;border-radius:4px;background:var(--accent-light);border:1px solid var(--border2);cursor:pointer;transition:background .12s;max-width:100%;}
+#app-rf .rf-cal-dots{display:flex;flex-wrap:wrap;gap:4px;align-content:flex-start;}
+#app-rf .rf-cal-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 7px;border-radius:5px;background:var(--accent-light);border:1px solid var(--border2);cursor:pointer;transition:background .12s;max-width:100%;}
 #app-rf .rf-cal-chip:hover{background:var(--border2);}
-#app-rf .rf-cal-chip-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
-#app-rf .rf-cal-chip-label{font-family:var(--mono);font-size:8px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-#app-rf .rf-cal-weekday{text-align:center;font-family:var(--mono);font-size:9px;font-weight:700;color:var(--text3);padding:4px 0 8px;text-transform:uppercase;}
+#app-rf .rf-cal-chip-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+#app-rf .rf-cal-chip-label{font-family:var(--mono);font-size:clamp(9px,0.9vw,13px);font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#app-rf .rf-cal-weekday{text-align:center;font-family:var(--mono);font-size:clamp(12px,1.3vw,18px);font-weight:700;color:var(--text2);display:flex;align-items:center;justify-content:center;text-transform:uppercase;letter-spacing:.06em;}
+#app-rf .rf-cal-weekday.weekend,#app-rf .rf-cal-day.weekend,#app-rf .rf-cal-day.weekend-empty{display:none;}
+#app-rf #rf-cal-grid{grid-template-columns:repeat(5,1fr);}
 /* Modal detalle: view-detalle y det-body scrolleables dentro del modal */
 #rf-cal-modal #view-detalle{overflow-y:auto;flex:1;}
 #rf-cal-modal #det-body{overflow:visible;}
@@ -1927,17 +1932,14 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
       <select id="ons-cal-sel-year" onchange="ons_calSelectMonth()" style="padding:4px 8px;border-radius:5px;border:1px solid var(--border2);background:var(--bg);color:var(--text);font-size:12px;font-family:var(--mono);cursor:pointer;-webkit-appearance:auto;"></select>
       <button onclick="ons_calNextMonth()" style="padding:4px 10px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:13px;cursor:pointer;">›</button>
       <span id="ons-cal-summary" style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-left:4px;"></span>
-    </div>
-    <div style="overflow-y:auto;flex:1;padding:16px 32px;">
-      <div id="ons-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;"></div>
-      <div style="display:flex;align-items:center;gap:16px;padding:12px 0 4px;margin-top:8px;border-top:1px solid var(--border);">
-        <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text3);">
-          <div style="width:8px;height:8px;border-radius:50%;background:#3fb950;flex-shrink:0;"></div>CABLE
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text3);">
-          <div style="width:8px;height:8px;border-radius:50%;background:#e3b341;flex-shrink:0;"></div>MEP
-        </div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:16px;">
+        <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text3);"><div style="width:8px;height:8px;border-radius:50%;background:#3fb950;flex-shrink:0;"></div>CABLE</div>
+        <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text3);"><div style="width:8px;height:8px;border-radius:50%;background:#e3b341;flex-shrink:0;"></div>MEP</div>
       </div>
+    </div>
+    <div style="overflow-y:auto;flex:1;padding:12px 20px;display:flex;flex-direction:column;">
+      <div id="ons-cal-grid" style="display:grid;grid-template-columns:repeat(5,1fr);grid-auto-rows:1fr;gap:5px;flex:1;min-height:0;"></div>
+
     </div>
     <!-- Tooltip del calendario -->
     <div id="ons-cal-tooltip" style="display:none;position:fixed;z-index:9999;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px 14px;box-shadow:0 8px 24px rgba(0,0,0,0.5);max-width:280px;pointer-events:none;"></div>
@@ -2126,7 +2128,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
     </div>
   </div>
 
-  <div id="view-rf-cal">
+  <div id="view-rf-cal" style="display:none;flex-direction:column;flex:1;overflow:hidden;height:calc(100vh - 52px);">
     <!-- Controles de navegación -->
     <div style="display:flex;align-items:center;gap:10px;padding:12px 20px;border-bottom:1px solid var(--border);flex-shrink:0;">
       <button id="rf-cal-prev" onclick="rfCalPrevMonth()" style="padding:4px 10px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:13px;cursor:pointer;">‹</button>
@@ -2148,8 +2150,8 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
       </div>
     </div>
     <!-- Grilla -->
-    <div style="overflow-y:auto;flex:1;padding:16px 32px;">
-      <div id="rf-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;"></div>
+    <div style="overflow-y:auto;flex:1;padding:12px 20px;display:flex;flex-direction:column;">
+      <div id="rf-cal-grid" style="display:grid;grid-template-columns:repeat(5,1fr);grid-auto-rows:1fr;gap:5px;flex:1;min-height:0;"></div>
     </div>
   </div>
 
@@ -7503,7 +7505,7 @@ async function rfRenderCalendar() {
   }
   rfCalPopulateSelectors();
   const { year, month } = _rfCalState;
-  const DIAS  = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  const DIAS  = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
   const now   = new Date();
   const minYear  = now.getFullYear() - 2;
   const minMonth = now.getMonth();
@@ -7535,21 +7537,29 @@ async function rfRenderCalendar() {
   document.getElementById('rf-cal-summary').textContent =
     diasConPagos + ' días con pagos · ' + totalCupones + ' cupones';
 
-  // Grilla
+  // Grilla — 5 columnas (L-V), sáb/dom ocultos
   let html = '';
-  for (let d = 0; d < 7; d++) html += `<div class="rf-cal-weekday">${DIAS[d]}</div>`;
+  for (let d = 0; d < 7; d++) {
+    const isWE = d === 5 || d === 6;
+    html += `<div class="rf-cal-weekday${isWE?' weekend':''}">${DIAS[d]}</div>`;
+  }
 
   let firstDay = new Date(year, month, 1).getDay();
   firstDay = (firstDay + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  for (let e = 0; e < firstDay; e++) html += '<div class="rf-cal-day empty"></div>';
+  for (let e = 0; e < firstDay; e++) {
+    const isWE = e === 5 || e === 6;
+    html += `<div class="rf-cal-day empty${isWE?' weekend-empty':''}"></div>`;
+  }
 
   for (let day = 1; day <= daysInMonth; day++) {
     const dateStr  = year + '-' + String(month+1).padStart(2,'0') + '-' + String(day).padStart(2,'0');
+    const dow = new Date(dateStr + 'T12:00:00').getDay(); // 0=dom,6=sáb
+    const isWE = dow === 0 || dow === 6;
     const isToday  = dateStr === todayStr;
     const isPast   = dateStr < todayStr;
     const payments = map[dateStr] || [];
-    const cls      = 'rf-cal-day' + (isToday ? ' today' : '') + (isPast ? ' past' : '');
+    const cls      = 'rf-cal-day' + (isWE?' weekend':'') + (isToday ? ' today' : '') + (isPast ? ' past' : '');
 
     let chips = '';
     if (payments.length > 0) {
@@ -16855,7 +16865,7 @@ function ons_calSelectMonth() {
 function ons_renderCalendar() {
   ons_calPopulateSelectors();
   const { year, month } = ons_calState;
-  const DIAS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  const DIAS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
   var selMonth = document.getElementById('ons-cal-sel-month');
   var selYear  = document.getElementById('ons-cal-sel-year');
   if (selMonth) selMonth.value = month;
@@ -16883,20 +16893,28 @@ function ons_renderCalendar() {
   document.getElementById('ons-cal-summary').textContent = diasConPagos + ' días con pagos · ' + totalPagos + ' cupones';
 
   var html = '';
-  for (var d = 0; d < 7; d++) { html += '<div class="cal-weekday">' + DIAS[d] + '</div>'; }
+  for (var d = 0; d < 7; d++) {
+    var isWE = d === 5 || d === 6;
+    html += '<div class="cal-weekday' + (isWE ? ' weekend' : '') + '">' + DIAS[d] + '</div>';
+  }
 
   var firstDay = new Date(year, month, 1).getDay();
   firstDay = (firstDay + 6) % 7;
   var daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  for (var e = 0; e < firstDay; e++) { html += '<div class="cal-day empty"></div>'; }
+  for (var e = 0; e < firstDay; e++) {
+    var isWE = e === 5 || e === 6;
+    html += '<div class="cal-day empty' + (isWE ? ' weekend-empty' : '') + '"></div>';
+  }
 
   for (var day = 1; day <= daysInMonth; day++) {
     var dateStr  = year + '-' + String(month+1).padStart(2,'0') + '-' + String(day).padStart(2,'0');
+    var dow = new Date(dateStr + 'T12:00:00').getDay();
+    var isWE = dow === 0 || dow === 6;
     var isToday  = dateStr === todayStr;
     var isPast   = dateStr < todayStr;
     var payments = map[dateStr] || [];
-    var cls = 'cal-day' + (isToday ? ' today' : '') + (isPast ? ' past' : '');
+    var cls = 'cal-day' + (isWE ? ' weekend' : '') + (isToday ? ' today' : '') + (isPast ? ' past' : '');
 
     var dots = '';
     if (payments.length > 0) {
