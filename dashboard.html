@@ -15268,14 +15268,18 @@ const onsState = {
 
 // ─── Colores por sector ───────────────────────────────────────────────────────
 const SECTOR_COLORS = {
-  'OIL AND GAS':                    '#3fb950',
-  'GENERACION ELECTRICA':           '#58a6ff',
-  'INFRAESTRUCTURA Y LOGÍSTICA':    '#e3b341',
-  'CONSTRUCCIÓN Y REAL ESTATE':     '#f78166',
-  'TELECOMUNICACIONES':             '#bc8cff',
-  'AGRO E INDUSTRIA ALIMENTARIA':   '#56d364',
-  'INDUSTRIA Y MANUFACTURA':        '#ffa657',
-  'FINANZAS Y SERVICIOS FINANCIEROS': '#79c0ff',
+  'OIL AND GAS':                      '#3fb950',  // verde
+  'GENERACION ELECTRICA':             '#58a6ff',  // azul
+  'INFRAESTRUCTURA Y LOGÍSTICA':      '#e3b341',  // amarillo
+  'CONSTRUCCIÓN Y REAL ESTATE':       '#f78166',  // coral
+  'TELECOMUNICACIONES':               '#bc8cff',  // violeta
+  'AGRO E INDUSTRIA ALIMENTARIA':     '#f0883e',  // naranja
+  'INDUSTRIA Y MANUFACTURA':          '#39d3c3',  // turquesa
+  'FINANZAS Y SERVICIOS FINANCIEROS': '#e85d9f',  // rosa
+  'ENERGIA':                          '#a5f3fc',  // celeste
+  'CONSUMO':                          '#fde68a',  // crema
+  'SALUD':                            '#86efac',  // verde claro
+  'TECNOLOGIA':                       '#c4b5fd',  // lila
 };
 function ons_sectorColor(s) {
   return SECTOR_COLORS[s?.toUpperCase?.()] || '#4a5280';
@@ -15842,6 +15846,41 @@ function ons_renderSidebar(filter = '') {
 function ons_toggleEl(id, header) {
   const el = document.getElementById(id);
   if (!el) return;
+  const isOpening = !el.classList.contains('open');
+
+  if (isOpening) {
+    // Determinar si es sector o empresa
+    const isSector = header.classList.contains('sector-header');
+    if (isSector) {
+      // Colapsar todos los demás sectores y sus empresas
+      document.querySelectorAll('.sector-items.open').forEach(sec => {
+        if (sec.id !== id) {
+          sec.classList.remove('open');
+          const hdr = document.querySelector(`.sector-header[onclick*="${sec.id}"]`);
+          if (hdr) hdr.classList.remove('open');
+          // Colapsar empresas dentro
+          sec.querySelectorAll('.empresa-items.open').forEach(emp => {
+            emp.classList.remove('open');
+            const eHdr = emp.previousElementSibling;
+            if (eHdr) eHdr.classList.remove('open');
+          });
+        }
+      });
+    } else {
+      // Colapsar otras empresas dentro del mismo sector
+      const sectorItems = header.closest('.sector-items');
+      if (sectorItems) {
+        sectorItems.querySelectorAll('.empresa-items.open').forEach(emp => {
+          if (emp.id !== id) {
+            emp.classList.remove('open');
+            const eHdr = emp.previousElementSibling;
+            if (eHdr) eHdr.classList.remove('open');
+          }
+        });
+      }
+    }
+  }
+
   el.classList.toggle('open');
   header.classList.toggle('open');
 }
