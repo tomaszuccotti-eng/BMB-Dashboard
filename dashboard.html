@@ -1886,6 +1886,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
                 <th onclick="ons_sortTable(10)" class="th-sort">Ley <span class="sort-arr" id="sarr10"></span></th>
                 <th onclick="ons_sortTable(11)" class="th-sort">Moneda <span class="sort-arr" id="sarr11"></span></th>
                 <th onclick="ons_sortTable(12)" class="th-sort">Frec. <span class="sort-arr" id="sarr12"></span></th>
+                <th onclick="ons_sortTable(13)" class="th-sort">Score <span class="sort-arr" id="sarr13"></span></th>
               </tr>
             </thead>
             <tbody id="compTbody"></tbody>
@@ -9088,6 +9089,7 @@ function enterCalcON(){
   document.getElementById('landing').style.display='none';
   ['app-rf','app-informes'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   document.getElementById('app-calc-on').style.display='flex';
+  ons_switchTab('index');
   if(window.ons_init) window.ons_init();
 }
 // backToCalcMenu eliminado — usar backToLanding()
@@ -9281,6 +9283,7 @@ function enterTest(){
   const el=document.getElementById('app-rf');
   el.style.display='flex';
   el.style.flexDirection='column';
+  rfSwitchTab('index');
   if(typeof rfLoad==='function'&&!window._rfLoaded){
     window._rfLoaded=true;
     rfLoad();
@@ -12461,7 +12464,7 @@ function renderEquity(){
     if(isNaN(v)) return '#4a5280';
     if(v>=8)     return '#22c55e';  // verde fuerte
     if(v>=6)     return '#86efac';  // verde claro
-    if(v>=4)     return '#fbbf24';  // amarillo
+    if(v>=4)     return '#eab308';  // amarillo
     return '#f87171';               // rojo claro
   }
   function scoreBg(s){
@@ -12469,7 +12472,7 @@ function renderEquity(){
     if(isNaN(v)) return 'rgba(74,82,128,0.12)';
     if(v>=8)     return 'rgba(34,197,94,0.15)';
     if(v>=6)     return 'rgba(134,239,172,0.15)';
-    if(v>=4)     return 'rgba(251,191,36,0.15)';
+    if(v>=4)     return 'rgba(234,179,8,0.15)';
     return 'rgba(248,113,113,0.15)';
   }
   function parseDate(d){if(!d)return new Date(0);return new Date(d.trim());}
@@ -15757,10 +15760,16 @@ function ons_renderSidebar(filter = '') {
 
     for (const [empresa, ons] of Object.entries(byEmpresa).sort()) {
       const empId = 'emp-' + (sector+empresa).replace(/[^a-zA-Z0-9]/g,'-');
+      const scoreRow = ons_matchScoreForEmpresa(empresa);
+      const scoreVal = scoreRow ? parseFloat(scoreRow['Score']) : null;
+      const scoreBadge = scoreRow && !isNaN(scoreVal)
+        ? `<span style="font-size:9px;font-weight:700;font-family:var(--mono);color:${ons_scoreColor(scoreVal)};margin-right:2px;">${scoreVal.toFixed(1)}</span>`
+        : '';
       html += `
         <div class="empresa-wrap">
           <div class="empresa-header" onclick="ons_toggleEl('${empId}',this);ons_filterByEmpresa('${sector.replace(/'/g,"\\'")}','${empresa.replace(/'/g,"\\'")}',this)">
             <span class="emp-name">${empresa}</span>
+            ${scoreBadge}
             <span class="emp-cnt">${ons.length}</span>
             <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px"><path d="M6 4l4 4-4 4"/></svg>
           </div>
@@ -15973,7 +15982,9 @@ function ons_renderCompTable() {
     try { cfs = ons_fetchCashflows(on); const price = onsState.prices[on.ticker]??100; metrics = ons_calcMetrics(cfs, price, settle, on.frecuencia); } catch(e) {}
     const price  = onsState.prices[on.ticker] ?? 100;
     const tv     = cfs ? ons_getTasaVigente(cfs, settle) : {tasa:null,stepUp:false};
-    return { on, metrics, cfs, price, tv,
+    const scoreRow = ons_matchScoreForEmpresa(on.empresa);
+    const scoreVal = scoreRow ? parseFloat(scoreRow['Score']) : null;
+    return { on, metrics, cfs, price, tv, scoreRow, scoreVal,
       // valores raw para sort
       _empresa: on.empresa, _ticker: on.ticker, _precio: price,
       _tasa:    tv.tasa, _ytm: metrics?.ytm ?? null,
@@ -15982,12 +15993,13 @@ function ons_renderCompTable() {
       _proxCF:  metrics?.proxCF?.fecha ?? null,
       _vto:     new Date(on.vencimiento),
       _ley:     on.ley, _moneda: on.moneda, _frec: on.frecuencia,
+      _score:   scoreVal,
     };
   });
 
   // Aplicar sort
   const { col, dir } = onsState.sort;
-  const sortKeys = ['_empresa','_ticker','_precio','_tasa','_ytm','_dm','_par','_dev','_proxCF','_vto','_ley','_moneda','_frec'];
+  const sortKeys = ['_empresa','_ticker','_precio','_tasa','_ytm','_dm','_par','_dev','_proxCF','_vto','_ley','_moneda','_frec','_score'];
   if (col !== null) {
     const key = sortKeys[col];
     rows_data.sort((a, b) => {
@@ -16002,7 +16014,7 @@ function ons_renderCompTable() {
   }
 
   // Actualizar flechas en thead
-  for (let i = 0; i < 13; i++) {
+  for (let i = 0; i < 14; i++) {
     const el = document.getElementById(`sarr${i}`);
     if (!el) continue;
     if (col === i) { el.textContent = dir === 1 ? '▲' : '▼'; el.className = 'sort-arr active'; }
@@ -16033,6 +16045,7 @@ function ons_renderCompTable() {
       <td style="font-size:9px;color:var(--text3)">${on.ley}</td>
       <td><span class="on-tag ${on.moneda==='CABLE'?'tag-cable':'tag-mep'}" style="display:inline-block">${on.moneda}</span></td>
       <td style="color:var(--text3)">${on.frecuencia}</td>
+      <td style="text-align:right">${r.scoreRow ? `<span style="display:inline-block;padding:1px 8px;border-radius:20px;font-size:10px;font-weight:700;font-family:var(--mono);color:${ons_scoreColor(r.scoreVal)};background:${ons_scoreBg(r.scoreVal)};border:1px solid ${ons_scoreColor(r.scoreVal)}33;">${isNaN(r.scoreVal)?'—':r.scoreVal.toFixed(1)}</span>` : '<span style="color:var(--text3);font-size:10px;">—</span>'}</td>
     </tr>`;
   }
   document.getElementById('compTbody').innerHTML = rows || `<tr><td colspan="13" style="text-align:center;padding:30px;color:var(--text3);font-family:var(--mono);font-size:10px">Sin resultados</td></tr>`;
@@ -16065,6 +16078,98 @@ function ons_switchTab(tab) {
   } else if (tab==='scoring') {
     ons_renderScoring();
   }}
+
+// ── Scoring helpers globales (usados en tabla y sidebar) ─────────────────────
+const _ONS_ALIAS_GLOBAL = {
+  'otamerica ebytem':          'oiltanking ebytem',
+  'cgc':                       'compania general de combustible',
+  'pcr':                       'petroquimica comodoro rivadavia',
+  'petroquimica c. rivadavia': 'petroquimica comodoro rivadavia',
+  'edemsa':                    'empresa distribuidora de electricidad mendoza',
+  'ledesma':                   'ledesma',
+};
+
+function ons_normEmpresa(s) {
+  if (!s) return '';
+  let n = s.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/ñ/g,'n');
+  const sufijos = [
+    's\.a\.i\.c\.i\.f\.i\. y a\.','s\.a\.c\.i\.f\. e i\.','s\.a\.c\.i\.f\. y a\.',
+    's\.a\.i\.c\.y\.f\.','s\.a\.i\.c\.','s\.a\.a\.i\.',
+    's\.a\.p\.e\.i\.','s\.a\.p\.i\.','s\.a\.c\.i\.f\.',
+    's\.a\.u\.','s\.c\.a\.','s\.r\.l\.','s\.e\.',
+    's\.a\.','saicifi y a','sacifi y a','sacif y a','saicyf',
+    'saici','saicf','sacif','saai','saic','sau','sca','srl',
+    'sapei','sapi','\bse\b',
+    'inc\.','ltd\.','llc\.','corp\.','co\.',
+    '\binc\b','\bltd\b','\bllc\b','\bcorp\b',
+    '\bholding\b','\bholdings\b','\bgroup\b','\bgrupo\b',
+    '\bcompania\b','\bcia\b','\bsociedad anonima\b','\bsociedad\b',
+    '\bsucursal argentina\b','\bsucursal\b','\bargentina\b',
+  ];
+  sufijos.forEach(s=>{ n=n.replace(new RegExp(s,'g'),''); });
+  return n.replace(/[.,\-()\/]/g,' ').replace(/\s+/g,' ').trim();
+}
+
+function ons_matchScoreForEmpresa(empresaON) {
+  if (!window.EXCEL_DATA?.length && !window._onsScoring?.data) return null;
+  const rows = window._onsScoring?.data || (() => {
+    const map = {};
+    (window.EXCEL_DATA||[]).forEach(r=>{
+      const t=(r['Ticker']||'').trim().toUpperCase();
+      const fb=(r['Fecha Balance']||'').trim();
+      if(!t||!fb) return;
+      const key=t+'|'+fb;
+      if(!map[key]||new Date(r['fecha_carga']||0)>new Date(map[key]['fecha_carga']||0)) map[key]=r;
+    });
+    const latest={};
+    Object.values(map).forEach(r=>{
+      const t=(r['Ticker']||'').trim().toUpperCase();
+      if(!t) return;
+      if(!latest[t]||new Date(r['Fecha Balance'])>new Date(latest[t]['Fecha Balance'])) latest[t]=r;
+    });
+    return Object.values(latest);
+  })();
+
+  // Mapa normalizado
+  const normMap = {};
+  rows.forEach(r=>{ const n=ons_normEmpresa(r['Empresa']||''); if(n) normMap[n]=r; });
+
+  // Alias
+  const aliasKey = (empresaON||'').trim().toLowerCase();
+  const aliasNorm = ons_normEmpresa(aliasKey);
+  const aliasTarget = _ONS_ALIAS_GLOBAL[aliasKey] || _ONS_ALIAS_GLOBAL[aliasNorm];
+  if (aliasTarget) {
+    const nt = ons_normEmpresa(aliasTarget);
+    for (const [k,r] of Object.entries(normMap)) { if(k.includes(nt)||nt.includes(k)) return r; }
+  }
+  // Exacto original
+  const directMap = {};
+  rows.forEach(r=>{ const e=(r['Empresa']||'').trim().toLowerCase(); if(e) directMap[e]=r; });
+  if (directMap[(empresaON||'').trim().toLowerCase()]) return directMap[(empresaON||'').trim().toLowerCase()];
+  // Normalizado
+  if (normMap[aliasNorm]) return normMap[aliasNorm];
+  for (const [k,r] of Object.entries(normMap)) { if(k.includes(aliasNorm)||aliasNorm.includes(k)) return r; }
+  return null;
+}
+
+function ons_scoreColor(v){
+  const n=parseFloat(v);
+  if(isNaN(n)) return '#4a5280';
+  if(n>=8) return '#22c55e';
+  if(n>=6) return '#86efac';
+  if(n>=4) return '#eab308';
+  return '#f87171';
+}
+function ons_scoreBg(v){
+  const n=parseFloat(v);
+  if(isNaN(n)) return 'rgba(74,82,128,0.12)';
+  if(n>=8) return 'rgba(34,197,94,0.15)';
+  if(n>=6) return 'rgba(134,239,172,0.15)';
+  if(n>=4) return 'rgba(234,179,8,0.15)';
+  return 'rgba(248,113,113,0.15)';
+}
 
 // ── Scoring ONs ───────────────────────────────────────────────────────────────
 const _onsScoring = { data: null, loading: false };
@@ -16147,15 +16252,19 @@ async function ons_renderScoring() {
       .replace(/ñ/g, 'n');
     // 2. Sacar sufijos legales (orden: más largo primero)
     const sufijos = [
-      's\.a\.i\.c\.y\.f\.', 's\.a\.i\.c\.',
-      's\.a\.p\.e\.i\.', 's\.a\.p\.i\.',
-      's\.a\.u\.', 's\.c\.a\.', 's\.r\.l\.',
-      's\.a\.', 'saic', 'saicyf', 'sau', 'sca', 'srl',
+      's\.a\.i\.c\.i\.f\.i\. y a\.', 's\.a\.c\.i\.f\. e i\.', 's\.a\.c\.i\.f\. y a\.',
+      's\.a\.i\.c\.y\.f\.', 's\.a\.i\.c\.', 's\.a\.a\.i\.',
+      's\.a\.p\.e\.i\.', 's\.a\.p\.i\.', 's\.a\.c\.i\.f\.',
+      's\.a\.u\.', 's\.c\.a\.', 's\.r\.l\.', 's\.e\.',
+      's\.a\.', 'saicifi y a', 'sacifi y a', 'sacif y a', 'saicyf',
+      'saici', 'saicf', 'sacif', 'saai', 'saic', 'sau', 'sca', 'srl',
+      'sapei', 'sapi', 'se\.', '\bse\b',
       'inc\.', 'ltd\.', 'llc\.', 'corp\.', 'co\.',
       '\binc\b', '\bltd\b', '\bllc\b', '\bcorp\b',
       '\bholding\b', '\bholdings\b', '\bgroup\b', '\bgrupo\b',
-      '\bcompania\b', '\bcia\b', '\bcia\.\b',
-      '\bsociedad anonima\b', '\bsociedad\b',
+      '\bcompania\b', '\bcia\b', '\bsociedad anonima\b', '\bsociedad\b',
+      '\bsucursal argentina\b', '\bsucursal\b', '\bargentina\b',
+      '\binversiones y representaciones\b',
     ];
     sufijos.forEach(suf => { n = n.replace(new RegExp(suf, 'g'), ''); });
     // 3. Sacar puntuación y espacios extra
@@ -16258,56 +16367,106 @@ async function ons_renderScoring() {
     return null;
   }
 
-  const thS = 'padding:9px 12px;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border);font-family:var(--mono);white-space:nowrap;';
-  const tdS = (align,extra) => `padding:8px 12px;text-align:${align};font-family:var(--mono);font-size:11px;border-bottom:1px solid var(--border);white-space:nowrap;${extra||''}`;
+  // Columnas fijas con anchos definidos para alineación
+  const ONS_COLS = [
+    {key:'empresa',       label:'Empresa',       align:'left',  w:'200px', sort:(a,b)=>a.empresa.localeCompare(b.empresa)},
+    {key:'score',         label:'Score',         align:'right', w:'80px',  sort:(a,b)=>(parseFloat(a.sc)||0)-(parseFloat(b.sc)||0)},
+    {key:'fechaBal',      label:'Ult. Balance',  align:'right', w:'110px', sort:(a,b)=>ons_parseDate(a.fb)-ons_parseDate(b.fb)},
+    ...ONS_RATIOS.map(r=>({key:r.key, label:r.short, align:'right', w:'90px',
+      sort:(a,b)=>(parseFloat(a.ratios?.[r.key])||0)-(parseFloat(b.ratios?.[r.key])||0)})),
+    {key:'ons',           label:'ONs',           align:'right', w:'60px',  sort:(a,b)=>a.nON-b.nON},
+  ];
 
-  Object.keys(sectors).sort().forEach(sec => {
+  // Estado de sort global para scoring ONs
+  if (!window._onsScoringSort) window._onsScoringSort = {key:'score', dir:-1};
+
+  function ons_buildScoringRows(empresas) {
+    return Object.entries(empresas).map(([empresa, ons]) => {
+      const row = matchScore(empresa);
+      return {
+        empresa,
+        ons,
+        nON: ons.length,
+        sc:  row ? row['Score'] : null,
+        fb:  row ? (row['Fecha Balance']||'').substring(0,10) : null,
+        ratios: row ? ONS_RATIOS.reduce((acc,r)=>{acc[r.key]=row[r.key];return acc;},{}) : null,
+        row,
+      };
+    });
+  }
+
+  function ons_sortRows(rows) {
+    const {key, dir} = window._onsScoringSort;
+    const col = ONS_COLS.find(c=>c.key===key);
+    if (!col) return rows;
+    return [...rows].sort((a,b) => col.sort(a,b) * dir);
+  }
+
+  const thS = 'padding:9px 12px;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border);font-family:var(--mono);white-space:nowrap;cursor:pointer;user-select:none;';
+  const tdS = (align,extra,w) => `padding:8px 12px;text-align:${align};font-family:var(--mono);font-size:11px;border-bottom:1px solid var(--border);white-space:nowrap;${w?'width:'+w+';min-width:'+w+';':''}${extra||''}`;
+
+  function ons_buildScoringTable(sectorId, rows) {
+    const {key:sk, dir:sd} = window._onsScoringSort;
+    const sorted = ons_sortRows(rows);
+    const thead = ONS_COLS.map(c=>{
+      const active = c.key===sk;
+      const arrow = active ? (sd===1?' ▲':' ▼') : ' <span style="opacity:.3">⇅</span>';
+      return `<th style="${thS}text-align:${c.align};width:${c.w};min-width:${c.w};"
+        onclick="window._onsScoringSort={key:'${c.key}',dir:${active?sd*-1:-1}};
+          document.querySelectorAll('[data-scoring-sector]').forEach(t=>window._onsRebuildTable(t.dataset.scoringSector));">
+        ${c.label}${arrow}</th>`;
+    }).join('');
+    const tbody = sorted.map(({empresa,nON,sc,fb,ratios,row})=>{
+      const scC = row ? scoreColor(sc) : 'var(--text3)';
+      const scB = row ? scoreBg(sc) : 'transparent';
+      const scN = parseFloat(sc);
+      const rCells = ONS_RATIOS.map(r=>{
+        const raw = ratios?.[r.key] ?? null;
+        const color = row ? ratioColor(r.key, raw) : null;
+        return `<td style="${tdS('right', color?`color:${color};font-weight:600;`:'color:var(--text3);','90px')}">${row?fmtR(raw):'—'}</td>`;
+      }).join('');
+      return `<tr onmouseover="this.style.background='rgba(30,39,243,0.05)'" onmouseout="this.style.background='transparent'">
+        <td style="${tdS('left','color:var(--text);font-weight:600;','200px')}">${empresa}</td>
+        <td style="${tdS('right','','80px')}">
+          ${row?`<span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:var(--mono);color:${scC};background:${scB};border:1px solid ${scC}33;">${isNaN(scN)?'—':scN.toFixed(1)}</span>`:'<span style="color:var(--text3);">—</span>'}
+        </td>
+        <td style="${tdS('right','color:var(--text3);','110px')}">${fb||'—'}</td>
+        ${rCells}
+        <td style="${tdS('right','color:var(--text3);','60px')}">${nON}</td>
+      </tr>`;
+    }).join('');
+    return `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+      <thead><tr>${thead}</tr></thead>
+      <tbody>${tbody}</tbody>
+    </table></div>`;
+  }
+
+  // Mapa de rows por sector para re-render al ordenar
+  const _sectorRowsMap = {};
+  window._onsRebuildTable = function(sectorId) {
+    const rows = _sectorRowsMap[sectorId];
+    if (!rows) return;
+    const card = document.getElementById('ons-scoring-card-'+sectorId);
+    if (card) card.innerHTML = ons_buildScoringTable(sectorId, rows);
+  };
+
+  Object.keys(sectors).sort().forEach((sec, si) => {
+    const sectorId = 'sec'+si;
     const empresas = sectors[sec];
     const wrap = document.createElement('div');
     wrap.style.cssText = 'margin-bottom:28px;';
+    const rows = ons_buildScoringRows(empresas);
+    _sectorRowsMap[sectorId] = rows;
     const nEmpresas = Object.keys(empresas).length;
     const nONs = Object.values(empresas).reduce((a,b)=>a+b.length,0);
     wrap.innerHTML = `
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
         <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-family:var(--mono);">${sec}</span>
         <span style="font-size:10px;color:var(--text3);font-family:var(--mono);">${nEmpresas} empresa${nEmpresas!==1?'s':''} · ${nONs} ON${nONs!==1?'s':''}</span>
+      </div>
+      <div id="ons-scoring-card-${sectorId}" data-scoring-sector="${sectorId}" style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;">
+        ${ons_buildScoringTable(sectorId, rows)}
       </div>`;
-
-    const card = document.createElement('div');
-    card.style.cssText = 'background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;';
-    const cols = ['Empresa','Score','Fecha Balance',...ONS_RATIOS.map(r=>r.short),'ONs vigentes'];
-    card.innerHTML = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">
-      <thead><tr>
-        <th style="${thS}text-align:left;">Empresa</th>
-        <th style="${thS}text-align:right;">Score</th>
-        <th style="${thS}text-align:right;">Ult. Balance</th>
-        ${ONS_RATIOS.map(r=>`<th style="${thS}text-align:right;">${r.short}</th>`).join('')}
-        <th style="${thS}text-align:right;">ONs</th>
-      </tr></thead>
-      <tbody>${Object.entries(empresas).sort(([a],[b])=>a.localeCompare(b)).map(([empresa, ons])=>{
-        const row = matchScore(empresa);
-        const sc = row ? parseFloat(row['Score']) : NaN;
-        const scC = row ? scoreColor(row['Score']) : 'var(--text3)';
-        const scB = row ? scoreBg(row['Score']) : 'transparent';
-        const fb  = row ? (row['Fecha Balance']||'').substring(0,10) : '—';
-        const rCells = ONS_RATIOS.map(rat=>{
-          const raw = row ? row[rat.key] : null;
-          const color = row ? ratioColor(rat.key, raw) : null;
-          return `<td style="${tdS('right', color?`color:${color};font-weight:600;`:'color:var(--text3);')}">${row?fmtR(raw):'—'}</td>`;
-        }).join('');
-        const nON = ons.length;
-        return `<tr onmouseover="this.style.background='rgba(30,39,243,0.05)'" onmouseout="this.style.background='transparent'">
-          <td style="${tdS('left','color:var(--text);font-weight:600;')}">${empresa}</td>
-          <td style="${tdS('right','')}">
-            ${row ? `<span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:var(--mono);color:${scC};background:${scB};border:1px solid ${scC}33;">${isNaN(sc)?'—':sc.toFixed(1)}</span>` : '<span style="color:var(--text3);">—</span>'}
-          </td>
-          <td style="${tdS('right','color:var(--text3);')}">${fb}</td>
-          ${rCells}
-          <td style="${tdS('right','color:var(--text3);')}">${nON}</td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table></div>`;
-    wrap.appendChild(card);
     con.appendChild(wrap);
   });
 }
