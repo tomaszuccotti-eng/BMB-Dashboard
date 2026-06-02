@@ -15702,6 +15702,14 @@ async function ons_initFromWorker() {
     // Cargar precios de data912 automáticamente
     ons_fetchPrecios();
 
+    // Cargar scoring en background — cuando termina re-renderiza tabla y sidebar
+    if (!_onsScoring.data) {
+      ons_loadScoringData().then(() => {
+        ons_renderSidebar();
+        ons_renderCompTable();
+      }).catch(() => {});
+    }
+
   } catch(e) {
     document.getElementById('sbStatus').innerHTML = `<span style="color:var(--red)">Error: ${e.message}</span>`;
     document.getElementById('sbScroll').innerHTML =
@@ -16342,8 +16350,6 @@ async function ons_renderScoring() {
         </div>
       </div>
     </div>`;
-  con.appendChild(checkerDiv);
-
   // — Tabla por sector ——————————————————————————————————————————
   const ONS_RATIOS = [
     {key:'Deuda N. / Patrimonio N.', short:'DN/PN'},
@@ -16469,6 +16475,9 @@ async function ons_renderScoring() {
       </div>`;
     con.appendChild(wrap);
   });
+
+  // — Match checker al final ————————————————————————————————————
+  con.appendChild(checkerDiv);
 }
 
 function ons_parseDate(s){if(!s)return new Date(0);const d=new Date(s);return isNaN(d)?new Date(0):d;}
@@ -17220,14 +17229,6 @@ window.ons_init = function() {
   }
   // Siempre refetchea para tener el bundle más actualizado del KV
   ons_initFromWorker();
-  // Cargar scoring en background para tabla y sidebar
-  if (!_onsScoring.data && !_onsScoring.loading) {
-    ons_loadScoringData().then(() => {
-      // Re-renderizar tabla y sidebar con scores disponibles
-      ons_renderCompTable();
-      ons_renderSidebar();
-    }).catch(() => {});
-  }
 };
 
 </script>
