@@ -7722,15 +7722,15 @@ window.rfSwitchTab = function(tab) {
 
 // ── RF Heatmaps ───────────────────────────────────────────────────────────────
 const RF_HM_CATS = [
-  {id:'lecap',      tipos:['lecap'],                    label:'LECAPs'},
-  {id:'boncap',     tipos:['boncap','dual_boncap'],     label:'BONCAPs'},
-  {id:'dolarlinked',tipos:['dolarlinked'],              label:'Dólar Linked'},
-  {id:'soberano',   tipos:['soberano'],                 label:'Soberanos'},
-  {id:'bopreal',    tipos:['bopreal'],                  label:'BOPREALes'},
-  {id:'fixed_rate', tipos:['fixed_rate'],               label:'Fixed Rate'},
-  {id:'boncer',     tipos:['boncer','boncer_bullet'],   label:'BONCERs'},
-  {id:'duales',     tipos:['dual_tamar','dual_boncap','dual_boncer'], label:'Duales'},
-  {id:'tamar',      tipos:['tamar','dual_tamar'],       label:'TAMARs'},
+  {id:'lecap',      tipos:['lecap'],             label:'LECAPs'},
+  {id:'boncap',     tipos:['boncap'],            label:'BONCAPs',  inclDualGanador:'boncap'},
+  {id:'dolarlinked',tipos:['dolarlinked'],       label:'Dólar Linked'},
+  {id:'soberano',   tipos:['soberano'],          label:'Soberanos'},
+  {id:'bopreal',    tipos:['bopreal'],           label:'BOPREALes'},
+  {id:'fixed_rate', tipos:['fixed_rate'],        label:'Fixed Rate'},
+  {id:'boncer',     tipos:['boncer','boncer_bullet'], label:'BONCERs', inclDualGanador:'fija_boncer'},
+  {id:'duales',     tipos:['duales'],            label:'Duales'},
+  {id:'tamar',      tipos:['tamar'],             label:'TAMARs',   inclDualGanador:'tamar'},
 ];
 
 function rfHmColor(pct) {
@@ -7785,9 +7785,27 @@ function rfBuildHeatmaps() {
     if (cat.id === 'duales') {
       rows = cruzarDual(_precios, liq).filter(r => r.calc && !isNaN(r.calc.tna));
     } else {
+      const tipos = _bundle._tipos || {};
       cat.tipos.forEach(tipo => {
-        cruzar(tipo, _precios, liq).forEach(r => { if (r.calc && !isNaN(r.calc.tna)) rows.push(r); });
+        cruzar(tipo, _precios, liq).forEach(r => {
+          if (!r.calc || isNaN(r.calc.tna)) return;
+          // Excluir duales de las categorías puras — se manejan via inclDualGanador
+          const tp = (tipos[r.ticker] || '').toLowerCase();
+          if (tp === 'dual_boncap' || tp === 'dual_boncer' || tp === 'dual_tamar') return;
+          rows.push(r);
+        });
       });
+      // Agregar duales cuya pata ganadora corresponde a esta categoría
+      if (cat.inclDualGanador) {
+        const dualRows = cruzarDual(_precios, liq).filter(r => r.calc && !isNaN(r.calc.tna));
+        dualRows.forEach(r => {
+          const gana = r.ganador;
+          const tf   = (r.tipoFija||'').toLowerCase();
+          if (cat.inclDualGanador === 'tamar'       && gana === 'tamar') rows.push(r);
+          if (cat.inclDualGanador === 'boncap'      && gana === 'fija'  && tf === 'dual_boncap') rows.push(r);
+          if (cat.inclDualGanador === 'fija_boncer' && gana === 'fija'  && tf === 'dual_boncer') rows.push(r);
+        });
+      }
     }
     const seen = new Set();
     rows = rows.filter(r => { if (seen.has(r.ticker)) return false; seen.add(r.ticker); return true; });
@@ -7808,12 +7826,16 @@ function rfBuildHeatmaps() {
     const items = rows
       .filter(r => !exclude.has(r.ticker.toUpperCase()))
       .map(r => {
-      const pxEntry  = getPrecio(r.ticker);
-      const precio   = r.precio ?? pxEntry?.precio ?? NaN;
+      const pxEntry   = getPrecio(r.ticker);
+      const precio    = r.precio ?? pxEntry?.precio ?? NaN;
       const variacion = r.variacion ?? pxEntry?.variacion ?? null;
-      const vol      = r.vol ?? 0;
-      const tna      = r.calc?.tna ?? (r.calcTamar?.tna ?? r.calcFija?.tna ?? null);
-      return { ticker: r.ticker, precio, variacion, vol, tna, monto: (vol > 0 && precio > 0) ? vol * precio : (vol || 1) };
+      const vol       = r.vol ?? 0;
+      // Para duales: TNA del ganador; r.calc ya apunta al ganador vía cruzarDual
+      const tna       = r.calc?.tna ?? (r.calcTamar?.tna ?? r.calcFija?.tna ?? null);
+      const ganador   = r.ganador ?? null; // 'tamar' | 'fija' | null
+      const maturity  = (_bundle._meta||{})[r.ticker]?.maturity ?? r.calc?.fechaVto ?? null;
+      const matStr    = maturity ? maturity.substring(0,10) : null;
+      return { ticker: r.ticker, precio, variacion, vol, tna, ganador, matStr, monto: (vol > 0 && precio > 0) ? vol * precio : (vol || 1) };
     }).filter(r => r.monto > 0);
 
     if (!items.length) return;
@@ -7855,11 +7877,14 @@ function rfBuildHeatmaps() {
         const tnaStr = r.tna  != null ? r.tna.toFixed(2) + '%' : '—';
         const pxStr  = !isNaN(r.precio) ? r.precio.toFixed(2) : '—';
         const volStr = r.vol  > 0 ? r.vol.toLocaleString('es-AR') : '—';
+        const ganadorStr = r.ganador ? `<div style="color:var(--text3);">Pata activa &nbsp;<span style="color:${r.ganador==='tamar'?'#e3b341':'#3fb950'};float:right;font-weight:700;">${r.ganador==='tamar'?'TAMAR':'FIJA'}</span></div>` : '';
+        const vtoStr = r.matStr ? `<div style="color:var(--text3);">Vencimiento <span style="color:var(--text2);float:right;">${r.matStr}</span></div>` : '';
         tooltip.innerHTML =
           `<div style="font-weight:700;font-size:12px;margin-bottom:4px;color:var(--text);">${r.ticker}</div>` +
           `<div style="color:var(--text3);">Precio &nbsp;&nbsp;&nbsp;<span style="color:var(--text);float:right;">${pxStr}</span></div>` +
           `<div style="color:var(--text3);">Variación &nbsp;<span style="color:${(varPct??0)>=0?'#3fb950':'#f85149'};float:right;">${varStr}</span></div>` +
           `<div style="color:var(--text3);">TNA &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--accent);float:right;">${tnaStr}</span></div>` +
+          ganadorStr + vtoStr +
           `<div style="color:var(--text3);">Volumen &nbsp;&nbsp;<span style="color:var(--text2);float:right;">${volStr}</span></div>`;
         tooltip.style.display = 'block';
       });
