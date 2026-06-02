@@ -1607,8 +1607,36 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 /* ── Calendario RF ── */
 #app-rf #rf-tab-index{padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);transition:all .15s;}
 #app-rf #rf-tab-cal{padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;}
+#app-rf #rf-tab-cmp{padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;}
 #app-rf #view-rf-cal{display:none;flex-direction:column;flex:1;overflow:hidden;height:calc(100vh - 52px);}
 #app-rf #view-rf-hm{display:none;flex-direction:column;flex:1;overflow:hidden;height:calc(100vh - 52px);}
+#app-rf #view-rf-cmp{display:none;flex-direction:column;flex:1;overflow:hidden;height:calc(100vh - 52px);}
+/* ── Comparador de curvas ── */
+.cmp-topbar{display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;}
+.cmp-topbar label{font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.4px;}
+.cmp-topbar select{background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:11px;font-family:var(--mono);padding:3px 8px;outline:none;cursor:pointer;}
+/* pip column lateral */
+#cmp-outlier-pips{width:0;overflow:hidden;display:flex;flex-direction:column;gap:3px;padding:0;transition:width .18s,padding .18s;flex-shrink:0;overflow-y:auto;background:var(--bg2);}
+#cmp-outlier-pips.has-pips{width:90px;padding:6px 5px;border-left:1px solid var(--border);}
+.cmp-pip{display:flex;align-items:center;gap:4px;padding:3px 5px;border-radius:4px;background:rgba(239,68,68,0.10);border:1px solid rgba(239,68,68,0.22);cursor:pointer;font-family:var(--mono);font-size:8px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;transition:background .12s;}
+.cmp-pip:hover{background:rgba(239,68,68,0.22);}
+.cmp-cats-bar{display:flex;flex-direction:column;gap:2px;}
+.cmp-cat-cb{display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:4px;cursor:pointer;user-select:none;font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text3);transition:background .12s;width:100%;box-sizing:border-box;}
+.cmp-cat-cb:hover{background:var(--accent-light);}
+.cmp-cat-cb .cmp-cb-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cmp-cat-cb .cmp-cb-box{width:12px;height:12px;border-radius:3px;border:1px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .12s;margin-left:auto;}
+.cmp-cat-cb .cmp-cb-box.checked::after{content:'✓';font-size:8px;font-weight:700;}
+.cmp-cat-cb:hover{border-color:currentColor;opacity:1!important;}
+.cmp-cat-cb.active{color:#fff;opacity:1!important;}
+.cmp-cat-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.cmp-body{flex:1;display:flex;flex-direction:column;min-height:0;padding:10px 20px 6px;gap:6px;}
+.cmp-chart-wrap{flex:1;min-height:0;position:relative;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;flex-direction:column;}
+.cmp-chart-inner{flex:1;position:relative;min-height:0;width:100%;}
+.cmp-legend{display:flex;flex-wrap:wrap;gap:10px;padding:6px 0 0;flex-shrink:0;}
+.cmp-legend-item{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;color:var(--text3);}
+.cmp-legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.cmp-legend-line{width:16px;height:2px;flex-shrink:0;border-radius:2px;}
+.cmp-empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-family:var(--mono);font-size:11px;}
 .rf-hm-label{position:absolute;top:6px;left:8px;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-family:var(--mono);color:rgba(255,255,255,.5);z-index:2;pointer-events:none;}
 .rf-hm-wrap{position:absolute;inset:0;}
 #app-rf .rf-cal-day{min-height:80px;border-radius:6px;border:1px solid var(--border);padding:6px;background:var(--card);position:relative;transition:background .12s;}
@@ -1755,6 +1783,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
     <div style="display:flex;align-items:stretch;padding:0 20px;gap:0;height:100%;">
       <div id="ons-tab-index" onclick="ons_switchTab('index')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);transition:all .15s;">Índice</div>
       <div id="ons-tab-scoring" onclick="ons_switchTab('scoring')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;">Scoring</div>
+      <div id="ons-tab-cmp" onclick="ons_switchTab('cmp')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;">Comparador</div>
       <div id="ons-tab-cal" onclick="ons_switchTab('cal')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;">Calendario</div>
     </div>
     <!-- Zona derecha: controles -->
@@ -1925,6 +1954,53 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
     </div>
   </div>
 
+  <!-- VISTA COMPARADOR ONs -->
+  <div id="view-ons-cmp">
+    <!-- Sidebar izquierdo -->
+    <div class="onscmp-sidebar">
+      <div class="onscmp-sidebar-top">
+        <div style="font-size:9px;font-weight:700;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Selección</div>
+        <input type="text" id="onscmp-search" class="onscmp-search" placeholder="Buscar empresa…" oninput="onsCmp_filterSidebar(this.value)">
+        <div id="onscmp-tree"></div>
+      </div>
+    </div>
+
+    <!-- Área derecha -->
+    <div class="onscmp-main">
+      <!-- Topbar -->
+      <div class="onscmp-topbar">
+        <label>Eje Y</label>
+        <select id="onscmp-axis-y" onchange="onsCmp_render()">
+          <option value="tir">TIR (%)</option>
+          <option value="cupon">Tasa Cupón (%)</option>
+        </select>
+        <label>Eje X</label>
+        <select id="onscmp-axis-x" onchange="onsCmp_render()">
+          <option value="md">Mod. Duration</option>
+          <option value="dur">Duration</option>
+          <option value="vida">Vida Promedio</option>
+        </select>
+        <div style="width:1px;height:18px;background:var(--border);margin:0 2px;"></div>
+        <!-- Moneda -->
+        <button id="onscmp-btn-mep" class="onscmp-btn active" onclick="onsCmp_toggleMoneda('mep')">MEP</button>
+        <button id="onscmp-btn-ccl" class="onscmp-btn active" onclick="onsCmp_toggleMoneda('ccl')">CCL</button>
+        <button id="onscmp-btn-dif" class="onscmp-btn" onclick="onsCmp_toggleDif()" title="Diferenciar MEP/CCL con formas distintas">DIFER.</button>
+      </div>
+      <!-- Cuerpo: gráfico + pips + leyenda -->
+      <div class="onscmp-body">
+        <div class="onscmp-chart-row">
+          <div class="onscmp-chart-wrap">
+            <div class="onscmp-chart-inner">
+              <canvas id="onscmp-chart" style="position:absolute;inset:0;width:100%!important;height:100%!important;"></canvas>
+            </div>
+          </div>
+          <div id="onscmp-outlier-pips"></div>
+        </div>
+        <div class="onscmp-legend" id="onscmp-legend"></div>
+      </div>
+    </div>
+  </div>
+
   <div id="view-cal" style="display:none;flex-direction:column;flex:1;overflow:hidden;height:calc(100vh - 52px);">
     <div style="display:flex;align-items:center;gap:10px;padding:12px 20px;border-bottom:1px solid var(--border);flex-shrink:0;">
       <button id="ons-cal-prev" onclick="ons_calPrevMonth()" style="padding:4px 10px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:13px;cursor:pointer;">‹</button>
@@ -1975,6 +2051,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
     <div style="display:flex;align-items:stretch;padding:0 20px;gap:0;height:100%;">
       <div id="rf-tab-index" onclick="rfSwitchTab('index')">Índice</div>
       <div id="rf-tab-hm" onclick="rfSwitchTab('hm')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;">Heatmap</div>
+      <div id="rf-tab-cmp" onclick="rfSwitchTab('cmp')">Comparador</div>
       <div id="rf-tab-cal" onclick="rfSwitchTab('cal')">Calendario</div>
     </div>
     <!-- Zona derecha: controles -->
@@ -2126,6 +2203,93 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
       <div class="rf-hm-cell" style="grid-column:span 2;position:relative;border-radius:8px;overflow:hidden;background:var(--bg2);border:1px solid var(--border);"><div class="rf-hm-label">Duales</div><div class="rf-hm-wrap" id="rfhm-duales"></div></div>
       <div class="rf-hm-cell" style="position:relative;border-radius:8px;overflow:hidden;background:var(--bg2);border:1px solid var(--border);"><div class="rf-hm-label">TAMARs</div><div class="rf-hm-wrap" id="rfhm-tamar"></div></div>
     </div>
+  </div>
+
+  <!-- VISTA COMPARADOR DE CURVAS: full width -->
+  <div id="view-rf-cmp" style="display:none;flex-direction:row;flex:1;overflow:hidden;height:calc(100vh - 52px);">
+
+    <!-- SIDEBAR izquierdo -->
+    <div style="width:160px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+      <!-- Categorías (scroll si hay muchas) -->
+      <div style="flex:1;overflow-y:auto;padding:14px 14px 8px;">
+        <div style="font-size:9px;font-weight:700;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Categorías</div>
+        <div id="cmp-cats-bar" style="display:flex;flex-direction:column;gap:4px;"></div>
+      </div>
+      <!-- Divider -->
+      <div style="margin:0 14px;height:1px;background:var(--border);flex-shrink:0;"></div>
+      <!-- Controles de fecha/CER/TC — fondo del sidebar -->
+      <div style="padding:10px 14px 14px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;">
+        <div style="font-size:9px;font-weight:700;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px;">Parámetros</div>
+        <!-- Fecha liq -->
+        <div style="display:flex;flex-direction:column;gap:3px;">
+          <label style="font-size:9px;font-family:var(--mono);color:var(--text3);">Fecha liq.</label>
+          <input type="date" id="cmp-fecha-liq" onchange="cmpRecalc()"
+            style="background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:10px;font-family:var(--mono);padding:3px 6px;outline:none;width:100%;box-sizing:border-box;">
+        </div>
+        <!-- CER chip -->
+        <div id="cmp-cer-wrap" style="display:none;flex-direction:column;gap:3px;">
+          <label style="font-size:9px;font-family:var(--mono);color:var(--text3);">CER</label>
+          <span id="cmp-cer-chip" onclick="cmpCerToggleDropdown(event)"
+            style="display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:5px;border:1px solid var(--border2);background:var(--bg4);cursor:pointer;font-family:var(--mono);font-size:10px;color:var(--text);transition:border-color .15s;user-select:none;width:100%;box-sizing:border-box;"
+            onmouseover="this.style.borderColor='var(--accent2)'"
+            onmouseout="this.style.borderColor='var(--border2)'">
+            <span id="cmp-cer-offset-label" style="font-size:9px;color:var(--text3);">T−10</span>
+            <span id="cmp-cer-valor" style="font-weight:700;color:var(--accent2);flex:1;">—</span>
+            <svg width="8" height="8" viewBox="0 0 10 10" fill="none" style="color:var(--text3);flex-shrink:0;"><path d="M2 3l3 4 3-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </span>
+          <div id="cmp-cer-dropdown" style="display:none;position:fixed;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;overflow:hidden;z-index:200;min-width:160px;box-shadow:0 4px 16px rgba(0,0,0,0.4);"></div>
+        </div>
+        <!-- TC chip -->
+        <div id="cmp-tc-wrap" style="display:none;flex-direction:column;gap:3px;">
+          <label style="font-size:9px;font-family:var(--mono);color:var(--text3);">TC</label>
+          <span id="cmp-tc-chip" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:5px;border:1px solid var(--border2);background:var(--bg4);font-family:var(--mono);font-size:10px;color:var(--text);">
+            <span style="font-size:9px;color:var(--text3);">$</span>
+            <span id="cmp-tc-valor" style="font-weight:700;color:var(--accent2);flex:1;">—</span>
+          </span>
+          <input type="text" id="cmp-tc-inp" placeholder="manual"
+            style="background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:10px;font-family:var(--mono);padding:3px 6px;outline:none;width:100%;box-sizing:border-box;"
+            onfocus="this.style.borderColor='var(--accent)'"
+            onblur="this.style.borderColor=_cmpState.tcManual?'var(--yellow)':'var(--border2)'"
+            onkeydown="if(event.key==='Enter')cmpTcChanged()"/>
+          <button onclick="cmpTcReset()" style="padding:2px 0;border-radius:4px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:9px;font-family:var(--mono);cursor:pointer;width:100%;">↺ auto</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ÁREA DERECHA: controles gráfico + canvas + pips lateral -->
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;">
+      <!-- Topbar fino: solo ejes -->
+      <div class="cmp-topbar">
+        <label>Eje Y</label>
+        <select id="cmp-axis-y" onchange="cmpAxisChanged()">
+          <option value="tna">TIR TNA</option>
+          <option value="tea">TIR TEA</option>
+          <option value="tem">TIR TEM</option>
+        </select>
+        <label>Eje X</label>
+        <select id="cmp-axis-x" onchange="cmpAxisChanged()">
+          <option value="md">MD</option>
+          <option value="dur">Duration</option>
+          <option value="dias">Días</option>
+        </select>
+      </div>
+      <!-- Gráfico + pips laterales + leyenda -->
+      <div class="cmp-body">
+        <div style="flex:1;display:flex;flex-direction:row;min-height:0;gap:0;">
+          <!-- Canvas -->
+          <div class="cmp-chart-wrap" style="flex:1;min-width:0;">
+            <div class="cmp-chart-inner" style="position:relative;width:100%;height:100%;">
+              <canvas id="cmp-curve-chart" style="position:absolute;inset:0;width:100%!important;height:100%!important;"></canvas>
+            </div>
+          </div>
+          <!-- Outlier pips — columna derecha -->
+          <div id="cmp-outlier-pips"
+            style="flex-shrink:0;display:flex;flex-direction:column;gap:3px;overflow-y:auto;overflow-x:hidden;background:var(--bg2);width:0;padding:0;transition:width .18s,padding .18s;"></div>
+        </div>
+        <div class="cmp-legend" id="cmp-legend"></div>
+      </div>
+    </div>
+
   </div>
 
   <div id="view-rf-cal" style="display:none;flex-direction:column;flex:1;overflow:hidden;height:calc(100vh - 52px);">
@@ -7710,7 +7874,20 @@ window.rfCalCloseModal = function() {
 
 // Tab switch: alterna entre vista índice y calendario
 window.rfSwitchTab = function(tab) {
-  const tabs = ['index','hm','cal'];
+  // Al salir del comparador, resetear su estado TC/CER a defaults
+  const viewCmpEl = document.getElementById('view-rf-cmp');
+  if (viewCmpEl && viewCmpEl.style.display !== 'none' && tab !== 'cmp') {
+    _cmpState.tcManual = false;
+    _cmpState.tcManualVal = null;
+    _cmpState.cerOffset = 10;
+    _cmpState.exclDualesCats.clear();
+    _cmpState.showPatas = false;
+    _cmpState.showSobAR = true;
+    _cmpState.showSobNY = true;
+    cmpSyncPatasBtn();
+    cmpSyncSobBtns();
+  }
+  const tabs = ['index','hm','cmp','cal'];
   tabs.forEach(t => {
     const el = document.getElementById('rf-tab-'+t);
     if (!el) return;
@@ -7720,9 +7897,11 @@ window.rfSwitchTab = function(tab) {
   const mainContent = document.getElementById('rf-main-content');
   const viewCal     = document.getElementById('view-rf-cal');
   const viewHm      = document.getElementById('view-rf-hm');
+  const viewCmp     = document.getElementById('view-rf-cmp');
   mainContent.style.display = tab==='index' ? 'flex' : 'none';
   viewCal.style.display     = tab==='cal'   ? 'flex' : 'none';
   viewHm.style.display      = tab==='hm'    ? 'flex' : 'none';
+  viewCmp.style.display     = tab==='cmp'   ? 'flex' : 'none';
   if (tab==='cal') rfRenderCalendar();
   if (tab==='hm')  {
     // Esperar a que el layout se compute antes de medir dimensiones
@@ -7739,6 +7918,768 @@ window.rfSwitchTab = function(tab) {
       if (grid) window._rfHmResizeObs.observe(grid);
     }
   }
+  if (tab==='cmp') {
+    cmpInit();
+    setTimeout(() => cmpRecalc(), 50);
+  }
+};
+
+/* ══════════════════════════════════════════════════════════
+   COMPARADOR DE CURVAS
+══════════════════════════════════════════════════════════ */
+
+// Categorías disponibles con color fijo por categoría
+const CMP_CATS = [
+  { id:'lecap',       label:'LECAPs',       color:'#1E27F3' },
+  { id:'boncap',      label:'BONCAPs',      color:'#22c55e' },
+  { id:'boncer',      label:'BONCERs',      color:'#e3b341' },
+  { id:'tamar',       label:'TAMARs',       color:'#a78bfa' },
+  { id:'dolarlinked', label:'Dólar Linked', color:'#34d399' },
+  { id:'soberano',    label:'Soberanos',    color:'#f87171' },
+  { id:'bopreal',     label:'BOPREALes',    color:'#fb923c' },
+  { id:'fixed_rate',  label:'Fixed Rate',   color:'#38bdf8' },
+  { id:'duales',      label:'Duales',       color:'#f59e0b' },
+];
+const CMP_SOB_AR = '#f87171';
+const CMP_SOB_NY = '#fda4af';
+
+// Estado propio del comparador — nunca toca el estado de Índice
+const _cmpState = {
+  cats: new Set(['lecap','boncap']),
+  axisY: 'tna',
+  axisX: 'md',
+  showPatas: false,
+  showSobAR: true,   // sub-toggle Ley AR dentro de Soberanos
+  showSobNY: true,   // sub-toggle Ley NY dentro de Soberanos
+  cerOffset: 10,
+  tcManual: false,
+  tcManualVal: null,
+  initialized: false,
+  exclDualesCats: new Set(), // categorías que tienen los duales excluidos
+};
+let _cmpChartInst = null;
+let _cmpRowsMap   = {};  // { catId: rows[] }
+const _cmpExcluded = new Set(); // tickers excluidos por click
+
+// ── Categorías que admiten "Excluir duales" ──
+const CMP_EXCL_DUAL_CATS = new Set(['boncap', 'boncer', 'tamar']);
+
+// ── Inicialización del tab (primera vez y cada vez que se activa) ──
+function cmpInit() {
+  if (!_bundle || !_precios) return;
+
+  // Poblar checkboxes si no están aún
+  const bar = document.getElementById('cmp-cats-bar');
+  if (bar && !bar.querySelector('.cmp-cat-cb')) {
+    CMP_CATS.forEach(cat => {
+      const active = _cmpState.cats.has(cat.id);
+
+      // Wrapper por categoría
+      const wrap = document.createElement('div');
+      wrap.id = 'cmp-cat-wrap-' + cat.id;
+
+      // Checkbox principal — label neutro + checkbox derecho con color si activo
+      const cb = document.createElement('div');
+      cb.className = 'cmp-cat-cb';
+      cb.id = 'cmp-cb-' + cat.id;
+      cb.onclick = () => cmpToggleCat(cat.id);
+      const box = document.createElement('div');
+      box.className = 'cmp-cb-box' + (active ? ' checked' : '');
+      box.style.borderColor  = active ? cat.color : 'var(--border2)';
+      box.style.background   = active ? cat.color + '33' : 'transparent';
+      box.style.color        = active ? cat.color : 'transparent';
+      cb.innerHTML = `<span class="cmp-cb-label">${cat.label}</span>`;
+      cb.appendChild(box);
+      wrap.appendChild(cb);
+
+      // Sub-control: "Duales" para boncap/boncer/tamar
+      if (CMP_EXCL_DUAL_CATS.has(cat.id)) {
+        const sub = document.createElement('div');
+        sub.id = 'cmp-sub-exclduales-' + cat.id;
+        sub.style.cssText = `display:none;`;
+        sub.innerHTML = `<div id="cmp-row-exclduales-${cat.id}" onclick="cmpToggleExclDuales('${cat.id}')"
+          style="display:flex;align-items:center;padding:2px 6px 2px 18px;border-radius:4px;cursor:pointer;font-family:var(--mono);font-size:9px;color:var(--text3);transition:background .12s;"
+          onmouseover="this.style.background='var(--accent-light)'"
+          onmouseout="this.style.background='transparent'">
+          <span style="flex:1;">Mostrar duales</span>
+          <div id="cmp-btn-exclduales-${cat.id}" style="width:11px;height:11px;border-radius:3px;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;transition:all .12s;flex-shrink:0;"></div>
+        </div>`;
+        wrap.appendChild(sub);
+      }
+
+      // Sub-controls: "Ley AR" / "Ley NY" para soberanos
+      if (cat.id === 'soberano') {
+        const sub = document.createElement('div');
+        sub.id = 'cmp-sub-soberano';
+        sub.style.cssText = `display:none;flex-direction:column;`;
+        const mkSobRow = (key, label) => `
+          <div id="cmp-row-sob-${key}" onclick="cmpToggleSobLey('${key}')"
+            style="display:flex;align-items:center;padding:2px 6px 2px 18px;border-radius:4px;cursor:pointer;font-family:var(--mono);font-size:9px;color:var(--text3);transition:background .12s;"
+            onmouseover="this.style.background='var(--accent-light)'"
+            onmouseout="this.style.background='transparent'">
+            <span style="flex:1;">${label}</span>
+            <div id="cmp-btn-sob-${key}" style="width:11px;height:11px;border-radius:3px;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;transition:all .12s;flex-shrink:0;"></div>
+          </div>`;
+        sub.innerHTML = mkSobRow('ar','Ley AR') + mkSobRow('ny','Ley NY');
+        wrap.appendChild(sub);
+      }
+
+      // Sub-control: "Patas" para duales
+      if (cat.id === 'duales') {
+        const sub = document.createElement('div');
+        sub.id = 'cmp-sub-patas';
+        sub.style.cssText = `display:none;`;
+        sub.innerHTML = `<div onclick="cmpTogglePatas()"
+          style="display:flex;align-items:center;padding:2px 6px 2px 18px;border-radius:4px;cursor:pointer;font-family:var(--mono);font-size:9px;color:var(--text3);transition:background .12s;"
+          onmouseover="this.style.background='var(--accent-light)'"
+          onmouseout="this.style.background='transparent'">
+          <span style="flex:1;">Patas separadas</span>
+          <div id="cmp-btn-patas" style="width:11px;height:11px;border-radius:3px;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;transition:all .12s;flex-shrink:0;"></div>
+        </div>`;
+        wrap.appendChild(sub);
+      }
+
+      bar.appendChild(wrap);
+    });
+
+    // Mostrar sub-controles de categorías que arrancan activas y sincronizar estados
+    CMP_CATS.forEach(cat => {
+      if (CMP_EXCL_DUAL_CATS.has(cat.id)) {
+        cmpSyncExclDualesBtn(cat.id); // aplica color inicial (siempre, activo o no)
+        if (_cmpState.cats.has(cat.id)) {
+          const sub = document.getElementById('cmp-sub-exclduales-' + cat.id);
+          if (sub) sub.style.display = 'flex';
+        }
+      }
+      if (cat.id === 'soberano' && _cmpState.cats.has(cat.id)) {
+        const sub = document.getElementById('cmp-sub-soberano');
+        if (sub) sub.style.display = 'flex';
+      }
+      if (cat.id === 'duales' && _cmpState.cats.has(cat.id)) {
+        const sub = document.getElementById('cmp-sub-patas');
+        if (sub) sub.style.display = 'block';
+      }
+    });
+  }
+
+  // Setear fecha liq default
+  const fi = document.getElementById('cmp-fecha-liq');
+  if (fi && !fi.value) fi.value = defaultLiq();
+
+  // TC chip
+  cmpUpdateTcChip();
+  _cmpState.initialized = true;
+}
+
+// ── Toggle categoría ──
+window.cmpToggleCat = function(catId) {
+  const wasActive = _cmpState.cats.has(catId);
+  if (wasActive) {
+    _cmpState.cats.delete(catId);
+  } else {
+    _cmpState.cats.add(catId);
+  }
+  const active = _cmpState.cats.has(catId);
+  const cat = CMP_CATS.find(c => c.id === catId);
+  const cb  = document.getElementById('cmp-cb-' + catId);
+  if (cb && cat) {
+    const box = cb.querySelector('.cmp-cb-box');
+    if (box) {
+      box.classList.toggle('checked', active);
+      box.style.borderColor = active ? cat.color : 'var(--border2)';
+      box.style.background  = active ? cat.color + '33' : 'transparent';
+      box.style.color       = active ? cat.color : 'transparent';
+    }
+  }
+  // Al toggle (activar o desactivar): limpiar excluidos de los tickers de esta categoría
+  if (_cmpRowsMap[catId]) {
+    const tickersDeCat = new Set(_cmpRowsMap[catId].map(r => r.ticker));
+    for (const t of tickersDeCat) _cmpExcluded.delete(t);
+    // También limpiar patas: ticker + ' (T)' y ticker + ' (F)'
+    for (const t of tickersDeCat) { _cmpExcluded.delete(t + ' (T)'); _cmpExcluded.delete(t + ' (F)'); }
+  }
+  // Mostrar/ocultar sub-controles
+  if (CMP_EXCL_DUAL_CATS.has(catId)) {
+    const sub = document.getElementById('cmp-sub-exclduales-' + catId);
+    if (sub) sub.style.display = active ? 'flex' : 'none';
+    if (!active) { _cmpState.exclDualesCats.delete(catId); cmpSyncExclDualesBtn(catId); }
+  }
+  if (catId === 'soberano') {
+    const sub = document.getElementById('cmp-sub-soberano');
+    if (sub) sub.style.display = active ? 'flex' : 'none';
+    if (!active) { _cmpState.showSobAR = true; _cmpState.showSobNY = true; cmpSyncSobBtns(); }
+  }
+  if (catId === 'duales') {
+    const sub = document.getElementById('cmp-sub-patas');
+    if (sub) sub.style.display = active ? 'block' : 'none';
+    if (!active && _cmpState.showPatas) { _cmpState.showPatas = false; cmpSyncPatasBtn(); }
+  }
+  cmpUpdateContextualControls();
+  cmpRecalc();
+};
+
+// ── Mostrar/ocultar CER chip y TC chip según categorías activas ──
+function cmpUpdateContextualControls() {
+  const hasBoncer = _cmpState.cats.has('boncer') || _cmpState.cats.has('duales');
+  const hasDolar  = _cmpState.cats.has('dolarlinked') || _cmpState.cats.has('soberano') || _cmpState.cats.has('bopreal');
+
+  const cerWrap = document.getElementById('cmp-cer-wrap');
+  const tcWrap  = document.getElementById('cmp-tc-wrap');
+  if (cerWrap) cerWrap.style.display = hasBoncer ? 'flex' : 'none';
+  if (tcWrap)  tcWrap.style.display  = hasDolar  ? 'flex' : 'none';
+
+  if (hasBoncer) cmpUpdateCerChip();
+  if (hasDolar)  cmpUpdateTcChip();
+}
+
+// ── CER chip ──
+function cmpUpdateCerChip() {
+  const liq = document.getElementById('cmp-fecha-liq')?.value || defaultLiq();
+  const fechaCer = restarHabiles(liq, _cmpState.cerOffset);
+  const val = getCerForDate(fechaCer);
+  const lbl = document.getElementById('cmp-cer-offset-label');
+  const valEl = document.getElementById('cmp-cer-valor');
+  if (lbl) lbl.textContent = `T−${_cmpState.cerOffset}`;
+  if (valEl) valEl.textContent = val ? val.toFixed(4) : '—';
+}
+
+window.cmpCerToggleDropdown = function(e) {
+  if (e) e.stopPropagation();
+  const dd = document.getElementById('cmp-cer-dropdown');
+  if (!dd) return;
+  if (dd.style.display !== 'none') { dd.style.display = 'none'; return; }
+  const liq = document.getElementById('cmp-fecha-liq')?.value || defaultLiq();
+  dd.innerHTML = '';
+  for (let n = 8; n <= 12; n++) {
+    const fechaCer = restarHabiles(liq, n);
+    const val = getCerForDate(fechaCer);
+    const isActive = n === _cmpState.cerOffset;
+    const row = document.createElement('div');
+    row.style.cssText = `padding:6px 14px;cursor:pointer;font-family:var(--mono);font-size:11px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:${isActive?'var(--accent-light)':'transparent'};color:${isActive?'var(--accent)':'var(--text)'};`;
+    row.onmouseover = () => { if (!isActive) row.style.background = 'var(--bg3)'; };
+    row.onmouseout  = () => { if (!isActive) row.style.background = 'transparent'; };
+    row.innerHTML = `<span>T−${n}</span><span style="color:var(--text3);font-size:10px;">${fechaCer} = ${val?val.toFixed(4):'?'}</span>`;
+    row.onclick = () => {
+      _cmpState.cerOffset = n;
+      dd.style.display = 'none';
+      cmpUpdateCerChip();
+      cmpRecalc();
+    };
+    dd.appendChild(row);
+  }
+  // Posicionar: si hay poco espacio abajo, abrir hacia arriba
+  const chip = document.getElementById('cmp-cer-chip');
+  if (chip) {
+    const rect = chip.getBoundingClientRect();
+    const ddH = 5 * 34; // estimado: 5 opciones × 34px
+    const spaceBelow = window.innerHeight - rect.bottom;
+    dd.style.position = 'fixed';
+    if (spaceBelow < ddH + 8) {
+      dd.style.top = 'auto';
+      dd.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+    } else {
+      dd.style.bottom = 'auto';
+      dd.style.top = (rect.bottom + 4) + 'px';
+    }
+    dd.style.left = rect.left + 'px';
+  }
+  dd.style.display = 'block';
+  const close = (ev) => { if (!dd.contains(ev.target)) { dd.style.display='none'; document.removeEventListener('click',close); } };
+  setTimeout(() => document.addEventListener('click', close), 0);
+};
+
+// ── TC chip ──
+function cmpUpdateTcChip() {
+  const tc = _cmpState.tcManualVal ?? _tcUsd;
+  const el = document.getElementById('cmp-tc-valor');
+  if (el) { el.textContent = tc ? fmtN(tc, 2) : '—'; el.style.color = _cmpState.tcManual ? 'var(--yellow)' : 'var(--accent2)'; }
+}
+
+window.cmpTcChanged = function() {
+  const inp = document.getElementById('cmp-tc-inp');
+  const val = inp ? toNum(inp.value) : NaN;
+  if (!isNaN(val) && val > 0) {
+    _cmpState.tcManual = true;
+    _cmpState.tcManualVal = val;
+    if (inp) { inp.style.borderColor = 'var(--yellow)'; inp.style.color = 'var(--yellow)'; }
+  } else {
+    _cmpState.tcManual = false;
+    _cmpState.tcManualVal = null;
+    if (inp) { inp.style.borderColor = 'var(--border2)'; inp.style.color = 'var(--text)'; inp.value = ''; }
+  }
+  cmpUpdateTcChip();
+  cmpRecalc();
+};
+
+window.cmpTcReset = function() {
+  _cmpState.tcManual = false;
+  _cmpState.tcManualVal = null;
+  const inp = document.getElementById('cmp-tc-inp');
+  if (inp) { inp.value = ''; inp.style.borderColor = 'var(--border2)'; inp.style.color = 'var(--text)'; }
+  cmpUpdateTcChip();
+  cmpRecalc();
+};
+
+// ── Toggle PATAS para Duales ──
+window.cmpToggleSobLey = function(key) {
+  if (key === 'ar') _cmpState.showSobAR = !_cmpState.showSobAR;
+  else              _cmpState.showSobNY = !_cmpState.showSobNY;
+  cmpSyncSobBtns();
+  cmpRenderChart();
+};
+
+function cmpSyncSobBtns() {
+  const syncBox = (key, color, isOn) => {
+    const box = document.getElementById('cmp-btn-sob-' + key);
+    if (!box) return;
+    box.style.borderColor = isOn ? color : 'var(--border2)';
+    box.style.background  = isOn ? color + '33' : 'transparent';
+    box.style.color       = isOn ? color : 'transparent';
+    box.textContent       = isOn ? '✓' : '';
+  };
+  syncBox('ar', CMP_SOB_AR, _cmpState.showSobAR);
+  syncBox('ny', CMP_SOB_NY, _cmpState.showSobNY);
+}
+
+window.cmpTogglePatas = function() {
+  _cmpState.showPatas = !_cmpState.showPatas;
+  cmpSyncPatasBtn();
+  cmpRenderChart();
+};
+
+function cmpSyncPatasBtn() {
+  const box = document.getElementById('cmp-btn-patas');
+  if (!box) return;
+  const cat = CMP_CATS.find(c => c.id === 'duales');
+  const color = cat?.color || 'var(--accent)';
+  const on = _cmpState.showPatas;
+  box.style.borderColor = on ? color : 'var(--border2)';
+  box.style.background  = on ? color + '33' : 'transparent';
+  box.style.color       = on ? color : 'transparent';
+  box.textContent       = on ? '✓' : '';
+}
+
+function cmpSyncExclDualesBtn(catId) {
+  const box = document.getElementById('cmp-btn-exclduales-' + catId);
+  if (!box) return;
+  const cat = CMP_CATS.find(c => c.id === catId);
+  const color = cat?.color || 'var(--accent)';
+  const on = !_cmpState.exclDualesCats.has(catId); // ON = duales visibles
+  box.style.borderColor = on ? color : 'var(--border2)';
+  box.style.background  = on ? color + '33' : 'transparent';
+  box.style.color       = on ? color : 'transparent';
+  box.textContent       = on ? '✓' : '';
+}
+
+window.cmpToggleExclDuales = function(catId) {
+  if (_cmpState.exclDualesCats.has(catId)) {
+    _cmpState.exclDualesCats.delete(catId);
+  } else {
+    _cmpState.exclDualesCats.add(catId);
+  }
+  cmpSyncExclDualesBtn(catId);
+  cmpRenderChart();
+};
+
+// ── Eje changed ──
+window.cmpAxisChanged = function() {
+  const selY = document.getElementById('cmp-axis-y');
+  const selX = document.getElementById('cmp-axis-x');
+  if (selY) _cmpState.axisY = selY.value;
+  if (selX) _cmpState.axisX = selX.value;
+  cmpRenderChart();
+};
+
+// ── Recalcular todas las filas para las categorías activas ──
+window.cmpRecalc = async function() {
+  if (!_bundle || !_precios) return;
+  cmpUpdateContextualControls();
+
+  // Si hay TAMARs o Duales seleccionados y _tamarProms aún no está cargado, cargarlo primero
+  const needsTamar = _cmpState.cats.has('tamar') || _cmpState.cats.has('duales');
+  if (needsTamar && Object.keys(_tamarProms).length === 0) {
+    await calcularTamarProms();
+  }
+
+  const liq = document.getElementById('cmp-fecha-liq')?.value || defaultLiq();
+
+  const savedTcManual    = window._tcManual;
+  const savedTcManualVal = window._tcManualVal;
+
+  _cmpRowsMap = {};
+  for (const catId of _cmpState.cats) {
+    let rows;
+    if (catId === 'duales') {
+      rows = cruzarDualCmp(liq);
+    } else {
+      rows = cruzarCmp(catId, liq);
+    }
+    _cmpRowsMap[catId] = rows || [];
+  }
+
+  // Restaurar TC/CER globales
+  window._tcManual    = savedTcManual;
+  window._tcManualVal = savedTcManualVal;
+
+  cmpRenderChart();
+};
+
+// ── Wrappers de cruzar que usan _cmpState para CER/TC ──
+// Necesitamos llamar a cruzar() con el CER offset del comparador.
+// cruzar() usa _cerOffset (let global del script). Lo parcheamos temporalmente.
+function cruzarCmp(catId, liq) {
+  const prevCerOffset   = _cerOffset;
+  const prevTcManual    = window._tcManual;
+  const prevTcManualVal = window._tcManualVal;
+  _cerOffset            = _cmpState.cerOffset;        // patch temporal
+  window._tcManual      = _cmpState.tcManual;
+  window._tcManualVal   = _cmpState.tcManualVal;
+  let rows;
+  try { rows = cruzar(catId, _precios, liq); }
+  finally {
+    _cerOffset            = prevCerOffset;
+    window._tcManual      = prevTcManual;
+    window._tcManualVal   = prevTcManualVal;
+  }
+  return rows;
+}
+
+function cruzarDualCmp(liq) {
+  const prevCerOffset   = _cerOffset;
+  const prevTcManual    = window._tcManual;
+  const prevTcManualVal = window._tcManualVal;
+  _cerOffset            = _cmpState.cerOffset;
+  window._tcManual      = _cmpState.tcManual;
+  window._tcManualVal   = _cmpState.tcManualVal;
+  let rows;
+  try { rows = cruzarDual(_precios, liq); }
+  finally {
+    _cerOffset            = prevCerOffset;
+    window._tcManual      = prevTcManual;
+    window._tcManualVal   = prevTcManualVal;
+  }
+  return rows;
+}
+
+// ── Render del gráfico ──
+function cmpRenderChart() {
+  const canvas = document.getElementById('cmp-curve-chart');
+  if (!canvas) return;
+  if (_cmpChartInst) { _cmpChartInst.destroy(); _cmpChartInst = null; }
+
+  const axY = _cmpState.axisY || 'tna';
+  const axX = _cmpState.axisX || 'md';
+  const isXDias = axX === 'dias';
+
+  // Tipos que son "duales" mezclados en otras categorías
+  const DUAL_TIPOS = new Set(['dual_boncap','dual_tamar','dual_boncer','duales']);
+
+  // Helper: ¿este row es un dual mezclado?
+  const isDualRow = r => DUAL_TIPOS.has((r.tipo||'').toLowerCase());
+
+  // Helper: filtrar rows según exclusiones y toggle duales
+  // El toggle "Excl. Duales" es per-categoría y solo afecta a tickers dual_* mezclados
+  // en boncap/boncer/tamar — nunca a la categoría DUALES propia
+  function filterRows(rows, catId) {
+    return rows.filter(r => {
+      if (_cmpExcluded.has(r.ticker)) return false;
+      if (catId !== 'duales' && _cmpState.exclDualesCats.has(catId) && isDualRow(r)) return false;
+      return true;
+    });
+  }
+
+  const datasets = [];
+  const legendItems = [];
+  const allDataPts = []; // solo puntos reales (sin trendlines) para rango
+
+  for (const cat of CMP_CATS) {
+    if (!_cmpState.cats.has(cat.id)) continue;
+    const rawRows = _cmpRowsMap[cat.id] || [];
+    if (!rawRows.length) continue;
+    const rows = filterRows(rawRows, cat.id);
+
+    if (cat.id === 'soberano') {
+      const isSobLeyAR = t => t.toUpperCase().startsWith('A');
+      const allPts = rows
+        .filter(r => r.calc && isFinite(lcGetAxisVal(r, axX)) && lcGetAxisVal(r, axX) > 0 && isFinite(lcGetAxisVal(r, axY)))
+        .map(r => ({ x: lcGetAxisVal(r, axX), y: lcGetAxisVal(r, axY), label: r.ticker, excl: _cmpExcluded.has(r.ticker) }));
+      const ptsAR = _cmpState.showSobAR ? allPts.filter(p => isSobLeyAR(p.label))  : [];
+      const ptsNY = _cmpState.showSobNY ? allPts.filter(p => !isSobLeyAR(p.label)) : [];
+      allDataPts.push(...ptsAR, ...ptsNY);
+      if (ptsAR.length) {
+        const trAR = makeTrendDs(ptsAR, CMP_SOB_AR);
+        if (trAR) { trAR.label = '_trend'; datasets.push(trAR); }
+        datasets.push({ label: 'Sob. Ley AR', data: ptsAR, backgroundColor: ptsAR.map(p => p.excl ? 'rgba(138,144,176,0.3)' : CMP_SOB_AR), borderColor: ptsAR.map(p => p.excl ? 'rgba(138,144,176,0.3)' : CMP_SOB_AR), pointRadius: 5, pointHoverRadius: 8, showLine: false, order: 2 });
+        legendItems.push({ color: CMP_SOB_AR, label: 'Tend. Sob. AR', isLine: true });
+        legendItems.push({ color: CMP_SOB_AR, label: 'Sob. Ley AR', isLine: false });
+      }
+      if (ptsNY.length) {
+        const trNY = makeTrendDs(ptsNY, CMP_SOB_NY);
+        if (trNY) { trNY.label = '_trend'; datasets.push(trNY); }
+        datasets.push({ label: 'Sob. Ley NY', data: ptsNY, backgroundColor: ptsNY.map(p => p.excl ? 'rgba(138,144,176,0.3)' : CMP_SOB_NY), borderColor: ptsNY.map(p => p.excl ? 'rgba(138,144,176,0.3)' : CMP_SOB_NY), pointRadius: 5, pointHoverRadius: 8, showLine: false, order: 2 });
+        legendItems.push({ color: CMP_SOB_NY, label: 'Tend. Sob. NY', isLine: true });
+        legendItems.push({ color: CMP_SOB_NY, label: 'Sob. Ley NY', isLine: false });
+      }
+      continue;
+    }
+
+    if (cat.id === 'duales' && _cmpState.showPatas) {
+      const ptsTamar = rows
+        .filter(r => r.calcTamar && isFinite(lcGetAxisVal({ calc: r.calcTamar }, axX)) && lcGetAxisVal({ calc: r.calcTamar }, axX) > 0 && isFinite(lcGetAxisVal({ calc: r.calcTamar }, axY)))
+        .map(r => ({ x: lcGetAxisVal({ calc: r.calcTamar }, axX), y: lcGetAxisVal({ calc: r.calcTamar }, axY), label: r.ticker + ' (T)' }));
+      const ptsFija = rows
+        .filter(r => r.calcFija && isFinite(lcGetAxisVal({ calc: r.calcFija }, axX)) && lcGetAxisVal({ calc: r.calcFija }, axX) > 0 && isFinite(lcGetAxisVal({ calc: r.calcFija }, axY)))
+        .map(r => ({ x: lcGetAxisVal({ calc: r.calcFija }, axX), y: lcGetAxisVal({ calc: r.calcFija }, axY), label: r.ticker + ' (F)' }));
+      allDataPts.push(...ptsTamar, ...ptsFija);
+
+      const colorT = cat.color;
+      const colorF = '#d97706';
+      if (ptsTamar.length) {
+        const trT = makeTrendDs(ptsTamar, colorT);
+        if (trT) { trT.label = '_trend'; datasets.push(trT); }
+        datasets.push({ label: 'Duales (TAMAR)', data: ptsTamar, backgroundColor: colorT, borderColor: colorT, pointRadius: 5, pointHoverRadius: 8, showLine: false, order: 2 });
+        legendItems.push({ color: colorT, label: 'Tend. Duales TAMAR', isLine: true });
+        legendItems.push({ color: colorT, label: 'Duales pata TAMAR', isLine: false });
+      }
+      if (ptsFija.length) {
+        const trF = makeTrendDs(ptsFija, colorF, true);
+        if (trF) { trF.label = '_trend'; datasets.push(trF); }
+        datasets.push({ label: 'Duales (Fija)', data: ptsFija, backgroundColor: colorF, borderColor: colorF, pointRadius: 5, pointHoverRadius: 8, showLine: false, order: 2 });
+        legendItems.push({ color: colorF, label: 'Tend. Duales Fija', isLine: true, dashed: true });
+        legendItems.push({ color: colorF, label: 'Duales pata Fija', isLine: false });
+      }
+      continue;
+    }
+
+    if (cat.id === 'duales' && !_cmpState.showPatas) {
+      // Sin patas: graficar la pata ganadora de cada dual como una sola serie
+      const pts = rows
+        .filter(r => {
+          const calcUsar = r.ganador === 'tamar' ? r.calcTamar : r.calcFija;
+          if (!calcUsar) return false;
+          const vx = lcGetAxisVal({ calc: calcUsar }, axX);
+          const vy = lcGetAxisVal({ calc: calcUsar }, axY);
+          return isFinite(vx) && vx > 0 && isFinite(vy);
+        })
+        .map(r => {
+          const calcUsar = r.ganador === 'tamar' ? r.calcTamar : r.calcFija;
+          return { x: lcGetAxisVal({ calc: calcUsar }, axX), y: lcGetAxisVal({ calc: calcUsar }, axY), label: r.ticker, excl: _cmpExcluded.has(r.ticker) };
+        });
+      if (!pts.length) continue;
+      allDataPts.push(...pts);
+      const tr = makeTrendDs(pts, cat.color);
+      if (tr) { tr.label = '_trend'; datasets.push(tr); }
+      datasets.push({ label: cat.label, data: pts, backgroundColor: pts.map(p => p.excl ? 'rgba(138,144,176,0.3)' : cat.color), borderColor: pts.map(p => p.excl ? 'rgba(138,144,176,0.3)' : cat.color), pointRadius: 5, pointHoverRadius: 8, showLine: false, order: 2 });
+      legendItems.push({ color: cat.color, label: 'Tend. Duales', isLine: true });
+      legendItems.push({ color: cat.color, label: 'Duales', isLine: false });
+      continue;
+    }
+
+    // Categoría normal
+    const pts = rows
+      .filter(r => r.calc && isFinite(lcGetAxisVal(r, axX)) && lcGetAxisVal(r, axX) > 0 && isFinite(lcGetAxisVal(r, axY)))
+      .map(r => ({ x: lcGetAxisVal(r, axX), y: lcGetAxisVal(r, axY), label: r.ticker, excl: _cmpExcluded.has(r.ticker) }));
+    if (!pts.length) continue;
+    allDataPts.push(...pts);
+
+    const tr = makeTrendDs(pts, cat.color);
+    if (tr) { tr.label = '_trend'; datasets.push(tr); }
+    datasets.push({ label: cat.label, data: pts, backgroundColor: pts.map(p => p.excl ? 'rgba(138,144,176,0.3)' : cat.color), borderColor: pts.map(p => p.excl ? 'rgba(138,144,176,0.3)' : cat.color), pointRadius: 5, pointHoverRadius: 8, showLine: false, order: 2 });
+    legendItems.push({ color: cat.color, label: `Tend. ${cat.label}`, isLine: true });
+    legendItems.push({ color: cat.color, label: cat.label, isLine: false });
+  }
+
+  const legendEl = document.getElementById('cmp-legend');
+
+  if (!allDataPts.length) {
+    if (legendEl) legendEl.innerHTML = '<span style="font-size:9px;color:var(--text3);font-family:var(--mono);">Seleccioná al menos una categoría con datos disponibles</span>';
+    cmpUpdatePips();
+    return;
+  }
+
+  // ── Cálculo de rango ──
+  // 1. Rango base: solo puntos de datos reales
+  const xs = allDataPts.map(p => p.x).filter(isFinite);
+  const ys = allDataPts.map(p => p.y).filter(isFinite);
+  const xMin = Math.min(...xs), xMax = Math.max(...xs);
+  const yMin = Math.min(...ys), yMax = Math.max(...ys);
+  const xSpan = xMax - xMin || 1;
+  const ySpan = yMax - yMin || 1;
+  const xPad = xSpan * 0.08;
+  const yPad = ySpan * 0.20;
+
+  // 2. Extender rango Y con los puntos de trendline que caigan dentro del rango X visible
+  //    y no se alejen más de 1.5× el span de los datos (evita parábolas desbocadas)
+  const xRangeMin = xMin - xPad, xRangeMax = xMax + xPad;
+  let trendYMin = yMin, trendYMax = yMax;
+  datasets.filter(d => d.label === '_trend').forEach(d => {
+    d.data.forEach(p => {
+      if (!isFinite(p.x) || !isFinite(p.y)) return;
+      if (p.x < xRangeMin || p.x > xRangeMax) return;           // fuera del rango X visible
+      if (p.y > yMax + ySpan * 1.5 || p.y < yMin - ySpan * 1.5) return; // curva desbocada
+      if (p.y < trendYMin) trendYMin = p.y;
+      if (p.y > trendYMax) trendYMax = p.y;
+    });
+  });
+  const finalYMin = Math.min(yMin, trendYMin) - yPad;
+  const finalYMax = Math.max(yMax, trendYMax) + yPad;
+
+  _cmpChartInst = new Chart(canvas, {
+    type: 'scatter',
+    data: { datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      onClick(evt, elements) {
+        if (!elements?.length) return;
+        const el = elements[0];
+        const ds = _cmpChartInst.data.datasets[el.datasetIndex];
+        if (!ds || ds.label === '_trend') return;
+        const pt = ds.data[el.index];
+        if (!pt?.label) return;
+        // Toggle exclusión
+        if (_cmpExcluded.has(pt.label)) _cmpExcluded.delete(pt.label);
+        else _cmpExcluded.add(pt.label);
+        cmpRenderChart();
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#131929', borderColor: 'rgba(30,39,243,0.3)', borderWidth: 1,
+          titleColor: '#e8eaf6', bodyColor: '#a5b4fc', padding: 10,
+          titleFont: { family: "'DM Mono',monospace", size: 11 },
+          bodyFont:  { family: "'DM Mono',monospace", size: 11 },
+          filter: item => item.dataset.label !== '_trend',
+          callbacks: {
+            label: c => {
+              const p = c.raw;
+              const excl = _cmpExcluded.has(p.label);
+              const yStr = isXDias ? p.y.toFixed(2) + '%' : p.y.toFixed(4) + '%';
+              const xStr = isXDias ? Math.round(p.x) + 'd' : p.x.toFixed(4);
+              return `${excl ? '[excluido] ' : ''}${p.label}: ${lcAxisLabel(axY)} ${yStr} | ${lcAxisLabel(axX)} ${xStr}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          min: xRangeMin, max: xRangeMax,
+          grid: { color: 'rgba(30,39,243,0.08)' },
+          ticks: { color: '#4a5280', font: { family: "'DM Mono',monospace", size: 10 }, callback: v => isXDias ? Math.round(v) + 'd' : v.toFixed(3) },
+          title: { display: true, text: lcAxisLabel(axX), color: '#8a90b0', font: { size: 10 } }
+        },
+        y: {
+          min: finalYMin, max: finalYMax,
+          grid: { color: 'rgba(30,39,243,0.08)' },
+          ticks: { color: '#4a5280', font: { family: "'DM Mono',monospace", size: 10 }, callback: v => v.toFixed(1) + '%' },
+          title: { display: true, text: lcAxisLabel(axY) + ' (%)', color: '#8a90b0', font: { size: 10 } }
+        }
+      }
+    },
+    plugins: [{
+      id: 'cmp-lbl',
+      afterDatasetsDraw(chart) {
+        const ctx = chart.ctx;
+        const labelItems = [];
+        chart.data.datasets.forEach((ds, di) => {
+          if (ds.label === '_trend') return;
+          const meta = chart.getDatasetMeta(di);
+          ds.data.forEach((pt, pi) => {
+            const el = meta.data[pi]; if (!el || !pt.label) return;
+            const excl = _cmpExcluded.has(pt.label);
+            labelItems.push({ pt, el, excl });
+          });
+        });
+        const placed = [];
+        labelItems.forEach(item => {
+          ctx.font = "600 9px 'DM Mono',monospace";
+          const w = ctx.measureText(item.pt.label).width;
+          const h = 12;
+          let lx = item.el.x + 8, ly = item.el.y - 7;
+          for (const p of placed) {
+            if (Math.abs(lx - p.lx) < (w + p.w) / 2 + 4 && Math.abs(ly - p.ly) < h + 2) ly = p.ly + h + 3;
+          }
+          placed.push({ lx, ly, w, h });
+          item._lx = lx; item._ly = ly;
+        });
+        labelItems.forEach(({ pt, _lx: lx, _ly: ly, excl }) => {
+          ctx.save();
+          ctx.font = "600 9px 'DM Mono',monospace";
+          const w = ctx.measureText(pt.label).width;
+          if (!excl) { ctx.fillStyle = 'rgba(247,248,252,0.88)'; ctx.fillRect(lx - 2, ly - 9, w + 4, 12); }
+          ctx.fillStyle = excl ? 'rgba(138,144,176,0.45)' : '#3a3f5c';
+          if (excl) ctx.globalAlpha = 0.45;
+          ctx.fillText(pt.label, lx, ly);
+          ctx.restore();
+        });
+      }
+    }]
+  });
+
+  // ResizeObserver
+  if (!window._cmpResizeObs) {
+    window._cmpResizeObs = new ResizeObserver(() => {
+      if (document.getElementById('view-rf-cmp')?.style.display !== 'none') {
+        clearTimeout(window._cmpResizeTimer);
+        window._cmpResizeTimer = setTimeout(() => { if (_cmpChartInst) _cmpChartInst.resize(); }, 60);
+      }
+    });
+  }
+  const wrap = document.getElementById('cmp-curve-chart')?.parentElement;
+  if (wrap && !window._cmpResizeObsAttached) {
+    window._cmpResizeObs.observe(wrap);
+    window._cmpResizeObsAttached = true;
+  }
+
+  cmpUpdatePips();
+
+  // Leyenda HTML
+  if (legendEl) {
+    legendEl.innerHTML = legendItems.map(item =>
+      `<div class="cmp-legend-item">
+        ${item.isLine
+          ? `<div class="cmp-legend-line" style="background:${item.color};${item.dashed?'background:repeating-linear-gradient(90deg,'+item.color+' 0,'+item.color+' 4px,transparent 4px,transparent 7px)':''}"></div>`
+          : `<div class="cmp-legend-dot" style="background:${item.color}"></div>`}
+        <span>${item.label}</span>
+      </div>`
+    ).join('');
+  }
+}
+
+// ── Outlier pips del comparador ──
+function cmpUpdatePips() {
+  const el = document.getElementById('cmp-outlier-pips');
+  if (!el) return;
+  if (!_cmpExcluded.size) {
+    el.innerHTML = '';
+    el.style.width = '0';
+    el.style.padding = '0';
+    el.style.borderLeft = 'none';
+    return;
+  }
+  el.style.width = '90px';
+  el.style.padding = '6px 5px';
+  el.style.borderLeft = '1px solid var(--border)';
+  el.innerHTML = [..._cmpExcluded].map(lbl => {
+    let color = '#ef4444';
+    for (const cat of CMP_CATS) {
+      const rows = _cmpRowsMap[cat.id] || [];
+      if (rows.some(r => r.ticker === lbl || r.ticker + ' (T)' === lbl || r.ticker + ' (F)' === lbl)) {
+        color = cat.color;
+        break;
+      }
+    }
+    return `<div class="cmp-pip" onclick="cmpReactivate('${lbl}')" title="Reactivar ${lbl}">
+      <svg width="6" height="6" viewBox="0 0 10 10" style="flex-shrink:0;"><circle cx="5" cy="5" r="4" fill="${color}"/></svg>
+      <span style="overflow:hidden;text-overflow:ellipsis;">${lbl}</span>
+    </div>`;
+  }).join('');
+}
+
+window.cmpReactivate = function(lbl) {
+  _cmpExcluded.delete(lbl);
+  cmpRenderChart();
 };
 
 // ── RF Heatmaps ───────────────────────────────────────────────────────────────
@@ -15520,6 +16461,40 @@ function renderCheques(cheques){
   .mav-ven-bar-wrap{flex:1;background:var(--border);height:18px;position:relative;border-radius:2px;overflow:hidden;}
   .mav-ven-bar{height:100%;background:#1E27F3;opacity:.75;transition:width .4s ease;}
   .mav-ven-val{width:130px;text-align:right;color:var(--text);flex-shrink:0;}
+/* ── ONs Comparador ── */
+#view-ons-cmp{display:none;flex-direction:row;flex:1;overflow:hidden;height:calc(100vh - 52px);}
+.onscmp-sidebar{width:200px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.onscmp-sidebar-top{flex:1;overflow-y:auto;padding:10px 10px 6px;}
+.onscmp-sidebar-top::-webkit-scrollbar{width:3px;}
+.onscmp-sidebar-top::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+.onscmp-search{width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:10px;font-family:var(--mono);padding:4px 8px;outline:none;margin-bottom:8px;}
+.onscmp-search:focus{border-color:var(--accent2);}
+.onscmp-sector-row{display:flex;align-items:center;gap:5px;padding:4px 6px;border-radius:4px;cursor:pointer;transition:background .12s;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text3);user-select:none;}
+.onscmp-sector-row:hover{background:var(--accent-light);}
+.onscmp-empresa-row{display:flex;align-items:center;gap:5px;padding:3px 6px 3px 18px;border-radius:4px;cursor:pointer;transition:background .12s;font-family:var(--mono);font-size:9px;color:var(--text3);user-select:none;}
+.onscmp-empresa-row:hover{background:var(--accent-light);}
+.onscmp-empresa-row.selected{color:var(--text);font-weight:600;}
+.onscmp-cb{width:11px;height:11px;border-radius:3px;border:1px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .12s;margin-left:auto;}
+.onscmp-cb.checked::after{content:'✓';font-size:8px;font-weight:700;color:currentColor;}
+.onscmp-chevron{font-size:8px;transition:transform .15s;color:var(--text3);flex-shrink:0;}
+.onscmp-chevron.open{transform:rotate(90deg);}
+.onscmp-empresa-list{display:none;}
+.onscmp-empresa-list.open{display:block;}
+.onscmp-main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+.onscmp-topbar{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;}
+.onscmp-topbar label{font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.04em;}
+.onscmp-topbar select{background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:11px;font-family:var(--mono);padding:3px 8px;outline:none;cursor:pointer;}
+.onscmp-btn{background:transparent;border:1px solid var(--border2);border-radius:4px;padding:3px 10px;font-size:9px;font-weight:600;font-family:var(--mono);cursor:pointer;color:var(--text3);transition:all .12s;letter-spacing:.04em;}
+.onscmp-btn.active{color:var(--accent);border-color:var(--accent);background:var(--accent-light);}
+.onscmp-body{flex:1;display:flex;flex-direction:column;min-height:0;padding:10px 14px 6px;gap:6px;}
+.onscmp-chart-row{flex:1;display:flex;flex-direction:row;min-height:0;}
+.onscmp-chart-wrap{flex:1;min-width:0;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;flex-direction:column;}
+.onscmp-chart-inner{flex:1;position:relative;min-height:0;width:100%;}
+.onscmp-legend{display:flex;flex-wrap:wrap;gap:8px;padding:4px 0 0;flex-shrink:0;}
+.onscmp-legend-item{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:9px;color:var(--text3);}
+#onscmp-outlier-pips{flex-shrink:0;display:flex;flex-direction:column;gap:3px;overflow-y:auto;background:var(--bg2);width:0;padding:0;transition:width .18s,padding .18s;}
+.onscmp-pip{display:flex;align-items:center;gap:4px;padding:3px 5px;border-radius:4px;background:rgba(239,68,68,0.10);border:1px solid rgba(239,68,68,0.22);cursor:pointer;font-family:var(--mono);font-size:8px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;}
+.onscmp-pip:hover{background:rgba(239,68,68,0.22);}
 </style>
 
 <script>
@@ -16034,15 +17009,13 @@ function ons_renderSidebar(filter = '') {
       byEmpresa[on.empresa].push(on);
     }
 
-    const color = ons_sectorColor(sector);
     const sectorId = 'sec-' + sector.replace(/[^a-zA-Z0-9]/g,'-');
     html += `
       <div class="sector-wrap">
         <div class="sector-header" onclick="ons_toggleEl('${sectorId}',this);ons_filterBySector('${sector.replace(/'/g,"\\'")}',this)">
-          <div class="sector-dot" style="background:${color};box-shadow:0 0 5px ${color}40"></div>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4l4 4-4 4"/></svg>
           <span class="s-name">${sector}</span>
           <span class="s-cnt">${filtered.length}</span>
-          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4l4 4-4 4"/></svg>
         </div>
         <div class="sector-items" id="${sectorId}">`;
 
@@ -16380,19 +17353,17 @@ function ons_renderCompTable() {
 const ons_calState = { year: new Date().getFullYear(), month: new Date().getMonth() };
 
 function ons_switchTab(tab) {
-  const tabs = ['index','cal','scoring'];
-  // Tabs UI
+  const tabs = ['index','cal','scoring','cmp'];
   tabs.forEach(t => {
     const el = document.getElementById('ons-tab-'+t);
     if (!el) return;
-    const active = t === tab;
-    el.style.borderBottomColor = active ? 'var(--accent)' : 'transparent';
-    el.style.color = active ? 'var(--accent)' : 'var(--text3)';
+    el.style.borderBottomColor = t===tab ? 'var(--accent)' : 'transparent';
+    el.style.color = t===tab ? 'var(--accent)' : 'var(--text3)';
   });
-  // Vistas
   document.getElementById('view-ons-index').style.display   = tab==='index'   ? 'flex' : 'none';
   document.getElementById('view-cal').style.display         = tab==='cal'     ? 'flex' : 'none';
   document.getElementById('view-ons-scoring').style.display = tab==='scoring' ? 'flex' : 'none';
+  document.getElementById('view-ons-cmp').style.display     = tab==='cmp'     ? 'flex' : 'none';
 
   if (tab==='index') {
     requestAnimationFrame(function() { requestAnimationFrame(ons_renderChart); });
@@ -16400,8 +17371,511 @@ function ons_switchTab(tab) {
     ons_renderCalendar();
   } else if (tab==='scoring') {
     ons_renderScoring();
-  }}
+  } else if (tab==='cmp') {
+    onsCmp_init();
+  }
+}
 
+/* ══════════════════════════════════════════════════════════
+   ONs COMPARADOR DE CURVAS
+══════════════════════════════════════════════════════════ */
+
+const ONSCMP_COLORS = [
+  '#3fb950','#58a6ff','#e3b341','#f78166','#bc8cff','#f0883e',
+  '#39d3c3','#e85d9f','#a5f3fc','#fde68a','#86efac','#c4b5fd'
+];
+const ONSCMP_SHAPES = ['circle','triangle','rect','rectRot'];
+const ONSCMP_DASHES = [[0,0],[6,3],[2,3]];
+
+const onsCmpState = {
+  selected: new Set(),
+  modo: 'empresa',
+  showMep: true,
+  showCcl: true,
+  diferenciar: false,
+  axisY: 'tir',
+  axisX: 'md',
+  excluded: new Set(),
+  openSectors: new Set(),  // sectores actualmente expandidos
+};
+let _onsCmpChart = null;
+let _onsCmpColorMap = {};
+
+// ── Init ──────────────────────────────────────────────────
+function onsCmp_init() {
+  if (!onsState.ons?.length) return;
+  onsCmp_buildTree();
+  onsCmp_syncModoBtn();
+  onsCmp_syncMonedaBtns();
+  onsCmp_render();
+}
+
+// ── Construir árbol sidebar ───────────────────────────────
+function onsCmp_buildTree(filter) {
+  const tree = document.getElementById('onscmp-tree');
+  if (!tree) return;
+  tree.innerHTML = '';
+  const f = (filter || '').toLowerCase();
+
+  const grouped = {};
+  for (const on of onsState.ons) {
+    const s = (on.sector || 'OTROS').toUpperCase();
+    if (!grouped[s]) grouped[s] = {};
+    if (!grouped[s][on.empresa]) grouped[s][on.empresa] = [];
+    grouped[s][on.empresa].push(on);
+  }
+
+  for (const sector of Object.keys(grouped).sort()) {
+    const empresas = Object.keys(grouped[sector]).sort();
+    const empFiltradas = f ? empresas.filter(e =>
+      e.toLowerCase().includes(f) || sector.toLowerCase().includes(f)) : empresas;
+    if (!empFiltradas.length) continue;
+
+    const sKey = 'sector:' + sector;
+    const sSelected = onsCmpState.selected.has(sKey);
+    const sColor = sSelected ? (_onsCmpColorMap[sKey]?.color || ONSCMP_COLORS[0]) : 'var(--border2)';
+    const isOpen = f ? true : onsCmpState.openSectors.has(sector);
+
+    // Sector row — label neutro, solo el checkbox toma color cuando activo
+    const sRow = document.createElement('div');
+    sRow.className = 'onscmp-sector-row';
+    sRow.innerHTML = `
+      <span class="onscmp-chevron${isOpen ? ' open' : ''}">›</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;color:var(--text3);">${sector}</span>
+      <div class="onscmp-cb${sSelected ? ' checked' : ''}" style="color:${sColor};border-color:${sColor};background:${sSelected?sColor+'33':'transparent'}"></div>`;
+    sRow.querySelector('.onscmp-chevron').onclick = (e) => { e.stopPropagation(); onsCmp_toggleSectorOpen(sector); };
+    sRow.querySelector('.onscmp-cb').onclick = (e) => { e.stopPropagation(); onsCmp_toggleSector(sector); };
+    sRow.onclick = () => onsCmp_toggleSectorOpen(sector);
+    tree.appendChild(sRow);
+
+    // Empresa list
+    const empList = document.createElement('div');
+    empList.className = 'onscmp-empresa-list' + (isOpen ? ' open' : '');
+    empList.id = 'onscmp-emp-' + sector.replace(/\W/g,'_');
+
+    for (const emp of empFiltradas) {
+      const eKey = 'empresa:' + emp;
+      const eSel = onsCmpState.selected.has(eKey);
+      const eColor = eSel ? (_onsCmpColorMap[eKey]?.color || ONSCMP_COLORS[0]) : 'var(--border2)';
+      const eRow = document.createElement('div');
+      eRow.className = 'onscmp-empresa-row';
+      eRow.innerHTML = `
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text3);">${emp}</span>
+        <div class="onscmp-cb${eSel ? ' checked' : ''}" style="color:${eColor};border-color:${eColor};background:${eSel?eColor+'33':'transparent'}"></div>`;
+      eRow.querySelector('.onscmp-cb').onclick = (e) => { e.stopPropagation(); onsCmp_toggleEmpresa(emp); };
+      eRow.onclick = () => onsCmp_toggleEmpresa(emp);
+      empList.appendChild(eRow);
+    }
+    tree.appendChild(empList);
+  }
+}
+
+function onsCmp_toggleSectorOpen(sector) {
+  if (onsCmpState.openSectors.has(sector)) onsCmpState.openSectors.delete(sector);
+  else onsCmpState.openSectors.add(sector);
+  onsCmp_buildTree(document.getElementById('onscmp-search')?.value || '');
+}
+
+// ── Toggle selección sector ───────────────────────────────
+function onsCmp_toggleSector(sector) {
+  const key = 'sector:' + sector;
+  if (onsCmpState.selected.has(key)) {
+    onsCmpState.selected.delete(key);
+    delete _onsCmpColorMap[key];
+  } else {
+    onsCmpState.selected.add(key);
+    onsCmp_assignColor(key);
+  }
+  // NO reconstruir el árbol completo — solo actualizar el checkbox del sector
+  const tree = document.getElementById('onscmp-tree');
+  if (tree) {
+    const sSel = onsCmpState.selected.has(key);
+    const sColor = sSel ? (_onsCmpColorMap[key]?.color || ONSCMP_COLORS[0]) : 'var(--border2)';
+    tree.querySelectorAll('.onscmp-sector-row').forEach(row => {
+      const txt = row.querySelector('span:nth-child(2)')?.textContent;
+      if (txt?.trim() === sector) {
+        const cb = row.querySelector('.onscmp-cb');
+        if (cb) {
+          cb.classList.toggle('checked', sSel);
+          cb.style.color = sColor;
+          cb.style.borderColor = sColor;
+          cb.style.background = sSel ? sColor + '33' : 'transparent';
+        }
+      }
+    });
+  }
+  onsCmp_render();
+}
+
+// ── Toggle selección empresa ──────────────────────────────
+function onsCmp_toggleEmpresa(emp) {
+  const key = 'empresa:' + emp;
+  const tickers = onsState.ons.filter(o => o.empresa === emp).map(o => o.ticker);
+  tickers.forEach(t => onsCmpState.excluded.delete(t));
+  if (onsCmpState.selected.has(key)) {
+    onsCmpState.selected.delete(key);
+    delete _onsCmpColorMap[key];
+  } else {
+    onsCmpState.selected.add(key);
+    onsCmp_assignColor(key);
+  }
+  // NO reconstruir árbol completo — solo actualizar el checkbox de esta empresa
+  const tree = document.getElementById('onscmp-tree');
+  if (tree) {
+    const eSel = onsCmpState.selected.has(key);
+    const eColor = eSel ? (_onsCmpColorMap[key]?.color || ONSCMP_COLORS[0]) : 'var(--border2)';
+    tree.querySelectorAll('.onscmp-empresa-row').forEach(row => {
+      const txt = row.querySelector('span:nth-child(1)')?.textContent;
+      if (txt?.trim() === emp) {
+        const cb = row.querySelector('.onscmp-cb');
+        if (cb) {
+          cb.classList.toggle('checked', eSel);
+          cb.style.color = eColor;
+          cb.style.borderColor = eColor;
+          cb.style.background = eSel ? eColor + '33' : 'transparent';
+        }
+      }
+    });
+  }
+  onsCmp_render();
+}
+
+// ── Asignar color/forma/dash ───────────────────────────────
+function onsCmp_assignColor(key) {
+  const idx = Object.keys(_onsCmpColorMap).length;
+  _onsCmpColorMap[key] = {
+    color:    ONSCMP_COLORS[idx % ONSCMP_COLORS.length],
+    shapeIdx: Math.floor(idx / ONSCMP_COLORS.length) % ONSCMP_SHAPES.length,
+    dashIdx:  Math.floor(idx / (ONSCMP_COLORS.length * ONSCMP_SHAPES.length)) % ONSCMP_DASHES.length,
+  };
+}
+
+function onsCmp_colorFor(key) {
+  return _onsCmpColorMap[key]?.color || ONSCMP_COLORS[0];
+}
+
+window.onsCmp_filterSidebar = function(val) {
+  onsCmp_buildTree(val);
+};
+
+// ── Toggles topbar ────────────────────────────────────────
+window.onsCmp_toggleMoneda = function(m) {
+  if (m === 'mep') onsCmpState.showMep = !onsCmpState.showMep;
+  else             onsCmpState.showCcl = !onsCmpState.showCcl;
+  onsCmp_syncMonedaBtns();
+  onsCmp_render();
+};
+
+window.onsCmp_toggleDif = function() {
+  onsCmpState.diferenciar = !onsCmpState.diferenciar;
+  document.getElementById('onscmp-btn-dif')?.classList.toggle('active', onsCmpState.diferenciar);
+  onsCmp_render();
+};
+
+window.onsCmp_setModo = function(modo) {
+  onsCmpState.modo = modo;
+  onsCmpState.selected.clear();
+  _onsCmpColorMap = {};
+  onsCmpState.excluded.clear();
+  onsCmp_syncModoBtn();
+  onsCmp_buildTree();
+  onsCmp_render();
+};
+
+function onsCmp_syncModoBtn() {
+  document.getElementById('onscmp-btn-modo-sector')?.classList.toggle('active', onsCmpState.modo === 'sector');
+  document.getElementById('onscmp-btn-modo-empresa')?.classList.toggle('active', onsCmpState.modo === 'empresa');
+}
+
+function onsCmp_syncMonedaBtns() {
+  document.getElementById('onscmp-btn-mep')?.classList.toggle('active', onsCmpState.showMep);
+  document.getElementById('onscmp-btn-ccl')?.classList.toggle('active', onsCmpState.showCcl);
+}
+
+// ── Obtener punto por ticker ───────────────────────────────
+// Si axY es 'tir': solo ONs con precio de mercado cargado (>0)
+// Si axY es 'cupon': usa todas (precio 100 si no tiene)
+function onsCmp_getPoint(on, axY, axX) {
+  const hasMarketPrice = onsState.prices[on.ticker] > 0;
+  if (axY === 'tir' && !hasMarketPrice) return null;  // sin precio → va a pips "sin precio"
+  try {
+    const cfs = ons_fetchCashflows(on);
+    if (!cfs?.length) return null;
+    const price = onsState.prices[on.ticker] ?? 100;
+    const settle = onsState.settles?.[on.ticker] ?? ons_settlement(new Date());
+    const m = ons_calcMetrics(cfs, price, settle, on.frecuencia);
+    if (!m) return null;
+    const y = axY === 'tir' ? m.ytm * 100 : (m.proxCF?.tasa_cupon ?? 0) * 100;
+    const x = axX === 'md' ? m.modDuration : axX === 'dur' ? m.duration : m.vidaPromedio;
+    if (!isFinite(y) || !isFinite(x) || x <= 0) return null;
+    return { x, y, label: on.ticker, moneda: (on.moneda||'MEP').toUpperCase(), empresa: on.empresa, sector: (on.sector||'OTROS').toUpperCase(), noPrice: false };
+  } catch(e) { return null; }
+}
+
+// ── Render del gráfico ────────────────────────────────────
+window.onsCmp_render = function() {
+  const canvas = document.getElementById('onscmp-chart');
+  if (!canvas) return;
+  if (_onsCmpChart) { _onsCmpChart.destroy(); _onsCmpChart = null; }
+
+  const axY = document.getElementById('onscmp-axis-y')?.value || 'tir';
+  const axX = document.getElementById('onscmp-axis-x')?.value || 'md';
+  onsCmpState.axisY = axY; onsCmpState.axisX = axX;
+
+  const datasets = [];
+  const legendItems = [];
+  const allPts = [];
+  // Tickers sin precio (cuando axY='tir') — se muestran en pips laterales
+  const noPriceTickers = new Set();
+
+  for (const key of onsCmpState.selected) {
+    const style = _onsCmpColorMap[key] || { color: ONSCMP_COLORS[0], shapeIdx: 0, dashIdx: 0 };
+    const color = style.color;
+    const shape = ONSCMP_SHAPES[style.shapeIdx];
+    const dash  = ONSCMP_DASHES[style.dashIdx];
+
+    let ons = [];
+    if (key.startsWith('sector:')) {
+      const sector = key.slice(7);
+      ons = onsState.ons.filter(o => (o.sector||'OTROS').toUpperCase() === sector);
+    } else {
+      const emp = key.slice(8);
+      ons = onsState.ons.filter(o => o.empresa === emp);
+    }
+
+    // Detectar sin precio cuando axY='tir'
+    if (axY === 'tir') {
+      ons.filter(o => !(onsState.prices[o.ticker] > 0)).forEach(o => noPriceTickers.add(o.ticker));
+    }
+
+    const mepOns = onsCmpState.showMep ? ons.filter(o => (o.moneda||'').toUpperCase() !== 'CABLE') : [];
+    const cclOns = onsCmpState.showCcl ? ons.filter(o => (o.moneda||'').toUpperCase() === 'CABLE') : [];
+    const label = key.startsWith('sector:') ? key.slice(7) : key.slice(8);
+
+    if (onsCmpState.diferenciar && onsCmpState.showMep && onsCmpState.showCcl) {
+      // MEP: forma original, línea sólida. CCL: cuadrado, línea punteada
+      const cclShape = 'rect';
+      const cclDash  = [5, 3];
+      for (const [subOns, suffix, useShape, useDash] of [
+        [mepOns, 'MEP', shape,    [0,0]  ],
+        [cclOns, 'CCL', cclShape, cclDash],
+      ]) {
+        const pts = subOns.map(o => onsCmp_getPoint(o, axY, axX)).filter(Boolean)
+          .filter(p => !onsCmpState.excluded.has(p.label));
+        if (!pts.length) continue;
+        allPts.push(...pts);
+        const trDs = onsCmp_makeTrend(pts, color, useDash);
+        if (trDs) datasets.push(trDs);
+        datasets.push({ label: `${label} (${suffix})`, data: pts,
+          backgroundColor: pts.map(p => onsCmpState.excluded.has(p.label) ? 'rgba(138,144,176,0.3)' : color),
+          borderColor: color, pointStyle: useShape, pointRadius: 5, pointHoverRadius: 8, showLine: false, order: 2 });
+        legendItems.push({ color, label: `${label} (${suffix})`, shape: useShape, dashed: suffix === 'CCL' });
+      }
+    } else {
+      const useOns = (onsCmpState.showMep ? mepOns : []).concat(onsCmpState.showCcl ? cclOns : []);
+      const pts = useOns.map(o => onsCmp_getPoint(o, axY, axX)).filter(Boolean)
+        .filter(p => !onsCmpState.excluded.has(p.label));
+      if (!pts.length) continue;
+      allPts.push(...pts);
+      const trDs = onsCmp_makeTrend(pts, color, dash);
+      if (trDs) datasets.push(trDs);
+      datasets.push({ label, data: pts,
+        backgroundColor: pts.map(p => onsCmpState.excluded.has(p.label) ? 'rgba(138,144,176,0.3)' : color),
+        borderColor: color, pointStyle: shape, pointRadius: 5, pointHoverRadius: 8, showLine: false, order: 2 });
+      legendItems.push({ color, label, shape });
+    }
+  }
+
+  const legendEl = document.getElementById('onscmp-legend');
+
+  if (!allPts.length) {
+    if (legendEl) legendEl.innerHTML = '<span style="font-size:9px;color:var(--text3);font-family:var(--mono);">Seleccioná sectores o empresas del sidebar</span>';
+    onsCmp_updatePips(noPriceTickers);
+    return;
+  }
+
+  // Rango
+  const xs = allPts.map(p=>p.x), ys = allPts.map(p=>p.y);
+  const xMin=Math.min(...xs), xMax=Math.max(...xs), yMin=Math.min(...ys), yMax=Math.max(...ys);
+  const xSpan=xMax-xMin||1, ySpan=yMax-yMin||1;
+  const xPad=xSpan*.08, yPad=ySpan*.20;
+  let tYMin=yMin, tYMax=yMax;
+  datasets.filter(d=>d.label==='_trend').forEach(d=>d.data.forEach(p=>{
+    if(!isFinite(p.y)||p.x<xMin-xPad||p.x>xMax+xPad) return;
+    if(p.y<yMin-ySpan*1.5||p.y>yMax+ySpan*1.5) return;
+    if(p.y<tYMin) tYMin=p.y; if(p.y>tYMax) tYMax=p.y;
+  }));
+
+  const yLbl = axY === 'tir' ? 'TIR (%)' : 'Tasa Cupón (%)';
+  const xLbl = axX === 'md' ? 'Mod. Duration' : axX === 'dur' ? 'Duration' : 'Vida Promedio';
+
+  _onsCmpChart = new Chart(canvas, {
+    type: 'scatter', data: { datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      onClick(evt, elements) {
+        if (!elements?.length) return;
+        const el = elements[0];
+        const ds = _onsCmpChart.data.datasets[el.datasetIndex];
+        if (!ds || ds.label === '_trend') return;
+        const pt = ds.data[el.index];
+        if (!pt?.label) return;
+        if (onsCmpState.excluded.has(pt.label)) onsCmpState.excluded.delete(pt.label);
+        else onsCmpState.excluded.add(pt.label);
+        onsCmp_render();
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor:'#131929', borderColor:'rgba(30,39,243,0.3)', borderWidth:1,
+          titleColor:'#e8eaf6', bodyColor:'#a5b4fc', padding:10,
+          titleFont:{family:"'DM Mono',monospace",size:11}, bodyFont:{family:"'DM Mono',monospace",size:11},
+          filter: item => item.dataset.label !== '_trend',
+          callbacks: { label: c => {
+            const p = c.raw;
+            return `${p.label} (${p.moneda}): ${axY==='tir'?'TIR':'Cupón'} ${p.y.toFixed(2)}% | ${xLbl} ${p.x.toFixed(3)}`;
+          }}
+        }
+      },
+      scales: {
+        x: { min: xMin-xPad, max: xMax+xPad,
+          grid:{color:'rgba(30,39,243,0.08)'},
+          ticks:{color:'#4a5280',font:{family:"'DM Mono',monospace",size:10},callback:v=>v.toFixed(2)},
+          title:{display:true,text:xLbl,color:'#8a90b0',font:{size:10}} },
+        y: { min: tYMin-yPad, max: tYMax+yPad,
+          grid:{color:'rgba(30,39,243,0.08)'},
+          ticks:{color:'#4a5280',font:{family:"'DM Mono',monospace",size:10},callback:v=>v.toFixed(1)+'%'},
+          title:{display:true,text:yLbl,color:'#8a90b0',font:{size:10}} }
+      }
+    },
+    plugins: [{
+      id: 'onscmp-lbl',
+      afterDatasetsDraw(chart) {
+        const ctx = chart.ctx;
+        const placed = [];
+        chart.data.datasets.forEach((ds, di) => {
+          if (ds.label === '_trend') return;
+          const meta = chart.getDatasetMeta(di);
+          ds.data.forEach((pt, pi) => {
+            const el = meta.data[pi]; if (!el || !pt.label) return;
+            const excl = onsCmpState.excluded.has(pt.label);
+            ctx.font = "600 8px 'DM Mono',monospace";
+            const w = ctx.measureText(pt.label).width;
+            let lx = el.x + 7, ly = el.y - 6;
+            for (const p of placed) { if (Math.abs(lx-p.lx)<(w+p.w)/2+3 && Math.abs(ly-p.ly)<11) ly=p.ly+12; }
+            placed.push({lx,ly,w,h:10});
+            ctx.save();
+            if (!excl) { ctx.fillStyle='rgba(247,248,252,0.85)'; ctx.fillRect(lx-2,ly-8,w+4,11); }
+            ctx.fillStyle = excl ? 'rgba(138,144,176,0.4)' : '#3a3f5c';
+            if (excl) ctx.globalAlpha = 0.4;
+            ctx.fillText(pt.label, lx, ly);
+            ctx.restore();
+          });
+        });
+      }
+    }]
+  });
+
+  if (!window._onsCmpResizeObs) {
+    window._onsCmpResizeObs = new ResizeObserver(() => {
+      if (document.getElementById('view-ons-cmp')?.style.display !== 'none') {
+        clearTimeout(window._onsCmpResizeTimer);
+        window._onsCmpResizeTimer = setTimeout(() => { if (_onsCmpChart) _onsCmpChart.resize(); }, 60);
+      }
+    });
+    const wrap = canvas.parentElement;
+    if (wrap) window._onsCmpResizeObs.observe(wrap);
+  }
+
+  onsCmp_updatePips(noPriceTickers);
+
+  if (legendEl) {
+    legendEl.innerHTML = legendItems.map(item => {
+      const sym = item.shape==='triangle'?'▲':item.shape==='rect'?'■':item.shape==='rectRot'?'◆':'●';
+      const lineStyle = item.dashed
+        ? `border-top:1px dashed ${item.color};`
+        : `border-top:1px solid ${item.color};`;
+      return `<div class="onscmp-legend-item">
+        <span style="color:${item.color};font-size:10px;">${sym}</span>
+        <span style="display:inline-block;width:14px;height:0;${lineStyle}margin:0 2px;"></span>
+        <span>${item.label}</span>
+      </div>`;
+    }).join('');
+  }
+};
+
+// ── Trendline — usa polyFit2 correctamente (retorna función) ──
+function onsCmp_makeTrend(pts, color, dashArr) {
+  if (pts.length < 3) return null;
+  const fn = polyFit2(pts);
+  if (!fn) return null;
+  const xs = pts.map(p=>p.x);
+  const xMin = Math.min(...xs), xMax = Math.max(...xs);
+  if (xMax <= xMin) return null;
+  const data = [];
+  for (let i = 0; i <= 79; i++) {
+    const x = xMin + (xMax - xMin) * i / 79;
+    data.push({ x, y: fn(x) });
+  }
+  return { label:'_trend', data, borderColor:color, backgroundColor:'transparent',
+    borderWidth:1.5, borderDash:dashArr, showLine:true, pointRadius:0, tension:0, order:1 };
+}
+
+// ── Outlier pips — excluidos por click + sin precio ───────
+function onsCmp_updatePips(noPriceTickers) {
+  const el = document.getElementById('onscmp-outlier-pips');
+  if (!el) return;
+  const noPrice = noPriceTickers ? [...noPriceTickers].filter(t => !onsCmpState.excluded.has(t)) : [];
+  const excl    = [...onsCmpState.excluded];
+
+  if (!noPrice.length && !excl.length) {
+    el.innerHTML=''; el.style.width='0'; el.style.padding='0'; el.style.borderLeft='none'; return;
+  }
+  el.style.width='96px'; el.style.padding='6px 5px'; el.style.borderLeft='1px solid var(--border)';
+
+  const pipColor = (lbl) => {
+    let color = '#ef4444';
+    const on = onsState.ons.find(o => o.ticker === lbl);
+    if (on) {
+      for (const key of onsCmpState.selected) {
+        const emp = key.startsWith('empresa:') ? key.slice(8) : null;
+        const sec = key.startsWith('sector:') ? key.slice(7) : null;
+        if ((emp && on.empresa===emp)||(sec&&(on.sector||'OTROS').toUpperCase()===sec)) {
+          color = _onsCmpColorMap[key]?.color || color; break;
+        }
+      }
+    }
+    return color;
+  };
+
+  const sectionHdr = (txt) =>
+    `<div style="font-size:7px;font-family:var(--mono);font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;padding:2px 2px 4px;margin-top:4px;">${txt}</div>`;
+
+  const pipHtml = (lbl, clickable) => {
+    const color = pipColor(lbl);
+    return `<div class="onscmp-pip" ${clickable ? `onclick="onsCmp_reactivate('${lbl}')"` : 'style="opacity:.5;cursor:default;"'}
+      title="${clickable ? 'Click para reactivar' : 'Sin precio de mercado'}">
+      <svg width="6" height="6" viewBox="0 0 10 10" style="flex-shrink:0;"><circle cx="5" cy="5" r="4" fill="${color}"/></svg>
+      <span style="overflow:hidden;text-overflow:ellipsis;">${lbl}</span>
+    </div>`;
+  };
+
+  let html = '';
+  if (noPrice.length) {
+    html += sectionHdr('Sin precio');
+    html += noPrice.map(t => pipHtml(t, false)).join('');
+  }
+  if (excl.length) {
+    html += sectionHdr('Excluidas');
+    html += excl.map(t => pipHtml(t, true)).join('');
+  }
+  el.innerHTML = html;
+}
+
+window.onsCmp_reactivate = function(lbl) {
+  onsCmpState.excluded.delete(lbl);
+  onsCmp_render();
+};
 window._onsScoring = { data: null, loading: false };
 
 // ── Scoring helpers globales (usados en tabla y sidebar) ─────────────────────
