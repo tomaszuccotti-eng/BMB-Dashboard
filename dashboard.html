@@ -9179,7 +9179,7 @@ function enterInformes(){
       var wrap=document.createElement('div');
       wrap.className='inf-folder-wrap';
       var header=document.createElement('div');
-      header.className='inf-folder-header'+(fi===0?' open':'');
+      header.className='inf-folder-header';
       header.innerHTML=
         '<svg style="width:14px;height:14px;flex-shrink:0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">'+
           '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>'+
@@ -9188,7 +9188,7 @@ function enterInformes(){
         '<span class="inf-f-cnt">'+files.length+'</span>'+
         '<svg class="inf-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>';
       var fileList=document.createElement('div');
-      fileList.className='inf-folder-files'+(fi===0?' open':'');
+      fileList.className='inf-folder-files';
       files.forEach(function(f,idx){
         var item=document.createElement('div');
         item.className='inf-file-item';
@@ -9208,6 +9208,15 @@ function enterInformes(){
         fileList.appendChild(item);
       });
       header.addEventListener('click',function(){
+        const isOpening = !header.classList.contains('open');
+        if (isOpening) {
+          // Colapsar todas las demás carpetas
+          container.querySelectorAll('.inf-folder-header.open').forEach(function(h){
+            h.classList.remove('open');
+            const fl = h.nextElementSibling;
+            if (fl) fl.classList.remove('open');
+          });
+        }
         header.classList.toggle('open');
         fileList.classList.toggle('open');
       });
@@ -15261,7 +15270,7 @@ const onsState = {
   bundle: null,      // bundle crudo del Worker
   prices: {},        // precios ingresados por el usuario (default 100)
   settlements: {},   // settlements por ticker
-  sort: { col: null, dir: 1 }, // estado de ordenamiento de la tabla
+  sort: { col: 13, dir: -1 }, // estado de ordenamiento de la tabla — default: score desc
   excluded: new Set(),   // tickers excluidos del gr\u00e1fico por click
   onlyWithPrice: false,  // filtro: solo ONs con precio de mercado
 };
