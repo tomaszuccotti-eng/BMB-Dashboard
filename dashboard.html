@@ -17220,6 +17220,14 @@ window.ons_init = function() {
   }
   // Siempre refetchea para tener el bundle más actualizado del KV
   ons_initFromWorker();
+  // Cargar scoring en background para tabla y sidebar
+  if (!_onsScoring.data && !_onsScoring.loading) {
+    ons_loadScoringData().then(() => {
+      // Re-renderizar tabla y sidebar con scores disponibles
+      ons_renderCompTable();
+      ons_renderSidebar();
+    }).catch(() => {});
+  }
 };
 
 </script>
