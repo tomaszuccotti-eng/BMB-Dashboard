@@ -7727,6 +7727,17 @@ window.rfSwitchTab = function(tab) {
   if (tab==='hm')  {
     // Esperar a que el layout se compute antes de medir dimensiones
     setTimeout(() => rfBuildHeatmaps(), 50);
+    // Re-renderizar al redimensionar si el tab está activo
+    if (!window._rfHmResizeObs) {
+      window._rfHmResizeObs = new ResizeObserver(() => {
+        if (document.getElementById('view-rf-hm')?.style.display !== 'none') {
+          clearTimeout(window._rfHmResizeTimer);
+          window._rfHmResizeTimer = setTimeout(() => rfBuildHeatmaps(), 80);
+        }
+      });
+      const grid = document.getElementById('view-rf-hm');
+      if (grid) window._rfHmResizeObs.observe(grid);
+    }
   }
 };
 
