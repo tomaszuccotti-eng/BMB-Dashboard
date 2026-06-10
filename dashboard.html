@@ -2206,21 +2206,28 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
   </div><!-- /content -->
 
   <!-- VISTA CALENDARIO RF: full width -->
-  <div id="view-rf-hm" style="display:flex;flex-direction:column;flex:1;overflow:hidden;height:calc(100vh - 52px);">
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:repeat(4,1fr);gap:6px;padding:10px;flex:1;min-height:0;box-sizing:border-box;">
-      <!-- Fila 1: LECAPs | BONCAPs | Dólar Linked — 3 simples -->
-      <div class="rf-hm-cell" style="position:relative;border-radius:8px;overflow:hidden;background:var(--bg2);border:1px solid var(--border);"><div class="rf-hm-label">LECAPs</div><div class="rf-hm-wrap" id="rfhm-lecap"></div></div>
-      <div class="rf-hm-cell" style="position:relative;border-radius:8px;overflow:hidden;background:var(--bg2);border:1px solid var(--border);"><div class="rf-hm-label">BONCAPs</div><div class="rf-hm-wrap" id="rfhm-boncap"></div></div>
-      <div class="rf-hm-cell" style="position:relative;border-radius:8px;overflow:hidden;background:var(--bg2);border:1px solid var(--border);"><div class="rf-hm-label">Dólar Linked</div><div class="rf-hm-wrap" id="rfhm-dolarlinked"></div></div>
-      <!-- Fila 2: Soberanos (doble izq) | BOPREALes (simple der) -->
-      <div class="rf-hm-cell" style="grid-column:span 2;position:relative;border-radius:8px;overflow:hidden;background:var(--bg2);border:1px solid var(--border);"><div class="rf-hm-label">Soberanos</div><div class="rf-hm-wrap" id="rfhm-soberano"></div></div>
-      <div class="rf-hm-cell" style="position:relative;border-radius:8px;overflow:hidden;background:var(--bg2);border:1px solid var(--border);"><div class="rf-hm-label">BOPREALes</div><div class="rf-hm-wrap" id="rfhm-bopreal"></div></div>
-      <!-- Fila 3: Fixed Rate (simple izq) | BONCERs (doble der) -->
-      <div class="rf-hm-cell" style="position:relative;border-radius:8px;overflow:hidden;background:var(--bg2);border:1px solid var(--border);"><div class="rf-hm-label">Fixed Rate</div><div class="rf-hm-wrap" id="rfhm-fixed_rate"></div></div>
-      <div class="rf-hm-cell" style="grid-column:span 2;position:relative;border-radius:8px;overflow:hidden;background:var(--bg2);border:1px solid var(--border);"><div class="rf-hm-label">BONCERs</div><div class="rf-hm-wrap" id="rfhm-boncer"></div></div>
-      <!-- Fila 4: Duales (doble izq) | TAMARs (simple der) -->
-      <div class="rf-hm-cell" style="grid-column:span 2;position:relative;border-radius:8px;overflow:hidden;background:var(--bg2);border:1px solid var(--border);"><div class="rf-hm-label">Duales</div><div class="rf-hm-wrap" id="rfhm-duales"></div></div>
-      <div class="rf-hm-cell" style="position:relative;border-radius:8px;overflow:hidden;background:var(--bg2);border:1px solid var(--border);"><div class="rf-hm-label">TAMARs</div><div class="rf-hm-wrap" id="rfhm-tamar"></div></div>
+  <div id="view-rf-hm" style="display:flex;flex-direction:column;flex:1;overflow:hidden;height:calc(100vh - 52px);position:relative;">
+    <!-- Barra superior: monto global operado -->
+    <div style="display:flex;align-items:center;gap:10px;padding:7px 14px;border-bottom:1px solid var(--border);flex-shrink:0;">
+      <span style="font-size:9px;font-weight:700;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;">Monto global operado</span>
+      <span id="rfhm-total-monto" style="font-size:15px;font-weight:800;font-family:var(--mono);color:var(--accent);letter-spacing:.02em;">—</span>
+      <span id="rfhm-total-sub" style="font-size:9px;font-family:var(--mono);color:var(--text3);">—</span>
+    </div>
+    <div style="flex:1;min-height:0;padding:6px;box-sizing:border-box;position:relative;">
+      <div id="rfhm-global" style="position:absolute;inset:6px;overflow:hidden;"></div>
+    </div>
+
+    <!-- Pop-up drill-down de categoría (estilo Calendario) -->
+    <div id="rfhm-cat-modal" onclick="if(event.target===event.currentTarget)rfHmCloseCategory()" style="display:none;position:absolute;inset:0;z-index:100;background:rgba(0,0,0,0.55);align-items:center;justify-content:center;">
+      <div onclick="event.stopPropagation()" style="width:min(86vw,1100px);height:min(80vh,720px);background:var(--bg);border:1px solid var(--border2);border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 16px 50px rgba(0,0,0,0.5);">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);flex-shrink:0;">
+          <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:var(--text);">Heatmap · <span id="rfhm-cat-modal-title">—</span></div>
+          <div style="font-size:10px;font-family:var(--mono);color:var(--text3);">tamaño y color ajustados a la categoría</div>
+          <div style="flex:1;"></div>
+          <button onclick="rfHmCloseCategory()" style="padding:4px 14px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;" onmouseover="this.style.background='var(--red)';this.style.color='#fff';this.style.borderColor='var(--red)';" onmouseout="this.style.background='transparent';this.style.color='var(--text3)';this.style.borderColor='var(--border2)';">✕ Cerrar</button>
+        </div>
+        <div id="rfhm-cat-modal-body" style="flex:1;position:relative;overflow:hidden;margin:8px;"></div>
+      </div>
     </div>
   </div>
 
@@ -9285,14 +9292,14 @@ function sensRenderTable(matrix, deltas, metrica, maxAbsVar, tipo) {
 // ── RF Heatmaps ───────────────────────────────────────────────────────────────
 const RF_HM_CATS = [
   {id:'lecap',      tipos:['lecap'],             label:'LECAPs'},
-  {id:'boncap',     tipos:['boncap'],            label:'BONCAPs',  inclDualGanador:'boncap'},
+  {id:'boncap',     tipos:['boncap'],            label:'BONCAPs'},
   {id:'dolarlinked',tipos:['dolarlinked'],       label:'Dólar Linked'},
   {id:'soberano',   tipos:['soberano'],          label:'Soberanos'},
   {id:'bopreal',    tipos:['bopreal'],           label:'BOPREALes'},
   {id:'fixed_rate', tipos:['fixed_rate'],        label:'Fixed Rate'},
-  {id:'boncer',     tipos:['boncer','boncer_bullet'], label:'BONCERs', inclDualGanador:'fija_boncer'},
+  {id:'boncer',     tipos:['boncer','boncer_bullet'], label:'BONCERs'},
   {id:'duales',     tipos:['duales'],            label:'Duales'},
-  {id:'tamar',      tipos:['tamar'],             label:'TAMARs',   inclDualGanador:'tamar'},
+  {id:'tamar',      tipos:['tamar'],             label:'TAMARs'},
 ];
 
 function rfHmColor(pct) {
@@ -9316,164 +9323,347 @@ function rfHmColor(pct) {
   }
 }
 
-function rfBuildHeatmaps() {
-  if (!_bundle || !_precios) return;
-  if (typeof d3 === 'undefined') return;
+/* ── Monto en pesos unificado para el heatmap ──
+   Devuelve { monto, precio, variacion, vol, moneda } con TODO de la misma rueda.
+   - 7 tipos ya en pesos: precio/vol/variación directos del row (rueda pesos).
+   - Soberanos / BOPREAL: intenta rueda de pesos (ticker sin 'D'); si no hay,
+     fallback a rueda dólar × TC del BCRA.
+*/
+function rfHmMontoPesos(r) {
+  const tipo = (r.tipo || '').toLowerCase();
+  const tk = (r.ticker || '').toUpperCase();
+  // Los precios cotizan por cada 100 VN → monto real = vol × precio / 100
+  const VN = 100;
 
-  // Si tamarProms no está cargado, cargarlo primero y re-renderizar
-  if (Object.keys(_tamarProms).length === 0) {
-    calcularTamarProms().then(() => rfBuildHeatmaps());
-    return;
+  // Tipos que cotizan en USD y necesitan unificación a pesos
+  const esUSD = (tipo === 'soberano' || tipo === 'bopreal');
+
+  if (!esUSD) {
+    // Ya está todo en pesos (LECAP, BONCAP, BONCER, DL, Fixed, TAMAR, Duales)
+    const precio = r.precio;
+    const vol = r.vol;
+    if (!isFinite(precio) || precio <= 0 || !isFinite(vol) || vol <= 0) {
+      return { monto: 0, precio: r.precio, variacion: r.variacion, vol: r.vol, moneda: 'ARS' };
+    }
+    return { monto: vol * precio / VN, precio, variacion: r.variacion, vol, moneda: 'ARS' };
   }
 
-  const liq = defaultLiq();
+  // USD: buscar la rueda de PESOS (símbolo sin 'D')
+  // Soberano: ticker base (AL30). BOPREAL: ticker base ARS (BPOA8).
+  const pxArs = _precios[tk] || _precios[r.ticker] || null;
+  const pxArsEff = pxArs ? (pxArs.latest || pxArs) : null;
+  const precioArs = pxArsEff ? pxArsEff.precio : NaN;
+  const volArs = pxArsEff ? pxArsEff.vol : NaN;
+  const varArs = pxArsEff ? pxArsEff.variacion : NaN;
 
-  // Tooltip compartido
+  if (isFinite(precioArs) && precioArs > 0 && isFinite(volArs) && volArs > 0) {
+    // Rueda de pesos disponible → precio, vol y variación TODOS de pesos
+    return { monto: volArs * precioArs / VN, precio: precioArs, variacion: varArs, vol: volArs, moneda: 'ARS' };
+  }
+
+  // Fallback: rueda dólar × TC del BCRA
+  const tc = _tcUsd || window._tcUsd || null;
+  const precioUsd = r.precio;
+  const volUsd = r.vol;
+  if (tc && isFinite(precioUsd) && precioUsd > 0 && isFinite(volUsd) && volUsd > 0) {
+    return { monto: volUsd * precioUsd * tc / VN, precio: precioUsd, variacion: r.variacion, vol: volUsd, moneda: 'USD→ARS' };
+  }
+
+  return { monto: 0, precio: r.precio, variacion: r.variacion, vol: r.vol, moneda: 'USD' };
+}
+
+// ── Recolecta TODAS las filas de una categoría (misma lógica que tenía rfBuildHeatmaps) ──
+function rfHmCollectRows(cat, liq) {
+  let rows = [];
+  if (cat.id === 'duales') {
+    rows = cruzarDual(_precios, liq).filter(r => r.calc && !isNaN(r.calc.tna));
+  } else {
+    const tipos = _bundle._tipos || {};
+    cat.tipos.forEach(tipo => {
+      cruzar(tipo, _precios, liq).forEach(r => {
+        if (!r.calc || isNaN(r.calc.tna)) return;
+        const tp = (tipos[r.ticker] || '').toLowerCase();
+        if (tp === 'dual_boncap' || tp === 'dual_boncer' || tp === 'dual_tamar') return;
+        rows.push(r);
+      });
+    });
+    if (cat.inclDualGanador) {
+      const dualRows = cruzarDual(_precios, liq).filter(r => r.calc && !isNaN(r.calc.tna));
+      dualRows.forEach(r => {
+        const gana = r.ganador;
+        const tf = (r.tipoFija || '').toLowerCase();
+        if (cat.inclDualGanador === 'tamar' && gana === 'tamar') rows.push(r);
+        if (cat.inclDualGanador === 'boncap' && gana === 'fija' && tf === 'dual_boncap') rows.push(r);
+        if (cat.inclDualGanador === 'fija_boncer' && gana === 'fija' && tf === 'dual_boncer') rows.push(r);
+      });
+    }
+  }
+  const seen = new Set();
+  rows = rows.filter(r => { if (seen.has(r.ticker)) return false; seen.add(r.ticker); return true; });
+  const HM_EXCLUDE = { fixed_rate: new Set(['TY30PP']) };
+  const exclude = HM_EXCLUDE[cat.id] || new Set();
+  // Mapear a items con monto en pesos
+  return rows
+    .filter(r => !exclude.has(r.ticker.toUpperCase()))
+    .map(r => {
+      const mp = rfHmMontoPesos(r);
+      const tna = r.calc?.tna ?? (r.calcTamar?.tna ?? r.calcFija?.tna ?? null);
+      const ganador = r.ganador ?? null;
+      const maturity = (_bundle._meta || {})[r.ticker]?.maturity ?? r.calc?.fechaVto ?? null;
+      const matStr = maturity ? maturity.substring(0, 10) : null;
+      return {
+        ticker: r.ticker, precio: mp.precio, variacion: mp.variacion, vol: mp.vol,
+        monto: mp.monto, moneda: mp.moneda, tna, ganador, matStr,
+      };
+    })
+    .filter(r => r.monto > 0);
+}
+
+// ── Escala de color por variación, con rango configurable (global o por categoría) ──
+// Para Opción A en pop-up: normaliza al rango [min,max] de la categoría.
+function rfHmColorScaled(pct, minPct, maxPct) {
+  if (pct == null || isNaN(pct)) return '#1e2235';
+  // Normalizar magnitud: cuánto del extremo (en su signo) representa
+  if (pct >= 0) {
+    const lim = (maxPct && maxPct > 0) ? maxPct : 1;
+    const t = Math.max(0, Math.min(1, pct / lim));
+    const r = Math.round(10 + 5 * t), g = Math.round(80 + 110 * t), b = Math.round(50 - 30 * t);
+    return `rgb(${r},${g},${b})`;
+  } else {
+    const lim = (minPct && minPct < 0) ? Math.abs(minPct) : 1;
+    const t = Math.max(0, Math.min(1, Math.abs(pct) / lim));
+    const r = Math.round(80 + 150 * t), g = Math.round(20 - 10 * t), b = Math.round(30 - 20 * t);
+    return `rgb(${r},${g},${b})`;
+  }
+}
+
+function rfHmEnsureTooltip() {
   let tooltip = document.getElementById('rfhm-tooltip');
   if (!tooltip) {
     tooltip = document.createElement('div');
     tooltip.id = 'rfhm-tooltip';
     Object.assign(tooltip.style, {
-      position:'fixed', pointerEvents:'none', display:'none', zIndex:'9999',
+      position:'fixed', pointerEvents:'none', display:'none', zIndex:'10000',
       background:'var(--bg2)', border:'1px solid var(--border2)', borderRadius:'8px',
       padding:'10px 14px', fontFamily:'var(--mono)', fontSize:'11px', color:'var(--text)',
-      boxShadow:'0 8px 24px rgba(0,0,0,.4)', lineHeight:'1.7', minWidth:'160px',
+      boxShadow:'0 8px 24px rgba(0,0,0,.4)', lineHeight:'1.7', minWidth:'170px',
     });
     document.body.appendChild(tooltip);
   }
+  return tooltip;
+}
 
-  RF_HM_CATS.forEach(cat => {
-    const wrap = document.getElementById('rfhm-' + cat.id);
-    if (!wrap) return;
-    wrap.innerHTML = '';
+// Pinta un treemap dentro de un contenedor dado, con escala de color min/max provista.
+// items: [{ticker, precio, variacion, vol, monto, moneda, tna, ganador, matStr}]
+// onCellClick: callback opcional al click de una celda.
+function rfHmPaintTreemap(container, items, colorMin, colorMax, opts) {
+  opts = opts || {};
+  container.innerHTML = '';
+  if (!items.length) {
+    container.innerHTML = '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:var(--text3);">Sin datos</div>';
+    return;
+  }
+  const rect = container.getBoundingClientRect();
+  const W = rect.width || 300, H = rect.height || 150;
+  if (W < 10 || H < 10) return;
 
-    let rows = [];
-    if (cat.id === 'duales') {
-      rows = cruzarDual(_precios, liq).filter(r => r.calc && !isNaN(r.calc.tna));
-    } else {
-      const tipos = _bundle._tipos || {};
-      cat.tipos.forEach(tipo => {
-        cruzar(tipo, _precios, liq).forEach(r => {
-          if (!r.calc || isNaN(r.calc.tna)) return;
-          // Excluir duales de las categorías puras — se manejan via inclDualGanador
-          const tp = (tipos[r.ticker] || '').toLowerCase();
-          if (tp === 'dual_boncap' || tp === 'dual_boncer' || tp === 'dual_tamar') return;
-          rows.push(r);
-        });
-      });
-      // Agregar duales cuya pata ganadora corresponde a esta categoría
-      if (cat.inclDualGanador) {
-        const dualRows = cruzarDual(_precios, liq).filter(r => r.calc && !isNaN(r.calc.tna));
-        dualRows.forEach(r => {
-          const gana = r.ganador;
-          const tf   = (r.tipoFija||'').toLowerCase();
-          if (cat.inclDualGanador === 'tamar'       && gana === 'tamar') rows.push(r);
-          if (cat.inclDualGanador === 'boncap'      && gana === 'fija'  && tf === 'dual_boncap') rows.push(r);
-          if (cat.inclDualGanador === 'fija_boncer' && gana === 'fija'  && tf === 'dual_boncer') rows.push(r);
-        });
-      }
-    }
-    const seen = new Set();
-    rows = rows.filter(r => { if (seen.has(r.ticker)) return false; seen.add(r.ticker); return true; });
+  const tooltip = rfHmEnsureTooltip();
 
-    if (!rows.length) {
-      wrap.innerHTML = '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:var(--text3);">Sin datos</div>';
-      return;
-    }
+  const root = d3.hierarchy({ children: items }, d => d.children)
+    .sum(d => d.monto)
+    .sort((a, b) => (b.value || 0) - (a.value || 0));
+  d3.treemap().size([W, H]).paddingInner(opts.pad ?? 2).paddingOuter(opts.padOuter ?? 1).tile(d3.treemapSquarify)(root);
 
-    const rect = wrap.parentElement?.getBoundingClientRect() || wrap.getBoundingClientRect();
-    const W = rect.width || 300;
-    const H = rect.height || 150;
-    if (W < 10 || H < 10) return;
-
-    const HM_EXCLUDE = { fixed_rate: new Set(['TY30PP']) };
-    const exclude = HM_EXCLUDE[cat.id] || new Set();
-
-    const items = rows
-      .filter(r => !exclude.has(r.ticker.toUpperCase()))
-      .map(r => {
-      const pxEntry   = getPrecio(r.ticker);
-      const precio    = r.precio ?? pxEntry?.precio ?? NaN;
-      const variacion = r.variacion ?? pxEntry?.variacion ?? null;
-      const vol       = r.vol ?? 0;
-      // Para duales: TNA del ganador; r.calc ya apunta al ganador vía cruzarDual
-      const tna       = r.calc?.tna ?? (r.calcTamar?.tna ?? r.calcFija?.tna ?? null);
-      const ganador   = r.ganador ?? null; // 'tamar' | 'fija' | null
-      const maturity  = (_bundle._meta||{})[r.ticker]?.maturity ?? r.calc?.fechaVto ?? null;
-      const matStr    = maturity ? maturity.substring(0,10) : null;
-      return { ticker: r.ticker, precio, variacion, vol, tna, ganador, matStr, monto: (vol > 0 && precio > 0) ? vol * precio : (vol || 1) };
-    }).filter(r => r.monto > 0);
-
-    if (!items.length) return;
-
-    // Floor: instrumentos sin vol real reciben al menos 5% del promedio de monto
-    const montoReal = items.filter(r => r.vol > 0).map(r => r.monto);
-    const avgMonto = montoReal.length ? montoReal.reduce((a,b)=>a+b,0)/montoReal.length : 1;
-    const floor = avgMonto * 0.05;
-    items.forEach(r => { if (r.vol === 0) r.monto = floor; });
-
-    const root = d3.hierarchy({children: items}, d => d.children)
-      .sum(d => d.monto)
-      .sort((a,b) => (b.value||0) - (a.value||0));
-    d3.treemap().size([W, H]).paddingInner(2).paddingOuter(1).tile(d3.treemapSquarify)(root);
-
-    root.leaves().forEach(node => {
-      const r = node.data;
-      const x = node.x0, y = node.y0, w = node.x1-node.x0, h = node.y1-node.y0;
-      if (w < 4 || h < 4) return;
-      const varPct = r.variacion;
-      const cell = document.createElement('div');
-      Object.assign(cell.style, {
-        position:'absolute', left:x+'px', top:y+'px', width:w+'px', height:h+'px',
-        background: rfHmColor(varPct),
-        display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-        overflow:'hidden', cursor:'pointer', transition:'filter .12s', boxSizing:'border-box',
-      });
-      if (w > 22 && h > 14) {
-        const fs = Math.max(7, Math.min(14, Math.sqrt(w*h)/6));
-        const fss = Math.max(6, fs * .78);
-        const varStr = varPct != null ? (varPct >= 0 ? '+' : '') + varPct.toFixed(2) + '%' : '—';
-        cell.innerHTML =
-          `<div style="font-weight:700;color:rgba(255,255,255,.95);font-size:${fs}px;text-align:center;pointer-events:none;line-height:1.2;">${r.ticker}</div>` +
-          (h > 26 ? `<div style="color:rgba(255,255,255,.8);font-size:${fss}px;text-align:center;pointer-events:none;">${varStr}</div>` : '');
-      }
-      cell.addEventListener('mouseenter', e => {
-        cell.style.filter = 'brightness(1.25)';
-        const varStr = varPct != null ? (varPct >= 0 ? '+' : '') + varPct.toFixed(2) + '%' : '—';
-        const tnaStr = r.tna  != null ? r.tna.toFixed(2) + '%' : '—';
-        const pxStr  = !isNaN(r.precio) ? r.precio.toFixed(2) : '—';
-        const volStr = r.vol  > 0 ? r.vol.toLocaleString('es-AR') : '—';
-        const ganadorStr = r.ganador ? `<div style="color:var(--text3);">Pata activa &nbsp;<span style="color:${r.ganador==='tamar'?'#e3b341':'#3fb950'};float:right;font-weight:700;">${r.ganador==='tamar'?'TAMAR':'FIJA'}</span></div>` : '';
-        const vtoStr = r.matStr ? `<div style="color:var(--text3);">Vencimiento <span style="color:var(--text2);float:right;">${r.matStr}</span></div>` : '';
-        tooltip.innerHTML =
-          `<div style="font-weight:700;font-size:12px;margin-bottom:4px;color:var(--text);">${r.ticker}</div>` +
-          `<div style="color:var(--text3);">Precio &nbsp;&nbsp;&nbsp;<span style="color:var(--text);float:right;">${pxStr}</span></div>` +
-          `<div style="color:var(--text3);">Variación &nbsp;<span style="color:${(varPct??0)>=0?'#3fb950':'#f85149'};float:right;">${varStr}</span></div>` +
-          `<div style="color:var(--text3);">TNA &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--accent);float:right;">${tnaStr}</span></div>` +
-          ganadorStr + vtoStr +
-          `<div style="color:var(--text3);">Volumen &nbsp;&nbsp;<span style="color:var(--text2);float:right;">${volStr}</span></div>`;
-        tooltip.style.display = 'block';
-      });
-      cell.addEventListener('mousemove', e => {
-        const tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
-        const lft = e.clientX + 14 + tw > window.innerWidth  ? e.clientX - tw - 10 : e.clientX + 14;
-        const top = e.clientY + 14 + th > window.innerHeight ? e.clientY - th - 10 : e.clientY + 14;
-        tooltip.style.left = lft + 'px';
-        tooltip.style.top  = top + 'px';
-      });
-      cell.addEventListener('mouseleave', () => {
-        cell.style.filter = '';
-        tooltip.style.display = 'none';
-      });
-      cell.addEventListener('click', () => {
-        tooltip.style.display = 'none';
-        rfCalOpenModal(r.ticker);
-      });
-      wrap.appendChild(cell);
+  root.leaves().forEach(node => {
+    const r = node.data;
+    const x = node.x0, y = node.y0, w = node.x1 - node.x0, h = node.y1 - node.y0;
+    if (w < 3 || h < 3) return;
+    const varPct = r.variacion;
+    const cell = document.createElement('div');
+    Object.assign(cell.style, {
+      position:'absolute', left:x+'px', top:y+'px', width:w+'px', height:h+'px',
+      background: rfHmColorScaled(varPct, colorMin, colorMax),
+      display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+      overflow:'hidden', cursor:'pointer', transition:'filter .12s', boxSizing:'border-box',
     });
-
+    if (w > 22 && h > 14) {
+      const fs = Math.max(7, Math.min(15, Math.sqrt(w*h)/6));
+      const fss = Math.max(6, fs * .78);
+      const varStr = varPct != null ? (varPct >= 0 ? '+' : '') + varPct.toFixed(2) + '%' : '—';
+      cell.innerHTML =
+        `<div style="font-weight:700;color:rgba(255,255,255,.95);font-size:${fs}px;text-align:center;pointer-events:none;line-height:1.2;">${displayName(r.ticker)}</div>` +
+        (h > 26 ? `<div style="color:rgba(255,255,255,.82);font-size:${fss}px;text-align:center;pointer-events:none;">${varStr}</div>` : '');
+    }
+    cell.addEventListener('mouseenter', () => {
+      cell.style.filter = 'brightness(1.25)';
+      const varStr = varPct != null ? (varPct >= 0 ? '+' : '') + varPct.toFixed(2) + '%' : '—';
+      const tnaStr = r.tna != null ? r.tna.toFixed(2) + '%' : '—';
+      const pxStr = isFinite(r.precio) ? fmtN(r.precio, 2) : '—';
+      const volStr = r.vol > 0 ? r.vol.toLocaleString('es-AR') : '—';
+      const montoStr = r.monto > 0 ? '$' + r.monto.toLocaleString('es-AR', {maximumFractionDigits:0}) : '—';
+      const monedaTag = r.moneda === 'USD→ARS' ? ' <span style="color:var(--yellow);font-size:9px;">(USD×TC)</span>' : '';
+      const ganadorStr = r.ganador ? `<div style="color:var(--text3);">Pata activa <span style="color:${r.ganador==='tamar'?'#e3b341':'#3fb950'};float:right;font-weight:700;">${r.ganador==='tamar'?'TAMAR':'FIJA'}</span></div>` : '';
+      const vtoStr = r.matStr ? `<div style="color:var(--text3);">Vencimiento <span style="color:var(--text2);float:right;">${r.matStr}</span></div>` : '';
+      tooltip.innerHTML =
+        `<div style="font-weight:700;font-size:12px;margin-bottom:4px;color:var(--text);">${displayName(r.ticker)}${monedaTag}</div>` +
+        `<div style="color:var(--text3);">Precio <span style="color:var(--text);float:right;">${pxStr}</span></div>` +
+        `<div style="color:var(--text3);">Variación <span style="color:${(varPct??0)>=0?'#3fb950':'#f85149'};float:right;">${varStr}</span></div>` +
+        `<div style="color:var(--text3);">TNA <span style="color:var(--accent);float:right;">${tnaStr}</span></div>` +
+        ganadorStr + vtoStr +
+        `<div style="color:var(--text3);">Volumen <span style="color:var(--text2);float:right;">${volStr}</span></div>` +
+        `<div style="color:var(--text3);">Monto <span style="color:var(--text2);float:right;">${montoStr}</span></div>`;
+      tooltip.style.display = 'block';
+    });
+    cell.addEventListener('mousemove', e => {
+      const tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
+      const lft = e.clientX + 14 + tw > window.innerWidth ? e.clientX - tw - 10 : e.clientX + 14;
+      const top = e.clientY + 14 + th > window.innerHeight ? e.clientY - th - 10 : e.clientY + 14;
+      tooltip.style.left = lft + 'px';
+      tooltip.style.top = top + 'px';
+    });
+    cell.addEventListener('mouseleave', () => { cell.style.filter = ''; tooltip.style.display = 'none'; });
+    cell.addEventListener('click', () => {
+      tooltip.style.display = 'none';
+      if (opts.onCellClick) opts.onCellClick(r);
+      else rfCalOpenModal(r.ticker);
+    });
+    container.appendChild(cell);
   });
 }
+
+// Estado del heatmap global: monto por categoría (para drill-down y layout)
+let _rfHmData = {}; // { catId: { label, items, totalMonto, minVar, maxVar } }
+
+function rfBuildHeatmaps() {
+  if (!_bundle || !_precios) return;
+  if (typeof d3 === 'undefined') return;
+  if (Object.keys(_tamarProms).length === 0) {
+    calcularTamarProms().then(() => rfBuildHeatmaps());
+    return;
+  }
+  const liq = defaultLiq();
+  rfHmEnsureTooltip();
+
+  // 1. Recolectar items de TODAS las categorías con monto en pesos
+  _rfHmData = {};
+  const catBlocks = []; // para el treemap de nivel 1: { id, label, monto, items }
+  let totalGlobal = 0, gMin = 0, gMax = 0;
+  RF_HM_CATS.forEach(cat => {
+    const items = rfHmCollectRows(cat, liq);
+    const totalMonto = items.reduce((s, r) => s + r.monto, 0);
+    let minVar = 0, maxVar = 0;
+    items.forEach(r => { if (r.variacion != null) { if (r.variacion < minVar) minVar = r.variacion; if (r.variacion > maxVar) maxVar = r.variacion; } });
+    _rfHmData[cat.id] = { label: cat.label, items, totalMonto, minVar, maxVar };
+    items.forEach(r => { if (r.variacion != null) { if (r.variacion < gMin) gMin = r.variacion; if (r.variacion > gMax) gMax = r.variacion; } });
+    totalGlobal += totalMonto;
+    catBlocks.push({ id: cat.id, label: cat.label, monto: totalMonto, items });
+  });
+
+  // Actualizar barra de monto global operado
+  const totalEl = document.getElementById('rfhm-total-monto');
+  const totalSub = document.getElementById('rfhm-total-sub');
+  if (totalEl) {
+    let txt;
+    if (totalGlobal >= 1e9)      txt = '$' + (totalGlobal/1e9).toLocaleString('es-AR',{maximumFractionDigits:2}) + ' MM';
+    else if (totalGlobal >= 1e6) txt = '$' + (totalGlobal/1e6).toLocaleString('es-AR',{maximumFractionDigits:1}) + ' M';
+    else                         txt = '$' + totalGlobal.toLocaleString('es-AR',{maximumFractionDigits:0});
+    totalEl.textContent = txt;
+  }
+  if (totalSub) {
+    const nInstr = catBlocks.reduce((s,c)=>s+c.items.length,0);
+    totalSub.textContent = `· ${catBlocks.filter(c=>c.monto>0).length} categorías · ${nInstr} instrumentos`;
+  }
+
+  const container = document.getElementById('rfhm-global');
+  if (!container) return;
+  container.innerHTML = '';
+  const rect = container.getBoundingClientRect();
+  const W = rect.width || 800, H = rect.height || 500;
+  if (W < 10 || H < 10) { setTimeout(rfBuildHeatmaps, 60); return; }
+
+  // 2. Treemap de nivel 1 (categorías) — tamaño = monto global en pesos
+  const catData = catBlocks.filter(c => c.monto > 0);
+  if (!catData.length) {
+    container.innerHTML = '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;color:var(--text3);">Sin datos de volumen</div>';
+    return;
+  }
+  const HEADER_H = 22; // alto del título de cada categoría
+  const rootCat = d3.hierarchy({ children: catData }, d => d.children)
+    .sum(d => d.monto)
+    .sort((a, b) => (b.value || 0) - (a.value || 0));
+  d3.treemap().size([W, H]).paddingInner(3).paddingOuter(0).tile(d3.treemapSquarify)(rootCat);
+
+  // 3. Dibujar cada categoría como un bloque con marco + título, y treemap interno de bonos
+  rootCat.children?.forEach(catNode => {
+    const cat = catNode.data;
+    const x = catNode.x0, y = catNode.y0, w = catNode.x1 - catNode.x0, h = catNode.y1 - catNode.y0;
+    if (w < 6 || h < 6) return;
+
+    const block = document.createElement('div');
+    Object.assign(block.style, {
+      position:'absolute', left:x+'px', top:y+'px', width:w+'px', height:h+'px',
+      border:'1px solid var(--border2)', borderRadius:'7px', overflow:'hidden',
+      background:'var(--bg2)', boxSizing:'border-box', cursor:'pointer',
+    });
+
+    // Título (clickable → drill-down)
+    const head = document.createElement('div');
+    Object.assign(head.style, {
+      position:'absolute', top:'0', left:'0', right:'0', height:HEADER_H+'px',
+      display:'flex', alignItems:'center', padding:'0 8px', gap:'6px',
+      fontFamily:'var(--mono)', fontSize:'10px', fontWeight:'700', letterSpacing:'.06em',
+      textTransform:'uppercase', color:'var(--text2)', background:'var(--bg3)',
+      borderBottom:'1px solid var(--border)', userSelect:'none', zIndex:'2',
+    });
+    const montoCat = cat.monto > 0 ? '$' + (cat.monto/1e6).toLocaleString('es-AR',{maximumFractionDigits:0}) + 'M' : '';
+    head.innerHTML = `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${cat.label}</span><span style="color:var(--text3);font-size:8px;font-weight:600;">${montoCat} ⤢</span>`;
+    head.title = 'Click para ver detalle de ' + cat.label;
+    head.addEventListener('click', (e) => { e.stopPropagation(); rfHmOpenCategory(cat.id); });
+    block.appendChild(head);
+
+    // Área de bonos
+    const inner = document.createElement('div');
+    Object.assign(inner.style, { position:'absolute', top:HEADER_H+'px', left:'0', right:'0', bottom:'0', overflow:'hidden' });
+    block.appendChild(inner);
+    container.appendChild(block);
+
+    // Click en el bloque entero (huecos, bordes) → drill-down de la categoría
+    block.addEventListener('click', () => rfHmOpenCategory(cat.id));
+
+    // Treemap interno con escala de color GLOBAL.
+    // En la vista global, click en cualquier bono → drill-down de la categoría (no detalle puntual).
+    requestAnimationFrame(() => {
+      rfHmPaintTreemap(inner, cat.items, gMin, gMax, { pad: 1.5, padOuter: 0, onCellClick: () => rfHmOpenCategory(cat.id) });
+    });
+  });
+}
+
+// ── Drill-down: pop-up de una categoría (escala de volumen Y color LOCAL a la categoría) ──
+function rfHmOpenCategory(catId) {
+  const data = _rfHmData[catId];
+  if (!data) return;
+  const modal = document.getElementById('rfhm-cat-modal');
+  const titleEl = document.getElementById('rfhm-cat-modal-title');
+  const body = document.getElementById('rfhm-cat-modal-body');
+  if (!modal || !body) return;
+  if (titleEl) titleEl.textContent = data.label;
+  modal.style.display = 'flex';
+  // Pintar tras mostrar (para medir dimensiones)
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      // Opción A: color normalizado al rango de ESTA categoría
+      rfHmPaintTreemap(body, data.items, data.minVar, data.maxVar, { pad: 2, padOuter: 1 });
+    });
+  });
+}
+function rfHmCloseCategory() {
+  const modal = document.getElementById('rfhm-cat-modal');
+  if (modal) modal.style.display = 'none';
+  const tt = document.getElementById('rfhm-tooltip');
+  if (tt) tt.style.display = 'none';
+}
+window.rfHmOpenCategory = rfHmOpenCategory;
+window.rfHmCloseCategory = rfHmCloseCategory;
 
 
 })();
