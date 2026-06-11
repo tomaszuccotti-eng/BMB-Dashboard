@@ -1655,6 +1655,22 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 #sens-table tbody tr:hover td:last-child{box-shadow:inset -2px 0 0 var(--accent),inset 0 2px 0 var(--accent),inset 0 -2px 0 var(--accent);}
 #sens-table tbody tr:hover td.sens-td-ticker{background:rgba(30,39,243,0.20);}
 #sens-table tbody tr:hover td.sens-actual{box-shadow:inset 2px 0 0 var(--accent),inset -2px 0 0 var(--accent),inset 0 2px 0 var(--accent),inset 0 -2px 0 var(--accent);}
+#onssens-table th{position:sticky;top:0;z-index:3;background:var(--bg2);border-bottom:1px solid var(--border);border-right:1px solid var(--border);padding:7px 10px;font-size:10px;font-weight:700;color:var(--text2);text-align:center;white-space:nowrap;}
+#onssens-table th.sens-th-ticker{left:0;z-index:5;text-align:center;min-width:104px;background:var(--bg3)!important;color:var(--text2);font-size:11px;}
+#onssens-table th.sens-th-actual{color:#fff;background:var(--accent)!important;}
+#onssens-table td{border-bottom:1px solid var(--border);border-right:1px solid rgba(127,127,127,.10);padding:6px 9px;text-align:center;white-space:nowrap;vertical-align:middle;}
+#onssens-table td.sens-td-ticker{position:sticky;left:0;z-index:2;background:rgba(30,39,243,0.10);text-align:center;font-weight:700;font-size:13px;color:var(--text);border-right:1px solid rgba(30,39,243,0.25);}
+#onssens-table td.sens-td-ticker .sens-mat{display:block;font-size:9px;font-weight:400;color:var(--text3);margin-top:2px;}
+#onssens-table td.sens-cell{min-width:86px;}
+#onssens-table td.sens-cell.sens-actual{background:rgba(30,39,243,0.14)!important;box-shadow:inset 2px 0 0 var(--accent),inset -2px 0 0 var(--accent);}
+#onssens-table .sens-l1{font-size:12px;font-weight:700;line-height:1.35;color:var(--text);}
+#onssens-table .sens-l2{font-size:13px;font-weight:700;line-height:1.4;color:var(--text);letter-spacing:-.01em;}
+#onssens-table .sens-l3{font-size:10px;font-weight:600;line-height:1.3;color:var(--text2);}
+#onssens-table tbody tr:hover td{box-shadow:inset 0 2px 0 var(--accent),inset 0 -2px 0 var(--accent);filter:brightness(1.14);}
+#onssens-table tbody tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent),inset 0 2px 0 var(--accent),inset 0 -2px 0 var(--accent);}
+#onssens-table tbody tr:hover td:last-child{box-shadow:inset -2px 0 0 var(--accent),inset 0 2px 0 var(--accent),inset 0 -2px 0 var(--accent);}
+#onssens-table tbody tr:hover td.sens-td-ticker{background:rgba(30,39,243,0.20);}
+#onssens-table tbody tr:hover td.sens-actual{box-shadow:inset 2px 0 0 var(--accent),inset -2px 0 0 var(--accent),inset 0 2px 0 var(--accent),inset 0 -2px 0 var(--accent);}
 .rf-hm-label{position:absolute;top:6px;left:8px;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-family:var(--mono);color:rgba(255,255,255,.5);z-index:2;pointer-events:none;}
 .rf-hm-wrap{position:absolute;inset:0;}
 #app-rf .rf-cal-day{min-height:80px;border-radius:6px;border:1px solid var(--border);padding:6px;background:var(--card);position:relative;transition:background .12s;}
@@ -1801,9 +1817,10 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
     <div style="display:flex;align-items:stretch;padding:0 20px;gap:0;height:100%;">
       <div id="ons-tab-index" onclick="ons_switchTab('index')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);transition:all .15s;">Índice</div>
       <div id="ons-tab-hm" onclick="ons_switchTab('hm')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;">Heatmap</div>
-      <div id="ons-tab-scoring" onclick="ons_switchTab('scoring')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;">Scoring</div>
       <div id="ons-tab-cmp" onclick="ons_switchTab('cmp')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;">Comparador</div>
+      <div id="ons-tab-sens" onclick="ons_switchTab('sens')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;">Sensibilidad</div>
       <div id="ons-tab-cal" onclick="ons_switchTab('cal')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;">Calendario</div>
+      <div id="ons-tab-scoring" onclick="ons_switchTab('scoring')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;">Scoring</div>
     </div>
     <!-- Zona derecha: controles -->
     <div style="flex:1;"></div>
@@ -2010,6 +2027,63 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
           <button onclick="onsHmCloseON()" style="padding:4px 14px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;" onmouseover="this.style.background='var(--red)';this.style.color='#fff';this.style.borderColor='var(--red)';" onmouseout="this.style.background='transparent';this.style.color='var(--text3)';this.style.borderColor='var(--border2)';">✕ Cerrar</button>
         </div>
         <div id="onshm-on-modal-body" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VISTA: SENSIBILIDAD ONs -->
+  <div id="view-ons-sens" style="display:none;flex-direction:row;flex:1;overflow:hidden;height:calc(100vh - 52px);position:relative;">
+    <!-- SIDEBAR (230px) -->
+    <div style="width:230px;flex-shrink:0;align-self:stretch;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;min-height:0;">
+      <!-- Buscador -->
+      <div style="padding:12px 12px 8px;flex-shrink:0;">
+        <div style="font-size:9px;font-weight:700;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Empresa</div>
+        <input type="text" id="onssens-search" oninput="onsSens_buildTree(this.value)" placeholder="Buscar empresa / sector…"
+          style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:10px;font-family:var(--mono);padding:5px 8px;outline:none;">
+      </div>
+      <!-- Árbol sector → empresa -->
+      <div id="onssens-tree" style="flex:1 1 auto;min-height:0;overflow-y:auto;padding:2px 8px 8px;"></div>
+      <!-- Divider -->
+      <div style="margin:0 12px;height:1px;background:var(--border);flex-shrink:0;"></div>
+      <!-- Parámetros -->
+      <div style="padding:10px 12px 14px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;">
+        <div style="font-size:9px;font-weight:700;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px;">Parámetros</div>
+        <div style="display:flex;flex-direction:column;gap:3px;">
+          <label style="font-size:9px;font-family:var(--mono);color:var(--text3);">Fecha liq.</label>
+          <input type="date" id="onssens-fecha-liq" onchange="onsSens_recalc()"
+            style="background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:10px;font-family:var(--mono);padding:3px 6px;outline:none;width:100%;box-sizing:border-box;">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <div style="display:flex;flex-direction:column;gap:3px;flex:1;">
+            <label style="font-size:9px;font-family:var(--mono);color:var(--text3);">Rango −</label>
+            <input type="number" id="onssens-rango-down" value="3" min="0" max="20" step="0.5" onchange="onsSens_recalc()"
+              style="background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:10px;font-family:var(--mono);padding:3px 6px;outline:none;width:100%;box-sizing:border-box;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px;flex:1;">
+            <label style="font-size:9px;font-family:var(--mono);color:var(--text3);">Rango +</label>
+            <input type="number" id="onssens-rango-up" value="3" min="0" max="20" step="0.5" onchange="onsSens_recalc()"
+              style="background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:10px;font-family:var(--mono);padding:3px 6px;outline:none;width:100%;box-sizing:border-box;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px;flex:1;">
+            <label style="font-size:9px;font-family:var(--mono);color:var(--text3);">Paso</label>
+            <input type="number" id="onssens-paso" value="1" min="0.1" max="5" step="0.1" onchange="onsSens_recalc()"
+              style="background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:10px;font-family:var(--mono);padding:3px 6px;outline:none;width:100%;box-sizing:border-box;">
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- ÁREA DERECHA -->
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;min-height:0;align-self:stretch;">
+      <div style="padding:10px 16px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:14px;">
+        <div style="font-size:18px;font-weight:800;font-family:var(--mono);color:var(--accent);letter-spacing:.03em;flex-shrink:0;">YTM</div>
+        <div style="display:flex;flex-direction:column;gap:1px;">
+          <div id="onssens-title" style="font-size:14px;font-weight:700;font-family:var(--mono);color:var(--text);">Sensibilidad ONs</div>
+          <div id="onssens-subtitle" style="font-size:10px;font-family:var(--mono);color:var(--text3);">Seleccioná una empresa</div>
+        </div>
+      </div>
+      <div id="onssens-table-wrap" style="flex:1 1 auto;min-height:0;overflow:auto;padding:0;position:relative;">
+        <div id="onssens-empty" style="flex:1;display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-family:var(--mono);font-size:11px;">Seleccioná una empresa del panel izquierdo</div>
+        <table id="onssens-table" style="display:none;border-collapse:separate;border-spacing:0;font-family:var(--mono);width:100%;min-width:max-content;table-layout:auto;"></table>
       </div>
     </div>
   </div>
@@ -18200,7 +18274,7 @@ function ons_renderCompTable() {
 const ons_calState = { year: new Date().getFullYear(), month: new Date().getMonth() };
 
 function ons_switchTab(tab) {
-  const tabs = ['index','hm','cal','scoring','cmp'];
+  const tabs = ['index','hm','cal','scoring','cmp','sens'];
   tabs.forEach(t => {
     const el = document.getElementById('ons-tab-'+t);
     if (!el) return;
@@ -18213,6 +18287,8 @@ function ons_switchTab(tab) {
   document.getElementById('view-ons-cmp').style.display     = tab==='cmp'     ? 'flex' : 'none';
   const vHm = document.getElementById('view-ons-hm');
   if (vHm) vHm.style.display = tab==='hm' ? 'flex' : 'none';
+  const vSens = document.getElementById('view-ons-sens');
+  if (vSens) vSens.style.display = tab==='sens' ? 'flex' : 'none';
 
   if (tab==='index') {
     requestAnimationFrame(function() { requestAnimationFrame(ons_renderChart); });
@@ -18224,6 +18300,8 @@ function ons_switchTab(tab) {
     onsCmp_init();
   } else if (tab==='hm') {
     requestAnimationFrame(function() { requestAnimationFrame(onsBuildHeatmap); });
+  } else if (tab==='sens') {
+    onsSens_init();
   }
 }
 
@@ -18504,6 +18582,327 @@ window.onsHmCloseEmpresa = onsHmCloseEmpresa;
 window.onsHmOpenON = onsHmOpenON;
 window.onsHmCloseON = onsHmCloseON;
 window.onsBuildHeatmap = onsBuildHeatmap;
+
+/* ══════════════════════════════════════════════════════════
+   ONs SENSIBILIDAD (precio USD ↔ YTM objetivo) — por empresa
+══════════════════════════════════════════════════════════ */
+
+const _onsSensState = { empresa: null, sector: null, openSectors: new Set(), initialized: false };
+
+function onsSens_defaultLiq() {
+  const d = ons_settlement(new Date());
+  return (d instanceof Date && !isNaN(d)) ? d.toISOString().slice(0,10) : new Date().toISOString().slice(0,10);
+}
+
+function onsSens_init() {
+  const fi = document.getElementById('onssens-fecha-liq');
+  if (fi && !fi.value) fi.value = onsSens_defaultLiq();
+  onsSens_buildTree(document.getElementById('onssens-search')?.value || '');
+  _onsSensState.initialized = true;
+  if (_onsSensState.empresa) onsSens_recalc();
+}
+
+// Árbol sector → empresa (selección única de empresa)
+function onsSens_buildTree(filter) {
+  const tree = document.getElementById('onssens-tree');
+  if (!tree) return;
+  tree.innerHTML = '';
+  const f = (filter || '').toLowerCase();
+
+  // Solo empresas que tengan al menos una ON con precio
+  const grouped = {};
+  for (const on of (onsState.ons || [])) {
+    if (!(onsState.prices[on.ticker] > 0)) continue;
+    const s = (on.sector || 'OTROS').toUpperCase();
+    if (!grouped[s]) grouped[s] = {};
+    if (!grouped[s][on.empresa]) grouped[s][on.empresa] = [];
+    grouped[s][on.empresa].push(on);
+  }
+
+  for (const sector of Object.keys(grouped).sort()) {
+    const empresas = Object.keys(grouped[sector]).sort();
+    const empFiltradas = f ? empresas.filter(e => e.toLowerCase().includes(f) || sector.toLowerCase().includes(f)) : empresas;
+    if (!empFiltradas.length) continue;
+    const isOpen = f ? true : _onsSensState.openSectors.has(sector);
+
+    const sRow = document.createElement('div');
+    sRow.style.cssText = 'display:flex;align-items:center;gap:5px;padding:5px 6px;cursor:pointer;border-radius:5px;user-select:none;';
+    sRow.innerHTML = `<span style="display:inline-block;transition:transform .15s;transform:rotate(${isOpen?90:0}deg);color:var(--text3);font-size:10px;">›</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;">${sector}</span><span style="font-size:8px;color:var(--text3);">${empFiltradas.length}</span>`;
+    sRow.onmouseover = () => sRow.style.background = 'var(--bg3)';
+    sRow.onmouseout = () => sRow.style.background = 'transparent';
+    sRow.onclick = () => {
+      if (_onsSensState.openSectors.has(sector)) {
+        _onsSensState.openSectors.clear();
+      } else {
+        _onsSensState.openSectors.clear();
+        _onsSensState.openSectors.add(sector);
+      }
+      onsSens_buildTree(document.getElementById('onssens-search')?.value || '');
+    };
+    tree.appendChild(sRow);
+
+    if (isOpen) {
+      const cont = document.createElement('div');
+      cont.style.cssText = 'display:flex;flex-direction:column;gap:1px;margin:1px 0 4px 6px;';
+      empFiltradas.forEach(emp => {
+        const nOns = grouped[sector][emp].length;
+        const active = _onsSensState.empresa === emp && _onsSensState.sector === sector;
+        const eRow = document.createElement('div');
+        eRow.style.cssText = `display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;border-radius:5px;font-family:var(--mono);font-size:10px;font-weight:600;transition:background .12s;background:${active?'var(--accent)':'transparent'};color:${active?'#fff':'var(--text3)'};`;
+        eRow.innerHTML = `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${emp}</span><span style="font-size:8px;opacity:.7;">${nOns}</span>`;
+        eRow.onmouseover = () => { if (!(_onsSensState.empresa===emp && _onsSensState.sector===sector)) eRow.style.background = 'var(--accent-light)'; };
+        eRow.onmouseout = () => { if (!(_onsSensState.empresa===emp && _onsSensState.sector===sector)) eRow.style.background = 'transparent'; };
+        eRow.onclick = () => onsSens_selectEmpresa(sector, emp);
+        cont.appendChild(eRow);
+      });
+      tree.appendChild(cont);
+    }
+  }
+  if (!tree.children.length) {
+    tree.innerHTML = '<div style="padding:14px 8px;font-size:10px;font-family:var(--mono);color:var(--text3);text-align:center;">Sin empresas con precio</div>';
+  }
+}
+
+function onsSens_selectEmpresa(sector, empresa) {
+  _onsSensState.sector = sector;
+  _onsSensState.empresa = empresa;
+  _onsSensState.openSectors.clear();
+  _onsSensState.openSectors.add(sector);
+  onsSens_buildTree(document.getElementById('onssens-search')?.value || '');
+  onsSens_recalc();
+}
+
+// YTM de una ON a un precio dado (en USD). Reusa ons_calcMetrics.
+function onsSens_ytmAtPrice(on, cfs, precio, settle) {
+  if (!isFinite(precio) || precio <= 0) return NaN;
+  const m = ons_calcMetrics(cfs, precio, settle, on.frecuencia);
+  return (m && isFinite(m.ytm)) ? m.ytm * 100 : NaN; // a %
+}
+
+// Bisección: precio que da el YTM objetivo (en %). Robusta a NaN en extremos.
+function onsSens_bisect(on, cfs, ytmObj, settle, precioActual) {
+  const at = (p) => onsSens_ytmAtPrice(on, cfs, p, settle);
+  let lo = Math.max(precioActual * 0.05, 0.01), tirLo = at(lo), g = 0;
+  while (!isFinite(tirLo) && g < 60) { lo *= 1.3; tirLo = at(lo); g++; }
+  g = 0;
+  while (isFinite(tirLo) && ytmObj > tirLo && lo > 1e-6 && g < 80) { const n = lo/1.5, t = at(n); if (!isFinite(t)) break; lo = n; tirLo = t; g++; }
+  let hi = precioActual * 1.5, tirHi = at(hi); g = 0;
+  while (isFinite(tirHi) && ytmObj < tirHi && g < 80) { const n = hi*1.4, t = at(n); if (!isFinite(t)) break; hi = n; tirHi = t; g++; }
+  g = 0;
+  while (!isFinite(tirHi) && hi > lo && g < 80) { hi /= 1.3; tirHi = at(hi); g++; }
+  if (!isFinite(tirLo) || !isFinite(tirHi)) return NaN;
+  if (ytmObj > tirLo + 1e-6 || ytmObj < tirHi - 1e-6) return NaN;
+  for (let i = 0; i < 80; i++) {
+    const mid = (lo+hi)/2, t = at(mid);
+    if (!isFinite(t)) { hi = mid; continue; }
+    if (Math.abs(t - ytmObj) < 1e-4) return mid > 0 ? mid : NaN;
+    if (t > ytmObj) lo = mid; else hi = mid;
+  }
+  const r = (lo+hi)/2; return r > 0 ? r : NaN;
+}
+
+function onsSens_heatColor(varPct, maxAbs) {
+  if (varPct == null || isNaN(varPct) || !isFinite(maxAbs) || maxAbs <= 0) return 'transparent';
+  const t = Math.min(Math.abs(varPct)/maxAbs, 1), a = 0.05 + t*0.27;
+  return varPct >= 0 ? `rgba(34,197,94,${a.toFixed(3)})` : `rgba(239,68,68,${a.toFixed(3)})`;
+}
+
+function onsSens_recalc() {
+  const tableEl = document.getElementById('onssens-table');
+  const emptyEl = document.getElementById('onssens-empty');
+  const titleEl = document.getElementById('onssens-title');
+  const subEl   = document.getElementById('onssens-subtitle');
+  const emp = _onsSensState.empresa;
+  if (!emp) {
+    if (tableEl) tableEl.style.display = 'none';
+    if (emptyEl) { emptyEl.style.display = 'flex'; emptyEl.textContent = 'Seleccioná una empresa del panel izquierdo'; }
+    return;
+  }
+  const liqStr = document.getElementById('onssens-fecha-liq')?.value || onsSens_defaultLiq();
+  const settle = new Date(liqStr + 'T12:00:00');
+  const rangoDown = Math.max(0, parseFloat(document.getElementById('onssens-rango-down')?.value) || 0);
+  const rangoUp   = Math.max(0, parseFloat(document.getElementById('onssens-rango-up')?.value) || 0);
+  const paso      = Math.max(0.1, parseFloat(document.getElementById('onssens-paso')?.value) || 1);
+
+  // ONs de la empresa: con precio y sin precio
+  const todas = (onsState.ons || []).filter(o => o.empresa === emp);
+  let universo = todas.filter(o => onsState.prices[o.ticker] > 0);
+  let sinPrecio = todas.filter(o => !(onsState.prices[o.ticker] > 0));
+
+  // Columnas
+  const nDown = Math.round(rangoDown/paso), nUp = Math.round(rangoUp/paso);
+  const deltas = [];
+  for (let i = -nDown; i <= nUp; i++) deltas.push(+(i*paso).toFixed(4));
+  if (!deltas.includes(0)) { deltas.push(0); deltas.sort((a,b)=>a-b); }
+
+  // Construir filas (con precio)
+  const rows = [];
+  for (const on of universo) {
+    let cfs = null;
+    try { cfs = ons_fetchCashflows(on); } catch(e) {}
+    if (!cfs) continue;
+    const precioActual = onsState.prices[on.ticker];
+    const m = ons_calcMetrics(cfs, precioActual, settle, on.frecuencia);
+    if (!m || !isFinite(m.ytm)) continue;
+    const ytmActual = m.ytm * 100;
+    const vto = cfs.length ? cfs[cfs.length-1].fecha : null;
+    rows.push({ on, cfs, precioActual, ytmActual, vto });
+  }
+  // Ordenar por vencimiento
+  rows.sort((a,b)=> (a.vto && b.vto) ? (a.vto < b.vto ? -1 : a.vto > b.vto ? 1 : 0) : 0);
+
+  // Calcular celdas
+  let maxAbsVar = 0;
+  const matrix = rows.map(r => {
+    const cells = onsSens_computeCells(r, deltas, settle, maxAbsVarRef => {});
+    cells.forEach(c => { if (!c.actual && isFinite(c.varPct) && Math.abs(c.varPct) > maxAbsVar) maxAbsVar = Math.abs(c.varPct); });
+    return { ticker:r.on.ticker, vto:r.vto, precioActual:r.precioActual, ytmActual:r.ytmActual, cells, sinPrecio:false };
+  });
+
+  // Filas sin precio (placeholder, opacas)
+  const sinPrecioRows = sinPrecio.map(on => {
+    let cfs = null; try { cfs = ons_fetchCashflows(on); } catch(e) {}
+    const vto = (cfs && cfs.length) ? cfs[cfs.length-1].fecha : null;
+    return { ticker:on.ticker, vto, sinPrecio:true };
+  }).sort((a,b)=> (a.vto && b.vto) ? (a.vto < b.vto ? -1 : a.vto > b.vto ? 1 : 0) : 0);
+
+  // Guardar contexto para recálculo individual de filas manuales
+  _onsSensCtx = { deltas, settle, maxAbsVar, empresa: emp };
+
+  if (titleEl) titleEl.textContent = `Sensibilidad · ${emp}`;
+  if (subEl)   subEl.textContent = `YTM (USD) · cada columna = shock vs. actual · ${matrix.length} ONs` + (sinPrecioRows.length ? ` · ${sinPrecioRows.length} sin precio` : '');
+
+  onsSens_render(matrix, deltas, maxAbsVar, sinPrecioRows);
+}
+
+// Contexto compartido para recalcular filas manuales sin re-render total
+let _onsSensCtx = null;
+
+// Calcula las celdas de una fila (con precio base) dado el array de deltas
+function onsSens_computeCells(r, deltas, settle) {
+  return deltas.map(d => {
+    if (d === 0) return { delta:0, ytm:r.ytmActual, precio:r.precioActual, varPct:0, actual:true };
+    const ytmObj = r.ytmActual + d;
+    const precioImpl = onsSens_bisect(r.on, r.cfs, ytmObj, settle, r.precioActual);
+    if (!isFinite(precioImpl) || precioImpl <= 0) return { delta:d, ytm:ytmObj, precio:NaN, varPct:NaN, actual:false };
+    const varPct = (precioImpl/r.precioActual - 1) * 100;
+    return { delta:d, ytm:ytmObj, precio:precioImpl, varPct, actual:false };
+  });
+}
+
+function onsSens_render(matrix, deltas, maxAbsVar, sinPrecioRows) {
+  const tableEl = document.getElementById('onssens-table');
+  const emptyEl = document.getElementById('onssens-empty');
+  if (!tableEl) return;
+  sinPrecioRows = sinPrecioRows || [];
+  if (!matrix.length && !sinPrecioRows.length) {
+    tableEl.style.display = 'none';
+    if (emptyEl) { emptyEl.style.display = 'flex'; emptyEl.textContent = 'Esta empresa no tiene ONs con flujos futuros / precio'; }
+    return;
+  }
+  if (emptyEl) emptyEl.style.display = 'none';
+  tableEl.style.display = 'table';
+
+  const fmt2 = v => isNaN(v) ? '-' : v.toFixed(2);
+  const dHdr = d => d === 0 ? 'ACTUAL' : (d > 0 ? `+${fmt2(d)}pp` : `${fmt2(d)}pp`);
+  const fmtVto = v => { if (!v) return ''; const dt = (v instanceof Date) ? v : new Date(v); return isNaN(dt) ? '' : dt.toLocaleDateString('es-AR',{month:'short',year:'2-digit'}); };
+
+  let html = '<thead><tr><th class="sens-th-ticker">TICKER</th>';
+  for (const d of deltas) html += `<th class="${d===0?'sens-th-actual':''}">${dHdr(d)}</th>`;
+  html += '</tr></thead><tbody>';
+
+  for (const row of matrix) {
+    html += onsSens_rowHtml(row, deltas, maxAbsVar, fmt2, fmtVto);
+  }
+
+  // Filas sin precio (opacas, con input en ACTUAL)
+  const actualIdx = deltas.indexOf(0);
+  for (const row of sinPrecioRows) {
+    html += `<tr data-sens-ticker="${row.ticker}" style="opacity:.42;"><td class="sens-td-ticker">${row.ticker}<span class="sens-mat">${fmtVto(row.vto)}</span></td>`;
+    deltas.forEach((d, i) => {
+      const isActual = (d === 0);
+      const cls = 'sens-cell' + (isActual ? ' sens-actual' : '');
+      if (isActual) {
+        html += `<td class="${cls}"><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px;">`+
+                `<span style="font-size:8px;color:var(--text3);">precio US$</span>`+
+                `<input type="number" step="0.01" placeholder="—" data-sens-priceinput="${row.ticker}" `+
+                `onkeydown="if(event.key==='Enter')onsSens_setManualPrice('${row.ticker}',this.value)" `+
+                `onblur="onsSens_setManualPrice('${row.ticker}',this.value)" `+
+                `style="width:64px;text-align:center;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:11px;font-family:var(--mono);font-weight:700;padding:2px 4px;outline:none;"></div></td>`;
+      } else {
+        html += `<td class="${cls}"><div class="sens-l1" style="color:var(--text3);">—</div><div class="sens-l2" style="color:var(--text3);">—</div><div class="sens-l3" style="color:var(--text3);">—</div></td>`;
+      }
+    });
+    html += '</tr>';
+  }
+
+  html += '</tbody>';
+  tableEl.innerHTML = html;
+}
+
+// Genera el HTML de una fila ya calculada (reutilizable para recálculo manual)
+function onsSens_rowHtml(row, deltas, maxAbsVar, fmt2, fmtVto) {
+  let html = `<tr data-sens-ticker="${row.ticker}"><td class="sens-td-ticker">${row.ticker}<span class="sens-mat">${fmtVto(row.vto)}</span></td>`;
+  for (const c of row.cells) {
+    const bg = c.actual ? '' : `background:${onsSens_heatColor(c.varPct, maxAbsVar)};`;
+    const cls = 'sens-cell' + (c.actual ? ' sens-actual' : '');
+    let l1, l2, l3;
+    if (c.actual) {
+      l1 = `<div class="sens-l1">${fmt2(c.ytm)}%</div>`;
+      l2 = `<div class="sens-l2">US$${fmt2(c.precio)}</div>`;
+      l3 = `<div class="sens-l3" style="color:var(--accent2);">actual</div>`;
+    } else if (!isFinite(c.precio) || c.precio <= 0) {
+      l1 = `<div class="sens-l1">${fmt2(c.ytm)}%</div>`;
+      l2 = `<div class="sens-l2" style="color:var(--text3);">—</div>`;
+      l3 = `<div class="sens-l3" style="color:var(--text3);">s/sol.</div>`;
+    } else {
+      const sign = c.varPct >= 0 ? '+' : '';
+      const vCol = c.varPct >= 0 ? 'var(--green)' : 'var(--red)';
+      l1 = `<div class="sens-l1">${fmt2(c.ytm)}%</div>`;
+      l2 = `<div class="sens-l2">US$${fmt2(c.precio)}</div>`;
+      l3 = `<div class="sens-l3" style="color:${vCol};font-weight:700;">${sign}${fmt2(c.varPct)}%</div>`;
+    }
+    html += `<td class="${cls}" style="${bg}">${l1}${l2}${l3}</td>`;
+  }
+  html += '</tr>';
+  return html;
+}
+
+// Recalcula SOLO la fila de una ON sin precio, con un precio manual (no se guarda)
+function onsSens_setManualPrice(ticker, valStr) {
+  const val = parseFloat(valStr);
+  if (!_onsSensCtx || !isFinite(val) || val <= 0) return;
+  const on = (onsState.ons || []).find(o => o.ticker === ticker && o.empresa === _onsSensCtx.empresa);
+  if (!on) return;
+  let cfs = null; try { cfs = ons_fetchCashflows(on); } catch(e) {}
+  if (!cfs) return;
+  const { deltas, settle, maxAbsVar } = _onsSensCtx;
+  const m = ons_calcMetrics(cfs, val, settle, on.frecuencia);
+  if (!m || !isFinite(m.ytm)) return;
+  const ytmActual = m.ytm * 100;
+  const vto = cfs.length ? cfs[cfs.length-1].fecha : null;
+  const r = { on, cfs, precioActual: val, ytmActual, vto };
+  const cells = onsSens_computeCells(r, deltas, settle);
+  // Escala global puede crecer si esta fila supera el max actual
+  let localMax = maxAbsVar;
+  cells.forEach(c => { if (!c.actual && isFinite(c.varPct) && Math.abs(c.varPct) > localMax) localMax = Math.abs(c.varPct); });
+  const fmt2 = v => isNaN(v) ? '-' : v.toFixed(2);
+  const fmtVto = v => { if (!v) return ''; const dt = (v instanceof Date) ? v : new Date(v); return isNaN(dt) ? '' : dt.toLocaleDateString('es-AR',{month:'short',year:'2-digit'}); };
+  const rowObj = { ticker, vto, precioActual: val, ytmActual, cells };
+  // Reemplazar la fila en el DOM (se des-opaca: nueva fila sin opacity)
+  const tr = document.querySelector(`#onssens-table tr[data-sens-ticker="${ticker}"]`);
+  if (tr) {
+    const tmp = document.createElement('tbody');
+    tmp.innerHTML = onsSens_rowHtml(rowObj, deltas, maxAbsVar, fmt2, fmtVto);
+    tr.replaceWith(tmp.firstElementChild);
+  }
+}
+
+window.onsSens_init = onsSens_init;
+window.onsSens_buildTree = onsSens_buildTree;
+window.onsSens_selectEmpresa = onsSens_selectEmpresa;
+window.onsSens_recalc = onsSens_recalc;
+window.onsSens_setManualPrice = onsSens_setManualPrice;
 
 /* ══════════════════════════════════════════════════════════
    ONs COMPARADOR DE CURVAS
@@ -20065,9 +20464,8 @@ window.ons_fetchPrecios = async function() {
       let px = null, rec = null;
 
       if(suffix === 'O') {
-        // D primero (precio en USD directo), luego O, luego C
+        // Solo rueda dólar: D primero, luego C (cable). NUNCA pesos (ticker tal cual).
         if(liveMap[base + 'D']?.c > 0)      { px = liveMap[base + 'D'].c; rec = liveMap[base + 'D']; }
-        else if(liveMap[tk]?.c > 0)          { px = liveMap[tk].c;         rec = liveMap[tk]; }
         else if(liveMap[base + 'C']?.c > 0)  { px = liveMap[base + 'C'].c; rec = liveMap[base + 'C']; }
       } else {
         // Tickers no-O (VA1AP, CS48, VAC3P)
