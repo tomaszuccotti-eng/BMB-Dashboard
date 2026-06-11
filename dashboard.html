@@ -1800,6 +1800,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
     <!-- Zona centro: tabs Índice / Calendario -->
     <div style="display:flex;align-items:stretch;padding:0 20px;gap:0;height:100%;">
       <div id="ons-tab-index" onclick="ons_switchTab('index')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);transition:all .15s;">Índice</div>
+      <div id="ons-tab-hm" onclick="ons_switchTab('hm')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;">Heatmap</div>
       <div id="ons-tab-scoring" onclick="ons_switchTab('scoring')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;">Scoring</div>
       <div id="ons-tab-cmp" onclick="ons_switchTab('cmp')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;">Comparador</div>
       <div id="ons-tab-cal" onclick="ons_switchTab('cal')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;">Calendario</div>
@@ -1963,6 +1964,55 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); font-si
 <div class="chart-tooltip" id="chartTooltip"></div>
 
   </div><!-- /view-ons-index -->
+
+  <!-- VISTA: HEATMAP ONs (treemap sector → empresa → ON, USD) -->
+  <div id="view-ons-hm" style="display:none;flex-direction:column;flex:1;overflow:hidden;height:calc(100vh - 52px);position:relative;">
+    <div style="display:flex;align-items:center;gap:10px;padding:7px 14px;border-bottom:1px solid var(--border);flex-shrink:0;">
+      <span style="font-size:9px;font-weight:700;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;">Monto global operado (USD)</span>
+      <span id="onshm-total-monto" style="font-size:15px;font-weight:800;font-family:var(--mono);color:var(--accent);letter-spacing:.02em;">—</span>
+      <span id="onshm-total-sub" style="font-size:9px;font-family:var(--mono);color:var(--text3);">—</span>
+    </div>
+    <div style="flex:1;min-height:0;padding:6px;box-sizing:border-box;position:relative;">
+      <div id="onshm-global" style="position:absolute;inset:6px;overflow:hidden;"></div>
+    </div>
+    <!-- Pop-up drill-down de sector -->
+    <div id="onshm-sec-modal" onclick="if(event.target===event.currentTarget)onsHmCloseSector()" style="display:none;position:absolute;inset:0;z-index:100;background:rgba(0,0,0,0.55);align-items:center;justify-content:center;">
+      <div onclick="event.stopPropagation()" style="width:min(88vw,1200px);height:min(82vh,760px);background:var(--bg);border:1px solid var(--border2);border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 16px 50px rgba(0,0,0,0.5);">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);flex-shrink:0;">
+          <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:var(--text);">Heatmap · <span id="onshm-sec-modal-title">—</span></div>
+          <div style="font-size:10px;font-family:var(--mono);color:var(--text3);">empresas y ONs ajustadas al sector · USD</div>
+          <div style="flex:1;"></div>
+          <button onclick="onsHmCloseSector()" style="padding:4px 14px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;" onmouseover="this.style.background='var(--red)';this.style.color='#fff';this.style.borderColor='var(--red)';" onmouseout="this.style.background='transparent';this.style.color='var(--text3)';this.style.borderColor='var(--border2)';">✕ Cerrar</button>
+        </div>
+        <div id="onshm-sec-modal-body" style="flex:1;position:relative;overflow:hidden;margin:8px;"></div>
+      </div>
+    </div>
+    <!-- Pop-up drill-down de empresa -->
+    <div id="onshm-emp-modal" onclick="if(event.target===event.currentTarget)onsHmCloseEmpresa()" style="display:none;position:absolute;inset:0;z-index:110;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;">
+      <div onclick="event.stopPropagation()" style="width:min(80vw,1000px);height:min(76vh,680px);background:var(--bg);border:1px solid var(--border2);border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 16px 50px rgba(0,0,0,0.5);">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);flex-shrink:0;">
+          <button onclick="onsHmCloseEmpresa()" style="padding:3px 9px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);" title="Volver al sector">←</button>
+          <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:var(--text);"><span id="onshm-emp-modal-sector" style="color:var(--text3);font-weight:400;"></span> · <span id="onshm-emp-modal-title">—</span></div>
+          <div style="font-size:10px;font-family:var(--mono);color:var(--text3);">ONs ajustadas a la empresa · USD</div>
+          <div style="flex:1;"></div>
+          <button onclick="onsHmCloseEmpresa()" style="padding:4px 14px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;" onmouseover="this.style.background='var(--red)';this.style.color='#fff';this.style.borderColor='var(--red)';" onmouseout="this.style.background='transparent';this.style.color='var(--text3)';this.style.borderColor='var(--border2)';">✕ Cerrar</button>
+        </div>
+        <div id="onshm-emp-modal-body" style="flex:1;position:relative;overflow:hidden;margin:8px;"></div>
+      </div>
+    </div>
+    <!-- Pop-up detalle de ON (cashflow + cards), reutiliza ons_renderONPanel -->
+    <div id="onshm-on-modal" onclick="if(event.target===event.currentTarget)onsHmCloseON()" style="display:none;position:absolute;inset:0;z-index:120;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;">
+      <div onclick="event.stopPropagation()" style="width:92vw;max-width:1300px;height:90vh;background:var(--bg);border:1px solid var(--border2);border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.7);">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);flex-shrink:0;">
+          <button onclick="onsHmCloseON()" style="padding:3px 9px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);" title="Volver">←</button>
+          <div style="font-size:13px;font-weight:700;font-family:var(--mono);color:var(--text);">Detalle · <span id="onshm-on-modal-title">—</span></div>
+          <div style="flex:1;"></div>
+          <button onclick="onsHmCloseON()" style="padding:4px 14px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;" onmouseover="this.style.background='var(--red)';this.style.color='#fff';this.style.borderColor='var(--red)';" onmouseout="this.style.background='transparent';this.style.color='var(--text3)';this.style.borderColor='var(--border2)';">✕ Cerrar</button>
+        </div>
+        <div id="onshm-on-modal-body" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;"></div>
+      </div>
+    </div>
+  </div>
 
   <!-- VISTA CALENDARIO: full width, sin sidebar -->
   <!-- VISTA: SCORING -->
@@ -9530,6 +9580,10 @@ function rfHmPaintTreemap(container, items, colorMin, colorMax, opts) {
     container.appendChild(cell);
   });
 }
+// Exponer helpers del motor de treemap para que el módulo ONs (otro IIFE) los reutilice
+window.rfHmEnsureTooltip = rfHmEnsureTooltip;
+window.rfHmColorScaled   = rfHmColorScaled;
+window.rfHmPaintTreemap  = rfHmPaintTreemap;
 
 // Estado del heatmap global: monto por categoría (para drill-down y layout)
 let _rfHmData = {}; // { catId: { label, items, totalMonto, minVar, maxVar } }
@@ -17543,12 +17597,12 @@ function ons_selectON(ticker) {
 }
 
 // ─── Render panel ON ──────────────────────────────────────────────────────────
-function ons_renderONPanel(on, cfs) {
+function ons_renderONPanel(on, cfs, targetEl) {
   const cleanPrice = onsState.prices[on.ticker] ?? 100;
   const settle = onsState.settles?.[on.ticker] ?? ons_settlement(new Date());
   const metrics = ons_calcMetrics(cfs, cleanPrice, settle, on.frecuencia);
 
-  const vOn = document.getElementById('view-on');
+  const vOn = targetEl || document.getElementById('view-on');
 
   if (!metrics) {
     vOn.innerHTML = `<div class="empty-onsState"><div class="empty-sub">Esta ON ya venció o no tiene flujos futuros.</div></div>`;
@@ -18146,7 +18200,7 @@ function ons_renderCompTable() {
 const ons_calState = { year: new Date().getFullYear(), month: new Date().getMonth() };
 
 function ons_switchTab(tab) {
-  const tabs = ['index','cal','scoring','cmp'];
+  const tabs = ['index','hm','cal','scoring','cmp'];
   tabs.forEach(t => {
     const el = document.getElementById('ons-tab-'+t);
     if (!el) return;
@@ -18157,6 +18211,8 @@ function ons_switchTab(tab) {
   document.getElementById('view-cal').style.display         = tab==='cal'     ? 'flex' : 'none';
   document.getElementById('view-ons-scoring').style.display = tab==='scoring' ? 'flex' : 'none';
   document.getElementById('view-ons-cmp').style.display     = tab==='cmp'     ? 'flex' : 'none';
+  const vHm = document.getElementById('view-ons-hm');
+  if (vHm) vHm.style.display = tab==='hm' ? 'flex' : 'none';
 
   if (tab==='index') {
     requestAnimationFrame(function() { requestAnimationFrame(ons_renderChart); });
@@ -18166,8 +18222,288 @@ function ons_switchTab(tab) {
     ons_renderScoring();
   } else if (tab==='cmp') {
     onsCmp_init();
+  } else if (tab==='hm') {
+    requestAnimationFrame(function() { requestAnimationFrame(onsBuildHeatmap); });
   }
 }
+
+/* ══════════════════════════════════════════════════════════
+   ONs HEATMAP — treemap jerárquico sector → empresa → ON (USD)
+══════════════════════════════════════════════════════════ */
+
+let _onsHmData = {}; // { sector: { empresas:{...}, total, minVar, maxVar, label } }
+
+// Monto operado en USD de una ON (precio USD × volumen). Precio ya viene en USD.
+function onsHmMonto(on) {
+  const px = onsState.prices[on.ticker];
+  const vol = onsState.vols ? onsState.vols[on.ticker] : null;
+  if (!isFinite(px) || px <= 0 || !isFinite(vol) || vol <= 0) return 0;
+  // Precio es % del VN (cada 100 nominales) → monto = vol × px / 100
+  return vol * px / 100;
+}
+
+// Construye el árbol sector → empresa → [items ON]
+function onsHmBuildTree() {
+  const tree = {}; // sector -> empresa -> [items]
+  let gMin = 0, gMax = 0;
+  for (const on of (onsState.ons || [])) {
+    const monto = onsHmMonto(on);
+    if (monto <= 0) continue;
+    const sector = (on.sector || 'OTROS').toUpperCase();
+    const empresa = on.empresa || '—';
+    const variacion = onsState.vars ? onsState.vars[on.ticker] : null;
+    const precio = onsState.prices[on.ticker];
+    const vol = onsState.vols ? onsState.vols[on.ticker] : null;
+    if (variacion != null) { if (variacion < gMin) gMin = variacion; if (variacion > gMax) gMax = variacion; }
+    if (!tree[sector]) tree[sector] = {};
+    if (!tree[sector][empresa]) tree[sector][empresa] = [];
+    tree[sector][empresa].push({
+      ticker: on.ticker, empresa, sector, precio, vol, variacion, monto,
+      moneda: 'USD', tna: null, matStr: (on.vencimiento || '').substring(0,10) || null,
+    });
+  }
+  return { tree, gMin, gMax };
+}
+
+// Pinta un treemap jerárquico de 2 niveles (empresa → ON) dentro de un contenedor.
+// data: { empresa: [items] }. Color con escala colorMin/colorMax. onLeafClick opcional.
+function onsHmPaintNested(container, empresasObj, colorMin, colorMax, opts) {
+  opts = opts || {};
+  container.innerHTML = '';
+  const empresas = Object.keys(empresasObj);
+  if (!empresas.length) {
+    container.innerHTML = '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:var(--text3);">Sin datos</div>';
+    return;
+  }
+  const rect = container.getBoundingClientRect();
+  const W = rect.width || 300, H = rect.height || 150;
+  if (W < 10 || H < 10) return;
+
+  const tooltip = window.rfHmEnsureTooltip();
+  const EMP_HEADER = opts.empHeader ?? 22;
+
+  // Nivel empresa
+  const rootEmp = d3.hierarchy(
+    { children: empresas.map(e => ({ empresa: e, children: empresasObj[e] })) },
+    d => d.children
+  ).sum(d => d.monto).sort((a,b)=>(b.value||0)-(a.value||0));
+  d3.treemap().size([W, H]).paddingInner(opts.empPadInner ?? 3).paddingOuter(opts.empPadOuter ?? 1).tile(d3.treemapSquarify)(rootEmp);
+
+  rootEmp.children?.forEach(empNode => {
+    const x = empNode.x0, y = empNode.y0, w = empNode.x1 - empNode.x0, h = empNode.y1 - empNode.y0;
+    if (w < 5 || h < 5) return;
+    const empresaNombre = empNode.data.empresa;
+    const showHead = (h > EMP_HEADER + 6);
+    const empBlock = document.createElement('div');
+    Object.assign(empBlock.style, {
+      position:'absolute', left:x+'px', top:y+'px', width:w+'px', height:h+'px',
+      border:'1px solid var(--border2)', borderRadius:'6px', overflow:'hidden', boxSizing:'border-box',
+      background:'var(--bg2)', cursor: opts.onEmpClick ? 'pointer' : 'default',
+    });
+    if (showHead) {
+      const eh = document.createElement('div');
+      Object.assign(eh.style, {
+        position:'absolute', top:'0', left:'0', right:'0', height:EMP_HEADER+'px',
+        display:'flex', alignItems:'center', gap:'5px', padding:'0 7px', fontFamily:'var(--mono)',
+        fontSize:'10px', fontWeight:'700', color:'var(--text2)', background:'var(--bg3)',
+        whiteSpace:'nowrap', overflow:'hidden', zIndex:'2', textTransform:'uppercase', letterSpacing:'.05em',
+        borderBottom:'1px solid var(--border)', userSelect:'none',
+      });
+      const montoEmp = empNode.value || 0;
+      const mTxt = montoEmp >= 1e6 ? 'US$'+(montoEmp/1e6).toLocaleString('es-AR',{maximumFractionDigits:1})+'M'
+                                   : 'US$'+montoEmp.toLocaleString('es-AR',{maximumFractionDigits:0});
+      eh.innerHTML = `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${empresaNombre}</span>` +
+                     (opts.onEmpClick ? `<span style="color:var(--text3);font-size:8px;font-weight:600;">${mTxt} ⤢</span>` : `<span style="color:var(--text3);font-size:8px;font-weight:600;">${mTxt}</span>`);
+      if (opts.onEmpClick) { eh.addEventListener('click', (e) => { e.stopPropagation(); opts.onEmpClick(empresaNombre); }); }
+      empBlock.appendChild(eh);
+    }
+    const empInner = document.createElement('div');
+    Object.assign(empInner.style, { position:'absolute', top:(showHead?EMP_HEADER:0)+'px', left:'0', right:'0', bottom:'0', overflow:'hidden' });
+    empBlock.appendChild(empInner);
+
+    // Si hay onEmpClick (modo sector), click en el bloque/ONs abre la empresa.
+    // Si no (modo empresa), las ONs usan onLeafClick (detalle).
+    if (opts.onEmpClick) {
+      empBlock.addEventListener('click', () => opts.onEmpClick(empresaNombre));
+    }
+    container.appendChild(empBlock);
+
+    const items = empNode.data.children;
+    const leafClick = opts.onEmpClick ? () => opts.onEmpClick(empresaNombre) : opts.onLeafClick;
+    window.rfHmPaintTreemap(empInner, items, colorMin, colorMax, { pad: 1, padOuter: 0, onCellClick: leafClick });
+  });
+}
+
+function onsBuildHeatmap() {
+  if (typeof d3 === 'undefined') return;
+  const container = document.getElementById('onshm-global');
+  if (!container) return;
+  window.rfHmEnsureTooltip();
+
+  const { tree, gMin, gMax } = onsHmBuildTree();
+  _onsHmData = {};
+  const sectorBlocks = [];
+  let totalGlobal = 0, nEmp = 0, nON = 0;
+  Object.keys(tree).forEach(sector => {
+    const empresas = tree[sector];
+    let total = 0, minVar = 0, maxVar = 0, cE = 0, cO = 0;
+    Object.values(empresas).forEach(items => {
+      cE++;
+      items.forEach(it => {
+        total += it.monto; cO++;
+        if (it.variacion != null) { if (it.variacion < minVar) minVar = it.variacion; if (it.variacion > maxVar) maxVar = it.variacion; }
+      });
+    });
+    _onsHmData[sector] = { empresas, total, minVar, maxVar, label: sector };
+    totalGlobal += total; nEmp += cE; nON += cO;
+    sectorBlocks.push({ sector, empresas, total });
+  });
+
+  // Barra de monto global (USD)
+  const totalEl = document.getElementById('onshm-total-monto');
+  const totalSub = document.getElementById('onshm-total-sub');
+  if (totalEl) {
+    let txt;
+    if (totalGlobal >= 1e9)      txt = 'US$' + (totalGlobal/1e9).toLocaleString('es-AR',{maximumFractionDigits:2}) + ' MM';
+    else if (totalGlobal >= 1e6) txt = 'US$' + (totalGlobal/1e6).toLocaleString('es-AR',{maximumFractionDigits:1}) + ' M';
+    else                         txt = 'US$' + totalGlobal.toLocaleString('es-AR',{maximumFractionDigits:0});
+    totalEl.textContent = txt;
+  }
+  if (totalSub) totalSub.textContent = `· ${sectorBlocks.filter(s=>s.total>0).length} sectores · ${nEmp} empresas · ${nON} ONs`;
+
+  container.innerHTML = '';
+  const rect = container.getBoundingClientRect();
+  const W = rect.width || 800, H = rect.height || 500;
+  if (W < 10 || H < 10) { setTimeout(onsBuildHeatmap, 60); return; }
+
+  const secData = sectorBlocks.filter(s => s.total > 0);
+  if (!secData.length) {
+    container.innerHTML = '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;color:var(--text3);">Sin datos de volumen · cargá precios primero (↻ Actualizar precios)</div>';
+    return;
+  }
+
+  const HEADER_H = 22;
+  const rootSec = d3.hierarchy({ children: secData }, d => d.children)
+    .sum(d => d.total).sort((a,b)=>(b.value||0)-(a.value||0));
+  d3.treemap().size([W, H]).paddingInner(3).paddingOuter(0).tile(d3.treemapSquarify)(rootSec);
+
+  rootSec.children?.forEach(secNode => {
+    const sec = secNode.data;
+    const x = secNode.x0, y = secNode.y0, w = secNode.x1 - secNode.x0, h = secNode.y1 - secNode.y0;
+    if (w < 6 || h < 6) return;
+    const block = document.createElement('div');
+    Object.assign(block.style, {
+      position:'absolute', left:x+'px', top:y+'px', width:w+'px', height:h+'px',
+      border:'1px solid var(--border2)', borderRadius:'7px', overflow:'hidden', background:'var(--bg2)', boxSizing:'border-box', cursor:'pointer',
+    });
+    const head = document.createElement('div');
+    Object.assign(head.style, {
+      position:'absolute', top:'0', left:'0', right:'0', height:HEADER_H+'px',
+      display:'flex', alignItems:'center', padding:'0 8px', gap:'6px',
+      fontFamily:'var(--mono)', fontSize:'10px', fontWeight:'700', letterSpacing:'.06em',
+      textTransform:'uppercase', color:'var(--text2)', background:'var(--bg3)',
+      borderBottom:'1px solid var(--border)', userSelect:'none', zIndex:'2',
+    });
+    const montoTxt = sec.total >= 1e6 ? 'US$' + (sec.total/1e6).toLocaleString('es-AR',{maximumFractionDigits:1}) + 'M'
+                                      : 'US$' + sec.total.toLocaleString('es-AR',{maximumFractionDigits:0});
+    head.innerHTML = `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${sec.sector}</span><span style="color:var(--text3);font-size:8px;font-weight:600;">${montoTxt} ⤢</span>`;
+    block.appendChild(head);
+    const inner = document.createElement('div');
+    Object.assign(inner.style, { position:'absolute', top:HEADER_H+'px', left:'0', right:'0', bottom:'0', overflow:'hidden' });
+    block.appendChild(inner);
+    block.addEventListener('click', () => onsHmOpenSector(sec.sector));
+    container.appendChild(block);
+
+    requestAnimationFrame(() => {
+      onsHmPaintNested(inner, sec.empresas, gMin, gMax, { empHeader: 18, onLeafClick: () => onsHmOpenSector(sec.sector) });
+    });
+  });
+}
+
+// Drill-down: pop-up del sector (escala local; click en empresa → pop-up empresa)
+function onsHmOpenSector(sector) {
+  const data = _onsHmData[sector];
+  if (!data) return;
+  const modal = document.getElementById('onshm-sec-modal');
+  const titleEl = document.getElementById('onshm-sec-modal-title');
+  const body = document.getElementById('onshm-sec-modal-body');
+  if (!modal || !body) return;
+  if (titleEl) titleEl.textContent = data.label;
+  modal.style.display = 'flex';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    onsHmPaintNested(body, data.empresas, data.minVar, data.maxVar, {
+      empHeader: 22, empPadInner: 4, empPadOuter: 2,
+      onEmpClick: (empresa) => onsHmOpenEmpresa(sector, empresa)
+    });
+  }));
+}
+function onsHmCloseSector() {
+  const modal = document.getElementById('onshm-sec-modal');
+  if (modal) modal.style.display = 'none';
+  const tt = document.getElementById('rfhm-tooltip');
+  if (tt) tt.style.display = 'none';
+}
+
+// Drill-down nivel empresa: pop-up con solo las ONs de esa empresa (click ON → detalle)
+function onsHmOpenEmpresa(sector, empresa) {
+  const data = _onsHmData[sector];
+  if (!data || !data.empresas[empresa]) return;
+  const modal = document.getElementById('onshm-emp-modal');
+  const titleEl = document.getElementById('onshm-emp-modal-title');
+  const secEl = document.getElementById('onshm-emp-modal-sector');
+  const body = document.getElementById('onshm-emp-modal-body');
+  if (!modal || !body) return;
+  if (titleEl) titleEl.textContent = empresa;
+  if (secEl) secEl.textContent = sector;
+  // Escala de color local a la empresa
+  const items = data.empresas[empresa];
+  let minVar = 0, maxVar = 0;
+  items.forEach(it => { if (it.variacion != null) { if (it.variacion < minVar) minVar = it.variacion; if (it.variacion > maxVar) maxVar = it.variacion; } });
+  modal.style.display = 'flex';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    // Un solo "grupo" (la empresa) → pintamos directo las ONs con rfHmPaintTreemap
+    window.rfHmPaintTreemap(body, items, minVar, maxVar, {
+      pad: 3, padOuter: 1,
+      onCellClick: (r) => onsHmOpenON(r.ticker)
+    });
+  }));
+}
+function onsHmCloseEmpresa() {
+  const modal = document.getElementById('onshm-emp-modal');
+  if (modal) modal.style.display = 'none';
+  const tt = document.getElementById('rfhm-tooltip');
+  if (tt) tt.style.display = 'none';
+}
+
+// Pop-up detalle de ON: reutiliza ons_renderONPanel en un contenedor del modal
+function onsHmOpenON(ticker) {
+  const on = onsState.ons.find(o => o.ticker === ticker);
+  if (!on) return;
+  const modal = document.getElementById('onshm-on-modal');
+  const titleEl = document.getElementById('onshm-on-modal-title');
+  const body = document.getElementById('onshm-on-modal-body');
+  if (!modal || !body) return;
+  if (titleEl) titleEl.textContent = ticker;
+  const tt = document.getElementById('rfhm-tooltip');
+  if (tt) tt.style.display = 'none';
+  let cfs = null;
+  try { cfs = ons_fetchCashflows(on); } catch(e) {}
+  if (!cfs) { body.innerHTML = '<div style="padding:40px;font-family:var(--mono);font-size:11px;color:var(--text3);">No hay cashflows para esta ON.</div>'; modal.style.display='flex'; return; }
+  onsState.selected = on;
+  modal.style.display = 'flex';
+  ons_renderONPanel(on, cfs, body);
+}
+function onsHmCloseON() {
+  const modal = document.getElementById('onshm-on-modal');
+  if (modal) modal.style.display = 'none';
+}
+window.onsHmOpenSector = onsHmOpenSector;
+window.onsHmCloseSector = onsHmCloseSector;
+window.onsHmOpenEmpresa = onsHmOpenEmpresa;
+window.onsHmCloseEmpresa = onsHmCloseEmpresa;
+window.onsHmOpenON = onsHmOpenON;
+window.onsHmCloseON = onsHmCloseON;
+window.onsBuildHeatmap = onsBuildHeatmap;
 
 /* ══════════════════════════════════════════════════════════
    ONs COMPARADOR DE CURVAS
@@ -19718,27 +20054,32 @@ window.ons_fetchPrecios = async function() {
     // Prioridad para tickers O del índice: D → O → C
     const ons = onsState.ons || [];
     let nMatch = 0, nMiss = 0;
+    if (!onsState.vols) onsState.vols = {};
+    if (!onsState.vars) onsState.vars = {};
 
     for(const on of ons) {
       const tk     = on.ticker.toUpperCase();
       const suffix = tk.slice(-1);
       const base   = tk.slice(0, -1);
 
-      let px = null;
+      let px = null, rec = null;
 
       if(suffix === 'O') {
         // D primero (precio en USD directo), luego O, luego C
-        if(liveMap[base + 'D']?.c > 0)      px = liveMap[base + 'D'].c;
-        else if(liveMap[tk]?.c > 0)          px = liveMap[tk].c;
-        else if(liveMap[base + 'C']?.c > 0)  px = liveMap[base + 'C'].c;
+        if(liveMap[base + 'D']?.c > 0)      { px = liveMap[base + 'D'].c; rec = liveMap[base + 'D']; }
+        else if(liveMap[tk]?.c > 0)          { px = liveMap[tk].c;         rec = liveMap[tk]; }
+        else if(liveMap[base + 'C']?.c > 0)  { px = liveMap[base + 'C'].c; rec = liveMap[base + 'C']; }
       } else {
         // Tickers no-O (VA1AP, CS48, VAC3P)
-        if(liveMap[tk]?.c > 0)               px = liveMap[tk].c;
-        else if(liveMap[base + 'D']?.c > 0)  px = liveMap[base + 'D'].c;
+        if(liveMap[tk]?.c > 0)               { px = liveMap[tk].c;         rec = liveMap[tk]; }
+        else if(liveMap[base + 'D']?.c > 0)  { px = liveMap[base + 'D'].c; rec = liveMap[base + 'D']; }
       }
 
       if(px) {
         onsState.prices[on.ticker] = px;
+        // Volumen y variación de la MISMA rueda (mismo record) — para el heatmap
+        onsState.vols[on.ticker] = (rec && rec.v != null) ? Number(rec.v) : null;
+        onsState.vars[on.ticker] = (rec && rec.pct_change != null) ? Number(rec.pct_change) : null;
         nMatch++;
       } else {
         nMiss++;
