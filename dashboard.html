@@ -863,7 +863,7 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 #app-calc-on #fileInput { display:none; }
 
 #app-calc-on .sb-search {
-  margin: 8px 12px;
+  margin: 8px 0 2px;
   position: relative;
   flex-shrink: 0;
 }
@@ -1347,6 +1347,11 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 }
 
 #app-calc-on .comp-wrap { flex:1; overflow:auto; background:var(--bg); }
+#app-calc-on #ons-index-scroll::-webkit-scrollbar { width:8px; }
+#app-calc-on #ons-index-scroll::-webkit-scrollbar-track { background:transparent; }
+#app-calc-on #ons-index-scroll::-webkit-scrollbar-thumb { background:rgba(30,39,243,0.45); border-radius:4px; }
+#app-calc-on #ons-index-scroll::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
+#app-calc-on #ons-index-scroll { scrollbar-width:thin; scrollbar-color:rgba(30,39,243,0.45) transparent; }
 #app-calc-on .comp-wrap::-webkit-scrollbar { width:6px; height:6px; }
 #app-calc-on .comp-wrap::-webkit-scrollbar-track { background:transparent; }
 #app-calc-on .comp-wrap::-webkit-scrollbar-thumb { background:rgba(30,39,243,0.45); border-radius:3px; }
@@ -1703,15 +1708,19 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 
 /* ══ VISTA DETALLE TICKER ══ */
 #app-rf #view-detalle{display:none;flex-direction:column;flex:1;overflow:hidden;}
-#app-rf .det-topbar{height:44px;flex-shrink:0;display:flex;align-items:center;padding:0 20px;gap:12px;border-bottom:1px solid var(--border);background:var(--bg2);}
+#app-rf .det-topbar{min-height:56px;flex-shrink:0;display:flex;align-items:center;padding:8px 20px;gap:12px;border-bottom:1px solid var(--border);background:var(--bg2);}
 #app-rf .back-btn{padding:4px 10px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:10px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .12s;}
 #app-rf .back-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent);}
-#app-rf .det-ticker{font-family:var(--mono);font-size:16px;font-weight:700;color:var(--accent2);}
+#app-rf .det-ticker{font-family:var(--mono);font-size:30px;font-weight:800;color:var(--accent2);line-height:1;letter-spacing:-.5px;}
 #app-rf .det-tipo{font-size:9px;font-family:var(--mono);color:var(--text3);background:var(--bg4);padding:2px 7px;border-radius:8px;text-transform:uppercase;letter-spacing:.4px;}
 #app-rf .det-meta{font-size:10px;font-family:var(--mono);color:var(--text3);}
 #app-rf .det-liq-wrap{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:9px;font-family:var(--mono);color:var(--text3);}
-#app-rf #det-#det-body::-webkit-scrollbar{width:4px;}
+#app-rf #det-body{flex:1;overflow-y:auto;overflow-x:hidden;min-height:0;}
+#app-rf #det-body::-webkit-scrollbar{width:6px;}
+#app-rf #det-body::-webkit-scrollbar-track{background:transparent;}
 #app-rf #det-body::-webkit-scrollbar-thumb{background:rgba(30,39,243,0.45);border-radius:3px;}
+#app-rf #det-body::-webkit-scrollbar-thumb:hover{background:rgba(30,39,243,0.7);}
+#app-rf #det-body{scrollbar-width:thin;scrollbar-color:rgba(30,39,243,0.45) transparent;}
 
 /* ══ MISC ══ */
 #app-rf .spinner{border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
@@ -1908,7 +1917,7 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 
 
 <!-- ══════════════════ APP CALC ON ══════════════════ -->
-<div id="app-calc-on" style="display:none;min-height:100vh;background:var(--bg);flex-direction:column;">
+<div id="app-calc-on" style="display:none;height:100vh;overflow:hidden;background:var(--bg);flex-direction:column;">
   <!-- HEADER CON TABS -->
   <div style="height:52px;display:flex;align-items:center;padding:0 0;border-bottom:1px solid var(--border);background:var(--bg);gap:0;flex-shrink:0;position:sticky;top:0;z-index:50;">
     <!-- Zona izquierda: ancho del sidebar con módulo tabs -->
@@ -1953,12 +1962,12 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
         Cargando…
       </div>
       <div id="sbPriceStatus" style="font-family:var(--mono);font-size:10px;color:var(--text3);display:none;margin-top:2px;"></div>
-    </div>
-    <div class="sb-search" id="sbSearch" style="display:none">
-      <svg class="sb-search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-        <circle cx="6.5" cy="6.5" r="4"/><path d="M11 11l2.5 2.5"/>
-      </svg>
-      <input type="text" id="ons_searchInput" placeholder="Buscar empresa o ticker…">
+      <div class="sb-search" id="sbSearch" style="display:none">
+        <svg class="sb-search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="6.5" cy="6.5" r="4"/><path d="M11 11l2.5 2.5"/>
+        </svg>
+        <input type="text" id="ons_searchInput" placeholder="Buscar empresa o ticker…">
+      </div>
     </div>
     <div class="sb-scroll" id="sbScroll">
       <div class="sb-msg">Cargando ONs…</div>
@@ -1996,8 +2005,14 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
           <option value="CABLE">CABLE</option>
           <option value="MEP">MEP</option>
         </select>
+        <div class="comp-divider"></div>
+        <span class="comp-filter-label">Fecha liq.</span>
+        <input type="date" id="ons-fecha-liq-global" class="comp-select" style="cursor:pointer;color:var(--text);" onchange="ons_onFechaLiqGlobalChange(this.value)">
         <span class="comp-count" id="compCount"></span>
       </div>
+
+      <!-- Contenedor scrolleable general: gráfico + tabla scrollean juntos -->
+      <div id="ons-index-scroll" style="flex:1;overflow-y:auto;overflow-x:hidden;min-height:0;">
 
       <!-- GRÁFICO -->
       <div class="chart-panel">
@@ -2043,7 +2058,7 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
       </div>
 
       <!-- TABLA -->
-      <div class="comp-wrap" style="flex:1">
+      <div class="comp-wrap" style="max-height:520px;">
         <div style="padding:0 32px 16px">
           <table class="comp-table" id="compTable">
             <thead id="compThead">
@@ -2068,6 +2083,7 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
           </table>
         </div>
       </div>
+      </div><!-- /ons-index-scroll -->
     </div><!-- /view-tabla -->
 
     <!-- VISTA: DETALLE ON -->
@@ -2811,6 +2827,18 @@ const CAT_LABELS = {
 let _bundle    = null;
 let _precios   = {};      // TICKER → { latest:{precio,variacion,vol,fechaPx}, byDate:{} }
 let _feriados  = new Set(); // "YYYY-MM-DD" — feriados nacionales AR (nager.at)
+// Fallback de feriados nacionales AR (por si nager.at no respondió aún). Se mezcla en _feriados.
+const _FERIADOS_FALLBACK = [
+  // 2026
+  '2026-01-01','2026-02-16','2026-02-17','2026-03-24','2026-04-02','2026-04-03',
+  '2026-05-01','2026-05-25','2026-06-15','2026-06-20','2026-07-09','2026-08-17',
+  '2026-10-12','2026-11-20','2026-12-08','2026-12-25',
+  // 2027
+  '2027-01-01','2027-02-08','2027-02-09','2027-03-24','2027-04-02',
+  '2027-05-01','2027-05-25','2027-06-21','2027-06-20','2027-07-09','2027-08-16',
+  '2027-10-11','2027-11-22','2027-12-08','2027-12-25',
+];
+function ensureFeriadosFallback(){ if(_feriados.size===0){ _FERIADOS_FALLBACK.forEach(d=>_feriados.add(d)); } }
 let _tamarSerie  = [];    // [{fecha, valor}] — serie cruda BCRA variable 44
 let _tamarProms  = {};    // TICKER → { tamarPromTNA, tem, flujo, nReal, nProy, tamarProy, ultimaFecha }
 let _cerDatos  = {};      // { "2025-05-06": 413.27, ... } — últimos 30 días del BCRA
@@ -5146,16 +5174,21 @@ function buildDetBody(row,fechaLiq){
 
   // Barra de controles (precio manual)
   const ctrl=document.createElement('div');
-  ctrl.style.cssText='display:flex;align-items:center;gap:12px;margin-bottom:20px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;flex-wrap:wrap;';
+  ctrl.style.cssText='display:flex;align-items:flex-end;gap:16px;margin-bottom:20px;padding:0 2px;flex-wrap:wrap;';
   const esDL=tipo==='dolarlinked';
   const tcActual=window._tcManualVal??_tcUsd;
   // det-px-inp hidden — valor sincronizado desde el card Dirty Price
   ctrl.innerHTML=`
-    <label style="font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);font-family:var(--mono);">Fecha liq.</label>
-    <input type="date" class="lc-fecha-inp" id="det-fecha-liq" value="${fechaLiq}" onchange="detRecalc()">
+    <div style="display:flex;flex-direction:column;gap:3px;">
+      <label style="font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);">Fecha liq.</label>
+      <input type="date" class="lc-fecha-inp" id="det-fecha-liq" value="${fechaLiq}" onchange="detRecalc()" style="background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:11px;font-family:var(--mono);padding:4px 7px;outline:none;box-sizing:border-box;">
+    </div>
     <input type="hidden" id="det-px-inp" value="${isManual?String(precio).replace('.',','):''}" />
-    ${esDL?`<span style="display:flex;align-items:center;gap:6px;padding-left:10px;border-left:1px solid var(--border2);"><label style="font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);font-family:var(--mono);">TC</label><input type="text" id="det-tc-inp" placeholder="${fmtN(window._tcManualVal??_tcUsd??NaN,2)}" value="${window._tcManual?fmtN(window._tcManualVal,2):''}" style="width:80px;background:var(--bg);border:1px solid ${window._tcManual?'var(--yellow)':'var(--border2)'};border-radius:5px;color:${window._tcManual?'var(--yellow)':'var(--text)'};font-size:11px;font-family:var(--mono);padding:3px 8px;outline:none;" onkeydown="if(event.key==='Enter')detTcChanged()" onblur="detTcChanged()" /><span style="font-size:9px;font-family:var(--mono);color:${window._tcManual?'var(--yellow)':'var(--text3)'}">${window._tcManual?'(manual)':window._tcUsdFecha||'BCRA'}</span><button onclick="detTcReset()" style="padding:2px 7px;border-radius:4px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:9px;font-family:var(--mono);cursor:pointer;">&#8635; auto</button></span>`:''}
-    ${(tipo==='boncer_bullet'||tipo==='dual_boncer'||tipo==='boncer')?`<span id="det-cer-offset-wrap" style="display:flex;align-items:center;gap:6px;padding-left:10px;border-left:1px solid var(--border2);">${buildCerChipHtml()}</span>`:''}`;
+    ${esDL?`<div style="display:flex;flex-direction:column;gap:3px;">
+      <label style="font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);">TC</label>
+      <input type="text" id="det-tc-inp" placeholder="${fmtN(_tcUsd??NaN,2)}" value="${window._tcManual?fmtN(window._tcManualVal,2):''}" title="Editá para fijar un TC manual. Vacialo para volver al valor automático (${window._tcUsdFecha||'BCRA'})." style="width:100px;background:var(--bg);border:1px solid ${window._tcManual?'var(--yellow)':'var(--border2)'};border-radius:5px;color:${window._tcManual?'var(--yellow)':'var(--text)'};font-size:11px;font-family:var(--mono);padding:4px 7px;outline:none;box-sizing:border-box;" onkeydown="if(event.key==='Enter')detTcChanged()" onblur="detTcChanged()" />
+    </div>`:''}
+    ${(tipo==='boncer_bullet'||tipo==='dual_boncer'||tipo==='boncer')?`<div style="display:flex;flex-direction:column;gap:3px;" id="det-cer-offset-wrap">${buildCerChipHtml()}</div>`:''}`;
   if(!window._buildingPataDetalle && tipo!=='dual_tamar') body.appendChild(ctrl);
 
   // Stat cards
@@ -7486,7 +7519,15 @@ window.detCerChanged=function(){
 // TC manual para dólar linked
 window.detTcChanged=function(){
   const inp=document.getElementById('det-tc-inp');
-  const val=inp?toNum(inp.value):NaN;
+  const raw=inp?inp.value.trim():'';
+  if(raw===''){
+    // Vacío → volver al TC automático de la API
+    window._tcManual=false;
+    window._tcManualVal=null;
+    detRecalc();
+    return;
+  }
+  const val=toNum(raw);
   if(!isNaN(val)&&val>0){
     window._tcManual=true;
     window._tcManualVal=val;
@@ -7619,13 +7660,13 @@ function buildCerChipHtml(){
   const fechaCer=restarHabiles(liq,_cerOffset);
   const val=getCerForDate(fechaCer);
   const valStr=val?val.toFixed(4):'—';
-  return '<label style="font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);font-family:var(--mono);">CER</label>'
+  return '<label style="font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);">CER</label>'
     +'<span id="det-cer-chip" onclick="cerDetToggleDropdown(event)" '
     +'title="Click para cambiar offset" '
-    +'style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:5px;border:1px solid var(--border2);background:var(--bg4);cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--text);transition:border-color .15s;">'  
+    +'style="display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:5px;border:1px solid var(--border2);background:var(--bg);cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--text3);transition:border-color .15s;box-sizing:border-box;">'
     +'<span style="font-size:9px;color:var(--text3);">T−'+_cerOffset+'</span>'
-    +'<span style="font-weight:700;color:var(--accent2);">'+valStr+'</span>'
-    +'<svg width="8" height="8" viewBox="0 0 10 10" fill="none" style="color:var(--text3);"><path d="M2 3l3 4 3-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
+    +'<span style="font-weight:500;color:var(--text);">'+valStr+'</span>'
+    +'<svg width="8" height="8" viewBox="0 0 10 10" fill="none" style="color:var(--text3);flex-shrink:0;"><path d="M2 3l3 4 3-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
     +'</span>';
 }
 
@@ -18065,6 +18106,21 @@ const onsState = {
   excluded: new Set(),   // tickers excluidos del gr\u00e1fico por click
   onlyWithPrice: true,   // filtro: solo ONs con precio de mercado (default ON)
   outliersExcluded: false, // se activa automáticamente tras cargar precios
+  fechaLiqGlobal: null,    // fecha de liquidación global (input del índice). null = T+1 hábil
+};
+
+// Settlement global del índice: usa el input de fecha liq si está, sino T+1 hábil
+function ons_globalSettle() {
+  const v = onsState.fechaLiqGlobal;
+  if (v && /^\d{4}-\d{2}-\d{2}$/.test(v)) return new Date(v + 'T12:00:00');
+  return ons_settlement(new Date());
+}
+
+// Handler del input de fecha liq global → re-render tabla + chart
+window.ons_onFechaLiqGlobalChange = function(val) {
+  onsState.fechaLiqGlobal = (val && val.trim()) ? val.trim() : null;
+  if (typeof ons_renderCompTable === 'function') ons_renderCompTable();
+  if (typeof ons_renderChart === 'function') ons_renderChart();
 };
 
 // ─── Colores por sector ───────────────────────────────────────────────────────
@@ -18159,10 +18215,16 @@ function ons_fetchCashflows(on) {
 // ─── Cálculos financieros ─────────────────────────────────────────────────────
 
 // T+1 hábil (simplificado: salta sábados y domingos)
+function ons_localISO(dd){
+  const y=dd.getFullYear(), m=String(dd.getMonth()+1).padStart(2,'0'), day=String(dd.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
 function ons_settlement(date) {
+  if (typeof ensureFeriadosFallback === 'function') ensureFeriadosFallback();
   const d = new Date(date);
   d.setDate(d.getDate() + 1);
-  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+  const isHol = dd => (typeof _feriados!=='undefined') && _feriados.has(ons_localISO(dd));
+  while (d.getDay() === 0 || d.getDay() === 6 || isHol(d)) d.setDate(d.getDate() + 1);
   return d;
 }
 
@@ -18494,7 +18556,7 @@ async function ons_initFromWorker() {
     }
 
     // UI — status OK
-    document.getElementById('sbStatus').innerHTML = `<span style="color:var(--green)">${vigentes.length} vigentes</span> · <span style="color:var(--text3)">${vencidas.length} vencidas</span>`;
+    document.getElementById('sbStatus').innerHTML = `<span style="color:var(--green)">${vigentes.length} instrumentos</span> · <span style="color:var(--text3)">${vencidas.length} vencidos</span>`;
     const _pill = document.getElementById('pillStatus');
     if (_pill) { _pill.textContent = `${vigentes.length} ONs`; _pill.className = 'pill pill-green'; }
 
@@ -18816,7 +18878,7 @@ function ons_getTasaVigente(cfs, settle) {
 // ─── Render tabla ─────────────────────────────────────────────────────────────
 function ons_renderCompTable() {
   let ons    = ons_getFilteredONs();
-  const settle = ons_settlement(new Date());
+  const settle = ons_globalSettle();
   const fmt2   = v => (v===null||isNaN(v)) ? '-' : v.toFixed(2);
   const fmtPct = v => (v===null||isNaN(v)) ? '-' : (v*100).toFixed(2)+'%';
   const fmtDate = d => d instanceof Date && !isNaN(d)
@@ -20736,7 +20798,7 @@ function ons_renderChart() {
   const H = body.getBoundingClientRect().height || body.offsetHeight || 160;
   if (W < 10 || H < 10) { setTimeout(ons_renderChart, 100); return; }
   const PAD = { top:20, right:48, bottom:32, left:60 };
-  const settle = ons_settlement(new Date());
+  const settle = ons_globalSettle();
 
   const axisY = document.getElementById('chartY')?.value || 'tasa';
   const axisX = document.getElementById('chartX')?.value || 'dtm';
@@ -21201,7 +21263,7 @@ window.ons_refreshBundle = async function() {
       onsState.grouped[s].push(on);
     }
 
-    document.getElementById('sbStatus').innerHTML = `<span style="color:var(--green)">${vigentes.length} vigentes</span> · <span style="color:var(--text3)">${vencidas.length} vencidas</span>`;
+    document.getElementById('sbStatus').innerHTML = `<span style="color:var(--green)">${vigentes.length} instrumentos</span> · <span style="color:var(--text3)">${vencidas.length} vencidos</span>`;
 
     ons_renderSidebar();
     ons_populateFilterSector();
@@ -21220,6 +21282,46 @@ window.ons_init = function() {
     el.addEventListener('input', function() { ons_renderSidebar(this.value); });
     el._att = true;
   }
+
+  function setLiqDefault(){
+    var fl = document.getElementById('ons-fecha-liq-global');
+    if (fl && !onsState.fechaLiqGlobal) {
+      var d = ons_settlement(new Date());
+      if (d instanceof Date && !isNaN(d)) {
+        var newVal = ons_localISO(d);
+        if (fl.value !== newVal) {
+          fl.value = newVal;
+          // Re-render si la tabla/chart ya estaban dibujados con la fecha vieja
+          if (typeof ons_renderCompTable === 'function' && document.getElementById('compTbody')?.children.length) ons_renderCompTable();
+          if (typeof ons_renderChart === 'function') ons_renderChart();
+        }
+      }
+    }
+  }
+
+  if (typeof _feriados !== 'undefined' && _feriados.size === 0) {
+    // Feriados aún no cargados → cargarlos y recién ahí fijar la fecha liq
+    if (!window._onsFeriadosLoading) {
+      window._onsFeriadosLoading = true;
+      var yNow = new Date().getFullYear();
+      Promise.allSettled([yNow, yNow+1, yNow+2].map(function(y){
+        return fetch('https://date.nager.at/api/v3/PublicHolidays/'+y+'/AR',{cache:'no-store'}).then(function(r){return r.ok?r.json():[];});
+      })).then(function(results){
+        results.forEach(function(res){
+          if(res.status==='fulfilled' && Array.isArray(res.value)){
+            res.value.forEach(function(h){ if(h.date) _feriados.add(h.date.slice(0,10)); });
+          }
+        });
+        setLiqDefault();
+      }).catch(setLiqDefault);
+    }
+    // Seteo provisional (puede quedar sin feriados hasta que resuelva el fetch)
+    setLiqDefault();
+  } else {
+    // Feriados ya disponibles (probablemente se entró antes a Bonos)
+    setLiqDefault();
+  }
+
   // Siempre refetchea para tener el bundle más actualizado del KV
   ons_initFromWorker();
 };
