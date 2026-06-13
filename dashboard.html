@@ -377,6 +377,20 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 .tb-icon:hover::before{ opacity:1; }
 .tb-icon:disabled{ opacity:.45;cursor:default; }
 .tb-icon:disabled:hover{ background:transparent;border-color:var(--border2);color:var(--text2); }
+/* ── Botón de ayuda contextual ── */
+.tb-icon.tb-help{ font-weight:700;font-style:italic;font-family:Georgia,'Times New Roman',serif;font-size:15px; }
+.tb-icon.tb-help:hover{ color:var(--accent); border-color:var(--accent); background:var(--accent-light); }
+/* ── Modal de ayuda ── */
+#help-modal-overlay{ display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000; }
+#help-modal{ display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:92vw;max-width:620px;height:72vh;max-height:640px;background:var(--bg);border:1px solid var(--border2);border-radius:12px;box-shadow:0 24px 64px rgba(0,0,0,0.7);z-index:2001;flex-direction:column;overflow:hidden; }
+#help-modal .help-head{ height:46px;flex-shrink:0;display:flex;align-items:center;padding:0 16px;border-bottom:1px solid var(--border);gap:12px; }
+#help-modal .help-head-title{ font-family:var(--display);font-size:14px;font-weight:700;color:var(--text);flex:1; }
+#help-modal .help-tabs{ display:flex;gap:0;flex-shrink:0;padding:0 16px;border-bottom:1px solid var(--border);background:var(--bg2); }
+#help-modal .help-tab{ padding:0 16px;height:42px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s; }
+#help-modal .help-tab:hover{ color:var(--text2); }
+#help-modal .help-tab.active{ color:var(--accent);border-bottom-color:var(--accent); }
+#help-modal .help-body{ flex:1;overflow-y:auto;padding:20px 22px;font-size:13px;line-height:1.6;color:var(--text2); }
+#help-modal .help-warn{ margin:16px 0 4px;padding:12px 14px;border-radius:8px;border:1px solid var(--red);background:rgba(239,68,68,.10);color:var(--red);font-size:14px;font-weight:700;line-height:1.45; }
 
 /* Botón Home con logo (mismo tamaño que tb-icon) */
 .tb-home{
@@ -732,6 +746,55 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 }
 .outlier-pip:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
 .outlier-pip svg { flex-shrink:0; }
+#ons-outlier-pips.ons-pip-col {
+  width:118px;
+  flex-shrink:0;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  padding:8px 6px 8px 8px;
+  border-left:1px solid var(--border);
+  background:var(--bg);
+  overflow-y:auto;
+  overflow-x:hidden;
+}
+#ons-outlier-pips.ons-pip-col::-webkit-scrollbar { width:6px; }
+#ons-outlier-pips.ons-pip-col::-webkit-scrollbar-track { background:transparent; }
+#ons-outlier-pips.ons-pip-col::-webkit-scrollbar-thumb { background:rgba(30,39,243,0.45); border-radius:3px; }
+#ons-outlier-pips.ons-pip-col::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
+#ons-outlier-pips.ons-pip-col { scrollbar-width:thin; scrollbar-color:rgba(30,39,243,0.45) transparent; }
+#ons-outlier-pips .ons-pip-head {
+  display:flex;
+  align-items:center;
+  gap:5px;
+  font-size:9px;
+  font-family:var(--mono);
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  color:var(--text2);
+  white-space:nowrap;
+  margin-top:4px;
+  padding-bottom:1px;
+}
+#ons-outlier-pips .ons-pip-head:first-child { margin-top:0; }
+#ons-outlier-pips .ons-pip-cnt {
+  margin-left:auto;
+  color:var(--text3);
+  font-weight:600;
+}
+#ons-outlier-pips .ons-pip-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+#ons-outlier-pips .outlier-pip {
+  flex-shrink:0;
+  box-shadow:none;
+  background:var(--bg3);
+  padding:2px 5px;
+  font-size:9px;
+  gap:4px;
+}
+#ons-outlier-pips .ons-pip-tk { font-weight:600; }
+#ons-outlier-pips .ons-pip-y { margin-left:auto; color:var(--text3); }
+#ons-outlier-pips .outlier-pip:hover .ons-pip-y { color:#fff; }
 /* Dual curves grid */
 .curves-grid { display:grid; grid-template-columns:1fr 1fr; gap:0; }
 .curves-grid .chart-canvas-wrap { height:220px; }
@@ -1042,7 +1105,7 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 #app-calc-on .tag-mep { background:rgba(227,179,65,.12); color:var(--yellow); }
 
 /* MAIN */
-#app-calc-on .main { flex:1; display:flex; flex-direction:column; overflow:hidden; background:var(--bg3); }
+#app-calc-on .main { flex:1; display:flex; flex-direction:column; overflow:hidden; background:var(--bg); }
 
 /* Estado vacío */
 #app-calc-on .empty-state {
@@ -1429,6 +1492,13 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
   box-sizing:border-box;
 }
 #app-calc-on .comp-table .price-inp:focus { border-color:var(--accent2); }
+#app-calc-on .comp-table .price-inp.no-price {
+  background: transparent;
+  border: 1px dashed var(--border2);
+  color: var(--text3);
+}
+#app-calc-on .comp-table .price-inp.no-price::placeholder { color: var(--text3); opacity:.7; }
+#app-calc-on .comp-table .price-inp.no-price:focus { border-style:solid; border-color:var(--accent2); }
 #app-calc-on .ytm-high { color: var(--text) !important; }
 #app-calc-on .ytm-mid { color: var(--text) !important; }
 #app-calc-on .ytm-low { color: var(--text) !important; }
@@ -1491,7 +1561,7 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
   display:flex; align-items:center; gap:8px;
   padding:6px 48px;
   border-bottom:1px solid var(--border);
-  background:var(--bg);
+  background:var(--bg2);
   flex-shrink:0;
 }
 #app-calc-on .chart-axis-label {
@@ -1845,6 +1915,7 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 
 <!-- ══════════════════ LANDING ══════════════════ -->
 <div id="landing">
+  <button onclick="window._helpKey='landing';showHelp()" class="tb-icon tb-help" data-tip="Ayuda" style="position:absolute;top:24px;right:72px;z-index:5;">i</button>
   <button id="theme-toggle-btn" onclick="toggleTheme()" class="tb-icon tb-theme" data-tip="Cambiar a modo claro/oscuro" style="position:absolute;top:24px;right:32px;z-index:5;"><span id="theme-toggle-icon">☀</span></button>
 
   <div class="landing-hero">
@@ -1943,7 +2014,8 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
       <div id="ons-px-dot" style="width:6px;height:6px;border-radius:50%;background:var(--red);box-shadow:0 0 5px var(--red);transition:all .3s;flex-shrink:0;"></div>
       <div id="ons-px-info" style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-right:4px;">—</div>
       <button class="tb-icon" id="ons-px-btn" data-tip="Actualizar precios" onclick="ons_fetchPrecios()">↻</button>
-      <button class="tb-icon" data-tip="Actualizar base de datos" onclick="ons_refreshBundle()">⬆</button>
+      <button class="tb-icon" data-tip="Actualizar base de datos" onclick="ons_refreshBundle()">⚙</button>
+      <button onclick="showHelp()" class="tb-icon tb-help" data-tip="Ayuda">i</button>
       <button class="tb-icon tb-theme" data-tip="Cambiar a modo claro/oscuro" onclick="toggleTheme()"><span class="theme-btn-icon">☀</span></button>
     </div>
   </div>
@@ -2043,9 +2115,11 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
             Excluir outliers
           </button>
         </div>
-        <div class="chart-body" id="chartBody" style="height:320px;min-height:320px;position:relative;">
-          <div class="outlier-indicator" id="ons-outlier-pips" style="top:8px;"></div>
-          <svg class="chart-svg" id="chartSvg"></svg>
+        <div class="chart-body" id="chartBody" style="height:320px;min-height:320px;display:flex;">
+          <div style="flex:1;min-width:0;position:relative;">
+            <svg class="chart-svg" id="chartSvg"></svg>
+          </div>
+          <div class="ons-pip-col" id="ons-outlier-pips"></div>
         </div>
         <div class="chart-legend">
           <div class="legend-item"><div class="legend-dot" style="background:#3fb950"></div>CABLE</div>
@@ -2322,7 +2396,8 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
       <div id="rf-tb-dot" style="width:6px;height:6px;border-radius:50%;background:var(--red);box-shadow:0 0 5px var(--red);transition:all .3s;flex-shrink:0;"></div>
       <div id="rf-tb-info" style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-right:4px;">—</div>
       <button class="tb-icon" data-tip="Actualizar precios" onclick="rfLoad()">↻</button>
-      <button class="tb-icon" data-tip="Actualizar base de datos" onclick="rfRefreshBundle()">⬆</button>
+      <button class="tb-icon" data-tip="Actualizar base de datos" onclick="rfRefreshBundle()">⚙</button>
+      <button onclick="showHelp()" class="tb-icon tb-help" data-tip="Ayuda">i</button>
       <button class="tb-icon tb-theme" data-tip="Cambiar a modo claro/oscuro" onclick="toggleTheme()"><span class="theme-btn-icon">☀</span></button>
     </div>
   </div>
@@ -2590,6 +2665,7 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
     </div>
     <div id="rf-cal-modal-body" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;"></div>
   </div>
+
 
   <!-- ══════════════════ VISTA: SENSIBILIDAD ══════════════════ -->
   <div id="view-rf-sens" style="display:none;flex-direction:row;flex:1;overflow:hidden;height:calc(100vh - 52px);">
@@ -8359,6 +8435,7 @@ window.rfCalCloseModal = function() {
 
 // Tab switch: alterna entre vista índice y calendario
 window.rfSwitchTab = function(tab) {
+  window._helpKey = 'rf.' + tab;
   // Al salir del comparador, resetear su estado TC/CER a defaults
   const viewCmpEl = document.getElementById('view-rf-cmp');
   if (viewCmpEl && viewCmpEl.style.display !== 'none' && tab !== 'cmp') {
@@ -10474,6 +10551,7 @@ window.rfHmCloseCategory = rfHmCloseCategory;
         <button class="plazo-btn active" onclick="setPlazo('C.I.')">C.I.</button>
         <button class="plazo-btn" onclick="setPlazo('24Hs.')">24Hs.</button>
       </div>
+      <button onclick="showHelp()" class="tb-icon tb-help" data-tip="Ayuda">i</button>
       <button onclick="toggleTheme()" class="tb-icon tb-theme" data-tip="Cambiar a modo claro/oscuro"><span class="theme-btn-icon">☀</span></button>
     </div>
   </div>
@@ -10525,7 +10603,8 @@ window.rfHmCloseCategory = rfHmCloseCategory;
         <div class="status-dot" id="eq-status-dot" style="background:var(--red);box-shadow:0 0 6px var(--red);"></div>
         <span id="eq-fx-status" style="font-size:10px;font-family:var(--mono);color:var(--text3);">Conectado a BYMA · lag 2hs</span>
         <button id="eq-refresh-btn" class="tb-icon" data-tip="Actualizar precios" onclick="eqRefresh()">↻</button>
-        <button onclick="toggleTheme()" class="tb-icon tb-theme" data-tip="Cambiar a modo claro/oscuro"><span class="theme-btn-icon">☀</span></button>
+        <button onclick="showHelp()" class="tb-icon tb-help" data-tip="Ayuda">i</button>
+      <button onclick="toggleTheme()" class="tb-icon tb-theme" data-tip="Cambiar a modo claro/oscuro"><span class="theme-btn-icon">☀</span></button>
       </div>
     </div>
   </div>
@@ -10800,6 +10879,7 @@ window.eqShowView = function(view) {
 };
 
 window.eqSwitchMain = function(tab, el) {
+  window._helpKey = 'eq.' + tab;
   eqCurrentTab = tab;
   ['argy','adr','cedear'].forEach(t=>{
     document.getElementById('eq-section-'+t).style.display = t===tab ? '' : 'none';
@@ -11240,6 +11320,7 @@ function eqBuildHistTable(data) {
 
 // ── Init when entering equity ──
 window.enterEquity = function(){
+  window._helpKey = 'eq.argy';
   document.getElementById('landing').style.display='none';
   document.getElementById('app-equity').style.display='flex';
   document.getElementById('app-equity').style.flexDirection='column';
@@ -11353,7 +11434,8 @@ const _eqRO = new ResizeObserver(entries => {
     </div>
     <div style="flex:1;"></div>
     <span id="excel-date" style="font-size:11px;color:var(--text3);font-family:var(--mono);">—</span>
-    <button onclick="toggleTheme()" class="tb-icon tb-theme" data-tip="Cambiar a modo claro/oscuro"><span class="theme-btn-icon">☀</span></button>
+    <button onclick="showHelp()" class="tb-icon tb-help" data-tip="Ayuda">i</button>
+      <button onclick="toggleTheme()" class="tb-icon tb-theme" data-tip="Cambiar a modo claro/oscuro"><span class="theme-btn-icon">☀</span></button>
   </div>
 
   <!-- Tab: Buscar Empresa -->
@@ -11583,7 +11665,7 @@ const _eqRO = new ResizeObserver(entries => {
     <!-- Título grande -->
     <span id="inf-title" style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Informes</span>
     <div style="flex:1;"></div>
-    <button onclick="toggleTheme()" class="tb-icon tb-theme" data-tip="Cambiar a modo claro/oscuro"><span class="theme-btn-icon">☀</span></button>
+      <button onclick="toggleTheme()" class="tb-icon tb-theme" data-tip="Cambiar a modo claro/oscuro"><span class="theme-btn-icon">☀</span></button>
   </div>
 
   <!-- Layout split: sidebar + main -->
@@ -11636,7 +11718,8 @@ const _eqRO = new ResizeObserver(entries => {
     <span style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);">Empresas USA</span>
     <span style="font-size:11px;color:var(--text3);font-family:var(--mono);">Conexión con API EDGAR · SEC</span>
     <div style="flex:1"></div>
-    <button onclick="toggleTheme()" class="tb-icon tb-theme" data-tip="Cambiar a modo claro/oscuro"><span class="theme-btn-icon">☀</span></button>
+    <button onclick="showHelp()" class="tb-icon tb-help" data-tip="Ayuda">i</button>
+      <button onclick="toggleTheme()" class="tb-icon tb-theme" data-tip="Cambiar a modo claro/oscuro"><span class="theme-btn-icon">☀</span></button>
   </div>
 
   <div style="max-width:1200px;margin:0 auto;padding:32px 28px 80px;">
@@ -11862,6 +11945,7 @@ function enterApp(){
 }
 // enterEquity y setEquityPlazo fueron reemplazados por el engine de Renta Variable (data912)
 function enterBalancesMenu(){
+  window._helpKey = 'landing';
   document.getElementById('landing').style.display='none';
   const menu=document.getElementById('app-balances-menu');
   menu.style.display='flex';
@@ -11876,6 +11960,7 @@ function backToBalancesMenu(){
   if(window._secResetState) window._secResetState();
 }
 function enterBalances(){
+  window._helpKey = 'af.usa';
   document.getElementById('app-balances-menu').style.display='none';
   document.getElementById('app-balances').style.display='block';
 }
@@ -11894,6 +11979,7 @@ function backToLanding(){
    'app-rf','app-informes','app-calc-on','legal-footer'
   ].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   document.getElementById('landing').style.display='flex';
+  window._helpKey = 'landing';
   if(window._secResetState) window._secResetState();
 }
 // enterCalcMenu eliminado — acceso directo desde landing
@@ -15450,6 +15536,7 @@ function renderEquity(){
   // TAB SWITCHING
   // ─────────────────────────────────────────────────────────────
   window.earShowTab=function(tab){
+    window._helpKey = 'ear.' + tab;
     ['buscar','sector','deudores','mav'].forEach(t=>{
       const key=t.charAt(0).toUpperCase()+t.slice(1);
       const d=document.getElementById(`earTab${key}`);
@@ -18103,7 +18190,8 @@ const onsState = {
   prices: {},        // precios ingresados por el usuario (default 100)
   settlements: {},   // settlements por ticker
   sort: { col: 13, dir: -1 }, // estado de ordenamiento de la tabla — default: score desc
-  excluded: new Set(),   // tickers excluidos del gr\u00e1fico por click
+  excluded: new Set(),   // tickers excluidos del gráfico por click
+  autoOutliers: new Set(), // tickers excluidos automáticamente por rango (outliers)
   onlyWithPrice: true,   // filtro: solo ONs con precio de mercado (default ON)
   outliersExcluded: false, // se activa automáticamente tras cargar precios
   fechaLiqGlobal: null,    // fecha de liquidación global (input del índice). null = T+1 hábil
@@ -18404,7 +18492,7 @@ function ons_renderONPanel(on, cfs, targetEl) {
           Volver
         </button>
         <div class="on-topbar-info">
-          <div class="on-topbar-empresa">${on.empresa} <span style="font-size:12px;color:var(--text3);font-family:var(--mono)">${on.ticker}</span></div>
+          <div class="on-topbar-empresa">${ons_titleCase(on.empresa)} <span style="font-size:12px;color:var(--text3);font-family:var(--mono)">${on.ticker}</span></div>
           <div class="on-topbar-meta">
             <span>${on.sector}</span>
             <span style="color:var(--border2)">·</span>
@@ -18543,6 +18631,7 @@ async function ons_initFromWorker() {
     onsState.cfCache    = {};
     onsState.prices     = {};
     onsState.excluded        = new Set();
+    onsState.autoOutliers    = new Set();
     onsState.outliersExcluded = false;
     const exBtn = document.getElementById('ons-excl-outliers-btn');
     if(exBtn){ exBtn.style.background='transparent'; exBtn.style.borderColor='var(--border2)'; exBtn.style.color='var(--text2)'; }
@@ -18600,6 +18689,21 @@ function ons_showON() {
 }
 
 // ─── Sidebar: Sector → Empresa → Tickers ─────────────────────────────────────
+// Convierte "AGRO E INDUSTRIA ALIMENTARIA" → "Agro e Industria Alimentaria"
+// Mantiene conectores en minúscula y siglas comunes en mayúscula.
+const _ONS_TC_LOWER = new Set(['de','del','la','las','el','los','y','e','o','u','a','en','con','por','para','al','un','una']);
+const _ONS_TC_UPPER = new Set(['s.a.','sa','saic','saicyf','sacifia','sgr','on','ons','ny','arg','mep','ccl','sau','s.a.u.','icsa']);
+function ons_titleCase(str){
+  if(!str) return str;
+  const lower = str.toLowerCase();
+  return lower.split(/\s+/).map((w,i)=>{
+    if(_ONS_TC_UPPER.has(w)) return w.toUpperCase();
+    if(i>0 && _ONS_TC_LOWER.has(w)) return w;
+    // Respeta guiones internos (ej. "PETRO-QUIMICA")
+    return w.split('-').map(part=>part.charAt(0).toUpperCase()+part.slice(1)).join('-');
+  }).join(' ');
+}
+
 function ons_renderSidebar(filter = '') {
   const scroll = document.getElementById('sbScroll');
   const f = filter.toLowerCase();
@@ -18626,7 +18730,7 @@ function ons_renderSidebar(filter = '') {
       <div class="sector-wrap">
         <div class="sector-header" onclick="ons_toggleEl('${sectorId}',this);ons_filterBySector('${sector.replace(/'/g,"\\'")}',this)">
           <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4l4 4-4 4"/></svg>
-          <span class="s-name">${sector}</span>
+          <span class="s-name">${ons_titleCase(sector)}</span>
           <span class="s-cnt">${filtered.length}</span>
         </div>
         <div class="sector-items" id="${sectorId}">`;
@@ -18641,7 +18745,7 @@ function ons_renderSidebar(filter = '') {
       html += `
         <div class="empresa-wrap">
           <div class="empresa-header" onclick="ons_toggleEl('${empId}',this);ons_filterByEmpresa('${sector.replace(/'/g,"\\'")}','${empresa.replace(/'/g,"\\'")}',this)">
-            <span class="emp-name">${empresa}</span>
+            <span class="emp-name">${ons_titleCase(empresa)}</span>
             ${scoreBadge}
             <span class="emp-cnt">${ons.length}</span>
             <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px"><path d="M6 4l4 4-4 4"/></svg>
@@ -18690,7 +18794,7 @@ function ons_renderSidebar(filter = '') {
       </div>
       <div class="vencidas-items" id="vencidas-list">
         ${Object.entries(byEmp).sort().map(([empresa, ons]) => `
-          <div class="vencidas-empresa-header">${empresa}</div>
+          <div class="vencidas-empresa-header">${ons_titleCase(empresa)}</div>
           ${ons.sort((a,b) => new Date(b.vencimiento)-new Date(a.vencimiento)).map(on => `
             <div class="vencidas-on">
               <span class="on-ticker">${on.ticker}</span>
@@ -18821,7 +18925,7 @@ function ons_populateFilterSector() {
   const sel = document.getElementById('filterSector');
   sel.innerHTML = '<option value="">Todos los sectores</option>';
   Object.keys(onsState.grouped).sort().forEach(s => {
-    sel.innerHTML += `<option value="${s}">${s}</option>`;
+    sel.innerHTML += `<option value="${s}">${ons_titleCase(s)}</option>`;
   });
 }
 
@@ -18833,7 +18937,7 @@ function ons_onFilterSector() {
   if (sector) {
     const empresas = [...new Set((onsState.grouped[sector]||[]).map(o => o.empresa))].sort();
     selEmp.innerHTML = '<option value="">Todas</option>';
-    empresas.forEach(e => selEmp.innerHTML += `<option value="${e}">${e}</option>`);
+    empresas.forEach(e => selEmp.innerHTML += `<option value="${e}">${ons_titleCase(e)}</option>`);
     selEmp.style.display = '';
     divEmp.style.display = '';
     lblEmp.style.display = '';
@@ -18850,7 +18954,7 @@ function ons_onFilterChange() {
   ons_renderChart();
 }
 
-function ons_getFilteredONs() {
+function ons_getFilteredONs(applyChartFilters = true) {
   const sector  = document.getElementById('filterSector')?.value  || '';
   const empresa = document.getElementById('filterEmpresa')?.value || '';
   const ley     = document.getElementById('filterLey')?.value     || '';
@@ -18860,8 +18964,8 @@ function ons_getFilteredONs() {
   if (empresa) ons = ons.filter(o => o.empresa === empresa);
   if (ley)     ons = ons.filter(o => o.ley === ley);
   if (moneda)  ons = ons.filter(o => o.moneda === moneda);
-  // Filtro: solo con precio de mercado (distinto de 100 default)
-  if (onsState.onlyWithPrice) ons = ons.filter(o => onsState.prices[o.ticker] != null);
+  // Filtro "solo con precio": SOLO aplica al gráfico, nunca a la tabla
+  if (applyChartFilters && onsState.onlyWithPrice) ons = ons.filter(o => onsState.prices[o.ticker] != null);
   return ons;
 }
 
@@ -18877,7 +18981,7 @@ function ons_getTasaVigente(cfs, settle) {
 
 // ─── Render tabla ─────────────────────────────────────────────────────────────
 function ons_renderCompTable() {
-  let ons    = ons_getFilteredONs();
+  let ons    = ons_getFilteredONs(false);
   const settle = ons_globalSettle();
   const fmt2   = v => (v===null||isNaN(v)) ? '-' : v.toFixed(2);
   const fmtPct = v => (v===null||isNaN(v)) ? '-' : (v*100).toFixed(2)+'%';
@@ -18887,12 +18991,17 @@ function ons_renderCompTable() {
   // Calcular métricas para todas las ONs (necesario para sort)
   const rows_data = ons.map(on => {
     let metrics = null; let cfs = null;
-    try { cfs = ons_fetchCashflows(on); const price = onsState.prices[on.ticker]??100; metrics = ons_calcMetrics(cfs, price, settle, on.frecuencia); } catch(e) {}
-    const price  = onsState.prices[on.ticker] ?? 100;
+    const hasPrice = onsState.prices[on.ticker] != null;
+    try {
+      cfs = ons_fetchCashflows(on);
+      // Solo calcular métricas si hay precio de mercado; sin precio → TIR/DM/etc en "—"
+      if (hasPrice) metrics = ons_calcMetrics(cfs, onsState.prices[on.ticker], settle, on.frecuencia);
+    } catch(e) {}
+    const price  = hasPrice ? onsState.prices[on.ticker] : null;
     const tv     = cfs ? ons_getTasaVigente(cfs, settle) : {tasa:null,stepUp:false};
     const scoreRow = ons_matchScoreForEmpresa(on.empresa);
     const scoreVal = scoreRow ? parseFloat(scoreRow['Score']) : null;
-    return { on, metrics, cfs, price, tv, scoreRow, scoreVal,
+    return { on, metrics, cfs, price, hasPrice, tv, scoreRow, scoreVal,
       // valores raw para sort
       _empresa: on.empresa, _ticker: on.ticker, _precio: price,
       _tasa:    tv.tasa, _ytm: metrics?.ytm ?? null,
@@ -18945,21 +19054,23 @@ function ons_renderCompTable() {
 
   let rows = '';
   for (const r of rows_data) {
-    const { on, metrics, tv, price } = r;
+    const { on, metrics, tv, price, hasPrice } = r;
     const ytm    = metrics?.ytm ?? null;
     const par    = metrics?.paridad ?? null;
     const dev    = metrics?.devengado ?? null;
     const proxCF = metrics?.proxCF?.fecha;
     const parCls = par===null?'': par>100?'par-over':'par-under';
     const tasaStr = tv.tasa===null ? '-' : fmtPct(tv.tasa) + (tv.stepUp ? ' *' : '');
+    const priceAttr = hasPrice ? `value="${price}"` : `value="" placeholder="—"`;
+    const parStr = par===null ? '-' : fmt2(par)+'%';
     rows += `<tr onclick="ons_goToTicker('${on.ticker}')">
-      <td class="ons-td-empresa">${on.empresa}</td>
+      <td class="ons-td-empresa">${ons_titleCase(on.empresa)}</td>
       <td class="ons-td-ticker"><span class="ticker-link" onclick="event.stopPropagation();ons_goToTicker('${on.ticker}')">${on.ticker}</span></td>
-      <td onclick="event.stopPropagation()"><input class="price-inp" type="number" step="0.01" value="${price}" onchange="ons_updateCompPrice('${on.ticker}',this.value)" onclick="event.stopPropagation()"></td>
+      <td onclick="event.stopPropagation()"><input class="price-inp${hasPrice?'':' no-price'}" type="number" step="0.01" ${priceAttr} onchange="ons_updateCompPrice('${on.ticker}',this.value)" onclick="event.stopPropagation()"></td>
       <td>${tasaStr}</td>
       <td class="ons-td-ytm"><span style="color:${ytmGradColor(ytm)};font-weight:700;">${fmtPct(ytm)}</span></td>
       <td>${fmt2(metrics?.modDuration)}</td>
-      <td class="${parCls}">${fmt2(par)}%</td>
+      <td class="${parCls}">${parStr}</td>
       <td>${fmt2(dev)}</td>
       <td>${fmtDate(proxCF)}</td>
       <td>${fmtDate(new Date(on.vencimiento))}</td>
@@ -18978,6 +19089,7 @@ function ons_renderCompTable() {
 const ons_calState = { year: new Date().getFullYear(), month: new Date().getMonth() };
 
 function ons_switchTab(tab) {
+  window._helpKey = 'ons.' + tab;
   const tabs = ['index','hm','cal','scoring','cmp','sens'];
   tabs.forEach(t => {
     const el = document.getElementById('ons-tab-'+t);
@@ -19291,7 +19403,7 @@ window.onsBuildHeatmap = onsBuildHeatmap;
    ONs SENSIBILIDAD (precio USD ↔ YTM objetivo) — por empresa
 ══════════════════════════════════════════════════════════ */
 
-const _onsSensState = { empresa: null, sector: null, openSectors: new Set(), initialized: false };
+const _onsSensState = { empresa: null, sector: null, openSectors: new Set(), initialized: false, _defaultsApplied: false };
 
 function onsSens_defaultLiq() {
   const d = ons_settlement(new Date());
@@ -19301,9 +19413,28 @@ function onsSens_defaultLiq() {
 function onsSens_init() {
   const fi = document.getElementById('onssens-fecha-liq');
   if (fi && !fi.value) fi.value = onsSens_defaultLiq();
+  onsSens_applyDefault();
   onsSens_buildTree(document.getElementById('onssens-search')?.value || '');
   _onsSensState.initialized = true;
   if (_onsSensState.empresa) onsSens_recalc();
+}
+
+// Preselección por defecto (una sola vez): YPF
+function onsSens_applyDefault() {
+  if (_onsSensState._defaultsApplied) return;
+  if (_onsSensState.empresa) { _onsSensState._defaultsApplied = true; return; }
+  // Buscar empresa YPF que tenga al menos una ON con precio
+  const ypf = (onsState.ons || []).find(o =>
+    /\bYPF\b/i.test(o.empresa || '') && onsState.prices[o.ticker] > 0
+  );
+  if (ypf) {
+    _onsSensState.sector = (ypf.sector || 'OTROS').toUpperCase();
+    _onsSensState.empresa = ypf.empresa;
+    _onsSensState.openSectors.clear();
+    _onsSensState.openSectors.add(_onsSensState.sector);
+    _onsSensState._defaultsApplied = true;
+  }
+  // Si todavía no hay precios cargados, no marcar como aplicado: reintentar luego
 }
 
 // Árbol sector → empresa (selección única de empresa)
@@ -19629,6 +19760,7 @@ const onsCmpState = {
   axisX: 'md',
   excluded: new Set(),
   openSectors: new Set(),  // sectores actualmente expandidos
+  _defaultsApplied: false, // preselección YPF+Vista aplicada una sola vez
 };
 let _onsCmpChart = null;
 let _onsCmpColorMap = {};
@@ -19636,10 +19768,36 @@ let _onsCmpColorMap = {};
 // ── Init ──────────────────────────────────────────────────
 function onsCmp_init() {
   if (!onsState.ons?.length) return;
+  onsCmp_applyDefaults();
   onsCmp_buildTree();
   onsCmp_syncModoBtn();
   onsCmp_syncMonedaBtns();
   onsCmp_render();
+}
+
+// Preselección por defecto (una sola vez): YPF y Vista Energy de Oil & Gas
+function onsCmp_applyDefaults() {
+  if (onsCmpState._defaultsApplied) return;
+  if (onsCmpState.selected.size > 0) { onsCmpState._defaultsApplied = true; return; }
+  // Empresas del sector Oil & Gas cuyo nombre contiene YPF o VISTA
+  const empresas = [...new Set(
+    onsState.ons
+      .filter(o => /OIL|GAS|PETRO|ENERG/i.test(o.sector || ''))
+      .map(o => o.empresa)
+      .filter(e => /\bYPF\b/i.test(e) || /VISTA/i.test(e))
+  )];
+  empresas.forEach(emp => {
+    const key = 'empresa:' + emp;
+    if (!onsCmpState.selected.has(key)) {
+      onsCmpState.selected.add(key);
+      onsCmp_assignColor(key);
+    }
+  });
+  // Expandir el sector Oil & Gas para que se vean las empresas preseleccionadas
+  const oilSector = onsState.ons.find(o => /OIL|GAS|PETRO|ENERG/i.test(o.sector || ''))?.sector;
+  if (oilSector) onsCmpState.openSectors.add(oilSector);
+  // Solo marcar como aplicado si efectivamente encontramos empresas (sino reintentar)
+  if (empresas.length) onsCmpState._defaultsApplied = true;
 }
 
 // ── Construir árbol sidebar ───────────────────────────────
@@ -20793,17 +20951,32 @@ function ons_renderChart() {
   const tooltip = document.getElementById('chartTooltip');
   if (!svg || !body) return;
 
-  // Force layout if needed
-  const W = body.getBoundingClientRect().width  || body.offsetWidth  || 800;
+  const axisY = document.getElementById('chartY')?.value || 'tasa';
+  const axisX = document.getElementById('chartX')?.value || 'dtm';
+  const settle = ons_globalSettle();
+
+  const ons = ons_getFilteredONs();
+
+  // Listas para el panel de pips (al costado del gráfico)
+  const onsAll = ons_getFilteredONs(false); // mismo filtro UI pero sin onlyWithPrice
+  const sinPrecioList = onsState.onlyWithPrice
+    ? onsAll.filter(o => onsState.prices[o.ticker] == null).map(o => o.ticker)
+    : [];
+  const outlierList = [...onsState.autoOutliers];
+  const manualSet   = [...onsState.excluded].filter(t => !onsState.autoOutliers.has(t));
+  const hayPips = sinPrecioList.length || outlierList.length || manualSet.length;
+
+  // Mostrar/ocultar la columna de pips ANTES de medir el ancho del SVG,
+  // así el gráfico ocupa todo el ancho cuando no hay nada que listar.
+  const pipsEl0 = document.getElementById('ons-outlier-pips');
+  if (pipsEl0) pipsEl0.style.display = hayPips ? 'flex' : 'none';
+
+  // Force layout if needed — medir el wrapper del SVG (no incluye la columna de pips)
+  const svgWrap = svg.parentElement || body;
+  const W = svgWrap.getBoundingClientRect().width  || svgWrap.offsetWidth  || 800;
   const H = body.getBoundingClientRect().height || body.offsetHeight || 160;
   if (W < 10 || H < 10) { setTimeout(ons_renderChart, 100); return; }
   const PAD = { top:20, right:48, bottom:32, left:60 };
-  const settle = ons_globalSettle();
-
-  const axisY = document.getElementById('chartY')?.value || 'tasa';
-  const axisX = document.getElementById('chartX')?.value || 'dtm';
-
-  const ons = ons_getFilteredONs();
 
   // Calcular puntos
   const pts = [];
@@ -21001,16 +21174,42 @@ function ons_renderChart() {
     ${circles}
   </svg>`;
 
-  // Pips: solo excluidos manualmente por click
+  // Panel de pips al costado: tickers agrupados por categoría
   const pipsEl = document.getElementById('ons-outlier-pips');
   if(pipsEl) {
-    pipsEl.innerHTML = [...onsState.excluded].map(ticker => {
+    // Encabezado de grupo: label + conteo
+    const groupHead = (label, n, color) =>
+      `<div class="ons-pip-head"><span class="ons-pip-dot" style="background:${color}"></span>${label}<span class="ons-pip-cnt">${n}</span></div>`;
+
+    // Pip de ticker. action: 'price' (ir a cargar precio) | 'reactivate' (sacar de excluidos)
+    const pipItem = (ticker, color, action) => {
       const pt = ptsAll.find(p => p.on.ticker === ticker);
-      const yLabel = pt ? (pt.yVal * 100).toFixed(1) + '%' : '?';
-      return `<div class="outlier-pip" onclick="ons_toggleExcludeTicker('${ticker}')" title="Click para reactivar">
-        <svg width="8" height="8" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" fill="#ef4444"/></svg>
-        ${ticker} ${yLabel}</div>`;
-    }).join('');
+      const yLabel = pt ? (pt.yVal * 100).toFixed(1) + '%' : '';
+      const handler = action === 'reactivate'
+        ? `ons_toggleExcludeTicker('${ticker}')`
+        : `ons_goToTicker('${ticker}')`;
+      const title = action === 'reactivate' ? 'Click para reactivar' : 'Click para cargar precio';
+      return `<div class="outlier-pip" onclick="${handler}" title="${title}">
+        <svg width="8" height="8" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" fill="${color}"/></svg>
+        <span class="ons-pip-tk">${ticker}</span>${yLabel?`<span class="ons-pip-y">${yLabel}</span>`:''}</div>`;
+    };
+
+    let html = '';
+    if (sinPrecioList.length) {
+      html += groupHead('Sin precio', sinPrecioList.length, 'var(--text3)')
+        + sinPrecioList.map(t => pipItem(t, '#8a92b2', 'price')).join('');
+    }
+    if (outlierList.length) {
+      html += groupHead('Outliers', outlierList.length, '#f59e0b')
+        + outlierList.map(t => pipItem(t, '#f59e0b', 'reactivate')).join('');
+    }
+    if (manualSet.length) {
+      html += groupHead('Excluidos', manualSet.length, '#ef4444')
+        + manualSet.map(t => pipItem(t, '#ef4444', 'reactivate')).join('');
+    }
+    // Si no hay nada en ninguna categoría, ocultar la columna
+    pipsEl.innerHTML = html;
+    pipsEl.style.display = html ? 'flex' : 'none';
   }
 
   // Tooltip events
@@ -21029,7 +21228,7 @@ function ons_renderChart() {
       const yAxisName = axisY==='tasa'?'Tasa Cupón':'YTM';
       tooltip.innerHTML = `
         <div class="chart-tooltip-ticker">${p.on.ticker}</div>
-        <div class="chart-tooltip-empresa">${p.on.empresa}</div>
+        <div class="chart-tooltip-empresa">${ons_titleCase(p.on.empresa)}</div>
         <div class="chart-tooltip-row"><span>${yAxisName}</span><span class="chart-tooltip-val">${yLabel}</span></div>
         <div class="chart-tooltip-row"><span>${xAxisName}</span><span class="chart-tooltip-val">${xLabel}</span></div>
         <div class="chart-tooltip-row"><span>Moneda</span><span class="chart-tooltip-val">${p.on.moneda}</span></div>`;
@@ -21060,7 +21259,7 @@ function ons_renderChart() {
 // ─── Fetch precios data912 y poblar onsState.prices ──────────────────────────
 // ── Toggle exclusión de ticker del gráfico ─────────────────────────────────────
 window.ons_toggleExcludeTicker = function(ticker) {
-  if(onsState.excluded.has(ticker)) onsState.excluded.delete(ticker);
+  if(onsState.excluded.has(ticker)) { onsState.excluded.delete(ticker); onsState.autoOutliers.delete(ticker); }
   else onsState.excluded.add(ticker);
   ons_renderChart();
 };
@@ -21085,9 +21284,10 @@ function ons_applyDefaultFilters(){
 window.ons_autoExcludeOutliers = function() {  const btn = document.getElementById('ons-excl-outliers-btn');
 
   if(onsState.outliersExcluded) {
-    // — OFF: reactivar todos los que se excluyeron por este botón
+    // — OFF: reactivar SOLO los que excluyó este botón (preservar excluidos manuales)
     onsState.outliersExcluded = false;
-    onsState.excluded.clear();
+    onsState.autoOutliers.forEach(t => onsState.excluded.delete(t));
+    onsState.autoOutliers.clear();
     if(btn){ btn.style.background='transparent'; btn.style.borderColor='var(--border2)'; btn.style.color='var(--text2)'; }
     ons_renderChart();
     return;
@@ -21117,6 +21317,7 @@ window.ons_autoExcludeOutliers = function() {  const btn = document.getElementBy
   for(const p of pts) {
     if(p.y < YTM_MIN || p.y > YTM_MAX) {
       onsState.excluded.add(p.ticker);
+      onsState.autoOutliers.add(p.ticker);
     }
   }
 
@@ -21327,6 +21528,216 @@ window.ons_init = function() {
 };
 
 </script>
+  <!-- ══════════════════ MODAL DE AYUDA ══════════════════ -->
+  <div id="help-modal-overlay" onclick="closeHelp()"></div>
+  <div id="help-modal">
+    <div class="help-head">
+      <span class="help-head-title">Ayuda</span>
+      <button onclick="closeHelp()" style="padding:4px 14px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;" onmouseover="this.style.background='var(--red)';this.style.color='#fff';this.style.borderColor='var(--red)';" onmouseout="this.style.background='transparent';this.style.color='var(--text3)';this.style.borderColor='var(--border2)';">✕ Cerrar</button>
+    </div>
+    <div class="help-tabs">
+      <div class="help-tab active" data-htab="uso" onclick="helpSwitchTab('uso')">Modo de uso</div>
+      <div class="help-tab" data-htab="disclaimer" onclick="helpSwitchTab('disclaimer')">Disclaimer</div>
+      <div class="help-tab" data-htab="contacto" onclick="helpSwitchTab('contacto')">Contacto</div>
+    </div>
+    <div id="help-body" class="help-body"></div>
+  </div>
+  <script>
+  /* ── Sistema de ayuda contextual ── */
+  // Texto "Modo de uso" por sección. _helpKey apunta a la clave activa.
+  window._helpKey = 'landing';
+  // Aviso reutilizable de lag de datos (se renderiza destacado).
+  const LAG_WARN = '[[warn]]OJO: los datos de precio y volumen NO son en directo, tienen un lag de aproximadamente dos horas.[[/warn]]';
+  // Cada entrada: { t: título completo, b: cuerpo }. Soporta **negrita** y [[warn]]…[[/warn]].
+  const HELP = {
+    'landing': { t:'Dashboard', b:
+`Esta página reúne un conjunto de herramientas de análisis financiero para los mercados de renta fija, renta variable y análisis de empresas. Su objetivo es facilitar el estudio y la comparación de instrumentos, brindando datos y métricas de forma centralizada.
+
+El contenido tiene fines exclusivamente informativos y no constituye una recomendación de compra o venta de ningún instrumento, ni asesoramiento de inversión. Las decisiones de inversión son responsabilidad exclusiva de cada usuario.
+
+Usá el ícono de información disponible en cada sección para conocer su modo de uso específico.` },
+
+    'rf.index': { t:'Bonos · Índice', b:
+`El panel izquierdo navega entre categorías y los distintos instrumentos de renta fija soberana.
+
+El gráfico de curva de rendimientos permite graficar diversas variables en ambos ejes. Cada punto es un instrumento; al clickearlo lo excluís y la tendencia se recalcula solo con los visibles. Para reincorporarlo, clickeá su ticker en la lista a la derecha del gráfico.
+
+Los tipos que son pata de un dual (ej. TAMAR, BONCER, BONCAP) se pueden excluir de la curva. En los duales, el botón **PATAS** grafica la pata activa y la inactiva.
+
+La fecha de liquidación es editable para todos los bonos. En CER podés elegir el valor de CER de liquidación (**T−10** por default). En Dólar Linked se trae el último A3500 de la API del BCRA, modificable a mano para reflejar cotizaciones no captadas por el lag de publicación.` },
+
+    'rf.hm': { t:'Bonos · Heatmap', b:
+`El tamaño de cada recuadro corresponde al monto operado (nominales × precio) y el color refleja la variación de precio en la rueda actual: verde una suba, rojo una caída.
+
+En el heatmap principal el tamaño es relativo al monto operado global; en los heatmaps por instrumento, el tamaño es proporcional al monto operado dentro de ese instrumento.
+
+Al clickear un recuadro dentro del heatmap de instrumento se abre la información puntual de ese bono.` },
+
+    'rf.cmp': { t:'Bonos · Comparador', b:
+`Permite comparar la curva de rendimientos de todos los tipos de instrumentos de renta fija soberana en simultáneo.
+
+El panel izquierdo selecciona qué tipos de instrumento comparar. Tené en cuenta que los instrumentos atados al dólar o a tasas reales positivas tienden a rendir en una escala numérica distinta a los rendimientos en pesos de tasa fija o no indexados, con lo cual conviene leer cada grupo en su contexto.
+
+En la parte inferior del panel izquierdo se ajustan los parámetros de las curvas según corresponda al instrumento: fecha de liquidación (editable), valor de CER de liquidación (**T−10** por default) y tipo de cambio A3500 del BCRA (modificable a mano para reflejar cotizaciones no captadas por el lag de publicación).
+
+Las variables graficadas en ambos ejes son seleccionables.` },
+
+    'rf.sens': { t:'Bonos · Sensibilidad', b:
+`Permite analizar los trade-offs precio-rendimiento de los instrumentos de renta fija soberana. Podés seleccionar TNA, TEA o TEM y la fecha de liquidación.
+
+Los parámetros principales son: **Peso pp**, que define el valor de cada columna de la tabla — un valor de 1 indica que cada columna refleja una variación de 1% en la tasa de rendimiento seleccionada (TNA/TEA/TEM); y **Rango −** / **Rango +**, que definen la cantidad de columnas a cada lado.` },
+
+    'rf.cal': { t:'Bonos · Calendario', b:
+`Calendario de pagos que permite ver las próximas fechas de pago de los instrumentos de renta fija soberana, diferenciando intereses y amortizaciones.` },
+
+    'rf.be': { t:'Bonos · Breakeven', b:
+`Permite analizar la diferencia de rendimiento entre un bono CER, que ajusta por inflación, y un bono a tasa fija en pesos (LECAP/BONCAP). Esa diferencia es la inflación implícita en los precios.
+
+El parámetro **Sensibilidad** está en 0 por default, lo que compara bonos con la misma fecha de vencimiento. Al subirlo —por ejemplo a 10— amplía el rango y permite comparar un bono CER con uno a tasa fija cuya maturity difiera hasta 10 días; la calculadora hace las equivalencias, por lo que la comparación sigue siendo válida.
+
+También se puede ajustar la fecha de liquidación y el valor de CER (**T−10** por default, modificable). Las variables del gráfico son seleccionables entre varias opciones.` },
+
+    'ons.index': { t:'ONs · Índice', b:
+`El panel izquierdo navega entre las distintas obligaciones negociables, organizadas por sector y, dentro de cada sector, separadas por empresa. Reúne todas las ONs hard dollar, tanto dólar MEP como dólar cable.
+
+El gráfico de curva de rendimientos permite graficar diversas variables en ambos ejes. Cada punto es una ON; al clickearla la excluís y la tendencia se recalcula solo con las visibles. Para reincorporarla, clickeá su ticker en la lista a la derecha del gráfico.
+
+El gráfico permite separar por ley (NY o ARG) y por tipo de moneda. Los botones **Excluir sin precio** y **Excluir outliers** permiten una mejor comparación de rendimientos.
+
+La fecha de liquidación es editable.` },
+
+    'ons.hm': { t:'ONs · Heatmap', b:
+`El tamaño de cada recuadro corresponde al monto operado (nominales × precio) y el color refleja la variación de precio en la rueda actual: verde una suba, rojo una caída.
+
+La navegación es jerárquica: heatmap global → heatmap sectorial → heatmap por empresa → información puntual de la ON. En cada nivel el tamaño de los recuadros es relativo al monto operado dentro de ese nivel, y al clickear vas bajando hasta el detalle de cada obligación.` },
+
+    'ons.cmp': { t:'ONs · Comparador', b:
+`Permite comparar la curva de rendimientos de distintos sectores y de distintas empresas en simultáneo.
+
+El panel izquierdo selecciona qué sectores y empresas comparar. Los rendimientos se pueden separar por moneda, con la posibilidad de desagregar y tener una curva de dólar MEP y otra de dólar cable.
+
+Las variables graficadas en ambos ejes son seleccionables.` },
+
+    'ons.sens': { t:'ONs · Sensibilidad', b:
+`Permite analizar los trade-offs precio-rendimiento de las obligaciones negociables, comparando por empresa. Podés seleccionar TNA, TEA o TEM y la fecha de liquidación.
+
+Los parámetros principales son: **Peso pp**, que define el valor de cada columna de la tabla — un valor de 1 indica que cada columna refleja una variación de 1% en la tasa de rendimiento seleccionada (TNA/TEA/TEM); y **Rango −** / **Rango +**, que definen la cantidad de columnas a cada lado.` },
+
+    'ons.cal': { t:'ONs · Calendario', b:
+`Calendario de pagos que permite ver las próximas fechas de pago de las obligaciones negociables, diferenciando intereses y amortizaciones.` },
+
+    'ons.scoring': { t:'ONs · Scoring', b:
+`El scoring es una calificación del 0 al 10 sobre la liquidez de corto plazo de la empresa. Valores por debajo de 4 son una señal de alerta.
+
+Es una ponderación de ratios financieros, por lo que funciona como una herramienta más para entender la salud de una empresa, no como la única. Prestá especial atención a la fecha del último balance: indica la última vez que se actualizó el scoring. Un balance de hace un año no necesariamente refleja la situación actual de la empresa.` },
+
+    'eq.argy': { t:'Renta Variable · ARGY', b:
+`Heatmap de acciones argentinas. El tamaño de cada recuadro corresponde al monto operado y el color refleja la variación de precio en la rueda actual: verde una suba, rojo una caída.
+
+Al clickear un ticker se abre su valor histórico.` },
+
+    'eq.adr': { t:'Renta Variable · ADR', b:
+`Heatmap de ADRs. El tamaño de cada recuadro corresponde al monto operado y el color refleja la variación de precio en la rueda actual: verde una suba, rojo una caída.` },
+
+    'eq.cedear': { t:'Renta Variable · CEDEARs', b:
+`Heatmap de CEDEARs. El tamaño de cada recuadro corresponde al monto operado y el color refleja la variación de precio en la rueda actual: verde una suba, rojo una caída.
+
+Al clickear un ticker se abre su valor histórico.` },
+
+    'af.usa':       { t:'Empresas USA', b:'(pendiente)' },
+    'ear.buscar':   { t:'Empresas ARG · Buscar', b:'(pendiente)' },
+    'ear.sector':   { t:'Empresas ARG · Scoring de Liquidez', b:'(pendiente)' },
+    'ear.deudores': { t:'Empresas ARG · Central de Deudores', b:'(pendiente)' },
+    'ear.mav':      { t:'Empresas ARG · MAV', b:'(pendiente)' }
+  };
+  const HELP_DISCLAIMER_ES = `Los analistas empleados por BMB, un agente de bolsa (broker-dealer) no estadounidense, no están obligados a rendir el examen de analista de FINRA. La información contenida en este informe está destinada exclusivamente a determinados "grandes inversores institucionales estadounidenses" (major U.S. institutional investors) y no podrá ser utilizada ni invocada por ninguna otra persona para ningún fin. Dicha información se proporciona únicamente con fines informativos y no constituye una invitación a comprar ni una oferta de venta de valor alguno bajo la Securities Act de 1933, con sus modificaciones, ni bajo ninguna otra ley, norma o regulación de valores federal o estatal de los Estados Unidos. Las oportunidades de inversión analizadas en este informe pueden resultar inadecuadas para ciertos inversores en función de sus objetivos de inversión específicos, su tolerancia al riesgo y su situación financiera. En aquellas jurisdicciones en las que BMB no se encuentre registrada o habilitada para operar en valores u otros productos financieros, las operaciones solo podrán ejecutarse conforme a la legislación y normativa aplicable, la cual puede variar de una jurisdicción a otra y que puede exigir que toda operación se realice de acuerdo con las exenciones aplicables a los requisitos de registro o habilitación. La información contenida en esta publicación se basa en fuentes que se consideran confiables; no obstante, BMB no efectúa manifestación alguna respecto de su integridad o exactitud. Todas las opiniones aquí expresadas reflejan el juicio del autor al momento original de su publicación, con independencia de la fecha en que usted reciba dicha información, y están sujetas a cambios sin previo aviso. BMB puede haber emitido otros informes que resulten incompatibles con la información presentada en este informe, o que arriben a conclusiones diferentes. Dichas publicaciones reflejan los distintos supuestos, puntos de vista y métodos analíticos de los analistas que las elaboraron. El rendimiento pasado no debe interpretarse como indicación ni garantía de rendimientos futuros, y no se otorga manifestación ni garantía alguna, expresa o implícita, en relación con el rendimiento futuro. La información aquí contenida puede incluir declaraciones prospectivas (forward-looking statements) en el sentido de las leyes federales de valores de los Estados Unidos, las cuales están sujetas a riesgos e incertidumbres. Entre los factores que podrían ocasionar que los resultados reales y la situación financiera de una compañía difieran de las expectativas se incluyen, sin limitación: la incertidumbre política, los cambios en las condiciones económicas generales que afecten adversamente el nivel de demanda de los productos o servicios de la compañía, las variaciones en los mercados de divisas, los cambios en los mercados financieros internacionales y domésticos y en el entorno competitivo, y demás factores relacionados con lo anterior. Todas las declaraciones prospectivas contenidas en este informe quedan plenamente condicionadas por la presente advertencia. Otros países: las leyes y regulaciones de otros países también pueden restringir la distribución de este informe. Toda persona que se encuentre en posesión de este documento debe informarse acerca de las posibles restricciones legales y observarlas en consecuencia.`;
+
+  const HELP_DISCLAIMER_EN = `Analysts employed by BMB, a non-U.S. broker-dealer, are not required to take the FINRA analyst exam. The information contained in this report is intended solely for certain "major U.S. institutional investors" and may not be used or relied upon by any other person for any purpose. Such information is provided for informational purposes only and does not constitute a solicitation to buy or an offer to sell any securities under the Securities Act of 1933, as amended, or under any other U.S. federal or state securities laws, rules or regulations. The investment opportunities discussed in this report may be unsuitable for certain investors depending on their specific investment objectives, risk tolerance and financial position. In jurisdictions where BMB is not registered or licensed to trade in securities, or other financial products, transactions may be executed only in accordance with applicable law and legislation, which may vary from jurisdiction to jurisdiction and which may require that a transaction be made in accordance with applicable exemptions from registration or licensing requirements. The information in this publication is based on sources believed to be reliable, BMB does not make any representation with respect to its completeness or accuracy. All opinions expressed herein reflect the author's judgment at the original time of publication, without regard to the date on which you may receive such information, and are subject to change without notice. BMB may have issued other reports that are inconsistent with, and reach different conclusions from, the information presented in this report. These publications reflect the different assumptions, views and analytical methods of the analysts who prepared them. Past performance should not be taken as an indication or guarantee of future performance, and no representation or warranty, express or implied, is provided in relation to future performance. The information contained herein may include forward-looking statements within the meaning of U.S. federal securities laws that are subject to risks and uncertainties. Factors that could cause a company's actual results and financial condition to differ from expectations include, without limitation: political uncertainty, changes in general economic conditions that adversely affect the level of demand for the company's products or services, changes in foreign exchange markets, changes in international and domestic financial markets and in the competitive environment, and other factors relating to the foregoing. All forward-looking statements contained in this report are qualified in their entirety by this cautionary statement. Other countries: Laws and regulations of other countries may also restrict the distribution of this report. Persons in possession of this document should inform themselves about possible legal restrictions and observe them accordingly.`;
+
+  let _helpDiscLang = 'es';
+  const HELP_CONTACTO   = `Esta herramienta está en desarrollo continuo. Cualquier feedback, sugerencia o reporte de errores es bienvenido y ayuda a mejorarla.
+
+Contacto: researchbmb@bullmarketbrokers.com — tzuccotti@bullmarket.com.ar
+Equipo: Research BullMarket`;
+
+  // Convierte el texto del cuerpo a HTML seguro: escapa, aplica **negrita**,
+  // [[warn]]…[[/warn]] como bloque destacado, y respeta saltos de línea.
+  function helpRender(raw){
+    if(!raw) return '';
+    let esc = raw
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    esc = esc.replace(/\[\[warn\]\]([\s\S]*?)\[\[\/warn\]\]/g,
+      '<div class="help-warn">$1</div>');
+    esc = esc.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    // Párrafos separados por doble salto; saltos simples a <br>.
+    return esc.split(/\n\n+/).map(p=>{
+      if(p.indexOf('help-warn')!==-1) return p; // ya es un div
+      return '<p style="margin:0 0 12px;">'+p.replace(/\n/g,'<br>')+'</p>';
+    }).join('');
+  }
+
+  window.helpSwitchTab = function(tab){
+    document.querySelectorAll('#help-modal .help-tab').forEach(t=>{
+      t.classList.toggle('active', t.dataset.htab===tab);
+    });
+    const body = document.getElementById('help-body');
+    const entry = HELP[window._helpKey] || HELP['landing'];
+    if(tab==='uso')             body.innerHTML = helpRender(entry.b + (window._helpKey==='landing' ? '' : '\n\n' + LAG_WARN));
+    else if(tab==='disclaimer') body.innerHTML = helpRenderDisclaimer();
+    else                        body.innerHTML = helpRender(HELP_CONTACTO);
+  };
+
+  function helpRenderDisclaimer(){
+    const esActive = _helpDiscLang==='es';
+    const txt = esActive ? HELP_DISCLAIMER_ES : HELP_DISCLAIMER_EN;
+    const toggle =
+      '<div style="display:flex;gap:0;margin-bottom:14px;border:1px solid var(--border2);border-radius:6px;overflow:hidden;width:fit-content;">'+
+        '<span onclick="helpSetDiscLang(\'es\')" style="padding:4px 14px;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;'+
+          (esActive?'background:var(--accent);color:#fff;':'background:transparent;color:var(--text3);')+'">ESP</span>'+
+        '<span onclick="helpSetDiscLang(\'en\')" style="padding:4px 14px;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;'+
+          (!esActive?'background:var(--accent);color:#fff;':'background:transparent;color:var(--text3);')+'">ENG</span>'+
+      '</div>';
+    return toggle + helpRender(txt);
+  }
+
+  window.helpSetDiscLang = function(lang){
+    _helpDiscLang = lang;
+    document.getElementById('help-body').innerHTML = helpRenderDisclaimer();
+  };
+
+  window.showHelp = function(){
+    const key = window._helpKey || 'landing';
+    const entry = HELP[key] || HELP['landing'];
+    document.querySelector('#help-modal .help-head-title').textContent =
+      'Ayuda — ' + (entry.t || 'Dashboard');
+    helpSwitchTab('uso');
+    document.getElementById('help-modal-overlay').style.display='block';
+    document.getElementById('help-modal').style.display='flex';
+  };
+
+  window.closeHelp = function(){
+    document.getElementById('help-modal-overlay').style.display='none';
+    document.getElementById('help-modal').style.display='none';
+  };
+
+  document.addEventListener('keydown', function(e){
+    if(e.key==='Escape' && document.getElementById('help-modal').style.display==='flex') closeHelp();
+  });
+
+  // Reubicar el modal como hijo directo de <body> para que no se oculte
+  // junto con ningún módulo (app-rf, app-balances, etc.).
+  (function relocateHelpModal(){
+    function move(){
+      const ov=document.getElementById('help-modal-overlay');
+      const md=document.getElementById('help-modal');
+      if(ov && ov.parentNode!==document.body) document.body.appendChild(ov);
+      if(md && md.parentNode!==document.body) document.body.appendChild(md);
+    }
+    if(document.body) move();
+    else document.addEventListener('DOMContentLoaded', move);
+  })();
+  </script>
+
 </body>
 </html>
 
