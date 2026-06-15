@@ -11836,8 +11836,48 @@ const _eqRO = new ResizeObserver(entries => {
             <div id="secAddBlockContent"></div>
           </div>
         </div>
+        <!-- Modal gestor de variables personalizadas -->
+        <div id="secVarModal" onclick="if(event.target===this)secCloseVarManager()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10000;align-items:center;justify-content:center;pointer-events:auto;">
+          <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:22px;width:680px;max-width:96vw;max-height:88vh;overflow-y:auto;pointer-events:auto;" onclick="event.stopPropagation()">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+              <span id="secVarModalTitle" style="font-size:14px;font-weight:700;color:var(--text);font-family:var(--mono);">Editar tabla</span>
+              <button onclick="secCloseVarManager()" style="background:transparent;border:none;color:var(--text3);font-size:18px;cursor:pointer;">✕</button>
+            </div>
+            <div id="secVarModalContent"></div>
+          </div>
+        </div>
+        <!-- Modal editor de gráfico (multi-serie) -->
+        <div id="secChartModal" onclick="if(event.target===this)secCloseChartEditor()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10000;align-items:center;justify-content:center;pointer-events:auto;">
+          <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:22px;width:640px;max-width:96vw;max-height:88vh;overflow-y:auto;pointer-events:auto;" onclick="event.stopPropagation()">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+              <span style="font-size:14px;font-weight:700;color:var(--text);font-family:var(--mono);">Editar gráfico</span>
+              <button onclick="secCloseChartEditor()" style="background:transparent;border:none;color:var(--text3);font-size:18px;cursor:pointer;">✕</button>
+            </div>
+            <div id="secChartModalContent"></div>
+          </div>
+        </div>
+        <!-- Popup agregar serie (chips toggleables) -->
+        <div id="secChartAddModal" onclick="if(event.target===this)secChartCloseAdd()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10001;align-items:center;justify-content:center;pointer-events:auto;">
+          <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:22px;width:560px;max-width:96vw;max-height:88vh;overflow-y:auto;pointer-events:auto;" onclick="event.stopPropagation()">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+              <span style="font-size:14px;font-weight:700;color:var(--text);font-family:var(--mono);">Agregar serie</span>
+              <button onclick="secChartCloseAdd()" style="background:transparent;border:none;color:var(--text3);font-size:18px;cursor:pointer;">✕</button>
+            </div>
+            <div id="secChartAddContent"></div>
+          </div>
+        </div>
+        <!-- Modal editor de KPIs -->
+        <div id="secKpiModal" onclick="if(event.target===this)secCloseKpiEditor()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10000;align-items:center;justify-content:center;pointer-events:auto;">
+          <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:22px;width:560px;max-width:96vw;max-height:88vh;overflow-y:auto;pointer-events:auto;" onclick="event.stopPropagation()">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+              <span style="font-size:14px;font-weight:700;color:var(--text);font-family:var(--mono);">Configurar KPIs</span>
+              <button onclick="secCloseKpiEditor()" style="background:transparent;border:none;color:var(--text3);font-size:18px;cursor:pointer;">✕</button>
+            </div>
+            <div id="secKpiModalContent"></div>
+          </div>
+        </div>
         <!-- Unified block grid (charts + tables) -->
-        <div id="secChartDashboard" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px;"></div>
+        <div id="secChartDashboard" style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:28px;"></div>
         <div id="secTables"></div>
       </div>
 
@@ -13368,6 +13408,9 @@ function openDetail(especie){
     $('secCompare').innerHTML = ''; // reset compare tab on new search
     _secTableDefs=[]; // reset before renderFinancials so it can re-init cleanly
     _chartDefs=[];    // reset charts too so dashboard re-initializes
+    _customVars=[]; _customVarIdSeq=0; // reset custom vars; reloaded from saved layout if any
+    _kpiActive=['revenue','ebitda','grossM','netM','capex','fcf']; // reset; saved layout may override
+    _kpiVarOff=[]; // reset: variación YoY ON por defecto en todos
     renderCompanyHeader(ticker, companyName, cik, sub, facts);
     renderFinancials(facts);
     renderRatios(facts);
@@ -13657,265 +13700,552 @@ function openDetail(especie){
 
   // ── KPI config ──
   const KPI_CATALOGUE = [
-    {id:'revenue',  label:'Revenue',      field:'revenue',  fmt:v=>fmtM(v)},
-    {id:'ebitda',   label:'EBITDA',       field:'ebitda',   fmt:v=>fmtM(v)},
-    {id:'netInc',   label:'Net Income',   field:'netInc',   fmt:v=>fmtM(v), color:v=>v>=0?'#3fb950':'#f85149'},
-    {id:'grossM',   label:'Gross Margin', field:'grossM',   fmt:v=>fmtPct(v), color:v=>v>=0?'#3fb950':'#f85149'},
-    {id:'netM',     label:'Net Margin',   field:'netM',     fmt:v=>fmtPct(v), color:v=>v>=0?'#3fb950':'#f85149'},
-    {id:'opM',      label:'Op. Margin',   field:'opM',      fmt:v=>fmtPct(v), color:v=>v>=0?'#3fb950':'#f85149'},
-    {id:'ebitdaM',  label:'EBITDA Margin',field:'ebitdaM',  fmt:v=>fmtPct(v), color:v=>v>=0?'#3fb950':'#f85149'},
-    {id:'opCF',     label:'Op. Cash Flow',field:'opCF',     fmt:v=>fmtM(v), color:v=>v>=0?'#3fb950':'#f85149'},
-    {id:'fcf',      label:'Free Cash Flow',field:'fcf',     fmt:v=>fmtM(v), color:v=>v>=0?'#3fb950':'#f85149'},
-    {id:'capex',    label:'Capex',        field:'capex',    fmt:v=>fmtM(Math.abs(v))},
-    {id:'cash',     label:'Cash',         field:'cash',     fmt:v=>fmtM(v), color:()=>'#3fb950'},
-    {id:'debt',     label:'LT Debt',      field:'debt',     fmt:v=>fmtM(v), color:()=>'#f85149'},
-    {id:'eps',      label:'EPS Diluted',  field:'eps',      fmt:v=>'$'+v.toFixed(2), color:v=>v>=0?'#3fb950':'#f85149'},
-    {id:'rd',       label:'R&D',          field:'rd',       fmt:v=>fmtM(v)},
+    {id:'revenue',  label:'Revenue',      field:'revenue',  _fmt:'M',   fmt:v=>fmtM(v)},
+    {id:'ebitda',   label:'EBITDA',       field:'ebitda',   _fmt:'M',   fmt:v=>fmtM(v)},
+    {id:'netInc',   label:'Net Income',   field:'netInc',   _fmt:'M',   fmt:v=>fmtM(v), color:v=>v>=0?'#3fb950':'#f85149'},
+    {id:'grossM',   label:'Gross Margin', field:'grossM',   _fmt:'pct', fmt:v=>fmtPct(v), color:v=>v>=0?'#3fb950':'#f85149'},
+    {id:'netM',     label:'Net Margin',   field:'netM',     _fmt:'pct', fmt:v=>fmtPct(v), color:v=>v>=0?'#3fb950':'#f85149'},
+    {id:'opM',      label:'Op. Margin',   field:'opM',      _fmt:'pct', fmt:v=>fmtPct(v), color:v=>v>=0?'#3fb950':'#f85149'},
+    {id:'ebitdaM',  label:'EBITDA Margin',field:'ebitdaM',  _fmt:'pct', fmt:v=>fmtPct(v), color:v=>v>=0?'#3fb950':'#f85149'},
+    {id:'opCF',     label:'Op. Cash Flow',field:'opCF',     _fmt:'M',   fmt:v=>fmtM(v), color:v=>v>=0?'#3fb950':'#f85149'},
+    {id:'fcf',      label:'Free Cash Flow',field:'fcf',     _fmt:'M',   fmt:v=>fmtM(v), color:v=>v>=0?'#3fb950':'#f85149'},
+    {id:'capex',    label:'Capex',        field:'capex',    _fmt:'M',   fmt:v=>fmtM(Math.abs(v))},
+    {id:'cash',     label:'Cash',         field:'cash',     _fmt:'M',   fmt:v=>fmtM(v), color:()=>'#3fb950'},
+    {id:'debt',     label:'LT Debt',      field:'debt',     _fmt:'M',   fmt:v=>fmtM(v), color:()=>'#f85149'},
+    {id:'eps',      label:'EPS Diluted',  field:'eps',      _fmt:'dlr', fmt:v=>'$'+v.toFixed(2), color:v=>v>=0?'#3fb950':'#f85149'},
+    {id:'rd',       label:'R&D',          field:'rd',       _fmt:'M',   fmt:v=>fmtM(v)},
   ];
   let _kpiActive = ['revenue','ebitda','grossM','netM','capex','fcf'];
-  let _kpiPanelOpen = false;
+  // KPIs que muestran variación YoY (por defecto todos los activos no-ratio).
+  // undefined en _kpiVarOff => mostrar; presencia => oculto para ese kid.
+  let _kpiVarOff = [];
+
+  // Serie anual completa de un KPI (para calcular variación YoY).
+  function _kpiSeries(kid){
+    if(kid.startsWith('c_')){
+      const cv=_getCustomVar(kid); if(!cv) return [];
+      return _seriesForCustom(cv,false)||[];
+    }
+    const S=_secSeriesA; if(!S) return [];
+    return S[kid]||[];
+  }
+  // Variación YoY del KPI = último punto vs. año anterior de la misma serie.
+  function _kpiVariation(kid){
+    const ser=_kpiSeries(kid);
+    if(!ser.length) return null;
+    const last=ser[ser.length-1];
+    if(!last||last.val==null) return null;
+    return _cellVariation(ser, last.yr, false, 'annual');
+  }
+
+  // Valor de un KPI = último punto de la serie (mismo motor que tablas/gráficos).
+  // Soporta KPIs base (id de _secSeriesA) y personalizados (c_...).
+  function _kpiValue(kid){
+    if(kid.startsWith('c_')){
+      const cv=_getCustomVar(kid); if(!cv) return null;
+      const s=_seriesForCustom(cv,false);
+      return s.length? s[s.length-1].val : null;
+    }
+    const S=_secSeriesA; if(!S) return null;
+    const ser=S[kid];
+    return (ser&&ser.length)? ser[ser.length-1].val : null;
+  }
+  // Etiqueta + formato de un KPI (base o custom).
+  function _kpiMeta(kid){
+    if(kid.startsWith('c_')){
+      const cv=_getCustomVar(kid);
+      return cv? {label:cv.label, fmt:cv.fmt, custom:true} : {label:kid, fmt:'M', custom:true};
+    }
+    const def=KPI_CATALOGUE.find(k=>k.id===kid);
+    if(def) return {label:def.label, fmt:def._fmt||'M', custom:false, colorFn:def.color};
+    return {label:kid, fmt:'M', custom:false};
+  }
+  function _kpiFmtVal(fmt,v){
+    if(v==null) return '—';
+    if(fmt==='pct') return fmtPct(v);
+    if(fmt==='x2') return v.toFixed(2)+'x';
+    if(fmt==='x1') return v.toFixed(1)+'x';
+    if(fmt==='dlr') return '$'+v.toFixed(2);
+    if(fmt==='shares') return v>=1e9?(v/1e9).toFixed(2)+'B':v>=1e6?(v/1e6).toFixed(0)+'M':Math.round(v).toLocaleString();
+    if(fmt==='raw') return (Math.abs(v)>=1e6)?fmtM(v):v.toLocaleString(undefined,{maximumFractionDigits:2});
+    return fmtM(v);
+  }
 
   function _renderKpiBar(facts){
     const el=$('secKpiBar'); if(!el||!facts) return;
-    const ns=_getNS(facts);
 
-    function getLast(gaapKey,...ifrsKeys){
-      const arr=_getEntries(ns.gaap,ns.ifrs,gaapKey,ifrsKeys);
-      if(!arr.length) return null;
-      const annual=arr.filter(x=>x.form==='10-K'||x.form==='20-F'||x.form==='10-K/A'||x.form==='20-F/A');
-      const src=annual.length?annual:arr;
-      const sorted=[...src].sort((a,b)=>a.end>b.end?1:-1);
-      return sorted.length?sorted[sorted.length-1].val:null;
-    }
-    function getLastFlow(gaapKey,...ifrsKeys){
-      const arr=_getEntries(ns.gaap,ns.ifrs,gaapKey,ifrsKeys);
-      if(!arr.length) return null;
-      const annual=arr.filter(x=>{
-        if(x.form!=='10-K'&&x.form!=='20-F'&&x.form!=='10-K/A'&&x.form!=='20-F/A') return false;
-        if(!x.start) return true;
-        const days=(new Date(x.end)-new Date(x.start))/(1000*86400);
-        return days>=300&&days<=420;
-      }).sort((a,b)=>a.end>b.end?1:-1);
-      return annual.length?annual[annual.length-1].val:null;
-    }
-
-    const revenue = getLastFlow('Revenues','Revenue','RevenueFromContractsWithCustomers')
-                 ?? getLastFlow('RevenueFromContractWithCustomerExcludingAssessedTax')
-                 ?? getLastFlow('SalesRevenueNet')
-                 ?? getLastFlow('InterestAndDividendIncomeOperating');
-    const grossP  = getLastFlow('GrossProfit');
-    const opInc   = getLastFlow('OperatingIncomeLoss','ProfitLossFromOperatingActivities');
-    const netInc  = getLastFlow('NetIncomeLoss','ProfitLoss','ProfitLossAttributableToOwnersOfParent');
-    const opCF    = getLastFlow('NetCashProvidedByUsedInOperatingActivities','CashFlowsFromUsedInOperatingActivities','CashFlowsFromUsedInOperations');
-    const capexRaw= getLastFlow('PaymentsToAcquirePropertyPlantAndEquipment','PurchaseOfPropertyPlantAndEquipment','AcquisitionOfPropertyPlantAndEquipment');
-    const da      = getLastFlow('DepreciationDepletionAndAmortization','DepreciationAndAmortization','DepreciationAndAmortisationExpense');
-    const rd      = getLastFlow('ResearchAndDevelopmentExpense');
-    const eps     = getLastFlow('EarningsPerShareDiluted','DilutedEarningsLossPerShare','EarningsPerShareBasic','BasicEarningsLossPerShare');
-    const cash    = getLast('CashAndCashEquivalentsAtCarryingValue','Cash','CashCashEquivalentsAndShortTermInvestments','CashAndCashEquivalents');
-    const debt    = getLast('LongTermDebt','LongTermDebtNoncurrent','BorrowingsNoncurrent');
-
-    const ebitda  = (opInc!=null&&da!=null) ? opInc+Math.abs(da) : opInc;
-    const fcf     = (opCF!=null&&capexRaw!=null) ? opCF-Math.abs(capexRaw) : opCF;
-    const capex   = capexRaw!=null ? Math.abs(capexRaw) : null;
-    const grossM  = (revenue&&grossP!=null) ? grossP/revenue*100 : null;
-    const netM    = (revenue&&netInc!=null) ? netInc/revenue*100 : null;
-    const opM     = (revenue&&opInc!=null)  ? opInc/revenue*100  : null;
-    const ebitdaM = (revenue&&ebitda!=null) ? ebitda/revenue*100 : null;
-
-    const KPI_VALUES={revenue,ebitda,netInc,grossM,netM,opM,ebitdaM,opCF,fcf,capex,cash,debt,eps,rd};
+    let anyVar=false;
+    const cards=_kpiActive.map(kid=>{
+      const m=_kpiMeta(kid);
+      const v=_kpiValue(kid);
+      const disp=_kpiFmtVal(m.fmt,v);
+      // El número del KPI siempre en color base; el color va sólo en la variación.
+      const showVar = !_kpiVarOff.includes(kid) && !_isRatioKey(kid);
+      let badge='';
+      if(showVar){
+        const vv=_kpiVariation(kid);
+        if(vv){
+          anyVar=true;
+          if(vv.nm){
+            badge=`<span style="font-size:10px;color:#4a5280;font-family:var(--mono);">(n/m)</span>`;
+          } else {
+            const sign=vv.pct>=0?'+':'';
+            const col=vv.pct>=0?'#3fb950':'#f85149';
+            badge=`<span style="font-size:11px;font-weight:700;color:${col};font-family:var(--mono);">${sign}${vv.pct.toFixed(1)}%</span>`;
+          }
+        }
+      }
+      return `<div style="padding:10px 18px;border-right:1px solid rgba(30,39,243,0.1);min-width:110px;">
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#4a5280;font-family:var(--mono);margin-bottom:3px;">${m.label}${m.custom?' ƒ':''}</div>
+        <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:#e8eaf6;display:flex;align-items:baseline;gap:6px;">${disp}${badge}</div>
+      </div>`;
+    }).join('');
 
     el.innerHTML=`
       <div style="display:flex;align-items:stretch;flex-wrap:wrap;position:relative;border-top:1px solid rgba(30,39,243,0.12);margin-top:16px;">
-        ${_kpiActive.map(kid=>{
-          const def=KPI_CATALOGUE.find(k=>k.id===kid); if(!def) return '';
-          const v=KPI_VALUES[kid]??null;
-          const disp=v!=null?def.fmt(v):'—';
-          const color=v!=null&&def.color?def.color(v):'#e8eaf6';
-          return `<div style="padding:10px 18px;border-right:1px solid rgba(30,39,243,0.1);min-width:110px;">
-            <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#4a5280;font-family:var(--mono);margin-bottom:3px;">${def.label}</div>
-            <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:${color};">${disp}</div>
-          </div>`;
-        }).join('')}
-        <button onclick="secToggleKpiPanel()" title="Configurar KPIs"
-          style="margin-left:auto;align-self:center;padding:5px 12px;border:1px solid rgba(30,39,243,0.2);border-radius:6px;background:transparent;color:#4a5280;font-size:10px;cursor:pointer;font-family:var(--mono);margin-right:4px;white-space:nowrap;">⚙ KPIs</button>
+        ${cards}
+        <button onclick="secOpenKpiEditor()" title="Configurar KPIs"
+          style="margin-left:auto;align-self:center;padding:5px 12px;border:1px solid rgba(30,39,243,0.2);border-radius:6px;background:transparent;color:#4a5280;font-size:10px;cursor:pointer;font-family:var(--mono);margin-right:4px;white-space:nowrap;">✎ KPIs</button>
       </div>
-      <div id="secKpiPanel" style="display:${_kpiPanelOpen?'block':'none'};padding:12px 16px;border-top:1px solid rgba(30,39,243,0.1);background:#0b0f1e;">
-        <div style="font-size:10px;color:#4a5280;font-family:var(--mono);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;">Seleccioná los KPIs a mostrar:</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;">
-          ${KPI_CATALOGUE.map(k=>`
-            <button onclick="secToggleKpi('${k.id}')" style="padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--mono);border:1px solid ${_kpiActive.includes(k.id)?'#1E27F3':'rgba(30,39,243,0.25)'};background:${_kpiActive.includes(k.id)?'rgba(30,39,243,0.15)':'transparent'};color:${_kpiActive.includes(k.id)?'#a5b4fc':'#4a5280'};">${k.label}</button>
-          `).join('')}
-        </div>
+      ${anyVar?`<div style="font-size:9px;color:#4a5280;font-family:var(--mono);font-style:italic;padding:4px 18px 0;">Δ Variación YoY (vs. mismo período del año anterior)</div>`:''}`;
+  }
+
+  // ── Editor de KPIs (popup con base + personalizadas, igual que tablas) ──
+  window.secOpenKpiEditor = function(){
+    const m=$('secKpiModal'); if(!m) return;
+    m.style.display='flex';
+    _renderKpiEditor();
+  };
+  window.secCloseKpiEditor = function(){ const m=$('secKpiModal'); if(m) m.style.display='none'; _pendingKpiVar=false; };
+
+  function _renderKpiEditor(){
+    const el=$('secKpiModalContent'); if(!el) return;
+    // Chip de selección + (si está activo y no es ratio) un toggle Δ para la variación YoY.
+    const chip=(id,label,active,custom)=>{
+      const varToggle = (active && !_isRatioKey(id)) ? (()=>{
+        const on=!_kpiVarOff.includes(id);
+        return `<button onclick="event.stopPropagation();secToggleKpiVar('${id}')" title="Mostrar variación YoY"
+          style="margin-left:5px;padding:2px 6px;border-radius:8px;font-size:9px;cursor:pointer;font-family:var(--mono);border:1px solid ${on?'#3fb950':'var(--border)'};background:${on?'rgba(63,185,80,0.15)':'transparent'};color:${on?'#3fb950':'var(--text3)'};">Δ</button>`;
+      })() : '';
+      return `<span style="display:inline-flex;align-items:center;">
+        <button onclick="secToggleKpi('${id}')"
+          style="padding:3px 9px;border-radius:10px;font-size:10px;cursor:pointer;font-family:var(--mono);border:1px solid ${active?'#1E27F3':'var(--border)'};background:${active?'rgba(30,39,243,0.15)':'transparent'};color:${active?'#a5b4fc':'var(--text3)'};">${label}${custom?' ƒ':''}</button>${varToggle}
+      </span>`;
+    };
+
+    const baseChips = KPI_CATALOGUE.map(k=>chip(k.id,k.label,_kpiActive.includes(k.id),false)).join('');
+    const customChips = _customVars.length
+      ? _customVars.map(c=>chip(c.id,c.label,_kpiActive.includes(c.id),true)).join('')
+      : '<span style="font-size:10px;color:var(--text3);font-family:var(--mono);">Ninguna aún</span>';
+
+    el.innerHTML=`
+      <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:12px;line-height:1.6;">
+        Elegí qué KPIs mostrar. Podés usar variables base o personalizadas (las mismas de tablas y gráficos). El botón <span style="color:#3fb950;">Δ</span> activa la variación YoY de cada KPI.
+      </div>
+      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;">Variables base</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px;">${baseChips}</div>
+      <div style="font-size:10px;color:#a5b4fc;font-family:var(--mono);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;">Personalizadas</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px;">${customChips}</div>
+      <div style="display:flex;gap:8px;border-top:1px solid var(--border);padding-top:14px;">
+        <button onclick="secNewKpiVar()" style="flex:1;padding:9px;border-radius:8px;border:1px solid rgba(30,39,243,0.5);background:rgba(30,39,243,0.1);color:#a5b4fc;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">+ Variable nueva</button>
+        <button onclick="secCloseKpiEditor()" style="flex:1;padding:9px;border-radius:8px;border:none;background:#1E27F3;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">Listo</button>
       </div>`;
   }
 
-  window.secToggleKpiPanel = function(){
-    _kpiPanelOpen=!_kpiPanelOpen;
-    const p=$('secKpiPanel'); if(p) p.style.display=_kpiPanelOpen?'block':'none';
+  window.secToggleKpiVar = function(kid){
+    if(_kpiVarOff.includes(kid)) _kpiVarOff=_kpiVarOff.filter(k=>k!==kid);
+    else _kpiVarOff.push(kid);
+    _renderKpiBar(_lastFacts);
+    _renderKpiEditor();
   };
+
   window.secToggleKpi = function(kid){
     if(_kpiActive.includes(kid)) _kpiActive=_kpiActive.filter(k=>k!==kid);
     else _kpiActive.push(kid);
     _renderKpiBar(_lastFacts);
+    _renderKpiEditor();
   };
 
-  // ── Chart dashboard helpers ──
-  function _renderOneDashChart(cid, metricId, period, xDir, chartRange){
-    const meta = CHART_METRICS.find(m=>m.id===metricId)||CHART_METRICS[0];
-    const isQ = period==='quarterly';
-    const S = _buildAllSeries(_lastFacts, isQ);
-    let data = (S[meta.field]||[]);
-    // Apply range: take last N from sorted-by-date array, then apply direction
-    const cr = chartRange||20;
-    data = data.slice(-cr);
+  // Crear variable nueva desde el editor de KPIs (global), y al guardar activarla como KPI.
+  let _pendingKpiVar = false;
+  window.secNewKpiVar = function(){
+    _pendingKpiVar = true;
+    _varModalTableId = null;
+    _varDraft = _blankDraft();
+    _modalView = 'editor';
+    const km=$('secKpiModal'); if(km) km.style.display='none';
+    const modal=$('secVarModal'); if(modal) modal.style.display='flex';
+    _renderModal();
+  };
+
+  // ── Migración: garantiza que un chartDef tenga .series[] ──
+  // Formato viejo: {metric}. Formato nuevo: {series:[{metric,type,color,axis}]}.
+  const _CHART_PALETTE = ['#1E27F3','#22c55e','#f59e0b','#ef4444','#a855f7','#06b6d4','#ec4899','#84cc16'];
+  function _ensureSeries(def){
+    if(!def.series){
+      def.series = [{metric:def.metric||'revenue', type:'bar', color:_CHART_PALETTE[0], axis:'left'}];
+      delete def.metric;
+    }
+    // backfill defaults
+    def.series.forEach((s,i)=>{
+      if(!s.type) s.type='bar';
+      if(!s.color) s.color=_CHART_PALETTE[i%_CHART_PALETTE.length];
+      if(!s.axis) s.axis = _chartMetaFor(s.metric).unit==='%' ? 'right' : 'left';
+    });
+    if(def.stacked===undefined) def.stacked=false;
+    if(def.width===undefined) def.width=100;
+    if(def.order===undefined){
+      // al final del orden plano (todos los charts + todas las tablas)
+      const maxT=_secTableDefs.reduce((m,d)=>Math.max(m,d.order??-1),-1);
+      const maxC=_chartDefs.reduce((m,d)=>Math.max(m,d.order??-1),-1);
+      def.order=Math.max(maxT,maxC)+1;
+    }
+    return def;
+  }
+
+  // Resuelve metadata de una métrica de gráfico (fija o custom c_).
+  function _chartMetaFor(metricId){
+    if(metricId && metricId.startsWith('c_')){
+      const cv=_getCustomVar(metricId);
+      if(cv){
+        const unit = (cv.fmt==='pct')?'%':(cv.fmt==='M'||cv.fmt==='raw')?'M':'num';
+        return {custom:true, cv, label:cv.label, unit, type:'bar', color:'#1E27F3'};
+      }
+    }
+    const m = CHART_METRICS.find(x=>x.id===metricId)||CHART_METRICS[0];
+    return {custom:false, field:m.field, label:m.label, unit:m.unit, type:m.type, color:m.color};
+  }
+
+  // Serie de datos {labels, vals} para una métrica, con rango/dirección aplicados.
+  function _chartSeriesData(metricId, isQ, cr, xDir){
+    const meta=_chartMetaFor(metricId);
+    let data;
+    if(meta.custom){ data=_seriesForCustom(meta.cv,isQ)||[]; }
+    else { const S=_buildAllSeries(_lastFacts,isQ); data=(S[meta.field]||[]); }
+    data=data.slice(-(cr||20));
     if((xDir||'desc')==='desc') data=[...data].reverse();
-    const labels = data.map(x=>x.yr);
-    const vals   = data.map(x=> meta.unit==='M' ? +(x.val/1e6).toFixed(0) : +x.val.toFixed(2));
+    return {meta, points:data};
+  }
+
+  // ── Render multi-serie con doble eje + stacking ──
+  function _renderOneDashChart(cid){
+    const def=_chartDefs.find(c=>c.id===cid); if(!def) return;
+    _ensureSeries(def);
+    const isQ = def.period==='quarterly';
+    const cr=def.chartRange||20;
+
+    // Eje X: unión de años de todas las series, respetando dirección.
+    const allPoints = def.series.map(s=>_chartSeriesData(s.metric,isQ,cr,def.xDir));
+    const yrSet=[];
+    allPoints.forEach(sp=>sp.points.forEach(p=>{ if(!yrSet.includes(p.yr)) yrSet.push(p.yr); }));
+    // ordenar según dirección usando el orden del primer set como referencia
+    let labels = yrSet;
+    if(allPoints[0] && allPoints[0].points.length){
+      const ref=allPoints[0].points.map(p=>p.yr);
+      labels = [...new Set([...ref, ...yrSet])];
+    }
+
+    let usesRight=false, usesLeft=false;
+    def.series.forEach(s=>{ if(s.axis==='right') usesRight=true; else usesLeft=true; });
+    const dualAxis = usesRight && usesLeft;
+    const datasets = def.series.map((s,i)=>{
+      const sp=allPoints[i]; const meta=sp.meta;
+      const byYr={}; sp.points.forEach(p=>{ byYr[p.yr]= meta.unit==='M' ? +(p.val/1e6).toFixed(0) : +p.val.toFixed(2); });
+      const vals=labels.map(yr=> (yr in byYr)?byYr[yr]:null);
+      const right = s.axis==='right';
+      const isBar = s.type==='bar';
+      const suffix = dualAxis ? (right?' (der.)':' (izq.)') : '';
+      return {
+        type: s.type==='area'?'line':s.type,
+        label: meta.label+suffix,
+        data: vals,
+        yAxisID: right?'y1':'y',
+        backgroundColor: isBar ? s.color+'99' : (s.type==='area'? s.color+'33' : s.color+'22'),
+        borderColor: s.color,
+        borderWidth: isBar?1:2,
+        pointRadius: isBar?0:3,
+        fill: s.type==='area',
+        tension:.3,
+        stack: (isBar && def.stacked) ? (right?'r':'l') : undefined,
+        spanGaps:true,
+      };
+    });
+
+    const fmtTick=(unit)=>(v)=> unit==='%'? v+'%' : (unit==='M'? '$'+Number(v).toLocaleString()+'M' : v);
+    const leftMeta = def.series.find(s=>s.axis!=='right'); const leftUnit=leftMeta?_chartMetaFor(leftMeta.metric).unit:'M';
+    const rightMeta= def.series.find(s=>s.axis==='right'); const rightUnit=rightMeta?_chartMetaFor(rightMeta.metric).unit:'%';
+
+    const scales = {
+      x:{ stacked:def.stacked, ticks:{color:'#8b99c4',font:{size:9}}, grid:{color:'rgba(30,39,243,0.06)'} },
+      y:{ stacked:def.stacked, position:'left', ticks:{color:'#8b99c4',font:{size:9}, callback:fmtTick(leftUnit)}, grid:{color:'rgba(30,39,243,0.06)'} },
+    };
+    if(usesRight){
+      scales.y1={ stacked:def.stacked, position:'right', ticks:{color:'#8b99c4',font:{size:9}, callback:fmtTick(rightUnit)}, grid:{drawOnChartArea:false} };
+    }
+
     const chartCfg={
       responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{backgroundColor:'#131929',borderColor:'rgba(30,39,243,0.3)',borderWidth:1,titleColor:'#e8eaf6',bodyColor:'#8b99c4',callbacks:{label:c=>`${meta.label}: ${meta.unit==='M'?'$'+c.raw.toLocaleString()+'M':meta.unit==='%'?c.raw.toFixed(1)+'%':'$'+c.raw.toFixed(2)}`}}},
-      scales:{x:{ticks:{color:'#8b99c4',font:{size:9}},grid:{color:'rgba(30,39,243,0.06)'}},y:{ticks:{color:'#8b99c4',font:{size:9}},grid:{color:'rgba(30,39,243,0.06)'}}}
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:true, position:'bottom', labels:{color:'#8b99c4',font:{size:9},boxWidth:10,padding:10}},
+        tooltip:{backgroundColor:'#131929',borderColor:'rgba(30,39,243,0.3)',borderWidth:1,titleColor:'#e8eaf6',bodyColor:'#8b99c4'}
+      },
+      scales
     };
     const canvas=document.getElementById(`dashCanvas_${cid}`); if(!canvas) return;
     if(_chartInstances[cid]){_chartInstances[cid].destroy();}
-    _chartInstances[cid]=new Chart(canvas,{
-      type: meta.type,
-      data:{labels,datasets:[{
-        label:meta.label, data:vals,
-        backgroundColor: meta.type==='bar'?meta.color+'99':meta.color+'22',
-        borderColor: meta.color,
-        borderWidth: meta.type==='bar'?1:2,
-        pointRadius: meta.type==='line'?3:0,
-        fill: meta.type==='line',
-        tension:.3
-      }]},
-      options: chartCfg
-    });
+    _chartInstances[cid]=new Chart(canvas,{ type:'bar', data:{labels,datasets}, options:chartCfg });
   }
 
-  function _buildDashCard(cid, metricId, period, xDir, chartRange){
-    const meta = CHART_METRICS.find(m=>m.id===metricId)||CHART_METRICS[0];
-    const dir=xDir||'desc';
-    const cr=chartRange||20; // default: show all available (capped at 20)
-    const rangeOpts=[5,8,10,15,20].map(n=>`<option value="${n}"${n===cr?' selected':''}>${n}</option>`).join('');
-    return `<div id="dashCard_${cid}" style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:14px;position:relative;">
-      <div style="display:flex;align-items:center;gap:5px;margin-bottom:8px;flex-wrap:wrap;">
-        <!-- Metric search input -->
-        <div style="position:relative;flex:1;min-width:140px;">
-          <input id="chartSearch_${cid}" type="text" value="${meta.label}"
-            placeholder="Buscar métrica..."
-            oninput="secChartSearch(${cid},this.value)"
-            onfocus="secChartSearchShow(${cid})"
-            onblur="setTimeout(()=>secChartSearchHide(${cid}),200)"
-            style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 8px;outline:none;font-weight:700;cursor:pointer;" />
-          <div id="chartDrop_${cid}" style="display:none;position:absolute;top:calc(100%+3px);left:0;right:0;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;max-height:180px;overflow-y:auto;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,0.3);"></div>
-        </div>
-        <!-- Period toggle -->
-        <div style="display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:5px;overflow:hidden;flex-shrink:0;">
-          <button onclick="secUpdateChart(${cid},'period','annual')"
-            style="padding:3px 8px;font-size:9px;font-weight:700;cursor:pointer;border:none;background:${period==='annual'?'#1E27F3':'transparent'};color:${period==='annual'?'#fff':'var(--text3)'};font-family:var(--mono);">Anual</button>
-          <button onclick="secUpdateChart(${cid},'period','quarterly')"
-            style="padding:3px 8px;font-size:9px;font-weight:700;cursor:pointer;border:none;background:${period==='quarterly'?'#1E27F3':'transparent'};color:${period==='quarterly'?'#fff':'var(--text3)'};font-family:var(--mono);">Trim.</button>
-        </div>
-        <!-- Range -->
-        <label style="font-size:9px;color:var(--text3);font-family:var(--mono);display:flex;align-items:center;gap:3px;flex-shrink:0;">
-          Ult.
-          <select onchange="secUpdateChart(${cid},'chartRange',+this.value)"
-            style="background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text2);font-family:var(--mono);font-size:9px;padding:2px 4px;outline:none;">
-            ${rangeOpts}
-          </select>
-        </label>
-        <!-- Dir -->
-        <button onclick="secUpdateChart(${cid},'xDir','${dir==='desc'?'asc':'desc'}')"
-          style="padding:2px 7px;font-size:9px;font-weight:700;cursor:pointer;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text3);font-family:var(--mono);flex-shrink:0;">${dir==='desc'?'↔ Asc':'↔ Desc'}</button>
-        <span style="flex:1"></span>
-        <button onclick="secMinimizeChart(${cid})" title="Minimizar"
-          style="padding:2px 6px;font-size:10px;cursor:pointer;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text3);font-family:var(--mono);">-</button>
-        <button onclick="secRemoveChart(${cid})"
-          style="padding:2px 6px;font-size:10px;cursor:pointer;border:1px solid rgba(248,81,73,0.3);border-radius:4px;background:transparent;color:#f85149;font-family:var(--mono);">✕</button>
+  function _buildDashCard(cid){
+    const def=_chartDefs.find(c=>c.id===cid); if(!def) return '';
+    _ensureSeries(def);
+    const autoTitle = def.series.length===1 ? _chartMetaFor(def.series[0].metric).label
+                : def.series.map(s=>_chartMetaFor(s.metric).label).join(' · ');
+    const title = (def.title&&def.title.trim()) ? def.title : autoTitle;
+    return `<div id="dashCard_${cid}" style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;position:relative;">
+      <div style="padding:8px 10px;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--border);font-family:var(--mono);display:flex;align-items:center;gap:6px;flex-wrap:nowrap;">
+        <span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${title}</span>
+        <span style="font-size:9px;color:var(--text3);background:var(--bg3);padding:1px 7px;border-radius:8px;border:1px solid var(--border);flex-shrink:0;">${def.period==='quarterly'?'TRIM':'ANUAL'}</span>
+        <button onclick="secMoveBlock('chart',${cid},-1)" title="Mover" style="padding:1px 5px;font-size:10px;cursor:pointer;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text3);font-family:var(--mono);flex-shrink:0;">↑</button>
+        <button onclick="secMoveBlock('chart',${cid},1)" title="Mover" style="padding:1px 5px;font-size:10px;cursor:pointer;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text3);font-family:var(--mono);flex-shrink:0;">↓</button>
+        <button onclick="secOpenChartEditor(${cid})" title="Editar gráfico" style="padding:2px 8px;font-size:10px;cursor:pointer;border:1px solid var(--border2);border-radius:4px;background:transparent;color:var(--text3);font-family:var(--mono);flex-shrink:0;">✎</button>
+        <button onclick="secRemoveChart(${cid})" style="padding:2px 6px;font-size:10px;cursor:pointer;border:1px solid rgba(248,81,73,0.3);border-radius:4px;background:transparent;color:#f85149;font-family:var(--mono);flex-shrink:0;">✕</button>
       </div>
-      <div id="dashBody_${cid}" style="position:relative;height:200px;">
+      <div id="dashBody_${cid}" style="position:relative;height:220px;padding:12px;">
         <canvas id="dashCanvas_${cid}"></canvas>
       </div>
     </div>`;
   }
 
-  // Chart metric search
-  window.secChartSearch = function(cid, q){
-    const drop=document.getElementById(`chartDrop_${cid}`); if(!drop) return;
-    const ql=(q||'').toLowerCase();
-    const results=ql ? CHART_METRICS.filter(m=>m.label.toLowerCase().includes(ql)||m.group.toLowerCase().includes(ql)) : CHART_METRICS;
-    drop.style.display='block';
-    drop.innerHTML=results.map(m=>`
-      <div onmousedown="secUpdateChart(${cid},'metric','${m.id}');secChartSearchHide(${cid})"
-        style="padding:6px 10px;cursor:pointer;font-size:11px;font-family:var(--mono);color:var(--text2);display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);"
-        onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''">
-        <span style="font-size:9px;color:var(--text3);min-width:52px;">${m.group}</span>
-        <span style="font-weight:600;">${m.label}</span>
-        <span style="font-size:9px;color:var(--text3);margin-left:auto;">${m.unit}</span>
-      </div>`).join('');
-    if(!results.length) drop.innerHTML='<div style="padding:8px 12px;font-size:11px;color:var(--text3);font-family:var(--mono);">Sin resultados</div>';
+  // ══════════════════════════════════════════════════════════════
+  // MODAL DE EDICIÓN DE GRÁFICO (multi-serie)
+  // ══════════════════════════════════════════════════════════════
+  let _chartModalId = null;
+
+
+  window.secOpenChartEditor = function(cid){
+    _chartModalId=cid;
+    const modal=$('secChartModal'); if(!modal) return;
+    modal.style.display='flex';
+    _renderChartEditor();
   };
-  window.secChartSearchShow = function(cid){
-    const inp=document.getElementById(`chartSearch_${cid}`);
-    if(inp) { inp.select(); secChartSearch(cid, ''); }
-  };
-  window.secChartSearchHide = function(cid){
-    const drop=document.getElementById(`chartDrop_${cid}`);
-    if(drop) drop.style.display='none';
+  window.secCloseChartEditor = function(){
+    const modal=$('secChartModal'); if(modal) modal.style.display='none';
+    _chartModalId=null; _pendingChartVar=null;
   };
 
-  function _dashGridCols(n){
-    if(n===1) return '1fr';
-    if(n===2) return '1fr 1fr';
-    return '1fr 1fr'; // 3+ = 2 cols, last card spans full if odd
+  function _renderChartEditor(){
+    const el=$('secChartModalContent'); if(!el) return;
+    const def=_chartDefs.find(c=>c.id===_chartModalId);
+    if(!def){ el.innerHTML='<div style="color:var(--text3);font-family:var(--mono);font-size:12px;padding:14px;">Gráfico no encontrado.</div>'; return; }
+    _ensureSeries(def);
+
+    const rangeOpts=[5,8,10,15,20].map(n=>`<option value="${n}"${n===(def.chartRange||20)?' selected':''}>${n}</option>`).join('');
+    const hasBars = def.series.some(s=>s.type==='bar');
+
+    const seriesRows = def.series.map((s,i)=>{
+      const meta=_chartMetaFor(s.metric);
+      const typeOpts=[['bar','Barra'],['line','Línea'],['area','Área']].map(([v,l])=>`<option value="${v}"${s.type===v?' selected':''}>${l}</option>`).join('');
+      return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;flex-wrap:wrap;">
+        <input type="color" value="${s.color}" onchange="secChartSeriesSet(${i},'color',this.value)" style="width:28px;height:24px;border:none;background:none;cursor:pointer;padding:0;" />
+        <span style="flex:1;min-width:120px;font-size:11px;font-weight:700;color:var(--text);font-family:var(--mono);">${meta.label}${meta.custom?' <span style=\"font-size:8px;color:#a5b4fc;\">ƒ</span>':''}</span>
+        <select onchange="secChartSeriesSet(${i},'type',this.value)" style="background:var(--bg2);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:10px;padding:3px 6px;outline:none;">${typeOpts}</select>
+        <div style="display:flex;background:var(--bg2);border:1px solid var(--border);border-radius:5px;overflow:hidden;">
+          <button onclick="secChartSeriesSet(${i},'axis','left')" style="padding:3px 8px;font-size:9px;font-weight:700;cursor:pointer;border:none;background:${s.axis!=='right'?'#1E27F3':'transparent'};color:${s.axis!=='right'?'#fff':'var(--text3)'};font-family:var(--mono);">Izq</button>
+          <button onclick="secChartSeriesSet(${i},'axis','right')" style="padding:3px 8px;font-size:9px;font-weight:700;cursor:pointer;border:none;background:${s.axis==='right'?'#1E27F3':'transparent'};color:${s.axis==='right'?'#fff':'var(--text3)'};font-family:var(--mono);">Der</button>
+        </div>
+        ${def.series.length>1?`<button onclick="secChartSeriesRemove(${i})" style="padding:2px 7px;font-size:10px;cursor:pointer;border:1px solid rgba(248,81,73,0.3);border-radius:5px;background:transparent;color:#f85149;font-family:var(--mono);">✕</button>`:''}
+      </div>`;
+    }).join('');
+
+    el.innerHTML = `
+      <div style="margin-bottom:14px;">
+        <label style="font-size:11px;color:var(--text3);font-family:var(--mono);display:flex;align-items:center;gap:6px;">Título:
+          <input type="text" value="${(def.title||'').replace(/"/g,'&quot;')}" oninput="secChartTitleInput(this.value)" placeholder="(auto: nombres de series)"
+            style="flex:1;background:var(--bg2);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:12px;padding:5px 10px;outline:none;" />
+        </label>
+      </div>
+      <div style="display:flex;gap:14px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
+        <div style="display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:6px;overflow:hidden;">
+          <button onclick="secChartCfgSet('period','annual')" style="padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;border:none;background:${def.period!=='quarterly'?'#1E27F3':'transparent'};color:${def.period!=='quarterly'?'#fff':'var(--text3)'};font-family:var(--mono);">Anual</button>
+          <button onclick="secChartCfgSet('period','quarterly')" style="padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;border:none;background:${def.period==='quarterly'?'#1E27F3':'transparent'};color:${def.period==='quarterly'?'#fff':'var(--text3)'};font-family:var(--mono);">Trim.</button>
+        </div>
+        <label style="font-size:11px;color:var(--text3);font-family:var(--mono);display:flex;align-items:center;gap:5px;">Últimos:
+          <select onchange="secChartCfgSet('chartRange',+this.value)" style="background:var(--bg2);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 7px;outline:none;">${rangeOpts}</select>
+        </label>
+        <button onclick="secChartCfgSet('xDir','${(def.xDir||'desc')==='desc'?'asc':'desc'}')" style="padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--border2);border-radius:6px;background:transparent;color:var(--text3);font-family:var(--mono);">↔ ${(def.xDir||'desc')==='desc'?'Desc':'Asc'}</button>
+        <label style="font-size:11px;color:var(--text3);font-family:var(--mono);display:flex;align-items:center;gap:5px;">Ancho:
+          <select onchange="secChartCfgSet('width',+this.value)" style="background:var(--bg2);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 7px;outline:none;">
+            ${[{v:100,l:'100%'},{v:50,l:'50%'},{v:33,l:'33%'}].map(o=>`<option value="${o.v}"${(def.width||100)===o.v?' selected':''}>${o.l}</option>`).join('')}
+          </select>
+        </label>
+        ${hasBars?`<label style="font-size:11px;color:var(--text3);font-family:var(--mono);display:flex;align-items:center;gap:5px;cursor:pointer;">
+          <input type="checkbox" ${def.stacked?'checked':''} onchange="secChartCfgSet('stacked',this.checked)" /> Apilar barras
+        </label>`:''}
+      </div>
+
+      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;">Series</div>
+      ${seriesRows}
+
+      <button onclick="secChartOpenAdd()" style="width:100%;margin-top:8px;padding:9px;border-radius:8px;border:1px dashed rgba(30,39,243,0.5);background:rgba(30,39,243,0.06);color:#a5b4fc;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">+ Agregar serie</button>
+
+      <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+        <button onclick="secCloseChartEditor()" style="padding:7px 18px;border-radius:7px;border:none;background:#1E27F3;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">Listo</button>
+      </div>`;
+
+    _liveRenderChart();
   }
+
+  // Título editable: actualiza estado sin re-render (no pierde foco).
+  window.secChartTitleInput = function(val){
+    const def=_chartDefs.find(c=>c.id===_chartModalId); if(!def) return;
+    def.title=val; _liveRenderChart();
+  };
+
+  function _liveRenderChart(){
+    if(_chartModalId==null) return;
+    const cid=_chartModalId;
+    const card=$(`dashCard_${cid}`);
+    if(card){
+      const wrapper=card.parentElement;
+      // actualizar el ancho del wrapper según def.width
+      const def=_chartDefs.find(c=>c.id===cid);
+      if(def && wrapper){
+        const basisMap={100:'100%',50:'calc(50% - 8px)',33:'calc(33.33% - 11px)'};
+        wrapper.style.flex=`0 0 ${basisMap[def.width||100]||'100%'}`;
+        wrapper.style.minWidth='280px';
+      }
+      const tmp=document.createElement('div'); tmp.innerHTML=_buildDashCard(cid);
+      wrapper.replaceChild(tmp.firstElementChild, card);
+      setTimeout(()=>_renderOneDashChart(cid),20);
+    }
+  }
+
+  window.secChartCfgSet = function(field,val){
+    const def=_chartDefs.find(c=>c.id===_chartModalId); if(!def) return;
+    def[field]=val; _renderChartEditor();
+  };
+  window.secChartSeriesSet = function(i,field,val){
+    const def=_chartDefs.find(c=>c.id===_chartModalId); if(!def||!def.series[i]) return;
+    def.series[i][field]=val; _renderChartEditor();
+  };
+  window.secChartSeriesRemove = function(i){
+    const def=_chartDefs.find(c=>c.id===_chartModalId); if(!def) return;
+    def.series.splice(i,1);
+    if(!def.series.length) def.series=[{metric:'revenue',type:'bar',color:_CHART_PALETTE[0],axis:'left'}];
+    _renderChartEditor();
+  };
+  // ── Popup "Agregar serie": chips toggleables (como filas de tablas) ──
+  window.secChartOpenAdd = function(){
+    _chartAddFilter='';
+    const m=$('secChartAddModal'); if(m){ m.style.display='flex'; _renderChartAdd(); }
+  };
+  window.secChartCloseAdd = function(){ const m=$('secChartAddModal'); if(m) m.style.display='none'; };
+  let _chartAddFilter='';
+  window.secChartAddSearch = function(q){ _chartAddFilter=q||''; _renderChartAdd(); };
+
+  function _renderChartAdd(){
+    const el=$('secChartAddContent'); if(!el) return;
+    const def=_chartDefs.find(c=>c.id===_chartModalId); if(!def) return;
+    const inUse=new Set(def.series.map(s=>s.metric));
+    const ql=_chartAddFilter.toLowerCase();
+    const fixed=ql?CHART_METRICS.filter(m=>m.label.toLowerCase().includes(ql)||m.group.toLowerCase().includes(ql)):CHART_METRICS;
+    const customs=ql?_customVars.filter(c=>c.label.toLowerCase().includes(ql)):_customVars;
+
+    // Agrupar fijas por grupo, como en tablas
+    const byGroup={};
+    fixed.forEach(m=>{ if(!byGroup[m.group]) byGroup[m.group]=[]; byGroup[m.group].push(m); });
+    const chip=(id,label,active,custom)=>`<button onclick="secChartToggleSeries('${id}')"
+      style="padding:3px 9px;border-radius:10px;font-size:10px;cursor:pointer;font-family:var(--mono);border:1px solid ${active?'#1E27F3':'var(--border)'};background:${active?'rgba(30,39,243,0.15)':'transparent'};color:${active?'#a5b4fc':'var(--text3)'};">${label}${custom?' ƒ':''}</button>`;
+
+    const fixedHtml=Object.entries(byGroup).map(([grp,rows])=>`
+      <div style="margin-bottom:6px;display:flex;align-items:flex-start;flex-wrap:wrap;gap:4px;">
+        <span style="font-size:9px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;min-width:100px;padding-top:3px;">${grp}</span>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;">${rows.map(m=>chip(m.id,m.label,inUse.has(m.id),false)).join('')}</div>
+      </div>`).join('');
+
+    const customHtml=`<div style="margin-bottom:6px;display:flex;align-items:flex-start;flex-wrap:wrap;gap:4px;border-top:1px dashed var(--border);padding-top:10px;margin-top:6px;">
+        <span style="font-size:9px;color:#a5b4fc;font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;min-width:100px;padding-top:3px;">Personalizadas</span>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;">${customs.length?customs.map(c=>chip(c.id,c.label,inUse.has(c.id),true)).join(''):'<span style="font-size:10px;color:var(--text3);font-family:var(--mono);">Ninguna aún</span>'}</div>
+      </div>`;
+
+    el.innerHTML=`
+      <input type="text" value="${_chartAddFilter.replace(/"/g,'&quot;')}" placeholder="Buscar métrica o variable..." oninput="secChartAddSearch(this.value)"
+        style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:6px 10px;font-size:12px;color:var(--text);font-family:var(--mono);outline:none;margin-bottom:12px;" />
+      <div style="max-height:340px;overflow-y:auto;margin-bottom:12px;">
+        ${fixedHtml}
+        ${customHtml}
+      </div>
+      <div style="display:flex;gap:8px;border-top:1px solid var(--border);padding-top:12px;">
+        <button onclick="secNewChartVar(${_chartModalId})" style="flex:1;padding:9px;border-radius:8px;border:1px solid rgba(30,39,243,0.5);background:rgba(30,39,243,0.1);color:#a5b4fc;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">+ Variable nueva</button>
+        <button onclick="secChartCloseAdd()" style="flex:1;padding:9px;border-radius:8px;border:none;background:#1E27F3;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">Listo</button>
+      </div>`;
+  }
+
+  // Toggle: agrega o quita la serie del gráfico.
+  window.secChartToggleSeries = function(metricId){
+    const def=_chartDefs.find(c=>c.id===_chartModalId); if(!def) return;
+    const idx=def.series.findIndex(s=>s.metric===metricId);
+    if(idx>=0){
+      if(def.series.length>1) def.series.splice(idx,1);
+    } else {
+      const i=def.series.length;
+      const axis=_chartMetaFor(metricId).unit==='%'?'right':'left';
+      def.series.push({metric:metricId, type:'bar', color:_CHART_PALETTE[i%_CHART_PALETTE.length], axis});
+    }
+    _renderChartAdd();
+    _renderChartEditor();
+  };
+
+  // Abre el editor de variables (global) desde un gráfico. Al guardar, agrega la serie.
+  window.secNewChartVar = function(cid){
+    _pendingChartVar = (cid!=null?cid:_chartModalId);
+    _varModalTableId = null;
+    _varDraft = _blankDraft();
+    _modalView = 'editor';
+    const am=$('secChartAddModal'); if(am) am.style.display='none';
+    const cm=$('secChartModal'); if(cm) cm.style.display='none';
+    const modal=$('secVarModal'); if(modal) modal.style.display='flex';
+    _renderModal();
+  };
+  let _pendingChartVar = null;
 
   function _refreshDashboard(){
-    const dash=$('secChartDashboard'); if(!dash) return;
-    const n=_chartDefs.length;
-    dash.style.gridTemplateColumns=_dashGridCols(n);
-    dash.innerHTML=_chartDefs.map((c,i)=>{
-      const span=(n%2!==0&&i===n-1)?'grid-column:1/-1;':'';
-      return `<div style="${span}">${_buildDashCard(c.id,c.metric,c.period,c.xDir,c.chartRange).replace('<div id="dashCard_','<div style="height:100%" id="dashCard_')}</div>`;
-    }).join('');
-    _chartDefs.forEach(c=>{ setTimeout(()=>_renderOneDashChart(c.id,c.metric,c.period,c.xDir,c.chartRange),30); });
+    // Charts ahora viven en el contenedor unificado junto a las tablas.
+    const old=$('secChartDashboard'); if(old){ old.style.display='none'; old.innerHTML=''; }
+    _renderAllTables();
   }
 
-  window.secUpdateChart = function(cid, prop, val){
-    const def=_chartDefs.find(c=>c.id===cid); if(!def) return;
-    def[prop]=val;
-    const card=$(`dashCard_${cid}`); if(!card) return;
-    const wrapper=card.parentElement;
-    const tempDiv=document.createElement('div');
-    tempDiv.innerHTML=_buildDashCard(cid,def.metric,def.period,def.xDir,def.chartRange);
-    wrapper.replaceChild(tempDiv.firstElementChild,card);
-    // Update search input label to current metric name
-    const inp=document.getElementById(`chartSearch_${cid}`);
-    if(inp){ const m=CHART_METRICS.find(m=>m.id===def.metric); if(m) inp.value=m.label; }
-    setTimeout(()=>_renderOneDashChart(cid,def.metric,def.period,def.xDir,def.chartRange),30);
-  };
-
-  window.secMinimizeChart = function(cid){
-    const body=$(`dashBody_${cid}`); if(!body) return;
-    const minimized=body.style.display==='none';
-    body.style.display=minimized?'':'none';
-    const card=$(`dashCard_${cid}`); if(!card) return;
-    const minBtn=[...card.querySelectorAll('button')].find(b=>b.title==='Minimizar');
-    if(minBtn) minBtn.textContent=minimized?'-':'□';
+  // Mueve un bloque (chart o tabla) en el orden plano único.
+  window.secMoveBlock = function(kind, id, dir){
+    const blocks=[
+      ..._chartDefs.map(c=>({kind:'chart', id:c.id, ref:c})),
+      ..._secTableDefs.map(d=>({kind:'table', id:d.id, ref:d})),
+    ].sort((a,b)=>(a.ref.order??0)-(b.ref.order??0));
+    blocks.forEach((b,i)=>{ b.ref.order=i; }); // normaliza 0..n-1
+    const idx=blocks.findIndex(b=>b.kind===kind && b.id===id);
+    const j=idx+dir;
+    if(idx<0 || j<0 || j>=blocks.length) return;
+    const a=blocks[idx].ref, b=blocks[j].ref;
+    const tmp=a.order; a.order=b.order; b.order=tmp;
+    _renderAllTables();
   };
 
   window.secRemoveChart = function(cid){
     _chartDefs=_chartDefs.filter(c=>c.id!==cid);
     if(_chartInstances[cid]){_chartInstances[cid].destroy();delete _chartInstances[cid];}
-    _refreshDashboard(); // re-render for correct grid
+    _refreshDashboard();
   };
 
   window.secAddChart = function(){
     const cid=++_chartIdSeq;
-    const used=_chartDefs.map(c=>c.metric);
+    const used=_chartDefs.flatMap(c=>(c.series||[]).map(s=>s.metric));
     const next=CHART_METRICS.find(m=>!used.includes(m.id))||CHART_METRICS[0];
-    _chartDefs.push({id:cid,metric:next.id,period:'annual',xDir:'desc',chartRange:10});
+    const maxOrd=Math.max(
+      _secTableDefs.filter(d=>!d.isQ).reduce((m,d)=>Math.max(m,d.order??-1),-1),
+      _chartDefs.reduce((m,d)=>Math.max(m,d.order??-1),-1));
+    _chartDefs.push({id:cid,series:[{metric:next.id,type:'bar',color:_CHART_PALETTE[0],axis:'left'}],period:'annual',xDir:'desc',chartRange:10,stacked:false,width:100,order:maxOrd+1});
     _refreshDashboard();
   };
 
@@ -13931,6 +14261,826 @@ function openDetail(especie){
   let _secSeriesA    = null;
   let _secSeriesQ    = null;
   let _secRatioSets  = null; // cached computed ratio series
+
+  // ══════════════════════════════════════════════════════════════
+  // VARIABLES PERSONALIZADAS (custom metrics) — por empresa
+  // Cada custom var:
+  // Cada custom var:
+  //   { id, label, expr, type:'flow'|'stock', fmt }
+  //   expr = fórmula de texto: tags entre comillas, + - * /, paréntesis, abs(...)
+  //   Ej: "OperatingIncomeLoss" + abs("DepreciationDepletionAndAmortization")
+  // ══════════════════════════════════════════════════════════════
+  let _customVars = []; // se resetea/recarga por ticker
+  let _customVarIdSeq = 0;
+
+  // Extrae una serie directa desde un tag XBRL crudo, según tipo flow/stock.
+  function _seriesFromTag(tag, type, isQ){
+    if(!_lastFacts || !tag) return [];
+    const ns = _getNS(_lastFacts);
+    if(type==='stock'){
+      return isQ ? _seriesBSQ(ns, tag) : _seriesBSAnnual(ns, tag);
+    }
+    return isQ ? _seriesQ(ns, tag) : _seriesAnnual(ns, tag);
+  }
+
+  // ── Funciones disponibles en fórmulas (extensible: sumá entradas acá) ──
+  // Cada función recibe arrays de operandos ya evaluados a número y devuelve número.
+  const FORMULA_FUNCS = {
+    abs: (a)=>Math.abs(a),
+    neg: (a)=>-a,
+    min: (...a)=>Math.min(...a),
+    max: (...a)=>Math.max(...a),
+  };
+
+  // ── Tokenizer ──
+  // Produce tokens: {t:'num',v}, {t:'tag',v}, {t:'op',v}, {t:'lp'},{t:'rp'},
+  //                 {t:'func',v}, {t:'comma'}
+  function _tokenizeFormula(str){
+    const tokens=[]; let i=0; const s=str||'';
+    while(i<s.length){
+      const c=s[i];
+      if(c===' '||c==='\t'||c==='\n'){ i++; continue; }
+      if(c==='"'){ // tag entre comillas
+        let j=i+1, buf='';
+        while(j<s.length && s[j]!=='"'){ buf+=s[j]; j++; }
+        if(j>=s.length) throw new Error('Comillas sin cerrar');
+        tokens.push({t:'tag', v:buf}); i=j+1; continue;
+      }
+      if(c==='('){ tokens.push({t:'lp'}); i++; continue; }
+      if(c===')'){ tokens.push({t:'rp'}); i++; continue; }
+      if(c===','){ tokens.push({t:'comma'}); i++; continue; }
+      if('+-*/'.includes(c)){ tokens.push({t:'op', v:c}); i++; continue; }
+      if(/[0-9.]/.test(c)){
+        let j=i, buf='';
+        while(j<s.length && /[0-9.]/.test(s[j])){ buf+=s[j]; j++; }
+        tokens.push({t:'num', v:parseFloat(buf)}); i=j; continue;
+      }
+      if(/[a-zA-Z_]/.test(c)){ // nombre de función
+        let j=i, buf='';
+        while(j<s.length && /[a-zA-Z0-9_]/.test(s[j])){ buf+=s[j]; j++; }
+        tokens.push({t:'func', v:buf}); i=j; continue;
+      }
+      throw new Error('Caracter inesperado: '+c);
+    }
+    return tokens;
+  }
+
+  // ── Shunting-yard → RPN (precedencia matemática estándar) ──
+  function _toRPN(tokens){
+    const out=[], ops=[];
+    const prec={'+':1,'-':1,'*':2,'/':2};
+    for(let k=0;k<tokens.length;k++){
+      const tk=tokens[k];
+      if(tk.t==='num'||tk.t==='tag'){ out.push(tk); }
+      else if(tk.t==='func'){
+        if(!FORMULA_FUNCS[tk.v]) throw new Error('Función desconocida: '+tk.v+'()');
+        ops.push(tk);
+      }
+      else if(tk.t==='comma'){
+        while(ops.length && ops[ops.length-1].t!=='lp') out.push(ops.pop());
+        if(!ops.length) throw new Error('Coma fuera de función');
+      }
+      else if(tk.t==='op'){
+        // operador unario menos: al inicio, tras otro op, o tras '('
+        const prev=tokens[k-1];
+        const unary = tk.v==='-' && (!prev || prev.t==='op' || prev.t==='lp' || prev.t==='comma');
+        if(unary){ ops.push({t:'func', v:'neg'}); continue; }
+        while(ops.length){
+          const top=ops[ops.length-1];
+          if(top.t==='op' && prec[top.v]>=prec[tk.v]) out.push(ops.pop());
+          else if(top.t==='func') out.push(ops.pop());
+          else break;
+        }
+        ops.push(tk);
+      }
+      else if(tk.t==='lp'){ ops.push(tk); }
+      else if(tk.t==='rp'){
+        while(ops.length && ops[ops.length-1].t!=='lp') out.push(ops.pop());
+        if(!ops.length) throw new Error('Paréntesis desbalanceados');
+        ops.pop(); // descarta '('
+        if(ops.length && ops[ops.length-1].t==='func') out.push(ops.pop());
+      }
+    }
+    while(ops.length){
+      const top=ops.pop();
+      if(top.t==='lp') throw new Error('Paréntesis desbalanceados');
+      out.push(top);
+    }
+    return out;
+  }
+
+  // Devuelve la lista de tags referenciados en una expresión (para validación).
+  function _exprTags(expr){
+    try{ return _tokenizeFormula(expr).filter(t=>t.t==='tag').map(t=>t.v); }
+    catch(_){ return []; }
+  }
+
+  // Compila una expresión a RPN una sola vez; devuelve {rpn} o lanza error.
+  function _compileExpr(expr){
+    const toks=_tokenizeFormula(expr);
+    if(!toks.length) throw new Error('Fórmula vacía');
+    return _toRPN(toks);
+  }
+
+  // Evalúa la RPN para un año dado. Devuelve {ok, val}. ok=false si falta un tag ese año.
+  function _evalRPNForYear(rpn, tagSeriesMap, yr){
+    const st=[];
+    for(const tk of rpn){
+      if(tk.t==='num'){ st.push(tk.v); }
+      else if(tk.t==='tag'){
+        const ser=tagSeriesMap[tk.v];
+        const p=ser?ser.find(x=>x.yr===yr):null;
+        if(!p) return {ok:false}; // sin dato ese año → fila no se muestra
+        st.push(p.val);
+      }
+      else if(tk.t==='op'){
+        const b=st.pop(), a=st.pop();
+        if(tk.v==='+') st.push(a+b);
+        else if(tk.v==='-') st.push(a-b);
+        else if(tk.v==='*') st.push(a*b);
+        else if(tk.v==='/') st.push(b!==0?a/b:NaN);
+      }
+      else if(tk.t==='func'){
+        const fn=FORMULA_FUNCS[tk.v];
+        const arity = (tk.v==='min'||tk.v==='max') ? Math.min(st.length,2) : 1;
+        // min/max pueden tener N args; tomamos lo disponible en el stack del nivel
+        if(tk.v==='min'||tk.v==='max'){
+          // Para simplicidad, min/max binario sobre los 2 tope (suficiente para uso típico)
+          const b=st.pop(), a=st.pop(); st.push(fn(a,b));
+        } else {
+          const a=st.pop(); st.push(fn(a));
+        }
+      }
+    }
+    const v=st.pop();
+    return (isFinite(v)) ? {ok:true, val:v} : {ok:false};
+  }
+
+  // Resuelve la serie de una custom var a partir de su expresión.
+  function _seriesForCustom(cv, isQ){
+    if(!cv || !cv.expr) return [];
+    let rpn;
+    try{ rpn=_compileExpr(cv.expr); }catch(_){ return []; }
+    const tags=[...new Set(rpn.filter(t=>t.t==='tag').map(t=>t.v))];
+    if(!tags.length) return [];
+    // Serie por tag (según tipo flow/stock de la var)
+    const tagSeriesMap={};
+    for(const tg of tags){ tagSeriesMap[tg]=_seriesFromTag(tg, cv.type||'flow', isQ); }
+    // Conjunto de años candidatos: unión de años de todos los tags
+    const yrs=[...new Set(Object.values(tagSeriesMap).flat().map(p=>p.yr))].sort();
+    const dateByYr={};
+    Object.values(tagSeriesMap).flat().forEach(p=>{ if(!dateByYr[p.yr]) dateByYr[p.yr]=p.date; });
+    const out=[];
+    for(const yr of yrs){
+      const r=_evalRPNForYear(rpn, tagSeriesMap, yr);
+      if(r.ok) out.push({yr, val:r.val, date:dateByYr[yr]});
+    }
+    return out;
+  }
+
+  function _getCustomVar(id){ return _customVars.find(c=>c.id===id); }
+
+  // ── Metadata de tags: unidad y si es flujo o stock ──
+  // Devuelve la unidad cruda del tag (USD, shares, USD/shares, pure, EUR...) o ''.
+  function _tagUnit(tag){
+    if(!_lastFacts||!tag) return '';
+    const ns=_getNS(_lastFacts);
+    const node=(ns.gaap[tag]||ns.ifrs[tag]);
+    if(!node||!node.units) return '';
+    const keys=Object.keys(node.units);
+    // Prioridad de lectura
+    return keys.find(k=>k==='USD/shares')||keys.find(k=>k==='USD')||keys.find(k=>k==='shares')||keys.find(k=>k==='pure')||keys[0]||'';
+  }
+  // Mapea unidad SEC → formato de display.
+  function _unitToFmt(unit){
+    if(unit==='USD/shares') return 'dlr';
+    if(unit==='shares')     return 'shares';
+    if(unit==='pure')       return 'raw';  // ambiguo (ratio/%) → crudo, el usuario ajusta
+    if(unit==='USD'||unit==='EUR') return 'M';
+    return 'M';
+  }
+  // Detecta si un tag es flujo (tiene entradas con start) o stock (solo end).
+  function _tagIsFlow(tag){
+    if(!_lastFacts||!tag) return true;
+    const ns=_getNS(_lastFacts);
+    const node=(ns.gaap[tag]||ns.ifrs[tag]);
+    if(!node||!node.units) return true;
+    for(const u of Object.values(node.units)){
+      for(const e of u){ if(e.start) return true; if(e.end&&!e.start) return false; }
+    }
+    return true;
+  }
+
+  // ── Cascadas de las fijas (para "duplicar fija" → expr resuelta a tag) ──
+  // Mismas cascadas que usa _buildAllSeries, en orden de prioridad.
+  const _FIXED_CASCADE = {
+    revenue:['Revenues','Revenue','RevenueFromContractsWithCustomers','RevenueFromContractWithCustomerExcludingAssessedTax','SalesRevenueNet','RevenueNet','InterestAndDividendIncomeOperating'],
+    netInc:['NetIncomeLoss','ProfitLoss','ProfitLossAttributableToOwnersOfParent'],
+    grossP:['GrossProfit'],
+    opInc:['OperatingIncomeLoss','ProfitLossFromOperatingActivities'],
+    assets:['Assets'], liab:['Liabilities'],
+    equity:['StockholdersEquity','StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest','Equity','EquityAttributableToOwnersOfParent'],
+    cash:['CashAndCashEquivalentsAtCarryingValue','Cash','CashCashEquivalentsAndShortTermInvestments','CashAndCashEquivalents'],
+    opCF:['NetCashProvidedByUsedInOperatingActivities','CashFlowsFromUsedInOperatingActivities','CashFlowsFromUsedInOperations'],
+    capex:['PaymentsToAcquirePropertyPlantAndEquipment','PurchaseOfPropertyPlantAndEquipment','AcquisitionOfPropertyPlantAndEquipment'],
+    eps:['EarningsPerShareDiluted','DilutedEarningsLossPerShare','EarningsPerShareBasic','BasicEarningsLossPerShare'],
+    debt:['LongTermDebt','LongTermDebtNoncurrent','BorrowingsNoncurrent'],
+    da:['DepreciationDepletionAndAmortization','DepreciationAndAmortization','DepreciationAndAmortisationExpense'],
+    rd:['ResearchAndDevelopmentExpense'], sga:['SellingGeneralAndAdministrativeExpense'],
+    shares:['CommonStockSharesOutstanding','WeightedAverageNumberOfSharesOutstandingBasic','OrdinarySharesNumber'],
+    currentA:['AssetsCurrent','CurrentAssets'], currentL:['LiabilitiesCurrent','CurrentLiabilities'],
+    inventory:['InventoryNet','Inventories'], receiv:['AccountsReceivableNetCurrent','TradeAndOtherCurrentReceivables'],
+    intangib:['IntangibleAssetsNetExcludingGoodwill','FiniteLivedIntangibleAssetsNet','IntangibleAssetsOtherThanGoodwill'],
+    goodwill:['Goodwill'], tax:['IncomeTaxExpenseBenefit','IncomeTaxExpense'],
+    interest:['InterestExpense','InterestAndDebtExpense','FinanceCosts'],
+  };
+  // Devuelve el primer tag de la cascada que tenga datos en la empresa activa, o el primero.
+  function _resolveConceptTag(concept){
+    const casc=_FIXED_CASCADE[concept]||[];
+    for(const tg of casc){ if(_seriesFromTag(tg,'flow',false).length || _seriesFromTag(tg,'stock',false).length) return tg; }
+    return casc[0]||'';
+  }
+  // Construye la expr (string) y metadata para duplicar una fija.
+  // Devuelve {expr, type, fmt, label} o null si la fija no es duplicable.
+  function _flattenFixed(key){
+    const T=k=>{ const t=_resolveConceptTag(k); return t?`"${t}"`:''; };
+    const STOCK=['assets','liab','equity','cash','debt','currentA','currentL','inventory','receiv','intangib','goodwill','shares'];
+    const isStock=k=>STOCK.includes(k);
+    // Conceptos directos (un solo tag)
+    if(_FIXED_CASCADE[key]){
+      const t=T(key); if(!t) return null;
+      return {expr:t, type:isStock(key)?'stock':'flow', fmt:key==='eps'?'dlr':(key==='shares'?'shares':'M')};
+    }
+    // Compuestos y ratios conocidos → expr en tags
+    const map={
+      ebitda:   ()=>({expr:`${T('opInc')} + abs(${T('da')})`, type:'flow', fmt:'M'}),
+      fcf:      ()=>({expr:`${T('opCF')} - abs(${T('capex')})`, type:'flow', fmt:'M'}),
+      grossM:   ()=>({expr:`${T('grossP')} / ${T('revenue')} * 100`, type:'flow', fmt:'pct'}),
+      opM:      ()=>({expr:`${T('opInc')} / ${T('revenue')} * 100`, type:'flow', fmt:'pct'}),
+      netM:     ()=>({expr:`${T('netInc')} / ${T('revenue')} * 100`, type:'flow', fmt:'pct'}),
+      ebitdaM:  ()=>({expr:`(${T('opInc')} + abs(${T('da')})) / ${T('revenue')} * 100`, type:'flow', fmt:'pct'}),
+      r_grossM: ()=>({expr:`${T('grossP')} / ${T('revenue')} * 100`, type:'flow', fmt:'pct'}),
+      r_opM:    ()=>({expr:`${T('opInc')} / ${T('revenue')} * 100`, type:'flow', fmt:'pct'}),
+      r_netM:   ()=>({expr:`${T('netInc')} / ${T('revenue')} * 100`, type:'flow', fmt:'pct'}),
+      r_ebitdaM:()=>({expr:`(${T('opInc')} + abs(${T('da')})) / ${T('revenue')} * 100`, type:'flow', fmt:'pct'}),
+      r_fcfM:   ()=>({expr:`(${T('opCF')} - abs(${T('capex')})) / ${T('revenue')} * 100`, type:'flow', fmt:'pct'}),
+      r_roe:    ()=>({expr:`${T('netInc')} / ${T('equity')} * 100`, type:'flow', fmt:'pct'}),
+      r_roa:    ()=>({expr:`${T('netInc')} / ${T('assets')} * 100`, type:'flow', fmt:'pct'}),
+      r_roic:   ()=>({expr:`${T('opInc')} / (${T('equity')} + ${T('debt')}) * 100`, type:'flow', fmt:'pct'}),
+      r_currR:  ()=>({expr:`${T('currentA')} / ${T('currentL')}`, type:'stock', fmt:'x2'}),
+      r_quickR: ()=>({expr:`(${T('currentA')} - ${T('inventory')}) / ${T('currentL')}`, type:'stock', fmt:'x2'}),
+      r_cashR:  ()=>({expr:`${T('cash')} / ${T('currentL')}`, type:'stock', fmt:'x2'}),
+      r_de:     ()=>({expr:`${T('debt')} / ${T('equity')}`, type:'stock', fmt:'x2'}),
+      r_debtA:  ()=>({expr:`${T('debt')} / ${T('assets')} * 100`, type:'stock', fmt:'pct'}),
+      r_eqMult: ()=>({expr:`${T('assets')} / ${T('equity')}`, type:'stock', fmt:'x2'}),
+      r_assetTO:()=>({expr:`${T('revenue')} / ${T('assets')}`, type:'flow', fmt:'x2'}),
+    };
+    if(map[key]){ try{ const r=map[key](); return r.expr.includes('""')?null:r; }catch(_){ return null; } }
+    return null;
+  }
+  // Tabla de etiquetas legibles de las fijas, para listarlas en el gestor.
+  const _FIXED_LABELS = {
+    revenue:'Revenue', grossP:'Gross Profit', opInc:'Op. Income (EBIT)', ebitda:'EBITDA',
+    netInc:'Net Income', eps:'EPS Diluted', da:'D&A', rd:'R&D', sga:'SG&A', tax:'Tax Expense',
+    interest:'Interest Expense', opCF:'Operating CF', capex:'Capex', fcf:'Free Cash Flow',
+    assets:'Total Assets', liab:'Total Liab.', equity:'Equity', cash:'Cash', debt:'LT Debt',
+    currentA:'Current Assets', currentL:'Current Liab.', inventory:'Inventories', receiv:'Receivables',
+    goodwill:'Goodwill', intangib:'Intangibles', shares:'Shares Out.',
+    grossM:'Gross Margin %', opM:'Op. Margin %', ebitdaM:'EBITDA Margin %', netM:'Net Margin %',
+    r_roe:'ROE %', r_roa:'ROA %', r_roic:'ROIC %', r_currR:'Current Ratio', r_quickR:'Quick Ratio',
+    r_cashR:'Cash Ratio', r_de:'D/E Ratio', r_debtA:'Debt/Assets %', r_eqMult:'Equity Multiplier',
+    r_assetTO:'Asset Turnover', r_fcfM:'FCF Margin %',
+  };
+  // Lista de fijas duplicables (las que _flattenFixed sabe representar).
+  function _duplicableFixed(){
+    return Object.keys(_FIXED_LABELS);
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // GESTOR DE VARIABLES PERSONALIZADAS (modal + builder)
+  // ══════════════════════════════════════════════════════════════
+
+  // Conceptos base que pueden usarse como términos de fórmula (ids de _buildAllSeries).
+  // Etiqueta amigable para el selector.
+  const _BASE_CONCEPTS = [
+    {id:'revenue',label:'Revenue'},{id:'grossP',label:'Gross Profit'},
+    {id:'opInc',label:'Op. Income (EBIT)'},{id:'netInc',label:'Net Income'},
+    {id:'da',label:'D&A'},{id:'rd',label:'R&D'},{id:'sga',label:'SG&A'},
+    {id:'tax',label:'Tax Expense'},{id:'interest',label:'Interest Expense'},
+    {id:'eps',label:'EPS Diluted'},{id:'opCF',label:'Operating CF'},
+    {id:'capex',label:'Capex'},{id:'ebitda',label:'EBITDA'},{id:'fcf',label:'Free Cash Flow'},
+    {id:'assets',label:'Total Assets'},{id:'liab',label:'Total Liab.'},
+    {id:'equity',label:'Equity'},{id:'cash',label:'Cash'},{id:'debt',label:'LT Debt'},
+    {id:'currentA',label:'Current Assets'},{id:'currentL',label:'Current Liab.'},
+    {id:'inventory',label:'Inventories'},{id:'receiv',label:'Receivables'},
+    {id:'goodwill',label:'Goodwill'},{id:'intangib',label:'Intangibles'},
+    {id:'shares',label:'Shares Out.'},
+  ];
+
+  // Lista de tags XBRL reales que reporta la empresa activa (con datos).
+  function _companyTags(){
+    if(!_lastFacts) return [];
+    const ns=_getNS(_lastFacts);
+    const combined={...ns.gaap,...ns.ifrs};
+    const out=[];
+    for(const k of Object.keys(combined)){
+      const units=(combined[k]||{}).units||{};
+      const arr=units['USD']||units['shares']||units['EUR']||units['pure']||[];
+      if(arr.length) out.push(k);
+    }
+    return out.sort();
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // MODAL DE EDICIÓN DE TABLA  (3 vistas: config | manager | editor)
+  // ══════════════════════════════════════════════════════════════
+  let _varModalTableId = null;  // tabla que abrió el modal
+  let _varDraft        = null;  // var en construcción/edición
+  let _modalView       = 'config'; // 'config' | 'manager' | 'editor'
+
+  // Abre el modal en la vista de configuración de la tabla.
+  window.secOpenTableEditor = function(tableId){
+    _varModalTableId = tableId!=null ? +tableId : null;
+    _varDraft = null;
+    _modalView = 'config';
+    const modal=$('secVarModal'); if(!modal) return;
+    modal.style.display='flex';
+    _renderModal();
+  };
+  // Compat: abrir directo el gestor de variables (lista).
+  window.secOpenVarManager = function(tableId){
+    _varModalTableId = tableId!=null ? +tableId : _varModalTableId;
+    _varDraft=null; _modalView='manager';
+    const modal=$('secVarModal'); if(!modal) return;
+    modal.style.display='flex';
+    _renderModal();
+  };
+  window.secCloseVarManager = function(){
+    const modal=$('secVarModal'); if(modal) modal.style.display='none';
+    _varDraft=null; _modalView='config'; _pendingChartVar=null;
+  };
+  window.secModalGoto = function(view){ _modalView=view; if(view!=='editor') _varDraft=null; _renderModal(); };
+
+  function _modalTitle(){
+    if(_modalView==='config')  return 'Editar tabla';
+    if(_modalView==='manager') return 'Gestionar variables';
+    if(_modalView==='editor')  return _varDraft&&_varDraft.id ? 'Editar variable' : 'Nueva variable';
+    return 'Editar';
+  }
+
+  function _renderModal(){
+    const titleEl=$('secVarModalTitle'); if(titleEl) titleEl.textContent=_modalTitle();
+    const el=$('secVarModalContent'); if(!el) return;
+    if(_modalView==='config')  return _renderTableConfig(el);
+    if(_modalView==='manager') return _renderVarManager(el);
+    if(_modalView==='editor')  return _renderVarEditor(el);
+  }
+
+  // ── VISTA 1: configuración de la tabla ────────────────────────
+  function _renderTableConfig(el){
+    const def=_secTableDefs.find(t=>t.id===_varModalTableId);
+    if(!def){ el.innerHTML='<div style="color:var(--text3);font-family:var(--mono);font-size:12px;padding:14px;">Tabla no encontrada.</div>'; return; }
+
+    const rangeOpts = [3,5,8,10,15,20].map(n=>`<option value="${n}"${n===def.range?' selected':''}>${n}</option>`).join('');
+    const widthOpts = [{v:100,l:'100%'},{v:50,l:'50%'},{v:33,l:'33%'}]
+      .map(o=>`<option value="${o.v}"${(def.width||100)===o.v?' selected':''}>${o.l}</option>`).join('');
+
+    const catByGroup={};
+    TABLE_ROW_CATALOGUE.forEach(r=>{ if(!catByGroup[r.group]) catByGroup[r.group]=[]; catByGroup[r.group].push(r); });
+
+    const fixedGroups = Object.entries(catByGroup).map(([grp,rows])=>{
+      const activeRows = rows.filter(r=>def.rows.includes(r.key));
+      const shown = _cfgShowAll ? rows : activeRows;
+      if(!_cfgShowAll && shown.length===0) return ''; // grupo sin activas → se oculta entero
+      const btn = r=>{
+        const active=def.rows.includes(r.key);
+        return `<button onclick="secCfgToggleRow('${r.key}')"
+          style="padding:3px 9px;border-radius:10px;font-size:10px;cursor:pointer;font-family:var(--mono);border:1px solid ${active?'#1E27F3':'var(--border)'};background:${active?'rgba(30,39,243,0.15)':'transparent'};color:${active?'#a5b4fc':'var(--text3)'};">${r.label}</button>`;
+      };
+      return `<div style="margin-bottom:6px;display:flex;align-items:flex-start;flex-wrap:wrap;gap:4px;">
+        <span style="font-size:9px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;min-width:100px;padding-top:3px;">${grp}</span>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+          ${shown.map(btn).join('')}
+        </div>
+      </div>`;
+    }).join('');
+
+    const customGroup = `
+      <div style="margin-bottom:6px;display:flex;align-items:flex-start;flex-wrap:wrap;gap:4px;border-top:1px dashed var(--border);padding-top:10px;margin-top:6px;">
+        <span style="font-size:9px;color:#a5b4fc;font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;min-width:100px;padding-top:3px;">Personalizadas</span>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+          ${_customVars.length? _customVars.map(cv=>{
+            const active=def.rows.includes(cv.id);
+            return `<button onclick="secCfgToggleRow('${cv.id}')"
+              style="padding:3px 9px;border-radius:10px;font-size:10px;cursor:pointer;font-family:var(--mono);border:1px solid ${active?'#1E27F3':'var(--border)'};background:${active?'rgba(30,39,243,0.15)':'transparent'};color:${active?'#a5b4fc':'var(--text3)'};">${cv.label} ƒ</button>`;
+          }).join('') : '<span style="font-size:10px;color:var(--text3);font-family:var(--mono);">Ninguna aún</span>'}
+        </div>
+      </div>`;
+
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+        <label style="font-size:11px;color:var(--text3);font-family:var(--mono);">Nombre:
+          <input type="text" value="${def.title.replace(/"/g,'&quot;')}" oninput="secCfgRename(this.value)"
+            style="margin-left:6px;background:var(--bg2);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:12px;padding:4px 10px;outline:none;width:200px;" />
+        </label>
+        <label style="font-size:11px;color:var(--text3);font-family:var(--mono);display:flex;align-items:center;gap:5px;">Rango:
+          <select onchange="secCfgSet('range',+this.value)" style="background:var(--bg2);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 7px;outline:none;">${rangeOpts}</select>
+        </label>
+        <label style="font-size:11px;color:var(--text3);font-family:var(--mono);display:flex;align-items:center;gap:5px;">Ancho:
+          <select onchange="secCfgSet('width',+this.value)" style="background:var(--bg2);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 7px;outline:none;">${widthOpts}</select>
+        </label>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:10px;flex-wrap:wrap;">
+        <span style="font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Filas a mostrar</span>
+        <button onclick="secCfgToggleShowAll()" style="padding:4px 12px;border-radius:8px;font-size:10px;font-weight:700;cursor:pointer;font-family:var(--mono);border:1px solid var(--border2);background:${_cfgShowAll?'rgba(30,39,243,0.12)':'transparent'};color:${_cfgShowAll?'#a5b4fc':'var(--text3)'};">${_cfgShowAll?'− Solo activas':'+ Mostrar todas'}</button>
+      </div>
+      ${fixedGroups}
+      ${customGroup}
+
+      ${(() => {
+        // Sección de variaciones porcentuales (activadas por defecto)
+        const showVar = def.showVar !== false;
+        const varType = def.varType || (def.isQ ? 'yoy' : 'annual');
+        // Filas candidatas a mostrar variación: las activas que NO son ratios.
+        const activeNonRatio = def.rows.filter(k=>!_isRatioKey(k));
+        const varRows = def.varRows || activeNonRatio; // undefined => todas
+        const perRow = showVar && activeNonRatio.length ? `
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;">
+            <span style="font-size:9px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;min-width:100px;padding-top:3px;">Filas con Δ</span>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;">
+              ${activeNonRatio.map(k=>{
+                const on=varRows.includes(k);
+                return `<button onclick="secCfgToggleVarRow('${k}')" style="padding:3px 9px;border-radius:10px;font-size:10px;cursor:pointer;font-family:var(--mono);border:1px solid ${on?'#3fb950':'var(--border)'};background:${on?'rgba(63,185,80,0.15)':'transparent'};color:${on?'#3fb950':'var(--text3)'};">${_rowLabel(k)}</button>`;
+              }).join('')}
+            </div>
+          </div>` : '';
+        return `
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <label style="font-size:11px;color:var(--text3);font-family:var(--mono);display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="checkbox" ${showVar?'checked':''} onchange="secCfgSet('showVar',this.checked)" /> Mostrar variaciones %
+            </label>
+            ${def.isQ && showVar ? `
+            <div style="display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:6px;overflow:hidden;">
+              <button onclick="secCfgSet('varType','yoy')" style="padding:4px 11px;font-size:10px;font-weight:700;cursor:pointer;border:none;background:${varType==='yoy'?'#1E27F3':'transparent'};color:${varType==='yoy'?'#fff':'var(--text3)'};font-family:var(--mono);">YoY</button>
+              <button onclick="secCfgSet('varType','qoq')" style="padding:4px 11px;font-size:10px;font-weight:700;cursor:pointer;border:none;background:${varType==='qoq'?'#1E27F3':'transparent'};color:${varType==='qoq'?'#fff':'var(--text3)'};font-family:var(--mono);">QoQ</button>
+            </div>` : ''}
+            ${showVar ? `<span style="font-size:9px;color:var(--text3);font-family:var(--mono);">${def.isQ ? (varType==='yoy'?'vs. mismo trim. año anterior':'vs. trim. anterior') : 'vs. año anterior'}</span>` : ''}
+          </div>
+          ${perRow}
+        </div>`;
+      })()}
+
+      <div style="display:flex;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);">
+        <button onclick="secModalGotoNewVar()" style="flex:1;padding:9px;border-radius:8px;border:1px solid rgba(30,39,243,0.5);background:rgba(30,39,243,0.1);color:#a5b4fc;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">+ Variable nueva</button>
+        <button onclick="secModalGoto('manager')" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">Gestionar variables</button>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+        <button onclick="secCloseVarManager()" style="padding:7px 22px;border-radius:7px;border:none;background:#1E27F3;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">Listo</button>
+      </div>`;
+  }
+
+  // Config: nombre se actualiza SIN re-render (no pierde foco).
+  window.secCfgRename = function(val){
+    const def=_secTableDefs.find(t=>t.id===_varModalTableId); if(!def) return;
+    def.title=val; _renderAllTables();
+  };
+  window.secCfgSet = function(field,val){
+    const def=_secTableDefs.find(t=>t.id===_varModalTableId); if(!def) return;
+    def[field]=val;
+    // Al activar variaciones por primera vez, pre-seleccionar todas las filas no-ratio.
+    if(field==='showVar' && val && (!def.varRows || def.varRows.length===0)){
+      def.varRows = def.rows.filter(k=>!_isRatioKey(k));
+    }
+    _renderAllTables(); _renderModal();
+  };
+  window.secCfgToggleVarRow = function(key){
+    const def=_secTableDefs.find(t=>t.id===_varModalTableId); if(!def) return;
+    // Si varRows está undefined, el default es "todas las no-ratio": materializamos esa
+    // lista antes de togglear, para que quitar una fila no la deje como única seleccionada.
+    const vr = def.varRows || def.rows.filter(k=>!_isRatioKey(k));
+    def.varRows = vr.includes(key) ? vr.filter(k=>k!==key) : [...vr, key];
+    _renderAllTables(); _renderModal();
+  };
+  window.secCfgToggleRow = function(key){
+    const def=_secTableDefs.find(t=>t.id===_varModalTableId); if(!def) return;
+    def.rows=def.rows.includes(key)?def.rows.filter(k=>k!==key):[...def.rows,key];
+    _renderAllTables(); _renderModal();
+  };
+  // Estado global de expansión: ¿mostrar todas las fijas o solo las activas?
+  let _cfgShowAll = false;
+  window.secCfgToggleShowAll = function(){ _cfgShowAll=!_cfgShowAll; _renderModal(); };
+  window.secModalGotoNewVar = function(){ _varDraft=_blankDraft(); _modalView='editor'; _renderModal(); };
+
+  function _blankDraft(){
+    return {id:null, label:'', expr:'', type:'flow', fmt:'M'};
+  }
+
+  // ── VISTA 2: gestor (lista de variables + duplicar fijas) ─────
+  function _renderVarManager(el){
+    const list = _customVars.length ? _customVars.map(cv=>{
+      return `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:700;color:var(--text);font-family:var(--mono);">${cv.label} <span style="font-size:9px;color:#a5b4fc;background:rgba(30,39,243,0.12);padding:1px 6px;border-radius:8px;margin-left:4px;">${cv.type==='stock'?'stock':'flujo'} · ${cv.fmt}</span></div>
+          <div style="font-size:10px;color:var(--text3);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${(cv.expr||'').replace(/</g,'&lt;')}</div>
+        </div>
+        <button onclick="secEditCustomVar('${cv.id}')" style="padding:3px 10px;font-size:10px;cursor:pointer;border:1px solid var(--border2);border-radius:5px;background:transparent;color:var(--text2);font-family:var(--mono);">Editar</button>
+        <button onclick="secDeleteCustomVar('${cv.id}')" style="padding:3px 8px;font-size:10px;cursor:pointer;border:1px solid rgba(248,81,73,0.3);border-radius:5px;background:transparent;color:#f85149;font-family:var(--mono);">✕</button>
+      </div>`;
+    }).join('') : '<div style="font-size:11px;color:var(--text3);font-family:var(--mono);padding:14px;text-align:center;">No hay variables personalizadas todavía.</div>';
+
+    // Fijas: mismas filas visuales que las personalizadas. "Editar" crea una copia editable.
+    const fixedList = _duplicableFixed().map(key=>{
+      const f=_flattenFixed(key);
+      const expr = f ? f.expr : '(no representable para esta empresa)';
+      const meta = f ? `${f.type==='stock'?'stock':'flujo'} · ${f.fmt}` : '—';
+      const disabled = !f;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;${disabled?'opacity:.5;':''}">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:700;color:var(--text);font-family:var(--mono);">${_FIXED_LABELS[key]} <span style="font-size:9px;color:var(--text3);background:var(--bg2);padding:1px 6px;border-radius:8px;margin-left:4px;border:1px solid var(--border);">fija · ${meta}</span></div>
+          <div style="font-size:10px;color:var(--text3);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${expr.replace(/</g,'&lt;')}</div>
+        </div>
+        ${disabled?'':`<button onclick="secDuplicateFixed('${key}')" style="padding:3px 10px;font-size:10px;cursor:pointer;border:1px solid var(--border2);border-radius:5px;background:transparent;color:var(--text2);font-family:var(--mono);">Editar ⧉</button>`}
+      </div>`;
+    }).join('');
+
+    el.innerHTML = `
+      ${_varModalTableId!=null?`<button onclick="secModalGoto('config')" style="background:transparent;border:none;color:var(--text3);font-size:11px;cursor:pointer;font-family:var(--mono);margin-bottom:12px;">← Volver a la tabla</button>`:''}
+      <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:12px;line-height:1.6;">
+        Variables guardadas a nivel empresa, disponibles en todas las tablas.
+      </div>
+      <div style="font-size:10px;color:#a5b4fc;font-family:var(--mono);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;">Personalizadas</div>
+      <div style="margin-bottom:14px;">${list}</div>
+      <button onclick="secModalGotoNewVar()" style="width:100%;padding:9px;border-radius:8px;border:1px dashed rgba(30,39,243,0.5);background:rgba(30,39,243,0.06);color:#a5b4fc;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);margin-bottom:18px;">+ Nueva variable</button>
+
+      <div style="border-top:1px solid var(--border);padding-top:14px;">
+        <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;">Fijas (base)</div>
+        <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:10px;line-height:1.5;">No se editan directamente. "Editar" crea una copia personalizada —resuelta a los tags de ${_lastTicker||'la empresa'}— que podés modificar libremente.</div>
+        ${fixedList}
+      </div>`;
+  }
+
+  window.secEditCustomVar = function(id){
+    const cv=_getCustomVar(id); if(!cv) return;
+    _varDraft=JSON.parse(JSON.stringify(cv));
+    _modalView='editor'; _renderModal();
+  };
+  window.secDeleteCustomVar = function(id){
+    _customVars=_customVars.filter(c=>c.id!==id);
+    _secTableDefs.forEach(d=>{ d.rows=d.rows.filter(k=>k!==id); });
+    _renderModal();
+    _renderAllTables();
+  };
+  // Duplicar una fija → draft de custom precargado, listo para editar.
+  window.secDuplicateFixed = function(key){
+    const f=_flattenFixed(key);
+    if(!f){ showStatus('Esa fija no se puede representar como fórmula editable.','err'); return; }
+    _varDraft={id:null, label:(_FIXED_LABELS[key]||key)+' (copia)', expr:f.expr, type:f.type, fmt:f.fmt};
+    _modalView='editor'; _renderModal();
+  };
+
+  // ── VISTA 3: editor unificado (campo de fórmula de texto) ─────
+  function _renderVarEditor(el){
+    const d=_varDraft;
+    const fmtOpts=[['M','Millones $'],['raw','Número crudo'],['pct','Porcentaje %'],['x2','Ratio (x.xx)'],['x1','Ratio (x.x)'],['dlr','Dólares $'],['shares','Acciones']]
+      .map(([v,l])=>`<option value="${v}"${d.fmt===v?' selected':''}>${l}</option>`).join('');
+
+    // Validación de la expr para el preview/guardado.
+    const valid=_validateExpr(d.expr);
+
+    el.innerHTML = `
+      <button onclick="secModalGoto('${_varModalTableId!=null?'config':'manager'}')" style="background:transparent;border:none;color:var(--text3);font-size:11px;cursor:pointer;font-family:var(--mono);margin-bottom:12px;">← Volver</button>
+
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
+        <label style="font-size:11px;color:var(--text3);font-family:var(--mono);">Nombre visible:
+          <input id="secDraftLabel" type="text" value="${(d.label||'').replace(/"/g,'&quot;')}" oninput="secDraftLabelInput(this.value)" placeholder="ej: EBITDA ajustado"
+            style="margin-left:6px;background:var(--bg2);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:12px;padding:4px 10px;outline:none;width:220px;" />
+        </label>
+      </div>
+
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;">
+        <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;">Fórmula</div>
+        <textarea id="secDraftExpr" oninput="secDraftExprInput(this.value)" placeholder='Ej: "OperatingIncomeLoss" + abs("DepreciationDepletionAndAmortization")'
+          style="width:100%;min-height:54px;resize:vertical;background:var(--bg2);border:1px solid ${valid.ok?'var(--border2)':'#f85149'};border-radius:6px;color:var(--text);font-family:var(--mono);font-size:12px;padding:8px 10px;outline:none;line-height:1.5;">${(d.expr||'').replace(/</g,'&lt;')}</textarea>
+        <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:6px;line-height:1.5;">
+          Tags entre comillas, operadores <b>+ − * /</b> (precedencia matemática), paréntesis, y <b>abs(...)</b>. Ej: <span style="color:#a5b4fc;">"NetIncomeLoss" / "StockholdersEquity" * 100</span>
+        </div>
+      </div>
+
+      <!-- Buscador de tags: clickear inserta "Tag" en la fórmula -->
+      <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:12px;margin-bottom:12px;">
+        <div style="font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          <span>Tags de ${_lastTicker||'la empresa'} <span style="text-transform:none;">— clickeá para insertarlo en la fórmula</span></span>
+          <span id="secVarTagCount" style="text-transform:none;color:var(--text3);"></span>
+        </div>
+        <input id="secVarTagInput" type="text" placeholder="Filtrá tags (ej: Revenue, Assets...)" oninput="secVarTagFilter(this.value)"
+          style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:6px 12px;font-size:12px;color:var(--text);font-family:var(--mono);outline:none;margin-bottom:8px;" />
+        <div id="secVarTagList" style="max-height:190px;overflow-y:auto;"></div>
+      </div>
+
+      <div style="display:flex;gap:18px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+        <label style="font-size:11px;color:var(--text3);font-family:var(--mono);display:flex;align-items:center;gap:5px;">Tipo:
+          <select onchange="secDraftField('type',this.value)" style="background:var(--bg2);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 7px;outline:none;">
+            <option value="flow"${d.type==='flow'?' selected':''}>Flujo (IS/CF)</option>
+            <option value="stock"${d.type==='stock'?' selected':''}>Stock (Balance)</option>
+          </select>
+        </label>
+        <label style="font-size:11px;color:var(--text3);font-family:var(--mono);display:flex;align-items:center;gap:5px;">Formato:
+          <select id="secDraftFmt" onchange="secDraftField('fmt',this.value)" style="background:var(--bg2);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 7px;outline:none;">${fmtOpts}</select>
+        </label>
+        <span id="secUnitHint" style="font-size:10px;color:var(--text3);font-family:var(--mono);"></span>
+      </div>
+
+      <div id="secVarPreview" style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:14px;"></div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button onclick="secModalGoto('${_varModalTableId!=null?'config':'manager'}')" style="padding:7px 16px;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:12px;cursor:pointer;font-family:var(--mono);">Cancelar</button>
+        <button onclick="secSaveDraft()" style="padding:7px 20px;border-radius:7px;border:none;background:#1E27F3;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">Guardar variable</button>
+      </div>`;
+
+    secVarTagFilter('');
+    _renderVarPreview();
+  }
+
+  // Nombre: SIN re-render.
+  window.secDraftLabelInput = function(val){
+    if(!_varDraft) return;
+    _varDraft.label=val;
+  };
+  // Fórmula: SIN re-render (no perder foco/cursor). Actualiza preview + auto-unidad.
+  window.secDraftExprInput = function(val){
+    if(!_varDraft) return;
+    _varDraft.expr=val;
+    _autoUnitFromExpr();
+    _renderVarPreview();
+    // refleja validez en el borde del textarea sin re-render completo
+    const ta=$('secDraftExpr'); if(ta){ const v=_validateExpr(val); ta.style.borderColor=v.ok?'var(--border2)':'#f85149'; }
+  };
+  window.secDraftField = function(field,val){
+    if(!_varDraft) return;
+    _varDraft[field]=val;
+    _renderVarPreview(); // tipo/formato no cambian layout → solo preview
+  };
+
+  // Auto-mapeo de unidad: si la fórmula es UN SOLO tag, setea el formato desde su unidad SEC.
+  function _autoUnitFromExpr(){
+    if(!_varDraft) return;
+    const tags=_exprTags(_varDraft.expr);
+    const toks=(()=>{ try{ return _tokenizeFormula(_varDraft.expr); }catch(_){ return []; } })();
+    const onlyTag = toks.length===1 && toks[0].t==='tag';
+    const hint=$('secUnitHint');
+    if(onlyTag){
+      const unit=_tagUnit(tags[0]);
+      if(unit){
+        const fmt=_unitToFmt(unit);
+        _varDraft.fmt=fmt;
+        // refleja en el select y el tipo flow/stock auto
+        const sel=$('secDraftFmt'); if(sel) sel.value=fmt;
+        const isFlow=_tagIsFlow(tags[0]); _varDraft.type=isFlow?'flow':'stock';
+        const tsel=document.querySelector('#secVarModalContent select'); // primer select = tipo
+        if(hint) hint.textContent=`unidad SEC: ${unit} → ${fmt}${isFlow?' · flujo':' · stock'} (auto, editable)`;
+      } else if(hint){ hint.textContent=''; }
+    } else if(hint){ hint.textContent = tags.length>1 ? 'fórmula con varios tags → elegí formato/tipo manual' : ''; }
+  }
+
+  // ── Buscador de tags: inserta "Tag" en el textarea de fórmula ──
+  window.secVarTagFilter = function(q){
+    const list=$('secVarTagList'); if(!list) return;
+    const tags=_companyTags();
+    const ql=(q||'').toLowerCase();
+    const matched=ql?tags.filter(t=>t.toLowerCase().includes(ql)):tags;
+    const filtered=matched.slice(0,80);
+    const cnt=$('secVarTagCount');
+    if(cnt) cnt.textContent = ql ? `${matched.length} de ${tags.length}` : `${tags.length} tags`;
+    if(!tags.length){ list.innerHTML='<div style="font-size:11px;color:var(--text3);font-family:var(--mono);padding:10px;">Buscá una empresa primero.</div>'; return; }
+    if(!filtered.length){ list.innerHTML='<div style="font-size:11px;color:var(--text3);font-family:var(--mono);padding:10px;">Sin resultados.</div>'; return; }
+    list.innerHTML=filtered.map(t=>{
+      const unit=_tagUnit(t);
+      return `<div onclick="secInsertTag('${t.replace(/'/g,"\\'")}')"
+        style="padding:6px 10px;cursor:pointer;font-size:11px;font-family:var(--mono);color:var(--text2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;"
+        onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background=''">
+        <span style="flex:1;">${t}</span>${unit?`<span style="font-size:9px;color:var(--text3);">${unit}</span>`:''}</div>`;
+    }).join('');
+    if(tags.length>80 && filtered.length>=80) list.innerHTML+='<div style="font-size:10px;color:var(--text3);font-family:var(--mono);padding:8px;text-align:center;">Refiná la búsqueda para ver más.</div>';
+  };
+  // Inserta "Tag" en la posición del cursor del textarea de fórmula.
+  window.secInsertTag = function(tag){
+    if(!_varDraft) return;
+    const ta=$('secDraftExpr');
+    const ins=`"${tag}"`;
+    if(ta){
+      const s=ta.selectionStart||ta.value.length, e=ta.selectionEnd||ta.value.length;
+      const before=ta.value.slice(0,s), after=ta.value.slice(e);
+      const sep = (before && !/[\s(+\-*/,]$/.test(before)) ? ' ' : '';
+      ta.value = before + sep + ins + after;
+      _varDraft.expr = ta.value;
+      const pos = (before+sep+ins).length;
+      ta.focus(); ta.setSelectionRange(pos,pos);
+    } else {
+      _varDraft.expr = (_varDraft.expr||'') + ins;
+    }
+    _autoUnitFromExpr();
+    _renderVarPreview();
+    const taa=$('secDraftExpr'); if(taa){ const v=_validateExpr(_varDraft.expr); taa.style.borderColor=v.ok?'var(--border2)':'#f85149'; }
+  };
+
+  // ── Validación: parsea y verifica que todos los tags existan ──
+  function _validateExpr(expr){
+    if(!expr || !expr.trim()) return {ok:false, msg:'Fórmula vacía'};
+    let rpn;
+    try{ rpn=_compileExpr(expr); }catch(e){ return {ok:false, msg:e.message}; }
+    const tags=[...new Set(rpn.filter(t=>t.t==='tag').map(t=>t.v))];
+    if(!tags.length) return {ok:false, msg:'La fórmula no referencia ningún tag'};
+    const company=new Set(_companyTags());
+    const missing=tags.filter(t=>!company.has(t));
+    if(missing.length) return {ok:false, msg:'Tag no encontrado: '+missing.join(', ')};
+    return {ok:true};
+  }
+
+  // Preview en vivo.
+  function _renderVarPreview(){
+    const el=$('secVarPreview'); if(!el||!_varDraft) return;
+    const v=_validateExpr(_varDraft.expr);
+    if(!v.ok){ el.innerHTML=`<span style="color:#f85149;">⚠ ${v.msg}</span>`; return; }
+    try{
+      const sA=_seriesForCustom({expr:_varDraft.expr, type:_varDraft.type, fmt:_varDraft.fmt}, false);
+      if(!sA.length){ el.innerHTML='<span style="color:#d4a017;">⚠ Sin datos anuales (revisá tipo flujo/stock).</span>'; return; }
+      const last=[...sA].slice(-4);
+      el.innerHTML='Preview (anual): '+last.map(p=>`${p.yr}: ${_fmtPreview(_varDraft.fmt,p.val)}`).join(' · ');
+    }catch(e){ el.innerHTML='<span style="color:#f85149;">Error: '+e.message+'</span>'; }
+  }
+  function _fmtPreview(fmt,val){
+    if(fmt==='pct') return fmtPct(val);
+    if(fmt==='x2') return val.toFixed(2)+'x';
+    if(fmt==='x1') return val.toFixed(1)+'x';
+    if(fmt==='dlr') return '$'+val.toFixed(2);
+    if(fmt==='shares') return val>=1e9?(val/1e9).toFixed(2)+'B':val>=1e6?(val/1e6).toFixed(0)+'M':Math.round(val).toLocaleString();
+    if(fmt==='raw') return (Math.abs(val)>=1e6)?fmtM(val):val.toLocaleString(undefined,{maximumFractionDigits:2});
+    return fmtM(val);
+  }
+
+  function _normalizeDraft(d){
+    if(!d) return null;
+    if(!d.expr || !d.expr.trim()) return null;
+    if(!_validateExpr(d.expr).ok) return null;
+    return {id:d.id, label:(d.label||'Variable'), expr:d.expr.trim(), type:d.type||'flow', fmt:d.fmt||'M'};
+  }
+
+  window.secSaveDraft = function(){
+    const v=_validateExpr(_varDraft?_varDraft.expr:'');
+    if(!v.ok){ showStatus('No se puede guardar: '+v.msg,'err'); return; }
+    if(!_varDraft.label || !_varDraft.label.trim()){ showStatus('La variable necesita un nombre.','err'); return; }
+    const norm=_normalizeDraft(_varDraft);
+    if(!norm){ showStatus('Fórmula inválida.','err'); return; }
+    let newId=norm.id;
+    if(norm.id){
+      const idx=_customVars.findIndex(c=>c.id===norm.id);
+      if(idx>=0) _customVars[idx]=norm;
+    } else {
+      norm.id='c_'+(++_customVarIdSeq); newId=norm.id;
+      _customVars.push(norm);
+      if(_varModalTableId!=null){
+        const def=_secTableDefs.find(t=>t.id===_varModalTableId);
+        if(def && !def.rows.includes(norm.id)) def.rows.push(norm.id);
+      }
+    }
+    _varDraft=null;
+    // Si la variable se pidió desde el editor de KPIs, activarla como KPI y volver.
+    if(_pendingKpiVar){
+      _pendingKpiVar=false;
+      if(!_kpiActive.includes(newId)) _kpiActive.push(newId);
+      const vm=$('secVarModal'); if(vm) vm.style.display='none';
+      _renderKpiBar(_lastFacts);
+      _renderAllTables();
+      const km=$('secKpiModal'); if(km) km.style.display='flex'; _renderKpiEditor();
+      showStatus('Variable guardada ✓','ok');
+      return;
+    }
+    // Si la variable se pidió desde un gráfico, aplicarla a ese gráfico y cerrar el modal.
+    if(_pendingChartVar!=null){
+      const cid=_pendingChartVar; _pendingChartVar=null;
+      const cd=_chartDefs.find(c=>c.id===cid);
+      if(cd){
+        _ensureSeries(cd);
+        const i=cd.series.length;
+        const axis=_chartMetaFor(newId).unit==='%'?'right':'left';
+        cd.series.push({metric:newId, type:'bar', color:_CHART_PALETTE[i%_CHART_PALETTE.length], axis});
+      }
+      const modal=$('secVarModal'); if(modal) modal.style.display='none';
+      _refreshDashboard();
+      _renderAllTables();
+      // reabrir el editor del gráfico para seguir ajustando
+      if(cd){ _chartModalId=cid; const cm=$('secChartModal'); if(cm) cm.style.display='flex'; _renderChartEditor(); }
+      showStatus('Variable guardada ✓','ok');
+      return;
+    }
+    _modalView = _varModalTableId!=null ? 'config' : 'manager';
+    _renderModal();
+    _renderAllTables();
+    showStatus('Variable guardada ✓','ok');
+  };
 
   // ── Row catalogues ────────────────────────────────────────────
   const TABLE_ROW_CATALOGUE = [
@@ -13986,9 +15136,18 @@ function openDetail(especie){
     {key:'r_fcfPS',   label:'FCF/Share',         group:'Eficiencia',   fmt:'dlr', ratio:true},
   ];
 
-  function _tblFmt(key, val){
+  // Resuelve la etiqueta visible de cualquier key (fija, ratio o custom).
+  function _rowLabel(key){
+    if(key.startsWith('c_')){ const cv=_getCustomVar(key); return cv?cv.label:key; }
     const cat = TABLE_ROW_CATALOGUE.find(r=>r.key===key);
-    const f = cat?.fmt||'M';
+    return cat?.label||key;
+  }
+
+  function _tblFmt(key, val){
+    let f;
+    if(key.startsWith('c_')){ const cv=_getCustomVar(key); f=cv?.fmt||'M'; }
+    else { const cat = TABLE_ROW_CATALOGUE.find(r=>r.key===key); f = cat?.fmt||'M'; }
+    if(f==='raw')    return (Math.abs(val)>=1e6)?fmtM(val):val.toLocaleString(undefined,{maximumFractionDigits:2});
     if(f==='pct')    return fmtPct(val);
     if(f==='eps'||f==='dlr') return '$'+val.toFixed(2);
     if(f==='x2')     return val.toFixed(2)+'x';
@@ -13996,6 +15155,58 @@ function openDetail(especie){
     if(f==='shares') return val>=1e9?(val/1e9).toFixed(2)+'B':val>=1e6?(val/1e6).toFixed(0)+'M':val.toFixed(0);
     if(f==='capex')  return fmtM(-Math.abs(val));
     return fmtM(val);
+  }
+
+  // Tipo de formato de una fila (para decidir si la variación tiene sentido).
+  function _keyFmtType(key){
+    if(key.startsWith('c_')){ const cv=_getCustomVar(key); return cv?.fmt||'M'; }
+    const cat = TABLE_ROW_CATALOGUE.find(r=>r.key===key); return cat?.fmt||'M';
+  }
+  // Una fila es "ratio/porcentaje" si su formato no es un monto/cantidad → no mostramos variación %.
+  function _isRatioKey(key){
+    const f=_keyFmtType(key);
+    return f==='pct' || f==='x1' || f==='x2';
+  }
+
+  // Calcula la variación % de una celda contra el período anterior correcto.
+  // series = serie COMPLETA (no la ventana visible). yr = etiqueta del período actual.
+  // isQ + varType deciden YoY vs QoQ. Devuelve {pct, ok} o null si no aplica/no hay base.
+  function _cellVariation(series, yr, isQ, varType){
+    const cur = series.find(x=>x.yr===yr);
+    if(!cur || cur.val==null) return null;
+    let prevYr;
+    if(isQ && varType==='yoy'){
+      // mismo trimestre, un año atrás: 2024Q3 -> 2023Q3
+      const m = /^(\d{4})Q([1-4])$/.exec(yr);
+      if(!m) return null;
+      prevYr = `${(+m[1])-1}Q${m[2]}`;
+    } else if(isQ){
+      // QoQ: trimestre inmediatamente anterior en orden cronológico
+      const sorted=[...series].sort((a,b)=>a.yr<b.yr?-1:1);
+      const idx=sorted.findIndex(x=>x.yr===yr);
+      if(idx<=0) return null;
+      prevYr=sorted[idx-1].yr;
+    } else {
+      // anual: año calendario anterior
+      const y=parseInt(yr,10);
+      if(isNaN(y)) return null;
+      prevYr=String(y-1);
+    }
+    const prev=series.find(x=>x.yr===prevYr);
+    if(!prev || prev.val==null || prev.val===0) return null;
+    // si el año anterior es negativo, la variación % no es significativa
+    if(prev.val<0) return {nm:true};
+    const pct=(cur.val-prev.val)/Math.abs(prev.val)*100;
+    if(!isFinite(pct)) return null;
+    return {pct};
+  }
+  // Render del badge de variación al lado del valor.
+  function _varBadge(v){
+    if(!v) return '';
+    if(v.nm) return ` <span style="font-size:9px;color:var(--text3);">(n/m)</span>`;
+    const sign=v.pct>=0?'+':'';
+    const col=v.pct>=0?'#3fb950':'#f85149';
+    return ` <span style="font-size:9px;color:${col};">(${sign}${v.pct.toFixed(1)}%)</span>`;
   }
 
   // ── Compute and cache ratio series from _secSeriesA/_Q ────────
@@ -14033,6 +15244,7 @@ function openDetail(especie){
     const rs = isQ ? _secRatioSets?.Q : _secRatioSets?.A;
     const s  = isQ ? _secSeriesQ : _secSeriesA;
     if(!s) return [];
+    if(key.startsWith('c_')){ const cv=_getCustomVar(key); return cv?_seriesForCustom(cv,isQ):[]; }
     if(key.startsWith('r_')) return rs?.[key]||[];
     return s[key]||[];
   }
@@ -14073,18 +15285,31 @@ function openDetail(especie){
     _tblAbort = new AbortController();
     const sig = _tblAbort.signal;
 
-    const sorted=[..._secTableDefs].sort((a,b)=>a.order-b.order);
-    const annualTbls  = sorted.filter(d=>!d.isQ);
-    const quarterTbls = sorted.filter(d=>d.isQ);
+    const basisMap={100:'100%',50:'calc(50% - 8px)',33:'calc(33.33% - 11px)'};
+    _chartDefs.forEach(_ensureSeries);
+
+    // Orden plano único: gráficos + TODAS las tablas (anuales y trimestrales).
+    const blocks = [
+      ..._chartDefs.map(c=>({kind:'chart', order:c.order??0, def:c})),
+      ..._secTableDefs.map(d=>({kind:'table', order:d.order??0, def:d})),
+    ].sort((a,b)=>a.order-b.order);
+
+    const blocksHtml = blocks.map(b=>{
+      if(b.kind==='chart'){
+        const basis=basisMap[b.def.width||100]||'100%';
+        return `<div style="flex:0 0 ${basis};min-width:280px;">${_buildDashCard(b.def.id)}</div>`;
+      }
+      return _renderOneTable(b.def);
+    }).join('');
 
     el.innerHTML =
-      `<div id="tblRowAnnual" style="display:flex;flex-wrap:wrap;align-items:flex-start;gap:16px;">${annualTbls.map(d=>_renderOneTable(d)).join('')}</div>` +
-      `<div style="margin:28px 0 10px;border-top:1px solid var(--border);padding-top:16px;font-size:11px;font-weight:700;color:var(--text3);font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;">Datos Trimestrales</div>` +
-      `<div id="tblRowQuarter" style="display:flex;flex-wrap:wrap;align-items:flex-start;gap:16px;">${quarterTbls.map(d=>_renderOneTable(d)).join('')}</div>`;
+      `<div id="tblRowAll" style="display:flex;flex-wrap:wrap;align-items:flex-start;gap:16px;">${blocksHtml}</div>`;
 
     el.addEventListener('click',  _tblClickHandler,  {signal:sig});
     el.addEventListener('change', _tblChangeHandler, {signal:sig});
     el.addEventListener('input',  _tblInputHandler,  {signal:sig});
+
+    _chartDefs.forEach(c=>{ setTimeout(()=>_renderOneDashChart(c.id),30); });
   }
 
   // ── _renderOneTable — pure HTML, no DOM side-effects ─────────
@@ -14095,104 +15320,101 @@ function openDetail(especie){
 
     const allYearsAll = [...new Set(allSeries.flatMap(r=>r.series.map(x=>x.yr)))].sort().reverse();
     const allYears    = allYearsAll.slice(0, def.range);
-    const colW = 86;
 
     // Width: use flex-basis so flex container handles side-by-side
     const basisMap = {100:'100%', 50:'calc(50% - 8px)', 33:'calc(33.33% - 11px)'};
     const flexBasis = basisMap[def.width||100] || '100%';
 
     if(forReport){
-      // Clean version for export — no buttons, no CSS vars
-      const CV = {'var(--bg2)':'#fff','var(--bg3)':'#f4f5ff','var(--border)':'#e0e0e0',
-                  'var(--border2)':'#dde','var(--text)':'#1a1a1a','var(--text2)':'#444','var(--text3)':'#888'};
-      const cv = s => CV[s]||'inherit';
+      const P=_reportPal||_reportPalette();
       if(!allYears.length) return '';
+      const showVarR = def.showVar !== false;
+      const varTypeR = def.varType || (def.isQ ? 'yoy' : 'annual');
+      const varRowsR = def.varRows || def.rows.filter(k=>!_isRatioKey(k));
+      const rowVarR = (key)=> showVarR && varRowsR.includes(key) && !_isRatioKey(key);
+      const varBadgeR = (v)=>{
+        if(!v) return '';
+        if(v.nm) return ` <span style="font-size:8px;color:${P.text3};">(n/m)</span>`;
+        const sign=v.pct>=0?'+':'';
+        const col=v.pct>=0?'#16a34a':'#dc2626';
+        return ` <span style="font-size:8px;color:${col};">(${sign}${v.pct.toFixed(1)}%)</span>`;
+      };
       return `<div style="flex:0 0 ${flexBasis};min-width:280px;margin-bottom:16px;">
-        <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;">
-          <div style="padding:8px 12px;background:#f4f5ff;border-bottom:1px solid #dde;font-size:11px;font-weight:700;color:#333;text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:8px;">
-            ${def.title}<span style="font-size:9px;background:#eeefff;color:#1E27F3;border:1px solid #c5c8ff;padding:1px 7px;border-radius:8px;">${def.isQ?'TRIM':'ANUAL'}</span>
+        <div style="background:${P.card};border:1px solid ${P.border};border-radius:8px;overflow:hidden;">
+          <div style="padding:8px 12px;background:${P.card2};border-bottom:1px solid ${P.border2};font-size:11px;font-weight:700;color:${P.text2};text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:8px;">
+            ${def.title}<span style="font-size:9px;background:${P.accentLight};color:${P.accent};border:1px solid ${P.border2};padding:1px 7px;border-radius:8px;">${def.isQ?'TRIM':'ANUAL'}</span>
           </div>
-          <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">
+          <table style="width:100%;border-collapse:collapse;table-layout:auto;">
             <thead><tr>
-              <th style="background:#f4f5ff;padding:6px 10px;font-size:10px;font-weight:600;color:#555;text-align:left;border-bottom:1px solid #dde;text-transform:uppercase;">Métrica</th>
-              ${allYears.map(y=>`<th style="background:#f4f5ff;padding:6px 10px;font-size:10px;font-weight:600;color:#555;text-align:right;border-bottom:1px solid #dde;">${y}</th>`).join('')}
+              <th style="background:${P.card2};padding:6px 10px;font-size:10px;font-weight:600;color:${P.text3};text-align:left;border-bottom:1px solid ${P.border2};text-transform:uppercase;">Métrica</th>
+              ${allYears.map(y=>`<th style="background:${P.card2};padding:6px 10px;font-size:10px;font-weight:600;color:${P.text3};text-align:right;border-bottom:1px solid ${P.border2};">${y}</th>`).join('')}
             </tr></thead>
             <tbody>${allSeries.map(({key,series})=>{
-              const cat=TABLE_ROW_CATALOGUE.find(r=>r.key===key);
+              const wantVar=rowVarR(key);
               const cells=allYears.map(yr=>{
                 const p=series.find(x=>x.yr===yr);
-                return `<td style="padding:5px 10px;text-align:right;border-bottom:1px solid #f0f0f0;font-size:11px;">${p?_tblFmt(key,p.val):'—'}</td>`;
+                if(!p) return `<td style="padding:5px 10px;text-align:right;border-bottom:1px solid ${P.border};font-size:11px;color:${P.text};">—</td>`;
+                const vb=wantVar?varBadgeR(_cellVariation(series,yr,def.isQ,varTypeR)):'';
+                return `<td style="padding:5px 10px;text-align:right;border-bottom:1px solid ${P.border};font-size:11px;color:${P.text};white-space:nowrap;">${_tblFmt(key,p.val)}${vb}</td>`;
               }).join('');
-              return `<tr><td style="padding:5px 10px;border-bottom:1px solid #f0f0f0;font-size:11px;color:#555;font-weight:500;">${cat?.label||key}</td>${cells}</tr>`;
+              return `<tr><td style="padding:5px 10px;border-bottom:1px solid ${P.border};font-size:11px;color:${P.text2};font-weight:500;">${_rowLabel(key)}</td>${cells}</tr>`;
             }).join('')}</tbody>
-          </table></div>
+          </table>
+          ${(()=>{
+            const anyV = showVarR && allSeries.some(r=>rowVarR(r.key));
+            if(!anyV) return '';
+            const txt = def.isQ
+              ? (varTypeR==='yoy' ? 'Variación YoY (vs. mismo trimestre del año anterior)' : 'Variación QoQ (vs. trimestre anterior)')
+              : 'Variación interanual (vs. año anterior)';
+            return `<div style="padding:5px 12px 8px;font-size:9px;color:${P.text3};font-style:italic;">Δ ${txt}</div>`;
+          })()}
         </div></div>`;
     }
 
     // ── Normal (dashboard) render ─────────────────────────────
     const rangeOpts   = [3,5,8,10,15,20].map(n=>`<option value="${n}"${n===def.range?' selected':''}>${n}</option>`).join('');
-    const widthOpts   = [{v:100,l:'Full'},{v:50,l:'½'},{v:33,l:'⅓'}]
+    const widthOpts   = [{v:100,l:'100%'},{v:50,l:'50%'},{v:33,l:'33%'}]
       .map(o=>`<option value="${o.v}"${(def.width||100)===o.v?' selected':''}>${o.l}</option>`).join('');
 
-    // Edit panel (shown only when def.editing)
+    // Edit panel removed — table editing now happens in a modal (secOpenTableEditor)
     let editPanel = '';
-    if(def.editing){
-      const catByGroup={};
-      TABLE_ROW_CATALOGUE.forEach(r=>{ if(!catByGroup[r.group]) catByGroup[r.group]=[]; catByGroup[r.group].push(r); });
 
-      editPanel = `<div style="padding:10px 12px;background:var(--bg3);border-bottom:1px solid var(--border);">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-          <label style="font-size:10px;color:var(--text3);font-family:var(--mono);">Nombre:
-            <input type="text" value="${def.title.replace(/"/g,'&quot;')}"
-              data-action="rename" data-id="${def.id}"
-              style="margin-left:4px;background:var(--bg2);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:11px;padding:2px 8px;outline:none;width:160px;" />
-          </label>
-          <label style="font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;align-items:center;gap:4px;">
-            Rango:
-            <select data-action="range" data-id="${def.id}"
-              style="background:var(--bg2);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:10px;padding:2px 6px;outline:none;">${rangeOpts}
-            </select>
-          </label>
-          <label style="font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;align-items:center;gap:4px;">
-            Ancho:
-            <select data-action="width" data-id="${def.id}"
-              style="background:var(--bg2);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:10px;padding:2px 6px;outline:none;">${widthOpts}
-            </select>
-          </label>
-        </div>
-        <div style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;">Filas:</div>
-        ${Object.entries(catByGroup).map(([grp,rows])=>`
-          <div style="margin-bottom:4px;display:flex;align-items:flex-start;flex-wrap:wrap;gap:3px;">
-            <span style="font-size:9px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;min-width:90px;padding-top:3px;">${grp}</span>
-            <div style="display:flex;flex-wrap:wrap;gap:3px;">
-              ${rows.map(r=>{
-                const active=def.rows.includes(r.key);
-                return `<button data-action="togglerow" data-id="${def.id}" data-key="${r.key}"
-                  style="padding:2px 8px;border-radius:10px;font-size:10px;cursor:pointer;font-family:var(--mono);border:1px solid ${active?'#1E27F3':'var(--border)'};background:${active?'rgba(30,39,243,0.15)':'transparent'};color:${active?'#a5b4fc':'var(--text3)'};">${r.label}</button>`;
-              }).join('')}
-            </div>
-          </div>`).join('')}
-      </div>`;
-    }
+    // Variación %: por tabla (showVar, ON por defecto) + por fila (varRows). Ratios nunca muestran.
+    const showVar = def.showVar !== false; // undefined o true => activado
+    const varType = def.varType || (def.isQ ? 'yoy' : 'annual');
+    // varRows undefined => todas las filas no-ratio por defecto
+    const varRows = def.varRows || def.rows.filter(k=>!_isRatioKey(k));
+    const rowShowsVar = (key)=> showVar && varRows.includes(key) && !_isRatioKey(key);
+
+    // Auto-ajuste de tamaño: sin scroll lateral, la letra se achica por niveles
+    // según cantidad de columnas (y si hay variaciones, que ensanchan las celdas).
+    const nCols = allYears.length;
+    const anyVar = showVar && allSeries.some(r=>rowShowsVar(r.key));
+    const effCols = nCols * (anyVar ? 1.6 : 1); // las variaciones cuentan como ~60% más ancho
+    let cellFont = 11, headFont = 10, cellPad = '6px 10px';
+    if(effCols > 7)  { cellFont = 10; headFont = 9;  cellPad = '5px 7px'; }
+    if(effCols > 10) { cellFont = 9;  headFont = 8;  cellPad = '4px 5px'; }
+    if(effCols > 14) { cellFont = 8;  headFont = 8;  cellPad = '3px 4px'; }
 
     // Table body
     let tableBody = '';
     if(allYears.length && allSeries.length){
-      tableBody = `<div style="overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
-          <colgroup><col style="width:170px;min-width:170px;">${allYears.map(()=>`<col style="width:${colW}px;min-width:${colW}px;">`).join('')}</colgroup>
+      tableBody = `<div style="width:100%;overflow:hidden;">
+        <table style="width:100%;border-collapse:collapse;table-layout:auto;">
           <thead><tr>
-            <th style="position:sticky;left:0;z-index:5;background:var(--bg3);padding:7px 12px;font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;">Métrica</th>
-            ${allYears.map(y=>`<th style="background:var(--bg3);padding:7px 10px;font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;">${y}</th>`).join('')}
+            <th style="background:var(--bg3);padding:${cellPad};font-size:${headFont}px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;">Métrica</th>
+            ${allYears.map(y=>`<th style="background:var(--bg3);padding:${cellPad};font-size:${headFont}px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;">${y}</th>`).join('')}
           </tr></thead>
           <tbody>${allSeries.map(({key,series})=>{
-            const cat=TABLE_ROW_CATALOGUE.find(r=>r.key===key);
+            const wantVar = rowShowsVar(key);
             const cells=allYears.map(yr=>{
               const p=series.find(x=>x.yr===yr);
-              return `<td style="padding:6px 10px;font-size:11px;text-align:right;color:var(--text);white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono);">${p?_tblFmt(key,p.val):'—'}</td>`;
+              if(!p) return `<td style="padding:${cellPad};font-size:${cellFont}px;text-align:right;color:var(--text);white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono);">—</td>`;
+              const vb = wantVar ? _varBadge(_cellVariation(series, yr, def.isQ, varType)) : '';
+              return `<td style="padding:${cellPad};font-size:${cellFont}px;text-align:right;color:var(--text);white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono);">${_tblFmt(key,p.val)}${vb}</td>`;
             }).join('');
             return `<tr class="tbl-row">
-              <td style="position:sticky;left:0;z-index:4;background:var(--bg2);padding:6px 12px;font-size:11px;color:var(--text2);white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono);">${cat?.label||key}</td>
+              <td style="background:var(--bg2);padding:${cellPad};font-size:${cellFont}px;color:var(--text2);white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono);">${_rowLabel(key)}</td>
               ${cells}
             </tr>`;
           }).join('')}</tbody>
@@ -14201,18 +15423,27 @@ function openDetail(especie){
       tableBody=`<div style="padding:14px;font-size:11px;color:var(--text3);font-family:var(--mono);">Sin datos. Abrí "Editar" para agregar métricas.</div>`;
     }
 
+    // Leyenda debajo de la tabla aclarando el tipo de variación mostrada.
+    let varCaption = '';
+    if(anyVar){
+      const txt = def.isQ
+        ? (varType==='yoy' ? 'Variación YoY (vs. mismo trimestre del año anterior)' : 'Variación QoQ (vs. trimestre anterior)')
+        : 'Variación interanual (vs. año anterior)';
+      varCaption = `<div style="padding:5px 10px 7px;font-size:9px;color:var(--text3);font-family:var(--mono);font-style:italic;">Δ ${txt}</div>`;
+    }
+
     return `<div data-tbl-id="${def.id}" style="flex:0 0 ${flexBasis};min-width:280px;">
       <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;margin-bottom:4px;">
         <div style="padding:8px 10px;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--border);font-family:var(--mono);display:flex;align-items:center;gap:6px;flex-wrap:nowrap;">
           <span style="cursor:default;color:var(--text3);font-size:12px;margin-right:2px;">⠿</span>
           <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${def.title}</span>
           <span style="font-size:9px;color:var(--text3);background:var(--bg3);padding:1px 7px;border-radius:8px;border:1px solid var(--border);flex-shrink:0;">${def.isQ?'TRIM':'ANUAL'}</span>
-          <button data-action="up"   data-id="${def.id}" style="padding:1px 5px;font-size:10px;cursor:pointer;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text3);flex-shrink:0;">↑</button>
-          <button data-action="down" data-id="${def.id}" style="padding:1px 5px;font-size:10px;cursor:pointer;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text3);flex-shrink:0;">↓</button>
-          <button data-action="edit" data-id="${def.id}" style="padding:2px 8px;font-size:10px;cursor:pointer;border:1px solid ${def.editing?'#1E27F3':'var(--border2)'};border-radius:4px;background:${def.editing?'rgba(30,39,243,0.12)':'transparent'};color:${def.editing?'#a5b4fc':'var(--text3)'};font-family:var(--mono);flex-shrink:0;">✎</button>
+          <button onclick="secMoveBlock('table',${def.id},-1)" style="padding:1px 5px;font-size:10px;cursor:pointer;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text3);flex-shrink:0;">↑</button>
+          <button onclick="secMoveBlock('table',${def.id},1)" style="padding:1px 5px;font-size:10px;cursor:pointer;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text3);flex-shrink:0;">↓</button>
+          <button data-action="edit" data-id="${def.id}" title="Editar tabla" style="padding:2px 8px;font-size:10px;cursor:pointer;border:1px solid var(--border2);border-radius:4px;background:transparent;color:var(--text3);font-family:var(--mono);flex-shrink:0;">✎</button>
           <button data-action="remove" data-id="${def.id}" style="padding:2px 6px;font-size:10px;cursor:pointer;border:1px solid rgba(248,81,73,0.3);border-radius:4px;background:transparent;color:#f85149;flex-shrink:0;">✕</button>
         </div>
-        ${editPanel}${tableBody}
+        ${editPanel}${tableBody}${varCaption}
       </div>
     </div>`;
   }
@@ -14229,11 +15460,9 @@ function openDetail(especie){
     const btn=e.target.closest('[data-action]'); if(!btn) return;
     const action=btn.dataset.action, id=+btn.dataset.id;
     e.stopPropagation();
-    if(action==='edit')      { _tblMutate(id, d=>d.editing=!d.editing); return; }
+    if(action==='edit')      { secOpenTableEditor(id); return; }
     if(action==='remove')    { _secTableDefs=_secTableDefs.filter(t=>t.id!==id); _renderAllTables(); return; }
     if(action==='togglerow') { _tblMutate(id, d=>{ const k=btn.dataset.key; d.rows=d.rows.includes(k)?d.rows.filter(x=>x!==k):[...d.rows,k]; }); return; }
-    if(action==='up')   { _tblMutate(id, d=>{ const s=[..._secTableDefs].filter(t=>t.isQ===d.isQ).sort((a,b)=>a.order-b.order); const i=s.findIndex(t=>t.id===id); if(i>0){const tmp=s[i-1].order;s[i-1].order=s[i].order;s[i].order=tmp;} }); return; }
-    if(action==='down') { _tblMutate(id, d=>{ const s=[..._secTableDefs].filter(t=>t.isQ===d.isQ).sort((a,b)=>a.order-b.order); const i=s.findIndex(t=>t.id===id); if(i<s.length-1){const tmp=s[i+1].order;s[i+1].order=s[i].order;s[i].order=tmp;} }); return; }
   }
 
   function _tblChangeHandler(e){
@@ -14363,7 +15592,9 @@ function openDetail(especie){
   window.secAddPresetFull = function(globalIdx){
     const p=_TBL_PRESETS[globalIdx]; if(!p) return;
     secCloseAddBlock();
-    const maxOrder = _secTableDefs.filter(d=>d.isQ===p.isQ).reduce((m,d)=>Math.max(m,d.order),-1);
+    const maxOrder = Math.max(
+      _secTableDefs.reduce((m,d)=>Math.max(m,d.order??-1),-1),
+      _chartDefs.reduce((m,d)=>Math.max(m,d.order??-1),-1));
     const id=++_secTableIdSeq;
     _secTableDefs.push({id, title:p.label, isQ:p.isQ, range:p.isQ?8:5, width:100,
       order: maxOrder+1, editing:p.rows.length===0, rows:[...p.rows]});
@@ -14374,7 +15605,9 @@ function openDetail(especie){
     const rows=window._addBlockSelectedRows||[];
     const isQ=!!+($('addBlockIsQ')?.value||0);
     secCloseAddBlock();
-    const maxOrder = _secTableDefs.filter(d=>d.isQ===isQ).reduce((m,d)=>Math.max(m,d.order),-1);
+    const maxOrder = Math.max(
+      _secTableDefs.reduce((m,d)=>Math.max(m,d.order??-1),-1),
+      _chartDefs.reduce((m,d)=>Math.max(m,d.order??-1),-1));
     const id=++_secTableIdSeq;
     _secTableDefs.push({id, title:'Tabla personalizada', isQ, range:isQ?8:5, width:100,
       order: maxOrder+1, editing:rows.length===0, rows:[...rows]});
@@ -14386,14 +15619,14 @@ function openDetail(especie){
 
   window.secSaveLayout = function(){
     try{
-      localStorage.setItem(_layoutKey(), JSON.stringify({tableDefs:_secTableDefs,chartDefs:_chartDefs,savedAt:new Date().toISOString()}));
+      localStorage.setItem(_layoutKey(), JSON.stringify({tableDefs:_secTableDefs,chartDefs:_chartDefs,customVars:_customVars,kpiActive:_kpiActive,kpiVarOff:_kpiVarOff,savedAt:new Date().toISOString()}));
       showStatus('Layout guardado ✓','ok');
     }catch(e){ showStatus('Error al guardar: '+e.message,'err'); }
   };
 
   window.secExportLayout = function(){
     try{
-      const blob=new Blob([JSON.stringify({tableDefs:_secTableDefs,chartDefs:_chartDefs,ticker:_lastTicker,savedAt:new Date().toISOString()},null,2)],{type:'application/json'});
+      const blob=new Blob([JSON.stringify({tableDefs:_secTableDefs,chartDefs:_chartDefs,customVars:_customVars,kpiActive:_kpiActive,kpiVarOff:_kpiVarOff,ticker:_lastTicker,savedAt:new Date().toISOString()},null,2)],{type:'application/json'});
       const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
       a.download=`layout_${_lastTicker||'custom'}_${new Date().toISOString().slice(0,10)}.json`; a.click();
     }catch(e){ showStatus('Error al exportar: '+e.message,'err'); }
@@ -14407,8 +15640,11 @@ function openDetail(especie){
       reader.onload=function(ev){
         try{
           const data=JSON.parse(ev.target.result);
+          if(data.customVars){ _customVars=data.customVars; _resyncCustomVarSeq(); }
+          if(Array.isArray(data.kpiActive)) _kpiActive=data.kpiActive;
+          if(Array.isArray(data.kpiVarOff)) _kpiVarOff=data.kpiVarOff;
           if(data.tableDefs) _secTableDefs=data.tableDefs;
-          if(data.chartDefs){ _chartDefs=data.chartDefs; _refreshDashboard(); }
+          if(data.chartDefs){ _chartDefs=data.chartDefs; _chartDefs.forEach(_ensureSeries); _refreshDashboard(); }
           _renderAllTables(); showStatus('Layout importado ✓','ok');
         }catch(err){ showStatus('Error al importar: '+err.message,'err'); }
       };
@@ -14422,74 +15658,130 @@ function openDetail(especie){
       const raw=localStorage.getItem(`secLayout_${ticker}`);
       if(!raw) return false;
       const data=JSON.parse(raw);
+      if(data.customVars){ _customVars=data.customVars; _resyncCustomVarSeq(); }
+          if(Array.isArray(data.kpiActive)) _kpiActive=data.kpiActive;
+          if(Array.isArray(data.kpiVarOff)) _kpiVarOff=data.kpiVarOff;
       if(data.tableDefs&&data.tableDefs.length){ _secTableDefs=data.tableDefs; return true; }
     }catch(_){}
     return false;
   }
 
+  // Mantiene el contador de ids por encima del máximo cargado (evita colisiones).
+  function _resyncCustomVarSeq(){
+    let mx=0;
+    for(const cv of (_customVars||[])){
+      const n=parseInt(String(cv.id||'').replace(/\D/g,''));
+      if(isFinite(n)&&n>mx) mx=n;
+    }
+    _customVarIdSeq=mx;
+  }
+
   // ── Report generator ──────────────────────────────────────────
+  // ── Paleta del reporte según modo claro/oscuro ──
+  function _reportIsDark(){
+    // Lee el var --bg actual; si es oscuro, modo dark.
+    const bg=getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+    if(!bg) return true;
+    // parse hex → luminancia
+    const m=bg.match(/#?([0-9a-f]{6})/i);
+    if(!m) return true;
+    const n=parseInt(m[1],16); const r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+    return (0.2126*r+0.7152*g+0.0722*b) < 128;
+  }
+  function _reportPalette(){
+    if(_reportIsDark()){
+      return {bg:'#0a0d18',card:'#0d1020',card2:'#131929',border:'#1e2742',border2:'#2a3556',
+              text:'#e8eaf6',text2:'#aeb4d4',text3:'#8b99c4',accent:'#1E27F3',accentLight:'rgba(30,39,243,0.12)',
+              chartBg:'#0d1020', rowAlt:'#10152a'};
+    }
+    return {bg:'#ffffff',card:'#ffffff',card2:'#f4f5ff',border:'#e0e0e0',border2:'#dde',
+            text:'#1a1a1a',text2:'#444',text3:'#888',accent:'#1E27F3',accentLight:'#eeefff',
+            chartBg:'#ffffff', rowAlt:'#fafafa'};
+  }
+  let _reportPal = null; // seteado al generar
+
   window.secGenerateReport = function(){
     const ticker = _lastTicker||'—';
     const name   = $('secCompanyName')?.textContent||ticker;
     const meta   = $('secCompanyMeta')?.textContent||'';
     const date   = new Date().toLocaleDateString('es-AR',{year:'numeric',month:'long',day:'numeric'});
 
+    _reportPal = _reportPalette();
+    const P = _reportPal;
+
     // KPI values from state (not DOM)
+    let kpiAnyVar=false;
     const kpiItems = _kpiActive.map(kid=>{
-      const def=KPI_CATALOGUE.find(k=>k.id===kid); if(!def) return '';
-      const S=_secSeriesA;
-      if(!S) return '';
-      const field=S[def.field];
-      const last=field&&field.length?field[field.length-1]:null;
-      const v=last?last.val:null;
-      const disp=v!=null?def.fmt(v):'—';
-      return `<div class="kpi-item"><div class="kpi-label">${def.label}</div><div class="kpi-value">${disp}</div></div>`;
+      const m=_kpiMeta(kid);
+      const v=_kpiValue(kid);
+      const disp=_kpiFmtVal(m.fmt,v);
+      let badge='';
+      if(!_kpiVarOff.includes(kid) && !_isRatioKey(kid)){
+        const vv=_kpiVariation(kid);
+        if(vv){
+          kpiAnyVar=true;
+          if(vv.nm){
+            badge=` <span style="font-size:11px;color:${P.text3};">(n/m)</span>`;
+          } else {
+            const sign=vv.pct>=0?'+':'';
+            const col=vv.pct>=0?'#16a34a':'#dc2626';
+            badge=` <span style="font-size:12px;font-weight:700;color:${col};">${sign}${vv.pct.toFixed(1)}%</span>`;
+          }
+        }
+      }
+      return `<div class="kpi-item"><div class="kpi-label">${m.label}</div><div class="kpi-value">${disp}${badge}</div></div>`;
     }).join('');
 
-    // Charts as PNG images — render each to a bigger offscreen canvas for quality
-    let chartsHtml='';
-    _chartDefs.forEach(c=>{
+    // Render de un chart a HTML de reporte (imagen PNG + card).
+    _chartDefs.forEach(_ensureSeries);
+    const chartReportHtml = (c)=>{
       const canvas=document.getElementById(`dashCanvas_${c.id}`);
-      if(!canvas) return;
-      // Scale up to full report width for quality
+      if(!canvas) return '';
+      // Rasterizar a las dimensiones NATIVAS del canvas (sin reescalar → sin distorsión).
+      // El <img width:100%> luego lo escala proporcionalmente.
+      const srcW=canvas.width||900, srcH=canvas.height||300;
       const offscreen=document.createElement('canvas');
-      offscreen.width=900; offscreen.height=320;
+      offscreen.width=srcW; offscreen.height=srcH;
       const ctx=offscreen.getContext('2d');
-      ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,900,320);
-      ctx.drawImage(canvas,0,0,900,320);
+      ctx.fillStyle=P.chartBg; ctx.fillRect(0,0,srcW,srcH);
+      ctx.drawImage(canvas,0,0);
       const img=offscreen.toDataURL('image/png');
-      const m=CHART_METRICS.find(x=>x.id===c.metric);
-      chartsHtml+=`<div style="width:100%;margin-bottom:16px;">
-        <div style="background:#f8f9fa;border:1px solid #e0e0e0;border-radius:8px;padding:14px;">
-          <div style="font-size:10px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">${m?.label||c.metric} · ${c.period==='quarterly'?'TRIM':'ANUAL'}</div>
-          <img src="${img}" style="width:100%;height:auto;" />
+      const autoT = c.series.length===1 ? _chartMetaFor(c.series[0].metric).label
+                   : c.series.map(s=>_chartMetaFor(s.metric).label).join(' · ');
+      const ctitle = (c.title&&c.title.trim())?c.title:autoT;
+      const cbasis = {100:'100%',50:'calc(50% - 8px)',33:'calc(33.33% - 11px)'}[c.width||100]||'100%';
+      return `<div style="flex:0 0 ${cbasis};min-width:280px;margin-bottom:16px;">
+        <div style="background:${P.card};border:1px solid ${P.border};border-radius:8px;overflow:hidden;">
+          <div style="font-size:10px;font-weight:700;color:${P.text3};text-transform:uppercase;letter-spacing:.06em;padding:8px 12px;background:${P.card2};border-bottom:1px solid ${P.border2};">${ctitle} · ${c.period==='quarterly'?'TRIM':'ANUAL'}</div>
+          <div style="padding:12px;"><img src="${img}" style="width:100%;height:auto;display:block;" /></div>
         </div></div>`;
-    });
+    };
 
-    // Tables — use _renderOneTable with forReport=true
-    const sorted=[..._secTableDefs].sort((a,b)=>a.order-b.order);
-    const annualHtml  = sorted.filter(d=>!d.isQ).map(d=>_renderOneTable(d,true)).join('');
-    const quarterHtml = sorted.filter(d=>d.isQ).map(d=>_renderOneTable(d,true)).join('');
+    // Orden plano único: charts + TODAS las tablas, mismo orden que en pantalla.
+    const allBlocks = [
+      ..._chartDefs.map(c=>({kind:'chart', order:c.order??0, def:c})),
+      ..._secTableDefs.map(d=>({kind:'table', order:d.order??0, def:d})),
+    ].sort((a,b)=>a.order-b.order);
+    const blocksHtml = allBlocks.map(b=> b.kind==='chart' ? chartReportHtml(b.def) : _renderOneTable(b.def,true)).join('');
 
     const reportHtml=`<!DOCTYPE html>
 <html lang="es"><head><meta charset="UTF-8">
 <title>${ticker} — Reporte · ${date}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1a1a1a;font-size:13px;}
+body{font-family:'Segoe UI',Arial,sans-serif;background:${P.bg};color:${P.text};font-size:13px;}
 .page{max-width:1100px;margin:0 auto;padding:32px 28px;}
-.header{border-bottom:3px solid #1E27F3;padding-bottom:16px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-end;}
-.ticker{font-size:36px;font-weight:800;color:#1E27F3;letter-spacing:.04em;line-height:1;}
-.co-name{font-size:18px;font-weight:600;color:#1a1a1a;margin-top:6px;}
-.co-meta{font-size:11px;color:#666;margin-top:3px;}
-.report-date{font-size:10px;color:#999;text-align:right;}
-.kpi-bar{display:flex;flex-wrap:wrap;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;margin-bottom:24px;}
-.kpi-item{padding:12px 18px;border-right:1px solid #e0e0e0;min-width:110px;}
-.kpi-label{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#888;margin-bottom:4px;}
-.kpi-value{font-size:17px;font-weight:700;color:#1a1a1a;}
-.section-title{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.1em;margin:20px 0 10px;padding-bottom:5px;border-bottom:1px solid #eee;}
-.tbl-row{flex:0 0 100%;}
-.footer{margin-top:36px;padding-top:14px;border-top:1px solid #eee;font-size:10px;color:#aaa;text-align:center;}
+.header{border-bottom:3px solid ${P.accent};padding-bottom:16px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-end;}
+.ticker{font-size:36px;font-weight:800;color:${P.accent};letter-spacing:.04em;line-height:1;}
+.co-name{font-size:18px;font-weight:600;color:${P.text};margin-top:6px;}
+.co-meta{font-size:11px;color:${P.text3};margin-top:3px;}
+.report-date{font-size:10px;color:${P.text3};text-align:right;}
+.kpi-bar{display:flex;flex-wrap:wrap;border:1px solid ${P.border};border-radius:8px;overflow:hidden;margin-bottom:24px;background:${P.card};}
+.kpi-item{padding:12px 18px;border-right:1px solid ${P.border};min-width:110px;}
+.kpi-label{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:${P.text3};margin-bottom:4px;}
+.kpi-value{font-size:17px;font-weight:700;color:${P.text};}
+.section-title{font-size:10px;font-weight:700;color:${P.text3};text-transform:uppercase;letter-spacing:.1em;margin:20px 0 10px;padding-bottom:5px;border-bottom:1px solid ${P.border};}
+.footer{margin-top:36px;padding-top:14px;border-top:1px solid ${P.border};font-size:10px;color:${P.text3};text-align:center;}
 @media print{.page{padding:12px;}}
 </style></head>
 <body><div class="page">
@@ -14499,10 +15791,9 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1a1a1a;font-
   </div>
   <div class="section-title">KPIs Principales</div>
   <div class="kpi-bar">${kpiItems}</div>
-  ${chartsHtml?`<div class="section-title">Gráficos</div><div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:8px;">${chartsHtml}</div>`:''}
-  <div class="section-title">Tablas Anuales</div>
-  <div style="display:flex;flex-wrap:wrap;gap:16px;">${annualHtml}</div>
-  ${quarterHtml?`<div class="section-title" style="margin-top:20px;">Tablas Trimestrales</div><div style="display:flex;flex-wrap:wrap;gap:16px;">${quarterHtml}</div>`:''}
+  ${kpiAnyVar?`<div style="font-size:10px;color:${P.text3};font-style:italic;margin:-4px 0 12px;">Δ Variación YoY (vs. mismo período del año anterior)</div>`:''}
+  <div class="section-title">Análisis</div>
+  <div style="display:flex;flex-wrap:wrap;align-items:flex-start;gap:16px;">${blocksHtml}</div>
   <div class="footer">Dashboard · SEC EDGAR · No constituye asesoramiento de inversión</div>
 </div></body></html>`;
 
@@ -14515,10 +15806,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1a1a1a;font-
   function renderFinancials(facts){
     Object.values(_chartInstances).forEach(c=>{try{c.destroy();}catch(_){}});
     _chartInstances={};
-    if(_chartDefs.length===0){
-      _chartDefs=[{id:++_chartIdSeq,metric:'ebitda',period:'quarterly',xDir:'desc',chartRange:10}];
-    }
-    _refreshDashboard();
 
     _secSeriesA=_buildAllSeries(facts,false);
     _secSeriesQ=_buildAllSeries(facts,true);
@@ -14527,6 +15814,12 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1a1a1a;font-
     const loaded=_tryLoadSavedLayout(_lastTicker||'');
     if(!loaded && _secTableDefs.length===0) _initTableDefs();
 
+    // Chart default: arriba de todo (order -1). Los agregados después van al fondo.
+    if(_chartDefs.length===0){
+      _chartDefs=[{id:++_chartIdSeq,series:[{metric:'ebitda',type:'bar',color:'#1E27F3',axis:'left'}],period:'quarterly',xDir:'desc',chartRange:10,stacked:false,width:100,order:-1}];
+    }
+
+    const old=$('secChartDashboard'); if(old){ old.style.display='none'; old.innerHTML=''; }
     _renderAllTables();
   }
   // ══════════════════════════════════════════════
