@@ -13833,12 +13833,19 @@ function openDetail(especie){
     return S[kid]||[];
   }
   // Variación YoY del KPI = último punto vs. año anterior de la misma serie.
+  // Modo de variación de un KPI según su formato (mismo criterio que tablas).
+  function _kpiVarMode(kid){
+    const f=_kpiMeta(kid).fmt || 'M';
+    if(f==='pct') return 'pp';
+    if(f==='x1'||f==='x2') return 'abs';
+    return 'pct';
+  }
   function _kpiVariation(kid){
     const ser=_kpiSeries(kid);
     if(!ser.length) return null;
     const last=ser[ser.length-1];
     if(!last||last.val==null) return null;
-    return _cellVariation(ser, last.yr, false, 'annual');
+    return _cellVariation(ser, last.yr, false, 'annual', _kpiVarMode(kid));
   }
 
   // Valor de un KPI = último punto de la serie (mismo motor que tablas/gráficos).
@@ -13857,7 +13864,7 @@ function openDetail(especie){
   function _kpiMeta(kid){
     if(kid.startsWith('c_')){
       const cv=_getCustomVar(kid);
-      return cv? {label:cv.label, fmt:cv.fmt, custom:true} : {label:kid, fmt:'M', custom:true};
+      return cv? {label:cv.label, fmt:_effectiveFmt(cv), custom:true} : {label:kid, fmt:'M', custom:true};
     }
     const def=KPI_CATALOGUE.find(k=>k.id===kid);
     if(def) return {label:def.label, fmt:def._fmt||'M', custom:false, colorFn:def.color};
@@ -13878,12 +13885,13 @@ function openDetail(especie){
     const el=$('secKpiBar'); if(!el||!facts) return;
 
     let anyVar=false;
+    const kpiModes=new Set();
     const cards=_kpiActive.map(kid=>{
       const m=_kpiMeta(kid);
       const v=_kpiValue(kid);
       const disp=_kpiFmtVal(m.fmt,v);
       // El número del KPI siempre en color base; el color va sólo en la variación.
-      const showVar = !_kpiVarOff.includes(kid) && !_isRatioKey(kid);
+      const showVar = !_kpiVarOff.includes(kid);
       let badge='';
       if(showVar){
         const vv=_kpiVariation(kid);
@@ -13891,7 +13899,16 @@ function openDetail(especie){
           anyVar=true;
           if(vv.nm){
             badge=`<span style="font-size:10px;color:var(--text3);font-family:var(--mono);">(n/m)</span>`;
+          } else if(vv.mode==='pp'){
+            kpiModes.add('pp');
+            const sign=vv.diff>=0?'+':''; const col=vv.diff>=0?'var(--green)':'var(--red)';
+            badge=`<span style="font-size:11px;font-weight:700;color:${col};font-family:var(--mono);">${sign}${vv.diff.toFixed(1)}pp</span>`;
+          } else if(vv.mode==='abs'){
+            kpiModes.add('abs');
+            const sign=vv.diff>=0?'+':''; const col=vv.diff>=0?'var(--green)':'var(--red)';
+            badge=`<span style="font-size:11px;font-weight:700;color:${col};font-family:var(--mono);">${sign}${vv.diff.toFixed(2)}x</span>`;
           } else {
+            kpiModes.add('pct');
             const sign=vv.pct>=0?'+':'';
             const col=vv.pct>=0?'var(--green)':'var(--red)';
             badge=`<span style="font-size:11px;font-weight:700;color:${col};font-family:var(--mono);">${sign}${vv.pct.toFixed(1)}%</span>`;
@@ -13910,7 +13927,7 @@ function openDetail(especie){
         <button onclick="secOpenKpiEditor()" title="Configurar KPIs"
           style="margin-left:auto;align-self:center;padding:5px 12px;border:1px solid var(--border2);border-radius:6px;background:transparent;color:var(--text3);font-size:10px;cursor:pointer;font-family:var(--mono);margin-right:4px;white-space:nowrap;">✎ KPIs</button>
       </div>
-      ${anyVar?`<div style="font-size:9px;color:var(--text3);font-family:var(--mono);font-style:italic;padding:4px 18px 0;">Δ Variación YoY (vs. mismo período del año anterior)</div>`:''}`;
+      ${anyVar?`<div style="font-size:9px;color:var(--text3);font-family:var(--mono);font-style:italic;padding:4px 18px 0;">${_varCaptionText(false,'annual',kpiModes)}</div>`:''}`;
   }
 
   // ── Editor de KPIs (popup con base + personalizadas, igual que tablas) ──
@@ -13925,9 +13942,9 @@ function openDetail(especie){
     const el=$('secKpiModalContent'); if(!el) return;
     // Chip de selección + (si está activo y no es ratio) un toggle Δ para la variación YoY.
     const chip=(id,label,active,custom)=>{
-      const varToggle = (active && !_isRatioKey(id)) ? (()=>{
+      const varToggle = active ? (()=>{
         const on=!_kpiVarOff.includes(id);
-        return `<button onclick="event.stopPropagation();secToggleKpiVar('${id}')" title="Mostrar variación YoY"
+        return `<button onclick="event.stopPropagation();secToggleKpiVar('${id}')" title="Mostrar variación"
           style="margin-left:5px;padding:2px 6px;border-radius:8px;font-size:9px;cursor:pointer;font-family:var(--mono);border:1px solid ${on?'#3fb950':'var(--border)'};background:${on?'rgba(63,185,80,0.15)':'transparent'};color:${on?'#3fb950':'var(--text3)'};">Δ</button>`;
       })() : '';
       return `<span style="display:inline-flex;align-items:center;">
@@ -14891,19 +14908,20 @@ function openDetail(especie){
       ${customGroup}
 
       ${(() => {
-        // Sección de variaciones porcentuales (activadas por defecto)
+        // Sección de variaciones (activadas por defecto). Ahora todas las filas
+        // que admiten variación son candidatas; el modo (%/pp/x) depende del formato.
         const showVar = def.showVar !== false;
         const varType = def.varType || (def.isQ ? 'yoy' : 'annual');
-        // Filas candidatas a mostrar variación: las activas que NO son ratios.
-        const activeNonRatio = def.rows.filter(k=>!_isRatioKey(k));
-        const varRows = def.varRows || activeNonRatio; // undefined => todas
-        const perRow = showVar && activeNonRatio.length ? `
+        const varCandidates = def.rows.filter(k=>_varMode(k)!==null);
+        const varRows = def.varRows || varCandidates; // undefined => todas
+        const modeTag = (k)=>{ const mm=_varMode(k); return mm==='pp'?' <span style="font-size:8px;opacity:.7;">pp</span>':mm==='abs'?' <span style="font-size:8px;opacity:.7;">x</span>':''; };
+        const perRow = showVar && varCandidates.length ? `
           <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;">
             <span style="font-size:9px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;min-width:100px;padding-top:3px;">Filas con Δ</span>
             <div style="display:flex;flex-wrap:wrap;gap:4px;">
-              ${activeNonRatio.map(k=>{
+              ${varCandidates.map(k=>{
                 const on=varRows.includes(k);
-                return `<button onclick="secCfgToggleVarRow('${k}')" style="padding:3px 9px;border-radius:10px;font-size:10px;cursor:pointer;font-family:var(--mono);border:1px solid ${on?'#3fb950':'var(--border)'};background:${on?'rgba(63,185,80,0.15)':'transparent'};color:${on?'#3fb950':'var(--text3)'};">${_rowLabel(k)}</button>`;
+                return `<button onclick="secCfgToggleVarRow('${k}')" style="padding:3px 9px;border-radius:10px;font-size:10px;cursor:pointer;font-family:var(--mono);border:1px solid ${on?'#3fb950':'var(--border)'};background:${on?'rgba(63,185,80,0.15)':'transparent'};color:${on?'#3fb950':'var(--text3)'};">${_rowLabel(k)}${modeTag(k)}</button>`;
               }).join('')}
             </div>
           </div>` : '';
@@ -14911,7 +14929,7 @@ function openDetail(especie){
         <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
             <label style="font-size:11px;color:var(--text3);font-family:var(--mono);display:flex;align-items:center;gap:6px;cursor:pointer;">
-              <input type="checkbox" ${showVar?'checked':''} onchange="secCfgSet('showVar',this.checked)" /> Mostrar variaciones %
+              <input type="checkbox" ${showVar?'checked':''} onchange="secCfgSet('showVar',this.checked)" /> Mostrar variaciones
             </label>
             ${def.isQ && showVar ? `
             <div style="display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:6px;overflow:hidden;">
@@ -14939,9 +14957,9 @@ function openDetail(especie){
   window.secCfgSet = function(field,val){
     const def=_secTableDefs.find(t=>t.id===_varModalTableId); if(!def) return;
     def[field]=val;
-    // Al activar variaciones por primera vez, pre-seleccionar todas las filas no-ratio.
+    // Al activar variaciones por primera vez, pre-seleccionar todas las filas que admiten Δ.
     if(field==='showVar' && val && (!def.varRows || def.varRows.length===0)){
-      def.varRows = def.rows.filter(k=>!_isRatioKey(k));
+      def.varRows = def.rows.filter(k=>_varMode(k)!==null);
     }
     _renderAllTables(); _renderModal();
   };
@@ -14960,7 +14978,7 @@ function openDetail(especie){
     const def=_secTableDefs.find(t=>t.id===_varModalTableId); if(!def) return;
     // Si varRows está undefined, el default es "todas las no-ratio": materializamos esa
     // lista antes de togglear, para que quitar una fila no la deje como única seleccionada.
-    const vr = def.varRows || def.rows.filter(k=>!_isRatioKey(k));
+    const vr = def.varRows || def.rows.filter(k=>_varMode(k)!==null);
     def.varRows = vr.includes(key) ? vr.filter(k=>k!==key) : [...vr, key];
     _renderAllTables(); _renderModal();
   };
@@ -15391,16 +15409,29 @@ function openDetail(especie){
     if(key.startsWith('c_')){ const cv=_getCustomVar(key); return _effectiveFmt(cv); }
     const cat = TABLE_ROW_CATALOGUE.find(r=>r.key===key); return cat?.fmt||'M';
   }
-  // Una fila es "ratio/porcentaje" si su formato no es un monto/cantidad → no mostramos variación %.
+  // Una fila es "ratio/porcentaje" si su formato no es un monto/cantidad.
   function _isRatioKey(key){
     const f=_keyFmtType(key);
     return f==='pct' || f==='x1' || f==='x2';
   }
+  // Modo de variación según el formato de la fila:
+  //   'pct' → variación porcentual (montos: M, raw, dlr, shares, eps, capex)
+  //   'pp'  → puntos porcentuales (formato pct: márgenes, ROE, ROA, Debt/Assets…)
+  //   'abs' → diferencia absoluta en "x" (ratios x1/x2: D/E, Current, ND/EBITDA…)
+  // Devuelve null si la fila no admite variación con sentido.
+  function _varMode(key){
+    const f=_keyFmtType(key);
+    if(f==='pct') return 'pp';
+    if(f==='x1'||f==='x2') return 'abs';
+    return 'pct'; // M, raw, dlr, shares, eps, capex → % (montos en dólares incluidos)
+  }
 
-  // Calcula la variación % de una celda contra el período anterior correcto.
+  // Calcula la variación de una celda contra el período anterior correcto.
   // series = serie COMPLETA (no la ventana visible). yr = etiqueta del período actual.
-  // isQ + varType deciden YoY vs QoQ. Devuelve {pct, ok} o null si no aplica/no hay base.
-  function _cellVariation(series, yr, isQ, varType){
+  // isQ + varType deciden YoY vs QoQ. mode = 'pct' | 'pp' | 'abs'.
+  // Devuelve { mode, pct?, diff? } o null si no aplica, o {nm:true} si no es significativa.
+  function _cellVariation(series, yr, isQ, varType, mode){
+    mode = mode || 'pct';
     const cur = series.find(x=>x.yr===yr);
     if(!cur || cur.val==null) return null;
     let prevYr;
@@ -15422,20 +15453,49 @@ function openDetail(especie){
       prevYr=String(y-1);
     }
     const prev=series.find(x=>x.yr===prevYr);
-    if(!prev || prev.val==null || prev.val===0) return null;
-    // si el año anterior es negativo, la variación % no es significativa
-    if(prev.val<0) return {nm:true};
-    const pct=(cur.val-prev.val)/Math.abs(prev.val)*100;
+    if(!prev || prev.val==null) return null;
+    const diff = cur.val - prev.val;
+    // pp y abs: diferencia absoluta directa. Funciona aunque la base sea negativa
+    // (ej. margen que pasa de -3% a +2% = +5pp), así que no devolvemos n/m acá.
+    if(mode==='pp')  { if(!isFinite(diff)) return null; return {mode:'pp',  diff}; }
+    if(mode==='abs') { if(!isFinite(diff)) return null; return {mode:'abs', diff}; }
+    // pct: variación porcentual clásica
+    if(prev.val===0) return null;
+    if(prev.val<0)   return {nm:true}; // % sobre base negativa no es significativo
+    const pct=diff/Math.abs(prev.val)*100;
     if(!isFinite(pct)) return null;
-    return {pct};
+    return {mode:'pct', pct};
   }
-  // Render del badge de variación al lado del valor.
+  // Render del badge de variación al lado del valor, según modo.
   function _varBadge(v){
     if(!v) return '';
     if(v.nm) return ` <span style="font-size:9px;color:var(--text3);">(n/m)</span>`;
+    if(v.mode==='pp'){
+      const sign=v.diff>=0?'+':'';
+      const col=v.diff>=0?'#3fb950':'#f85149';
+      return ` <span style="font-size:9px;color:${col};">(${sign}${v.diff.toFixed(1)}pp)</span>`;
+    }
+    if(v.mode==='abs'){
+      const sign=v.diff>=0?'+':'';
+      const col=v.diff>=0?'#3fb950':'#f85149';
+      return ` <span style="font-size:9px;color:${col};">(${sign}${v.diff.toFixed(2)}x)</span>`;
+    }
     const sign=v.pct>=0?'+':'';
     const col=v.pct>=0?'#3fb950':'#f85149';
     return ` <span style="font-size:9px;color:${col};">(${sign}${v.pct.toFixed(1)}%)</span>`;
+  }
+
+  // Texto de leyenda al pie de tabla. Lista solo los modos de variación que
+  // efectivamente aparecen entre las filas con Δ activada, para no abrumar.
+  function _varCaptionText(isQ, varType, modesPresent){
+    const base = isQ
+      ? (varType==='yoy' ? 'Δ interanual (vs. mismo trim. del año anterior)' : 'Δ trimestral (vs. trim. anterior)')
+      : 'Δ interanual (vs. año anterior)';
+    const parts=[];
+    if(modesPresent.has('pct')) parts.push('montos en %');
+    if(modesPresent.has('pp'))  parts.push('márgenes y % en pp (puntos porcentuales)');
+    if(modesPresent.has('abs')) parts.push('ratios en Δ absoluta (x)');
+    return parts.length ? `${base} · ${parts.join(' · ')}` : base;
   }
 
   // ── Compute and cache ratio series from _secSeriesA/_Q ────────
@@ -15559,11 +15619,19 @@ function openDetail(especie){
       if(!allYears.length) return '';
       const showVarR = def.showVar !== false;
       const varTypeR = def.varType || (def.isQ ? 'yoy' : 'annual');
-      const varRowsR = def.varRows || def.rows.filter(k=>!_isRatioKey(k));
-      const rowVarR = (key)=> showVarR && varRowsR.includes(key) && !_isRatioKey(key);
+      const varRowsR = def.varRows || def.rows.slice();
+      const rowVarR = (key)=> showVarR && varRowsR.includes(key) && _varMode(key)!==null;
       const varBadgeR = (v)=>{
         if(!v) return '';
         if(v.nm) return ` <span style="font-size:8px;color:${P.text3};">(n/m)</span>`;
+        if(v.mode==='pp'){
+          const sign=v.diff>=0?'+':''; const col=v.diff>=0?'#16a34a':'#dc2626';
+          return ` <span style="font-size:8px;color:${col};">(${sign}${v.diff.toFixed(1)}pp)</span>`;
+        }
+        if(v.mode==='abs'){
+          const sign=v.diff>=0?'+':''; const col=v.diff>=0?'#16a34a':'#dc2626';
+          return ` <span style="font-size:8px;color:${col};">(${sign}${v.diff.toFixed(2)}x)</span>`;
+        }
         const sign=v.pct>=0?'+':'';
         const col=v.pct>=0?'#16a34a':'#dc2626';
         return ` <span style="font-size:8px;color:${col};">(${sign}${v.pct.toFixed(1)}%)</span>`;
@@ -15583,7 +15651,7 @@ function openDetail(especie){
               const cells=allYears.map(yr=>{
                 const p=series.find(x=>x.yr===yr);
                 if(!p) return `<td style="padding:5px 10px;text-align:right;border-bottom:1px solid ${P.border};font-size:11px;color:${P.text};">—</td>`;
-                const vb=wantVar?varBadgeR(_cellVariation(series,yr,def.isQ,varTypeR)):'';
+                const vb=wantVar?varBadgeR(_cellVariation(series,yr,def.isQ,varTypeR,_varMode(key))):'';
                 return `<td style="padding:5px 10px;text-align:right;border-bottom:1px solid ${P.border};font-size:11px;color:${P.text};white-space:nowrap;">${_tblFmt(key,p.val)}${vb}</td>`;
               }).join('');
               return `<tr><td style="padding:5px 10px;border-bottom:1px solid ${P.border};font-size:11px;color:${P.text2};font-weight:500;">${_rowLabel(key)}</td>${cells}</tr>`;
@@ -15592,10 +15660,9 @@ function openDetail(especie){
           ${(()=>{
             const anyV = showVarR && allSeries.some(r=>rowVarR(r.key));
             if(!anyV) return '';
-            const txt = def.isQ
-              ? (varTypeR==='yoy' ? 'Variación YoY (vs. mismo trimestre del año anterior)' : 'Variación QoQ (vs. trimestre anterior)')
-              : 'Variación interanual (vs. año anterior)';
-            return `<div style="padding:5px 12px 8px;font-size:9px;color:${P.text3};font-style:italic;">Δ ${txt}</div>`;
+            const modesPresent = new Set(allSeries.filter(r=>rowVarR(r.key)).map(r=>_varMode(r.key)));
+            const txt = _varCaptionText(def.isQ, varTypeR, modesPresent);
+            return `<div style="padding:5px 12px 8px;font-size:9px;color:${P.text3};font-style:italic;">${txt}</div>`;
           })()}
         </div></div>`;
     }
@@ -15608,12 +15675,13 @@ function openDetail(especie){
     // Edit panel removed — table editing now happens in a modal (secOpenTableEditor)
     let editPanel = '';
 
-    // Variación %: por tabla (showVar, ON por defecto) + por fila (varRows). Ratios nunca muestran.
+    // Variación: por tabla (showVar, ON por defecto) + por fila (varRows).
+    // Ahora TODAS las filas pueden mostrar Δ; el modo (%/pp/abs) depende del formato.
     const showVar = def.showVar !== false; // undefined o true => activado
     const varType = def.varType || (def.isQ ? 'yoy' : 'annual');
-    // varRows undefined => todas las filas no-ratio por defecto
-    const varRows = def.varRows || def.rows.filter(k=>!_isRatioKey(k));
-    const rowShowsVar = (key)=> showVar && varRows.includes(key) && !_isRatioKey(key);
+    // varRows undefined => todas las filas por defecto
+    const varRows = def.varRows || def.rows.slice();
+    const rowShowsVar = (key)=> showVar && varRows.includes(key) && _varMode(key)!==null;
 
     // Auto-ajuste de tamaño: sin scroll lateral, la letra se achica por niveles
     // según cantidad de columnas (y si hay variaciones, que ensanchan las celdas).
@@ -15639,7 +15707,7 @@ function openDetail(especie){
             const cells=allYears.map(yr=>{
               const p=series.find(x=>x.yr===yr);
               if(!p) return `<td style="padding:${cellPad};font-size:${cellFont}px;text-align:right;color:var(--text);white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono);">—</td>`;
-              const vb = wantVar ? _varBadge(_cellVariation(series, yr, def.isQ, varType)) : '';
+              const vb = wantVar ? _varBadge(_cellVariation(series, yr, def.isQ, varType, _varMode(key))) : '';
               return `<td style="padding:${cellPad};font-size:${cellFont}px;text-align:right;color:var(--text);white-space:nowrap;border-bottom:1px solid var(--border);font-family:var(--mono);">${_tblFmt(key,p.val)}${vb}</td>`;
             }).join('');
             return `<tr class="tbl-row">
@@ -15656,13 +15724,12 @@ function openDetail(especie){
       </div>`;
     }
 
-    // Leyenda debajo de la tabla aclarando el tipo de variación mostrada.
+    // Leyenda debajo de la tabla aclarando el/los tipo(s) de variación mostrada.
     let varCaption = '';
     if(anyVar){
-      const txt = def.isQ
-        ? (varType==='yoy' ? 'Variación YoY (vs. mismo trimestre del año anterior)' : 'Variación QoQ (vs. trimestre anterior)')
-        : 'Variación interanual (vs. año anterior)';
-      varCaption = `<div style="padding:5px 10px 7px;font-size:9px;color:var(--text3);font-family:var(--mono);font-style:italic;">Δ ${txt}</div>`;
+      const modesPresent = new Set(allSeries.filter(r=>rowShowsVar(r.key)).map(r=>_varMode(r.key)));
+      const txt = _varCaptionText(def.isQ, varType, modesPresent);
+      varCaption = `<div style="padding:5px 10px 7px;font-size:9px;color:var(--text3);font-family:var(--mono);font-style:italic;">${txt}</div>`;
     }
 
     return `<div data-tbl-id="${def.id}" style="flex:0 0 ${flexBasis};min-width:280px;">
@@ -15961,12 +16028,18 @@ function openDetail(especie){
       const v=_kpiValue(kid);
       const disp=_kpiFmtVal(m.fmt,v);
       let badge='';
-      if(!_kpiVarOff.includes(kid) && !_isRatioKey(kid)){
+      if(!_kpiVarOff.includes(kid)){
         const vv=_kpiVariation(kid);
         if(vv){
           kpiAnyVar=true;
           if(vv.nm){
             badge=` <span style="font-size:11px;color:${P.text3};">(n/m)</span>`;
+          } else if(vv.mode==='pp'){
+            const sign=vv.diff>=0?'+':''; const col=vv.diff>=0?'#16a34a':'#dc2626';
+            badge=` <span style="font-size:12px;font-weight:700;color:${col};">${sign}${vv.diff.toFixed(1)}pp</span>`;
+          } else if(vv.mode==='abs'){
+            const sign=vv.diff>=0?'+':''; const col=vv.diff>=0?'#16a34a':'#dc2626';
+            badge=` <span style="font-size:12px;font-weight:700;color:${col};">${sign}${vv.diff.toFixed(2)}x</span>`;
           } else {
             const sign=vv.pct>=0?'+':'';
             const col=vv.pct>=0?'#16a34a':'#dc2626';
