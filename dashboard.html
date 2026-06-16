@@ -11715,60 +11715,94 @@ const _eqRO = new ResizeObserver(entries => {
   <!-- Topbar -->
   <div style="background:var(--bg2);border-bottom:1px solid var(--border2);padding:0 28px;display:flex;align-items:center;gap:16px;height:52px;position:sticky;top:0;z-index:50;">
     <button onclick="backToBalancesMenu()" class="tb-home" title="Volver"><img src="data:image/webp;base64,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" alt="Inicio"></button>
-    <span style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);">Empresas USA</span>
-    <span style="font-size:11px;color:var(--text3);font-family:var(--mono);">Conexión con API EDGAR · SEC</span>
+    <span style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);margin-right:8px;">Empresas USA</span>
+    <!-- Divisor: línea del sidebar extendida -->
+    <div style="width:1px;height:52px;background:var(--border2);flex-shrink:0;"></div>
+    <!-- Tabs inline (estilo Renta Fija, sin mayúsculas) -->
+    <div id="secTopTabs" style="display:none;align-items:stretch;height:100%;padding-left:8px;gap:0;">
+      <div id="secTabFinBtn" class="sec-tab active" onclick="secShowTab('fin')">Financials</div>
+      <div id="secTabRatBtn" class="sec-tab" onclick="secShowTab('rat')">Ratios</div>
+      <div id="secTabCmpBtn" class="sec-tab" onclick="secShowTab('cmp')">Comparar</div>
+      <div id="secTabEvBtn" class="sec-tab" onclick="secShowTab('ev')">Filings</div>
+      <div id="secTabRawBtn" class="sec-tab" onclick="secShowTab('raw')">Datos SEC</div>
+    </div>
     <div style="flex:1"></div>
+    <div class="status-dot"></div>
+    <span style="font-size:10px;font-family:var(--mono);color:var(--text3);">Conectado a EDGAR · SEC</span>
     <button onclick="showHelp()" class="tb-icon tb-help" data-tip="Ayuda">i</button>
       <button onclick="toggleTheme()" class="tb-icon tb-theme" data-tip="Cambiar a modo claro/oscuro"><span class="theme-btn-icon">☀</span></button>
   </div>
 
-  <div style="max-width:1200px;margin:0 auto;padding:32px 28px 80px;">
+  <div class="bal-layout">
 
-    <!-- ══ SEARCH ══ -->
-    <div style="margin-bottom:32px;">
-      <div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);font-family:var(--mono);margin-bottom:12px;">Buscar empresa (NYSE / NASDAQ / AMEX)</div>
-      <div style="display:flex;gap:10px;align-items:stretch;margin-bottom:14px;">
-        <!-- Unified autocomplete input -->
-        <div style="position:relative;" id="secAutoWrap">
-          <input id="secTicker" type="text" placeholder="Ticker o nombre — Ej: AAPL, Apple..." maxlength="60"
-            autocomplete="off"
-            style="width:340px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:12px 18px 12px 44px;font-size:18px;font-weight:700;letter-spacing:.04em;color:var(--text);text-transform:uppercase;outline:none;font-family:var(--mono);transition:border-color .2s;"
-            onfocus="this.style.borderColor='#1E27F3';secAutoShow()"
-            onblur="setTimeout(()=>secAutoHide(),200)"
-            oninput="secAutoFilter(this.value)"
-            onkeydown="secAutoKey(event)" />
-          <svg style="position:absolute;left:14px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--text3);pointer-events:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <div id="secAutoList"
-            style="display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;max-height:280px;overflow-y:auto;z-index:300;box-shadow:0 12px 40px rgba(0,0,0,0.3);">
-          </div>
+  <!-- ══ SIDEBAR ══ -->
+  <aside class="bal-sidebar">
+
+    <!-- Buscador de empresas -->
+    <div class="bal-sb-sec">
+      <div class="bal-sb-label">Buscar empresa · NYSE / NASDAQ / AMEX</div>
+      <div style="position:relative;margin-bottom:10px;" id="secAutoWrap">
+        <input id="secTicker" type="text" placeholder="Ticker o nombre…" maxlength="60"
+          autocomplete="off"
+          style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px 9px 34px;font-size:13px;font-weight:700;letter-spacing:.03em;color:var(--text);text-transform:uppercase;outline:none;font-family:var(--mono);transition:border-color .2s;"
+          onfocus="this.style.borderColor='#1E27F3';secAutoShow()"
+          onblur="setTimeout(()=>secAutoHide(),200)"
+          oninput="secAutoFilter(this.value)"
+          onkeydown="secAutoKey(event)" />
+        <svg style="position:absolute;left:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--text3);pointer-events:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <div id="secAutoList"
+          style="display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;max-height:280px;overflow-y:auto;z-index:300;box-shadow:0 12px 40px rgba(0,0,0,0.3);">
         </div>
-        <button onclick="secSearch()" id="secSearchBtn"
-          style="padding:0 36px;border-radius:10px;border:none;background:#1E27F3;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:background .15s;"
-          onmouseover="this.style.background='#2d38ff'" onmouseout="this.style.background='#1E27F3'">Buscar →</button>
       </div>
+      <button onclick="secSearch()" id="secSearchBtn" class="bal-btn bal-btn-accent" style="margin-bottom:10px;">Buscar →</button>
       <!-- Chips -->
-      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
-        <span style="font-size:10px;color:var(--text3);font-family:var(--mono);">Rápidos:</span>
+      <div class="sec-chip-grid">
         <span class="sec-chip" onclick="secChip('AAPL')">AAPL</span>
         <span class="sec-chip" onclick="secChip('MSFT')">MSFT</span>
         <span class="sec-chip" onclick="secChip('NVDA')">NVDA</span>
         <span class="sec-chip" onclick="secChip('AMZN')">AMZN</span>
-        <span class="sec-chip" onclick="secChip('MELI')">MELI</span>
         <span class="sec-chip" onclick="secChip('GOOGL')">GOOGL</span>
         <span class="sec-chip" onclick="secChip('META')">META</span>
         <span class="sec-chip" onclick="secChip('TSLA')">TSLA</span>
-        <span class="sec-chip" onclick="secChip('JPM')">JPM</span>
-        <span class="sec-chip" onclick="secChip('NU')">NU</span>
+        <span class="sec-chip" onclick="secChip('MELI')">MELI</span>
+        <span class="sec-chip" onclick="secChip('POOL')">POOL</span>
       </div>
       <!-- Status -->
-      <div id="secStatus" style="display:none;margin-top:14px;"></div>
+      <div id="secStatus" style="display:none;margin-top:12px;"></div>
     </div>
+
+    <!-- Plantillas -->
+    <div class="bal-sb-sec" style="flex:1;">
+      <div class="bal-sb-label">Plantillas</div>
+      <div id="balTplDropdown" class="bal-tpl-dd">
+        <div id="balTplCurrent" class="bal-tpl-current" onclick="balToggleTplDropdown()">
+          <span class="bal-tpl-dot"></span>
+          <span class="bal-tpl-name" id="balTplCurrentName">Default</span>
+          <span class="bal-tpl-dd-arrow">▾</span>
+        </div>
+        <div id="balTplList" class="bal-tpl-menu" style="display:none;"></div>
+      </div>
+      <div style="margin-top:12px;">
+        <div style="display:flex;gap:6px;margin-bottom:8px;">
+          <button onclick="balOpenSaveDialog()" class="bal-icobtn" data-tip="Guardar como plantilla">💾</button>
+          <button id="balUpdateBtn" onclick="balUpdateActiveTemplate()" class="bal-icobtn" data-tip="Actualizar plantilla activa" style="display:none;">♻</button>
+          <button onclick="balOpenConfigurator()" class="bal-icobtn" data-tip="Configurar templates">⚙</button>
+        </div>
+        <button onclick="secGenerateReport()" class="bal-btn">📄 Generar reporte</button>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ══ MAIN ══ -->
+  <div class="bal-main">
+  <div style="max-width:1200px;margin:0 auto;padding:32px 28px 80px;">
 
     <!-- ══ WELCOME ══ -->
     <div id="secWelcome" style="text-align:center;padding:60px 40px;color:var(--text3);">
       <div style="font-size:52px;opacity:.12;margin-bottom:16px;">🏛️</div>
       <div style="font-size:16px;font-weight:600;color:var(--text2);margin-bottom:8px;">Datos oficiales de SEC EDGAR</div>
-      <div style="font-size:13px;line-height:1.9;max-width:480px;margin:0 auto;">100% gratuito · Sin API key · Fuente oficial del gobierno de EE.UU.<br>Empresas con cotización en NYSE, NASDAQ y AMEX (incluye MELI, NU, VALE)</div>
+      <div style="font-size:13px;line-height:1.9;max-width:480px;margin:0 auto;">Seleccionar empresas NYSE · NASDAQ · AMEX</div>
     </div>
 
     <!-- ══ RESULTS ══ -->
@@ -11794,37 +11828,16 @@ const _eqRO = new ResizeObserver(entries => {
         <div id="secKpiBar" style="margin-top:4px;"></div>
       </div>
 
-      <!-- Tabs -->
-      <div style="display:flex;gap:0;margin-bottom:24px;border:1px solid var(--border2);border-radius:8px;overflow:hidden;">
-      <button id="secTabFinBtn" onclick="secShowTab('fin')"
-        style="padding:10px 28px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:#1E27F3;color:#fff;font-family:var(--mono);letter-spacing:.05em;">📊 Financials</button>
-      <button id="secTabRatBtn" onclick="secShowTab('rat')"
-        style="padding:10px 28px;font-size:12px;font-weight:700;cursor:pointer;border:none;border-left:1px solid var(--border2);background:transparent;color:var(--text3);font-family:var(--mono);letter-spacing:.05em;">📐 Ratios</button>
-      <button id="secTabCmpBtn" onclick="secShowTab('cmp')"
-        style="padding:10px 28px;font-size:12px;font-weight:700;cursor:pointer;border:none;border-left:1px solid var(--border2);background:transparent;color:var(--text3);font-family:var(--mono);letter-spacing:.05em;">⚖️ Comparar</button>
-      <button id="secTabEvBtn" onclick="secShowTab('ev')"
-        style="padding:10px 28px;font-size:12px;font-weight:700;cursor:pointer;border:none;border-left:1px solid var(--border2);background:transparent;color:var(--text3);font-family:var(--mono);letter-spacing:.05em;">📋 Filings</button>
-      <button id="secTabRawBtn" onclick="secShowTab('raw')"
-        style="padding:10px 28px;font-size:12px;font-weight:700;cursor:pointer;border:none;border-left:1px solid var(--border2);background:transparent;color:var(--text3);font-family:var(--mono);letter-spacing:.05em;">🗄 Datos SEC</button>
-      </div>
+      <!-- Tabs movidas al topbar -->
 
       <!-- ── TAB: FINANCIALS ── -->
       <div id="secTabFin">
         <!-- Toolbar -->
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
           <button onclick="secAddChart()"
-            style="padding:6px 14px;border-radius:6px;border:1px solid rgba(30,39,243,0.4);background:rgba(30,39,243,0.1);color:#a5b4fc;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);">+ Gráfico</button>
-          <button onclick="secOpenAddBlock()"
-            style="padding:6px 14px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);">+ Tabla</button>
-          <div style="flex:1"></div>
-          <button onclick="secSaveLayout()" title="Guardar layout en localStorage"
-            style="padding:5px 12px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:10px;cursor:pointer;font-family:var(--mono);">💾 Guardar</button>
-          <button onclick="secExportLayout()" title="Exportar layout como JSON"
-            style="padding:5px 12px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:10px;cursor:pointer;font-family:var(--mono);">⬇ Exportar</button>
-          <button onclick="secImportLayout()" title="Importar layout desde JSON"
-            style="padding:5px 12px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:10px;cursor:pointer;font-family:var(--mono);">⬆ Importar</button>
-          <button onclick="secGenerateReport()" title="Generar reporte exportable"
-            style="padding:5px 14px;border-radius:6px;border:1px solid rgba(30,39,243,0.4);background:rgba(30,39,243,0.12);color:#a5b4fc;font-size:10px;font-weight:700;cursor:pointer;font-family:var(--mono);">📄 Generar reporte</button>
+            style="padding:6px 14px;border-radius:6px;border:1px solid var(--border2);background:var(--accent-light);color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);">+ Gráfico</button>
+          <button onclick="secAddEmptyTable()"
+            style="padding:6px 14px;border-radius:6px;border:1px solid var(--border2);background:var(--accent-light);color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);">+ Tabla</button>
         </div>
         <!-- Modal para agregar tabla -->
         <div id="secAddBlockModal" onclick="if(event.target===this)secCloseAddBlock()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;pointer-events:auto;">
@@ -11904,8 +11917,76 @@ const _eqRO = new ResizeObserver(entries => {
     </div><!-- /secResults -->
 
 <style>
-.sec-chip{font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;font-family:var(--mono);transition:all .15s;}
+.sec-chip{font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;font-family:var(--mono);transition:all .15s;text-align:center;}
 .sec-chip:hover{border-color:#1E27F3;color:var(--text2);}
+
+/* Chips Mag7: grid parejo y armónico */
+#app-balances .sec-chip-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+
+/* Tabs inline en el topbar (estilo Renta Fija): altura 52px, subrayado azul en activa, sin mayúsculas */
+#app-balances .sec-tab{padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;white-space:nowrap;}
+#app-balances .sec-tab:hover{color:var(--text2);}
+#app-balances .sec-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* Tablas Empresas USA: centrado + hover azul por fila (estilo Renta Fija) */
+#secTables table th, #secTables table td{text-align:center !important;}
+#secTables table tbody tr:hover td{background:var(--accent-light) !important;}
+
+/* ── Sidebar Empresas USA ── */
+#app-balances .bal-layout{display:flex;align-items:flex-start;}
+#app-balances .bal-sidebar{width:248px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border2);align-self:stretch;display:flex;flex-direction:column;position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto;}
+#app-balances .bal-sidebar::-webkit-scrollbar{width:4px;}
+#app-balances .bal-sidebar::-webkit-scrollbar-thumb{background:rgba(30,39,243,0.45);border-radius:3px;}
+#app-balances .bal-main{flex:1;min-width:0;}
+#app-balances .bal-sb-sec{padding:16px 14px;border-bottom:1px solid var(--border);}
+#app-balances .bal-sb-label{font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);margin-bottom:10px;}
+#app-balances .bal-tpl-item{display:flex;align-items:center;gap:7px;padding:5px 9px;border-radius:6px;border:1px solid transparent;background:transparent;margin-bottom:1px;cursor:pointer;transition:all .12s;}
+#app-balances .bal-tpl-item:hover{background:var(--accent-light);}
+#app-balances .bal-tpl-item.active{border-color:#1E27F3;background:var(--accent-light);}
+/* Tabs del topbar (estilo subrayado) */
+#app-balances .bal-tab{position:relative;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:transparent;color:var(--text3);font-family:var(--mono);letter-spacing:.03em;transition:color .15s;}
+#app-balances .bal-tab:hover{color:var(--text2);}
+#app-balances .bal-tab.active{color:var(--text);}
+#app-balances .bal-tab.active::after{content:'';position:absolute;left:14px;right:14px;bottom:-15px;height:2px;background:#1E27F3;border-radius:2px;}
+/* Dropdown */
+#app-balances .bal-tpl-dd{position:relative;}
+#app-balances .bal-tpl-current{display:flex;align-items:center;gap:7px;padding:8px 10px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);cursor:pointer;transition:all .12s;}
+#app-balances .bal-tpl-current:hover{border-color:#1E27F3;}
+#app-balances .bal-tpl-dd.open .bal-tpl-current{border-color:#1E27F3;}
+#app-balances .bal-tpl-dd-arrow{margin-left:auto;font-size:9px;color:var(--text3);transition:transform .15s;flex-shrink:0;}
+#app-balances .bal-tpl-dd.open .bal-tpl-dd-arrow{transform:rotate(180deg);}
+#app-balances .bal-tpl-menu{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;max-height:320px;overflow-y:auto;z-index:100;box-shadow:0 12px 40px rgba(0,0,0,0.35);padding:5px;}
+#app-balances .bal-tpl-menu::-webkit-scrollbar{width:4px;}
+#app-balances .bal-tpl-menu::-webkit-scrollbar-thumb{background:rgba(30,39,243,0.45);border-radius:3px;}
+#app-balances .bal-tpl-dot{width:5px;height:5px;border-radius:50%;background:var(--text3);flex-shrink:0;}
+#app-balances .bal-tpl-item.active .bal-tpl-dot{background:#1E27F3;}
+#app-balances .bal-tpl-current .bal-tpl-dot{background:#1E27F3;}
+#app-balances .bal-tpl-name{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text);line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:1;min-width:0;}
+#app-balances .bal-tpl-auth{font-family:var(--mono);font-size:8.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:1;min-width:0;}
+#app-balances .bal-tpl-date{font-family:var(--mono);font-size:8.5px;color:var(--text3);flex-shrink:0;margin-left:auto;padding-left:4px;}
+#app-balances .bal-btn,#balCfgModal .bal-btn,#balSaveModal .bal-btn{width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-family:var(--mono);font-size:10px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;}
+#app-balances .bal-btn:hover,#balCfgModal .bal-btn:hover,#balSaveModal .bal-btn:hover{border-color:#1E27F3;color:var(--text);background:var(--accent-light);}
+#app-balances .bal-btn-accent,#balCfgModal .bal-btn-accent,#balSaveModal .bal-btn-accent{background:#1E27F3;border-color:#1E27F3;color:#fff;}
+#app-balances .bal-btn-accent:hover,#balCfgModal .bal-btn-accent:hover,#balSaveModal .bal-btn-accent:hover{background:#2d38ff;color:#fff;border-color:#2d38ff;}
+/* Botones de ícono con tooltip */
+#app-balances .bal-icobtn{position:relative;flex:1;height:34px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-size:14px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;}
+#app-balances .bal-icobtn:hover{border-color:#1E27F3;background:var(--accent-light);color:var(--text);}
+#app-balances .bal-icobtn-accent{background:#1E27F3;border-color:#1E27F3;color:#fff;}
+#app-balances .bal-icobtn-accent:hover{background:#2d38ff;border-color:#2d38ff;color:#fff;}
+#app-balances .bal-icobtn[data-tip]:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);width:max-content;max-width:150px;text-align:center;background:var(--bg);color:var(--text);border:1px solid var(--border2);border-radius:6px;padding:5px 9px;font-family:var(--mono);font-size:10px;font-weight:600;white-space:normal;line-height:1.35;z-index:200;box-shadow:0 6px 20px rgba(0,0,0,0.35);pointer-events:none;}
+/* El primero ancla el tooltip por la izquierda, el último por la derecha, para no salir del sidebar */
+#app-balances .bal-icobtn:first-child[data-tip]:hover::after{left:0;transform:none;}
+#app-balances .bal-icobtn:last-child[data-tip]:hover::after{left:auto;right:0;transform:none;}
+#app-balances .bal-sb-msg{font-family:var(--mono);font-size:10px;color:var(--text3);text-align:center;padding:14px 8px;line-height:1.7;}
+/* Modal genérico balance */
+.bal-modal-ov{display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.55);align-items:center;justify-content:center;padding:20px;}
+.bal-modal{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;max-width:560px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.4);}
+.bal-modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.bal-modal-title{font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);}
+.bal-modal-body{padding:20px 22px;}
+.bal-fld-label{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;}
+.bal-input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;transition:border-color .15s;}
+.bal-input:focus{border-color:#1E27F3;}
 .sec-table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono);}
 .sec-table th{text-align:right;padding:8px 12px;font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);background:var(--bg3);}
 .sec-table th:first-child{text-align:left;}
@@ -11925,6 +12006,9 @@ const _eqRO = new ResizeObserver(entries => {
 .ev-title{font-size:13px;color:var(--text);font-weight:600;margin-bottom:3px;}
 .ev-desc{font-size:11px;color:var(--text2);line-height:1.5;}
 </style>
+
+  </div><!-- /bal-main -->
+  </div><!-- /bal-layout -->
 
 <div id="legal-footer" style="display:none;background:var(--bg2);border-top:1px solid var(--border);padding:24px 48px 32px;margin-top:auto;">
   <div style="max-width:960px;margin:0 auto;">
@@ -13189,15 +13273,33 @@ function openDetail(especie){
     return (b-a)/Math.abs(a)*100;
   }
 
+  let _statusTimer=null;
   function showStatus(msg, type){
-    const el=$('secStatus'); if(!el)return;
+    // Toast flotante abajo a la derecha (fuera del sidebar)
+    let toast=document.getElementById('balToast');
+    if(!toast){
+      toast=document.createElement('div'); toast.id='balToast';
+      toast.style.cssText='position:fixed;right:20px;bottom:20px;z-index:99999;display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:none;';
+      document.body.appendChild(toast);
+    }
     const cfg={
-      load:{bg:'rgba(30,39,243,0.08)',c:'#8b99c4',b:'rgba(30,39,243,0.2)',i:'⏳'},
-      ok:  {bg:'rgba(63,185,80,0.08)',c:'#3fb950',b:'rgba(63,185,80,0.25)',i:'✓'},
-      err: {bg:'rgba(248,81,73,0.08)',c:'#f85149',b:'rgba(248,81,73,0.25)',i:'⚠'},
-    }[type]||{bg:'rgba(30,39,243,0.08)',c:'#8b99c4',b:'rgba(30,39,243,0.2)',i:'ℹ'};
-    el.style.cssText=`display:flex;gap:8px;align-items:flex-start;background:${cfg.bg};color:${cfg.c};border:1px solid ${cfg.b};border-radius:6px;padding:10px 12px;font-size:12px;font-family:var(--mono);line-height:1.5;`;
-    el.innerHTML=`<span>${cfg.i}</span><span>${msg}</span>`;
+      load:{bg:'rgba(30,39,243,0.12)',c:'#a5b4fc',b:'rgba(30,39,243,0.35)',i:'⏳'},
+      ok:  {bg:'rgba(63,185,80,0.12)',c:'#3fb950',b:'rgba(63,185,80,0.35)',i:'✓'},
+      err: {bg:'rgba(248,81,73,0.12)',c:'#f85149',b:'rgba(248,81,73,0.35)',i:'⚠'},
+    }[type]||{bg:'rgba(30,39,243,0.12)',c:'#a5b4fc',b:'rgba(30,39,243,0.35)',i:'ℹ'};
+    const item=document.createElement('div');
+    item.style.cssText=`display:flex;gap:8px;align-items:flex-start;max-width:320px;background:var(--bg2);color:${cfg.c};border:1px solid ${cfg.b};border-left:3px solid ${cfg.c};border-radius:8px;padding:10px 14px;font-size:12px;font-family:var(--mono);line-height:1.5;box-shadow:0 8px 28px rgba(0,0,0,0.35);pointer-events:auto;opacity:0;transform:translateY(8px);transition:opacity .18s,transform .18s;`;
+    item.innerHTML=`<span style="flex-shrink:0;">${cfg.i}</span><span>${msg}</span>`;
+    toast.appendChild(item);
+    requestAnimationFrame(()=>{ item.style.opacity='1'; item.style.transform='translateY(0)'; });
+    // ok/load se auto-ocultan; err persiste más tiempo
+    const ttl = (type==='err') ? 4500 : 1500;
+    setTimeout(()=>{
+      item.style.opacity='0'; item.style.transform='translateY(8px)';
+      setTimeout(()=>{ try{ item.remove(); }catch(_){ } },220);
+    }, ttl);
+    // Mantener oculto el contenedor viejo del sidebar
+    const el=$('secStatus'); if(el) el.style.display='none';
   }
 
   window.secChip = function(t){ const el=$('secTicker'); if(el){el.value=t;} secSearch(); };
@@ -13218,6 +13320,7 @@ function openDetail(especie){
     _chartDefs=[]; _chartInstances={};
     const r=$('secResults'); if(r) r.style.display='none';
     const w=$('secWelcome'); if(w) w.style.display='block';
+    const tt=$('secTopTabs'); if(tt) tt.style.display='none';
     const st=$('secStatus'); if(st){st.style.display='none';}
     const t=$('secTicker'); if(t) t.value='';
     // destroy all charts
@@ -13298,8 +13401,7 @@ function openDetail(especie){
     const tabs={fin:'secTabFinBtn',rat:'secTabRatBtn',cmp:'secTabCmpBtn',ev:'secTabEvBtn',raw:'secTabRawBtn'};
     Object.entries(tabs).forEach(([t,id])=>{
       const b=$(id); if(!b) return;
-      b.style.background=tab===t?'#1E27F3':'transparent';
-      b.style.color=tab===t?'#fff':'var(--text3)';
+      b.classList.toggle('active', tab===t);
     });
     if(tab==='cmp' && _lastFacts && !$('secCompare').innerHTML.trim()) renderCompare();
     if(tab==='raw' && _lastFacts && !$('secRawData').innerHTML.trim()) renderRawData(_lastFacts);
@@ -13420,6 +13522,7 @@ function openDetail(especie){
 
     $('secResults').style.display='block';
     $('secWelcome').style.display='none';
+    { const tt=$('secTopTabs'); if(tt) tt.style.display='flex'; }
     secShowTab('fin');
     showStatus(`✓ ${companyName} cargada correctamente.`,'ok');
 
@@ -13787,27 +13890,27 @@ function openDetail(especie){
         if(vv){
           anyVar=true;
           if(vv.nm){
-            badge=`<span style="font-size:10px;color:#4a5280;font-family:var(--mono);">(n/m)</span>`;
+            badge=`<span style="font-size:10px;color:var(--text3);font-family:var(--mono);">(n/m)</span>`;
           } else {
             const sign=vv.pct>=0?'+':'';
-            const col=vv.pct>=0?'#3fb950':'#f85149';
+            const col=vv.pct>=0?'var(--green)':'var(--red)';
             badge=`<span style="font-size:11px;font-weight:700;color:${col};font-family:var(--mono);">${sign}${vv.pct.toFixed(1)}%</span>`;
           }
         }
       }
-      return `<div style="padding:10px 18px;border-right:1px solid rgba(30,39,243,0.1);min-width:110px;">
-        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#4a5280;font-family:var(--mono);margin-bottom:3px;">${m.label}${m.custom?' ƒ':''}</div>
-        <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:#e8eaf6;display:flex;align-items:baseline;gap:6px;">${disp}${badge}</div>
+      return `<div style="padding:10px 18px;border-right:1px solid var(--border);min-width:110px;">
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">${m.label}${m.custom?' ƒ':''}</div>
+        <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--text);display:flex;align-items:baseline;gap:6px;">${disp}${badge}</div>
       </div>`;
     }).join('');
 
     el.innerHTML=`
-      <div style="display:flex;align-items:stretch;flex-wrap:wrap;position:relative;border-top:1px solid rgba(30,39,243,0.12);margin-top:16px;">
+      <div style="display:flex;align-items:stretch;flex-wrap:wrap;position:relative;border-top:1px solid var(--border);margin-top:16px;">
         ${cards}
         <button onclick="secOpenKpiEditor()" title="Configurar KPIs"
-          style="margin-left:auto;align-self:center;padding:5px 12px;border:1px solid rgba(30,39,243,0.2);border-radius:6px;background:transparent;color:#4a5280;font-size:10px;cursor:pointer;font-family:var(--mono);margin-right:4px;white-space:nowrap;">✎ KPIs</button>
+          style="margin-left:auto;align-self:center;padding:5px 12px;border:1px solid var(--border2);border-radius:6px;background:transparent;color:var(--text3);font-size:10px;cursor:pointer;font-family:var(--mono);margin-right:4px;white-space:nowrap;">✎ KPIs</button>
       </div>
-      ${anyVar?`<div style="font-size:9px;color:#4a5280;font-family:var(--mono);font-style:italic;padding:4px 18px 0;">Δ Variación YoY (vs. mismo período del año anterior)</div>`:''}`;
+      ${anyVar?`<div style="font-size:9px;color:var(--text3);font-family:var(--mono);font-style:italic;padding:4px 18px 0;">Δ Variación YoY (vs. mismo período del año anterior)</div>`:''}`;
   }
 
   // ── Editor de KPIs (popup con base + personalizadas, igual que tablas) ──
@@ -14000,9 +14103,20 @@ function openDetail(especie){
   function _buildDashCard(cid){
     const def=_chartDefs.find(c=>c.id===cid); if(!def) return '';
     _ensureSeries(def);
-    const autoTitle = def.series.length===1 ? _chartMetaFor(def.series[0].metric).label
+    const isEmpty = !def.series || def.series.length===0;
+    const autoTitle = isEmpty ? 'Nuevo gráfico'
+                : def.series.length===1 ? _chartMetaFor(def.series[0].metric).label
                 : def.series.map(s=>_chartMetaFor(s.metric).label).join(' · ');
     const title = (def.title&&def.title.trim()) ? def.title : autoTitle;
+    const body = isEmpty
+      ? `<div id="dashBody_${cid}" style="height:220px;padding:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;">
+           <div style="font-size:30px;opacity:.18;">📊</div>
+           <div style="font-size:12px;color:var(--text2);font-family:var(--mono);font-weight:600;">Configurá tu gráfico</div>
+           <button onclick="secOpenChartEditor(${cid})" style="padding:6px 16px;border-radius:6px;border:1px solid var(--border2);background:var(--accent-light);color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);">+ Agregar series</button>
+         </div>`
+      : `<div id="dashBody_${cid}" style="position:relative;height:220px;padding:12px;">
+           <canvas id="dashCanvas_${cid}"></canvas>
+         </div>`;
     return `<div id="dashCard_${cid}" style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;position:relative;">
       <div style="padding:8px 10px;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--border);font-family:var(--mono);display:flex;align-items:center;gap:6px;flex-wrap:nowrap;">
         <span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${title}</span>
@@ -14012,9 +14126,7 @@ function openDetail(especie){
         <button onclick="secOpenChartEditor(${cid})" title="Editar gráfico" style="padding:2px 8px;font-size:10px;cursor:pointer;border:1px solid var(--border2);border-radius:4px;background:transparent;color:var(--text3);font-family:var(--mono);flex-shrink:0;">✎</button>
         <button onclick="secRemoveChart(${cid})" style="padding:2px 6px;font-size:10px;cursor:pointer;border:1px solid rgba(248,81,73,0.3);border-radius:4px;background:transparent;color:#f85149;font-family:var(--mono);flex-shrink:0;">✕</button>
       </div>
-      <div id="dashBody_${cid}" style="position:relative;height:220px;padding:12px;">
-        <canvas id="dashCanvas_${cid}"></canvas>
-      </div>
+      ${body}
     </div>`;
   }
 
@@ -14240,12 +14352,12 @@ function openDetail(especie){
 
   window.secAddChart = function(){
     const cid=++_chartIdSeq;
-    const used=_chartDefs.flatMap(c=>(c.series||[]).map(s=>s.metric));
-    const next=CHART_METRICS.find(m=>!used.includes(m.id))||CHART_METRICS[0];
+    // Orden: al fondo de TODOS los bloques (gráficos + tablas, anuales y trimestrales).
     const maxOrd=Math.max(
-      _secTableDefs.filter(d=>!d.isQ).reduce((m,d)=>Math.max(m,d.order??-1),-1),
+      _secTableDefs.reduce((m,d)=>Math.max(m,d.order??-1),-1),
       _chartDefs.reduce((m,d)=>Math.max(m,d.order??-1),-1));
-    _chartDefs.push({id:cid,series:[{metric:next.id,type:'bar',color:_CHART_PALETTE[0],axis:'left'}],period:'annual',xDir:'desc',chartRange:10,stacked:false,width:100,order:maxOrd+1});
+    // Gráfico vacío: sin series. El usuario lo configura desde el propio gráfico.
+    _chartDefs.push({id:cid,series:[],period:'annual',xDir:'desc',chartRange:10,stacked:false,width:100,order:maxOrd+1});
     _refreshDashboard();
   };
 
@@ -14689,6 +14801,12 @@ function openDetail(especie){
         <label style="font-size:11px;color:var(--text3);font-family:var(--mono);display:flex;align-items:center;gap:5px;">Ancho:
           <select onchange="secCfgSet('width',+this.value)" style="background:var(--bg2);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 7px;outline:none;">${widthOpts}</select>
         </label>
+        <label style="font-size:11px;color:var(--text3);font-family:var(--mono);display:flex;align-items:center;gap:6px;">Período:
+          <div style="display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:6px;overflow:hidden;">
+            <button onclick="secCfgSetPeriod(false)" style="padding:4px 11px;font-size:10px;font-weight:700;cursor:pointer;border:none;background:${!def.isQ?'#1E27F3':'transparent'};color:${!def.isQ?'#fff':'var(--text3)'};font-family:var(--mono);">Anual</button>
+            <button onclick="secCfgSetPeriod(true)" style="padding:4px 11px;font-size:10px;font-weight:700;cursor:pointer;border:none;background:${def.isQ?'#1E27F3':'transparent'};color:${def.isQ?'#fff':'var(--text3)'};font-family:var(--mono);">Trimestral</button>
+          </div>
+        </label>
       </div>
 
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:10px;flex-wrap:wrap;">
@@ -14754,6 +14872,17 @@ function openDetail(especie){
     if(field==='showVar' && val && (!def.varRows || def.varRows.length===0)){
       def.varRows = def.rows.filter(k=>!_isRatioKey(k));
     }
+    _renderAllTables(); _renderModal();
+  };
+  // Cambiar período de la tabla (anual ↔ trimestral). Ajusta rango y tipo de variación por defecto.
+  window.secCfgSetPeriod = function(isQ){
+    const def=_secTableDefs.find(t=>t.id===_varModalTableId); if(!def) return;
+    if(def.isQ===isQ) return;
+    def.isQ=isQ;
+    def.range = isQ ? 8 : 5;
+    // Si la variación quedó en un tipo no válido para el nuevo período, resetear al default.
+    if(isQ){ if(def.varType==='annual') def.varType='yoy'; }
+    else   { def.varType='annual'; }
     _renderAllTables(); _renderModal();
   };
   window.secCfgToggleVarRow = function(key){
@@ -15420,7 +15549,11 @@ function openDetail(especie){
           }).join('')}</tbody>
         </table></div>`;
     } else {
-      tableBody=`<div style="padding:14px;font-size:11px;color:var(--text3);font-family:var(--mono);">Sin datos. Abrí "Editar" para agregar métricas.</div>`;
+      tableBody=`<div style="padding:28px 14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;">
+        <div style="font-size:28px;opacity:.18;">▦</div>
+        <div style="font-size:12px;color:var(--text2);font-family:var(--mono);font-weight:600;">Configurá tu tabla</div>
+        <button data-action="edit" data-id="${def.id}" style="padding:6px 16px;border-radius:6px;border:1px solid var(--border2);background:var(--accent-light);color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);">+ Agregar métricas</button>
+      </div>`;
     }
 
     // Leyenda debajo de la tabla aclarando el tipo de variación mostrada.
@@ -15601,6 +15734,17 @@ function openDetail(especie){
     _renderAllTables();
   };
 
+  // ── Agregar tabla VACÍA con un solo click (al fondo de todos los bloques) ──
+  window.secAddEmptyTable = function(){
+    const maxOrder = Math.max(
+      _secTableDefs.reduce((m,d)=>Math.max(m,d.order??-1),-1),
+      _chartDefs.reduce((m,d)=>Math.max(m,d.order??-1),-1));
+    const id=++_secTableIdSeq;
+    _secTableDefs.push({id, title:'Nueva tabla', isQ:false, range:5, width:100,
+      order: maxOrder+1, editing:true, rows:[]});
+    _renderAllTables();
+  };
+
   window.secConfirmAddBlock = function(){
     const rows=window._addBlockSelectedRows||[];
     const isQ=!!+($('addBlockIsQ')?.value||0);
@@ -15661,6 +15805,7 @@ function openDetail(especie){
       if(data.customVars){ _customVars=data.customVars; _resyncCustomVarSeq(); }
           if(Array.isArray(data.kpiActive)) _kpiActive=data.kpiActive;
           if(Array.isArray(data.kpiVarOff)) _kpiVarOff=data.kpiVarOff;
+      if(data.chartDefs){ _chartDefs=data.chartDefs; _chartDefs.forEach(_ensureSeries); }
       if(data.tableDefs&&data.tableDefs.length){ _secTableDefs=data.tableDefs; return true; }
     }catch(_){}
     return false;
@@ -15821,6 +15966,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:${P.bg};color:${P.text};
 
     const old=$('secChartDashboard'); if(old){ old.style.display='none'; old.innerHTML=''; }
     _renderAllTables();
+    _tplActiveId=null;
+    if(typeof window.balRefreshTemplates==='function') window.balRefreshTemplates(true);
   }
   // ══════════════════════════════════════════════
   // RENDER RATIOS
@@ -16376,6 +16523,555 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:${P.bg};color:${P.text};
   };
 
   window.bSetMode=function(){};window.bToggleOpt=function(){};window.bSetLang=function(){};window.bSaveKey=function(){};
+
+  // ══════════════════ SISTEMA DE PLANTILLAS (Cloudflare KV) ══════════════════
+  const TPL_API = 'https://sec-templates.tzuccotti.workers.dev';
+  let _tplIndex = [];        // [{id,name,author,tickers,savedAt}]
+  let _tplActiveId = null;   // id de la plantilla activa (null = Default)
+
+  // ── Cliente del Worker ──
+  async function _tplApiList(){
+    const r = await fetch(`${TPL_API}/list`);
+    const d = await r.json();
+    if(!d.ok) throw new Error(d.error||'error /list');
+    return d.templates||[];
+  }
+  async function _tplApiGet(id){
+    const r = await fetch(`${TPL_API}/get?id=${encodeURIComponent(id)}`);
+    const d = await r.json();
+    if(!d.ok) throw new Error(d.error||'error /get');
+    return d.template;
+  }
+  async function _tplApiSave(tpl){
+    const r = await fetch(`${TPL_API}/save`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(tpl)});
+    const d = await r.json();
+    if(!d.ok) throw new Error(d.error||'error /save');
+    return d.template;
+  }
+  async function _tplApiDelete(id){
+    const r = await fetch(`${TPL_API}/delete`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
+    const d = await r.json();
+    if(!d.ok) throw new Error(d.error||'error /delete');
+    return true;
+  }
+
+  // ── Snapshot del estado actual (lo que se guarda en una plantilla) ──
+  function _tplCurrentPayload(){
+    return {
+      tableDefs: JSON.parse(JSON.stringify(_secTableDefs)),
+      chartDefs: JSON.parse(JSON.stringify(_chartDefs)),
+      customVars: JSON.parse(JSON.stringify(_customVars)),
+      kpiActive: [..._kpiActive],
+      kpiVarOff: [..._kpiVarOff],
+    };
+  }
+
+  // ── Aplicar un payload al dashboard (incluye fix de gráficos) ──
+  function _tplApplyPayload(p){
+    if(!p) return;
+    if(p.customVars){ _customVars = JSON.parse(JSON.stringify(p.customVars)); _resyncCustomVarSeq(); }
+    if(Array.isArray(p.kpiActive)) _kpiActive = [...p.kpiActive];
+    if(Array.isArray(p.kpiVarOff)) _kpiVarOff = [...p.kpiVarOff];
+    if(p.tableDefs){ _secTableDefs = JSON.parse(JSON.stringify(p.tableDefs)); }
+    if(p.chartDefs){ _chartDefs = JSON.parse(JSON.stringify(p.chartDefs)); _chartDefs.forEach(_ensureSeries); }
+    _refreshDashboard();
+    _renderAllTables();
+  }
+
+  // ── ¿La config actual difiere del default limpio? (para el popup de confirmación) ──
+  function _tplIsDirty(){
+    // Heurística: si hay tablas/charts/vars custom o KPIs modificados respecto al arranque por defecto.
+    // Comparamos contra una reinicialización default en memoria.
+    try{
+      const defKpi = ['revenue','ebitda','grossM','netM','capex','fcf'];
+      if(_customVars && _customVars.length) return true;
+      if(_kpiVarOff && _kpiVarOff.length) return true;
+      if(JSON.stringify([..._kpiActive].sort())!==JSON.stringify([...defKpi].sort())) return true;
+      // Tablas: si difieren del set default
+      const cur = JSON.stringify(_secTableDefs);
+      const prevDefs = _secTableDefs; const prevSeq=_secTableIdSeq;
+      _secTableDefs=[]; _initTableDefs();
+      const def = JSON.stringify(_secTableDefs);
+      _secTableDefs=prevDefs; _secTableIdSeq=prevSeq;
+      if(cur!==def) return true;
+    }catch(_){ return true; }
+    return false;
+  }
+
+  // ── Cargar el índice y refrescar el sidebar ──
+  window.balRefreshTemplates = async function(autoActivate){
+    const list = $('balTplList'); if(!list) return;
+    list.innerHTML = '<div class="bal-sb-msg">Cargando plantillas…</div>';
+    try{
+      _tplIndex = await _tplApiList();
+      // Auto-activar la última plantilla actualizada de esta empresa (si existe).
+      // Si hay 1 o más plantillas para el ticker, se muestra la más reciente en vez de Default.
+      if(autoActivate && _lastTicker){
+        const tk = (_lastTicker||'').toUpperCase();
+        const mine = _tplIndex.filter(t => (t.tickers||[]).map(x=>x.toUpperCase()).includes(tk));
+        if(mine.length>0){
+          mine.sort((a,b)=>String(b.savedAt||'').localeCompare(String(a.savedAt||'')));
+          try{
+            const tpl = await _tplApiGet(mine[0].id);
+            _tplApplyPayload(tpl.payload);
+            _tplActiveId = mine[0].id;
+          }catch(_){ /* si falla, queda en Default */ }
+        }
+      }
+      _renderTplSidebar();
+    }catch(e){
+      list.innerHTML = `<div class="bal-sb-msg">No se pudieron cargar las plantillas.<br><span style="color:var(--text3)">${e.message}</span></div>`;
+    }
+  };
+
+  // ── Toggle del dropdown ──
+  window.balToggleTplDropdown = function(){
+    const dd = $('balTplDropdown'); const menu = $('balTplList');
+    if(!dd||!menu) return;
+    const open = menu.style.display!=='none';
+    if(open){ menu.style.display='none'; dd.classList.remove('open'); }
+    else{ menu.style.display='block'; dd.classList.add('open'); }
+  };
+  // Cerrar al clickear fuera
+  document.addEventListener('click', function(e){
+    const dd = document.getElementById('balTplDropdown');
+    if(dd && !dd.contains(e.target)){
+      const menu = document.getElementById('balTplList');
+      if(menu){ menu.style.display='none'; dd.classList.remove('open'); }
+    }
+  });
+
+  // Nombre a mostrar en la fila cerrada según la activa
+  function _tplCurrentLabel(){
+    if(_tplActiveId===null) return 'Default';
+    const t = _tplIndex.find(x=>x.id===_tplActiveId);
+    return t ? t.name : 'Default';
+  }
+
+  // ── Render del dropdown (fila cerrada + menú) ──
+  function _renderTplSidebar(){
+    const list = $('balTplList'); if(!list) return;
+    const curName = $('balTplCurrentName');
+    if(curName) curName.textContent = _tplCurrentLabel();
+
+    const tk = (_lastTicker||'').toUpperCase();
+    if(!tk){
+      list.innerHTML = '<div class="bal-sb-msg">Buscá una empresa para ver sus plantillas.</div>';
+      const ub0=$('balUpdateBtn'); if(ub0) ub0.style.display='none';
+      return;
+    }
+
+    // Default siempre primero
+    let html = `<div class="bal-tpl-item${_tplActiveId===null?' active':''}" onclick="balPickTemplate(null)">
+      <span class="bal-tpl-dot"></span>
+      <span class="bal-tpl-name">Default</span>
+      <span class="bal-tpl-date">base</span></div>`;
+
+    const mine = _tplIndex.filter(t => (t.tickers||[]).map(x=>x.toUpperCase()).includes(tk));
+    if(mine.length>0){
+      // Orden: por última actualización desc
+      mine.sort((a,b)=>String(b.savedAt||'').localeCompare(String(a.savedAt||'')));
+      for(const t of mine){
+        const date = (t.savedAt||'').slice(5,10); // MM-DD
+        html += `<div class="bal-tpl-item${_tplActiveId===t.id?' active':''}" onclick="balPickTemplate('${t.id}')" title="${_esc(t.name)} · ${_esc(t.author||'')} · ${(t.savedAt||'').slice(0,10)}">
+          <span class="bal-tpl-dot"></span>
+          <span class="bal-tpl-name">${_esc(t.name)}</span>
+          <span class="bal-tpl-auth">${_esc(t.author||'')}</span>
+          <span class="bal-tpl-date">${date}</span></div>`;
+      }
+    }
+    list.innerHTML = html;
+    const ub = $('balUpdateBtn');
+    if(ub) ub.style.display = (_tplActiveId!==null) ? 'flex' : 'none';
+  }
+
+  // Seleccionar desde el dropdown: cerrar menú y activar
+  window.balPickTemplate = function(id){
+    const dd = $('balTplDropdown'); const menu = $('balTplList');
+    if(menu){ menu.style.display='none'; } if(dd){ dd.classList.remove('open'); }
+    balActivateTemplate(id);
+  };
+
+  function _esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+  // ── Activar una plantilla (null = Default), con popup si hay cambios ──
+  window.balActivateTemplate = async function(id){
+    if(!_lastTicker){ showStatus('Primero buscá una empresa.','err'); return; }
+    if(_tplIsDirty()){
+      const ok = confirm('Activar la plantilla eliminará los cambios realizados. ¿Desea continuar?');
+      if(!ok) return;
+    }
+    if(id===null){
+      // Default: reinicializar
+      _customVars=[]; _customVarIdSeq=0;
+      _kpiActive=['revenue','ebitda','grossM','netM','capex','fcf'];
+      _kpiVarOff=[];
+      _secTableDefs=[]; _initTableDefs();
+      _chartDefs=[{id:++_chartIdSeq,series:[{metric:'ebitda',type:'bar',color:'#1E27F3',axis:'left'}],period:'quarterly',xDir:'desc',chartRange:10,stacked:false,width:100,order:-1}];
+      _tplActiveId=null;
+      _refreshDashboard(); _renderAllTables();
+      _renderTplSidebar();
+      showStatus('Plantilla Default activada ✓','ok');
+      return;
+    }
+    try{
+      const tpl = await _tplApiGet(id);
+      _tplApplyPayload(tpl.payload);
+      _tplActiveId = id;
+      _renderTplSidebar();
+      showStatus(`Plantilla "${tpl.name}" activada ✓`,'ok');
+    }catch(e){ showStatus('Error al activar: '+e.message,'err'); }
+  };
+
+  // ── Diálogo: Guardar como plantilla ──
+  window.balOpenSaveDialog = function(){
+    if(!_lastTicker){ showStatus('Primero buscá una empresa para guardar su configuración.','err'); return; }
+    let ov = $('balSaveModal');
+    if(!ov){
+      ov = document.createElement('div'); ov.id='balSaveModal'; ov.className='bal-modal-ov';
+      ov.onclick = function(e){ if(e.target===ov) ov.style.display='none'; };
+      ov.innerHTML = `<div class="bal-modal">
+        <div class="bal-modal-head">
+          <div class="bal-modal-title">Guardar como plantilla</div>
+          <button onclick="document.getElementById('balSaveModal').style.display='none'" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;line-height:1;">×</button>
+        </div>
+        <div class="bal-modal-body">
+          <div style="margin-bottom:14px;">
+            <div class="bal-fld-label">Nombre del template</div>
+            <input id="balTplName" class="bal-input" placeholder="Ej: Análisis márgenes" maxlength="60" />
+          </div>
+          <div style="margin-bottom:14px;">
+            <div class="bal-fld-label">Nombre de usuario</div>
+            <input id="balTplAuthor" class="bal-input" placeholder="Tu nombre" maxlength="40" />
+          </div>
+          <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:16px;">
+            Se guardará la configuración actual (tablas, gráficos y KPIs) para <b id="balTplTk"></b>.
+          </div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button onclick="document.getElementById('balSaveModal').style.display='none'" class="bal-btn" style="width:auto;padding:8px 18px;">Cancelar</button>
+            <button onclick="balDoSaveTemplate()" class="bal-btn bal-btn-accent" style="width:auto;padding:8px 18px;">Guardar plantilla</button>
+          </div>
+        </div></div>`;
+      document.body.appendChild(ov);
+    }
+    $('balTplName').value='';
+    $('balTplAuthor').value = localStorage.getItem('balTplAuthor')||'';
+    $('balTplTk').textContent = (_lastTicker||'').toUpperCase();
+    ov.style.display='flex';
+    setTimeout(()=>$('balTplName').focus(),50);
+  };
+
+  window.balDoSaveTemplate = async function(){
+    const name = ($('balTplName').value||'').trim();
+    const author = ($('balTplAuthor').value||'').trim();
+    if(!name){ showStatus('Poné un nombre para el template.','err'); return; }
+
+    const tk = (_lastTicker||'').toUpperCase();
+
+    // Duplicado global por nombre (case-insensitive)
+    const dup = _tplIndex.find(t => (t.name||'').trim().toLowerCase() === name.toLowerCase());
+    if(dup){
+      const tks = (dup.tickers||[]).join(', ') || '—';
+      const ok = confirm(`Ya existe una plantilla llamada "${dup.name}" (vinculada a: ${tks}).\n\n¿Sobrescribir esa plantilla con la configuración actual? Se mantendrán sus empresas vinculadas y se agregará ${tk} si no estaba.`);
+      if(!ok){ showStatus('Elegí otro nombre para no sobrescribir.','load'); return; }
+      // Edición: reusar id, unir tickers
+      const tickers = Array.from(new Set([...(dup.tickers||[]).map(x=>x.toUpperCase()), tk]));
+      const tpl = { id: dup.id, name, author, tickers, payload: _tplCurrentPayload() };
+      localStorage.setItem('balTplAuthor', author);
+      try{
+        const saved = await _tplApiSave(tpl);
+        $('balSaveModal').style.display='none';
+        _tplActiveId = saved.id;
+        await window.balRefreshTemplates();
+        showStatus(`Plantilla "${saved.name}" actualizada ✓`,'ok');
+      }catch(e){ showStatus('Error al guardar: '+e.message,'err'); }
+      return;
+    }
+
+    localStorage.setItem('balTplAuthor', author);
+    const tpl = { name, author, tickers: [tk], payload: _tplCurrentPayload() };
+    try{
+      const saved = await _tplApiSave(tpl);
+      $('balSaveModal').style.display='none';
+      _tplActiveId = saved.id;
+      await window.balRefreshTemplates();
+      showStatus(`Plantilla "${saved.name}" guardada ✓`,'ok');
+    }catch(e){ showStatus('Error al guardar: '+e.message,'err'); }
+  };
+
+  // ── Actualizar la plantilla activa (sobrescribe payload, mismo id) ──
+  window.balUpdateActiveTemplate = async function(){
+    if(!_tplActiveId){ showStatus('No hay una plantilla activa para actualizar (la Default no se modifica).','err'); return; }
+    const meta = _tplIndex.find(t=>t.id===_tplActiveId);
+    if(!meta){ showStatus('No se encontró la plantilla activa.','err'); return; }
+    const ok = confirm(`Actualizar la plantilla "${meta.name}" con la configuración actual?`);
+    if(!ok) return;
+    const tpl = { id: meta.id, name: meta.name, author: meta.author, tickers: meta.tickers, payload: _tplCurrentPayload() };
+    try{
+      const saved = await _tplApiSave(tpl);
+      await window.balRefreshTemplates();
+      showStatus(`Plantilla "${saved.name}" actualizada ✓`,'ok');
+    }catch(e){ showStatus('Error al actualizar: '+e.message,'err'); }
+  };
+
+  // ══════════════════ CONFIGURADOR DE TEMPLATES ══════════════════
+  let _cfgSelectedId = null;
+  let _cfgSearch = '';
+
+  window.balOpenConfigurator = async function(){
+    let ov = $('balCfgModal');
+    if(!ov){
+      ov = document.createElement('div'); ov.id='balCfgModal'; ov.className='bal-modal-ov';
+      ov.onclick = function(e){ if(e.target===ov) ov.style.display='none'; };
+      ov.innerHTML = `<div class="bal-modal" style="max-width:840px;">
+        <div class="bal-modal-head">
+          <div class="bal-modal-title">Configurar templates</div>
+          <button onclick="document.getElementById('balCfgModal').style.display='none'" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;line-height:1;">×</button>
+        </div>
+        <div class="bal-modal-body" style="padding:0;">
+          <div style="display:flex;min-height:420px;max-height:64vh;">
+            <!-- Lista maestro -->
+            <div style="width:300px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;">
+              <div style="padding:12px;border-bottom:1px solid var(--border);">
+                <input id="cfgSearch" class="bal-input" placeholder="Buscar template…" oninput="balCfgFilter(this.value)" style="font-size:12px;padding:7px 10px;" />
+              </div>
+              <div id="cfgList" style="flex:1;overflow-y:auto;padding:8px;"></div>
+            </div>
+            <!-- Detalle -->
+            <div id="cfgDetail" style="flex:1;overflow-y:auto;padding:20px 22px;"></div>
+          </div>
+        </div></div>`;
+      document.body.appendChild(ov);
+    }
+    ov.style.display='flex';
+    _cfgSelectedId=null; _cfgSearch='';
+    if($('cfgSearch')) $('cfgSearch').value='';
+    // Refrescar índice por si cambió
+    try{ _tplIndex = await _tplApiList(); }catch(_){}
+    _cfgRenderList();
+    _cfgRenderDetail();
+  };
+
+  window.balCfgFilter = function(v){ _cfgSearch=(v||'').toLowerCase(); _cfgRenderList(); };
+
+  function _cfgRenderList(){
+    const list = $('cfgList'); if(!list) return;
+    const tk = (_lastTicker||'').toUpperCase();
+    let items = _tplIndex.slice();
+    if(_cfgSearch) items = items.filter(t => (t.name||'').toLowerCase().includes(_cfgSearch) || (t.author||'').toLowerCase().includes(_cfgSearch));
+    // Orden: vinculados a la empresa actual primero, luego por fecha desc
+    items.sort((a,b)=>{
+      const av=(a.tickers||[]).map(x=>x.toUpperCase()).includes(tk)?0:1;
+      const bv=(b.tickers||[]).map(x=>x.toUpperCase()).includes(tk)?0:1;
+      if(av!==bv) return av-bv;
+      return String(b.savedAt||'').localeCompare(String(a.savedAt||''));
+    });
+    if(items.length===0){ list.innerHTML='<div class="bal-sb-msg">No hay templates.</div>'; return; }
+    list.innerHTML = items.map(t=>{
+      const linked = (t.tickers||[]).map(x=>x.toUpperCase()).includes(tk);
+      const sel = _cfgSelectedId===t.id;
+      const op = (linked||!tk) ? '1' : '0.45';
+      const border = sel ? '#1E27F3' : 'transparent';
+      return `<div onclick="balCfgSelect('${t.id}')" title="${_esc(t.name)}"
+        style="opacity:${op};padding:8px 10px;border-radius:7px;border:1px solid ${border};background:${sel?'var(--accent-light)':'transparent'};margin-bottom:4px;cursor:pointer;">
+        <div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(t.name)}</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:2px;">${_esc(t.author||'—')} · ${(t.savedAt||'').slice(0,10)} · ${(t.tickers||[]).length} empresa(s)</div>
+      </div>`;
+    }).join('');
+  }
+
+  window.balCfgSelect = function(id){ _cfgSelectedId=id; _cfgRenderList(); _cfgRenderDetail(); };
+
+  function _cfgRenderDetail(){
+    const d = $('cfgDetail'); if(!d) return;
+    const tk = (_lastTicker||'').toUpperCase();
+    if(!_cfgSelectedId){
+      d.innerHTML = '<div class="bal-sb-msg" style="margin-top:40px;">Seleccioná un template de la lista para configurarlo.</div>';
+      return;
+    }
+    const t = _tplIndex.find(x=>x.id===_cfgSelectedId);
+    if(!t){ d.innerHTML='<div class="bal-sb-msg">Template no encontrado.</div>'; return; }
+    const linked = (t.tickers||[]).map(x=>x.toUpperCase()).includes(tk);
+
+    const chips = (t.tickers||[]).map(tic=>`
+      <span style="display:inline-flex;align-items:center;gap:5px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:4px 8px;font-family:var(--mono);font-size:11px;color:var(--text);margin:0 4px 4px 0;">
+        ${_esc(tic)}
+        <span onclick="balCfgUnlink('${t.id}','${_esc(tic)}')" title="Quitar" style="cursor:pointer;color:var(--text3);font-weight:700;">×</span>
+      </span>`).join('');
+
+    d.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:18px;">
+        <div style="min-width:0;">
+          <div style="font-family:var(--display);font-size:16px;font-weight:700;color:var(--text);">${_esc(t.name)}</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:3px;">Por ${_esc(t.author||'—')} · última modif. ${(t.savedAt||'').slice(0,10)}</div>
+        </div>
+        ${!linked && tk ? `<button onclick="balCfgLink('${t.id}')" class="bal-btn bal-btn-accent" style="width:auto;padding:7px 14px;flex-shrink:0;">+ Vincular a ${tk}</button>` : ''}
+      </div>
+
+      <div style="margin-bottom:18px;">
+        <div class="bal-fld-label">Nombre del template</div>
+        <div style="display:flex;gap:8px;">
+          <input id="cfgName" class="bal-input" value="${_esc(t.name)}" maxlength="60" style="font-size:13px;" />
+          <button onclick="balCfgRename('${t.id}')" class="bal-btn" style="width:auto;padding:8px 16px;flex-shrink:0;">Renombrar</button>
+        </div>
+      </div>
+
+      <div style="margin-bottom:18px;">
+        <div class="bal-fld-label">Empresas vinculadas</div>
+        <div style="margin-bottom:8px;">${chips || '<span style="font-family:var(--mono);font-size:11px;color:var(--text3);">Ninguna</span>'}</div>
+        <div style="display:flex;gap:8px;align-items:flex-start;">
+          <div style="position:relative;flex:1;">
+            <input id="cfgAddTk" class="bal-input" placeholder="Ticker o nombre — Ej: NVDA, Nvidia…" maxlength="40" autocomplete="off"
+              style="font-size:12px;text-transform:uppercase;"
+              onfocus="cfgTkAutoShow()" onblur="setTimeout(cfgTkAutoHide,180)"
+              oninput="cfgTkAutoFilter(this.value)" onkeydown="cfgTkAutoKey(event,'${t.id}')" />
+            <div id="cfgTkAutoList" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;max-height:240px;overflow-y:auto;z-index:50;box-shadow:0 12px 40px rgba(0,0,0,0.3);"></div>
+          </div>
+          <button onclick="balCfgAddTkFromInput('${t.id}')" class="bal-btn" style="width:auto;padding:8px 16px;flex-shrink:0;">+ Agregar</button>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:8px;">
+        <button onclick="balCfgDelete('${t.id}')" class="bal-btn" style="width:auto;padding:8px 16px;border-color:#f85149;color:#f85149;">🗑 Borrar template</button>
+      </div>`;
+  }
+
+  // Re-guarda un template trayendo su payload completo (necesario porque el índice no lo tiene)
+  async function _cfgSaveMeta(id, changes){
+    const full = await _tplApiGet(id); // trae payload
+    const tpl = {
+      id: full.id,
+      name: changes.name!=null ? changes.name : full.name,
+      author: full.author,
+      tickers: changes.tickers!=null ? changes.tickers : full.tickers,
+      payload: full.payload,
+    };
+    const saved = await _tplApiSave(tpl);
+    _tplIndex = await _tplApiList();
+    return saved;
+  }
+
+  window.balCfgLink = async function(id){
+    const tk = (_lastTicker||'').toUpperCase();
+    const t = _tplIndex.find(x=>x.id===id); if(!t||!tk) return;
+    const tickers = Array.from(new Set([...(t.tickers||[]).map(x=>x.toUpperCase()), tk]));
+    try{
+      await _cfgSaveMeta(id, {tickers});
+      _cfgRenderList(); _cfgRenderDetail();
+      window.balRefreshTemplates();
+      showStatus(`Vinculada a ${tk} ✓`,'ok');
+    }catch(e){ showStatus('Error: '+e.message,'err'); }
+  };
+
+  window.balCfgUnlink = async function(id, tic){
+    const t = _tplIndex.find(x=>x.id===id); if(!t) return;
+    const tickers = (t.tickers||[]).filter(x=>x.toUpperCase()!==tic.toUpperCase());
+    if(tickers.length===0){ showStatus('Un template debe tener al menos una empresa.','err'); return; }
+    try{
+      await _cfgSaveMeta(id, {tickers});
+      _cfgRenderList(); _cfgRenderDetail();
+      window.balRefreshTemplates();
+      showStatus(`Quitada ${tic} ✓`,'ok');
+    }catch(e){ showStatus('Error: '+e.message,'err'); }
+  };
+
+  // Autocomplete de tickers en el configurador
+  let _cfgTkIdx = -1;
+  window.cfgTkAutoShow = async function(){
+    await loadTickerList();
+    cfgTkAutoFilter($('cfgAddTk')?.value||'');
+  };
+  window.cfgTkAutoHide = function(){ const el=$('cfgTkAutoList'); if(el) el.style.display='none'; _cfgTkIdx=-1; };
+  window.cfgTkAutoFilter = function(q){
+    const el=$('cfgTkAutoList'); if(!el) return;
+    const raw=(q||'').trim();
+    if(!raw){ el.style.display='none'; return; }
+    const ql=raw.toLowerCase(), qu=raw.toUpperCase();
+    const results=(_secTickerList||[])
+      .filter(r=>r.ticker.startsWith(qu)||r.name.toLowerCase().includes(ql))
+      .slice(0,12);
+    if(!results.length){ el.style.display='none'; return; }
+    _cfgTkIdx=-1;
+    el.innerHTML=results.map((r,i)=>`
+      <div data-idx="${i}" data-ticker="${r.ticker}"
+        style="padding:8px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(30,39,243,0.08);"
+        onmouseenter="this.style.background='rgba(30,39,243,0.12)'"
+        onmouseleave="this.style.background='transparent'"
+        onmousedown="cfgTkSelect('${r.ticker}')">
+        <span style="font-size:13px;font-weight:800;color:#a5b4fc;font-family:var(--mono);min-width:54px;">${r.ticker}</span>
+        <span style="font-size:11px;color:#8b99c4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(r.name)}</span>
+      </div>`).join('');
+    el.style.display='block';
+  };
+  window.cfgTkAutoKey = function(e, id){
+    const el=$('cfgTkAutoList');
+    if(el && el.style.display!=='none'){
+      const items=el.querySelectorAll('[data-idx]');
+      if(e.key==='ArrowDown'){e.preventDefault();_cfgTkIdx=Math.min(_cfgTkIdx+1,items.length-1);items.forEach((it,i)=>it.style.background=i===_cfgTkIdx?'rgba(30,39,243,0.15)':'transparent');return;}
+      if(e.key==='ArrowUp'){e.preventDefault();_cfgTkIdx=Math.max(_cfgTkIdx-1,0);items.forEach((it,i)=>it.style.background=i===_cfgTkIdx?'rgba(30,39,243,0.15)':'transparent');return;}
+      if(e.key==='Enter'&&_cfgTkIdx>=0){e.preventDefault();cfgTkSelect(items[_cfgTkIdx].dataset.ticker);return;}
+      if(e.key==='Escape'){cfgTkAutoHide();return;}
+    }
+    if(e.key==='Enter'){ e.preventDefault(); balCfgAddTkFromInput(id); }
+  };
+  window.cfgTkSelect = function(ticker){
+    const inp=$('cfgAddTk'); if(inp) inp.value=ticker;
+    cfgTkAutoHide();
+  };
+
+  // Validar lo escrito contra la lista real y agregar
+  window.balCfgAddTkFromInput = async function(id){
+    await loadTickerList();
+    const inp=$('cfgAddTk'); if(!inp) return;
+    const tic=(inp.value||'').trim().toUpperCase();
+    if(!tic) return;
+    const exists=(_secTickerList||[]).some(r=>r.ticker===tic);
+    if(!exists){ showStatus(`"${tic}" no es un ticker válido de SEC EDGAR.`,'err'); return; }
+    await balCfgAddTk(id, tic);
+  };
+
+  window.balCfgAddTk = async function(id, tic){
+    const t = _tplIndex.find(x=>x.id===id); if(!t) return;
+    tic = (tic||'').toUpperCase();
+    if((t.tickers||[]).map(x=>x.toUpperCase()).includes(tic)){ showStatus('Ya está vinculada.','load'); return; }
+    const tickers = Array.from(new Set([...(t.tickers||[]).map(x=>x.toUpperCase()), tic]));
+    try{
+      await _cfgSaveMeta(id, {tickers});
+      _cfgRenderList(); _cfgRenderDetail();
+      window.balRefreshTemplates();
+      showStatus(`Agregada ${tic} ✓`,'ok');
+    }catch(e){ showStatus('Error: '+e.message,'err'); }
+  };
+
+  window.balCfgRename = async function(id){
+    const inp = $('cfgName'); if(!inp) return;
+    const name = (inp.value||'').trim();
+    if(!name){ showStatus('El nombre no puede quedar vacío.','err'); return; }
+    // Duplicado global (excluyendo el propio)
+    const dup = _tplIndex.find(t => t.id!==id && (t.name||'').trim().toLowerCase()===name.toLowerCase());
+    if(dup){ showStatus(`Ya existe otra plantilla llamada "${dup.name}".`,'err'); return; }
+    try{
+      await _cfgSaveMeta(id, {name});
+      _cfgRenderList(); _cfgRenderDetail();
+      window.balRefreshTemplates();
+      showStatus('Renombrada ✓','ok');
+    }catch(e){ showStatus('Error: '+e.message,'err'); }
+  };
+
+  window.balCfgDelete = async function(id){
+    const t = _tplIndex.find(x=>x.id===id); if(!t) return;
+    const ok = confirm(`Borrar la plantilla "${t.name}"? Esta acción no se puede deshacer.`);
+    if(!ok) return;
+    try{
+      await _tplApiDelete(id);
+      if(_tplActiveId===id) _tplActiveId=null;
+      _cfgSelectedId=null;
+      _tplIndex = await _tplApiList();
+      _cfgRenderList(); _cfgRenderDetail();
+      window.balRefreshTemplates();
+      showStatus(`Plantilla "${t.name}" borrada ✓`,'ok');
+    }catch(e){ showStatus('Error al borrar: '+e.message,'err'); }
+  };
 
 })();
 
