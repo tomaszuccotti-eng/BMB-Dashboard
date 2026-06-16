@@ -353,6 +353,7 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
   flex-shrink:0;
 }
 .tb-icon:hover{ background:var(--accent-light); border-color:var(--accent2); color:var(--text); }
+.tb-icon.tb-spin{ animation:spin .7s linear infinite; color:var(--accent); border-color:var(--accent2); }
 .tb-icon.tb-warn{ color:var(--yellow); border-color:rgba(234,179,8,.35); }
 .tb-icon.tb-warn:hover{ background:rgba(234,179,8,.10); border-color:var(--yellow); color:var(--yellow); }
 /* Tooltip custom — anclado a la derecha del ícono, crece hacia la izquierda (no se sale de pantalla) */
@@ -11713,11 +11714,15 @@ const _eqRO = new ResizeObserver(entries => {
 <div id="app-balances" style="display:none;min-height:100vh;background:var(--bg);">
 
   <!-- Topbar -->
-  <div style="background:var(--bg2);border-bottom:1px solid var(--border2);padding:0 28px;display:flex;align-items:center;gap:16px;height:52px;position:sticky;top:0;z-index:50;">
+  <div style="background:var(--bg2);border-bottom:1px solid var(--border2);padding:0;display:flex;align-items:center;gap:0;height:52px;position:sticky;top:0;z-index:50;">
+    <!-- Bloque izquierdo alineado al sidebar (248px); el divisor cae sobre su border-right -->
+    <div style="width:248px;flex-shrink:0;display:flex;align-items:center;gap:16px;padding:0 16px 0 28px;box-sizing:border-box;border-right:1px solid var(--border2);">
     <button onclick="backToBalancesMenu()" class="tb-home" title="Volver"><img src="data:image/webp;base64,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" alt="Inicio"></button>
-    <span style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);margin-right:8px;">Empresas USA</span>
-    <!-- Divisor: línea del sidebar extendida -->
-    <div style="width:1px;height:52px;background:var(--border2);flex-shrink:0;"></div>
+      <span style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);">Empresas USA</span>
+    </div>
+    <!-- El divisor ahora es el border-right del bloque izquierdo (alineado al sidebar) -->
+    <!-- Resto del topbar con su padding propio -->
+    <div style="flex:1;display:flex;align-items:center;gap:16px;height:100%;padding:0 28px 0 8px;box-sizing:border-box;">
     <!-- Tabs inline (estilo Renta Fija, sin mayúsculas) -->
     <div id="secTopTabs" style="display:none;align-items:stretch;height:100%;padding-left:8px;gap:0;">
       <div id="secTabFinBtn" class="sec-tab active" onclick="secShowTab('fin')">Financials</div>
@@ -11729,8 +11734,10 @@ const _eqRO = new ResizeObserver(entries => {
     <div style="flex:1"></div>
     <div class="status-dot"></div>
     <span style="font-size:10px;font-family:var(--mono);color:var(--text3);">Conectado a EDGAR · SEC</span>
+    <button id="secTplRefreshBtn" onclick="secRefreshTemplates()" class="tb-icon" data-tip="Actualizar templates">↻</button>
     <button onclick="showHelp()" class="tb-icon tb-help" data-tip="Ayuda">i</button>
       <button onclick="toggleTheme()" class="tb-icon tb-theme" data-tip="Cambiar a modo claro/oscuro"><span class="theme-btn-icon">☀</span></button>
+    </div><!-- /resto topbar -->
   </div>
 
   <div class="bal-layout">
@@ -11771,9 +11778,9 @@ const _eqRO = new ResizeObserver(entries => {
       <div id="secStatus" style="display:none;margin-top:12px;"></div>
     </div>
 
-    <!-- Plantillas -->
+    <!-- Templates -->
     <div class="bal-sb-sec" style="flex:1;">
-      <div class="bal-sb-label">Plantillas</div>
+      <div class="bal-sb-label">Templates</div>
       <div id="balTplDropdown" class="bal-tpl-dd">
         <div id="balTplCurrent" class="bal-tpl-current" onclick="balToggleTplDropdown()">
           <span class="bal-tpl-dot"></span>
@@ -11784,11 +11791,18 @@ const _eqRO = new ResizeObserver(entries => {
       </div>
       <div style="margin-top:12px;">
         <div style="display:flex;gap:6px;margin-bottom:8px;">
-          <button onclick="balOpenSaveDialog()" class="bal-icobtn" data-tip="Guardar como plantilla">💾</button>
-          <button id="balUpdateBtn" onclick="balUpdateActiveTemplate()" class="bal-icobtn" data-tip="Actualizar plantilla activa" style="display:none;">♻</button>
-          <button onclick="balOpenConfigurator()" class="bal-icobtn" data-tip="Configurar templates">⚙</button>
+          <button id="balSaveBtn" onclick="balOpenSaveDialog()" class="bal-icobtn" data-tip="Guardar como template"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></button>
+          <button id="balUpdateBtn" onclick="balUpdateActiveTemplate()" class="bal-icobtn" data-tip="Actualizar template activo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
+          <button id="balCfgBtn" onclick="balOpenConfigurator()" class="bal-icobtn" data-tip="Configurar templates"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
         </div>
-        <button onclick="secGenerateReport()" class="bal-btn">📄 Generar reporte</button>
+        <button onclick="secGenerateReport()" class="bal-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>Generar reporte</button>
+        <!-- Login para habilitar edición de templates -->
+        <div id="balLoginRow" style="margin-top:10px;display:flex;gap:6px;align-items:center;">
+          <input id="balLoginInput" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')balTryLogin()"
+            style="flex:1;min-width:0;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;font-size:11px;color:var(--text);font-family:var(--mono);outline:none;" />
+          <button id="balLoginBtn" onclick="balTryLogin()" class="bal-icobtn" style="flex:0 0 34px;" data-tip="Ingresar">→</button>
+        </div>
+        <div id="balLoginStatus" style="margin-top:6px;font-size:9px;font-family:var(--mono);color:var(--text3);line-height:1.4;"></div>
       </div>
     </div>
 
@@ -11971,6 +11985,8 @@ const _eqRO = new ResizeObserver(entries => {
 /* Botones de ícono con tooltip */
 #app-balances .bal-icobtn{position:relative;flex:1;height:34px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-size:14px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;}
 #app-balances .bal-icobtn:hover{border-color:#1E27F3;background:var(--accent-light);color:var(--text);}
+#app-balances .bal-icobtn:disabled{opacity:.4;cursor:not-allowed;background:var(--bg3);border-color:var(--border2);color:var(--text3);}
+#app-balances .bal-icobtn:disabled:hover{border-color:var(--border2);background:var(--bg3);color:var(--text3);}
 #app-balances .bal-icobtn-accent{background:#1E27F3;border-color:#1E27F3;color:#fff;}
 #app-balances .bal-icobtn-accent:hover{background:#2d38ff;border-color:#2d38ff;color:#fff;}
 #app-balances .bal-icobtn[data-tip]:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);width:max-content;max-width:150px;text-align:center;background:var(--bg);color:var(--text);border:1px solid var(--border2);border-radius:6px;padding:5px 9px;font-family:var(--mono);font-size:10px;font-weight:600;white-space:normal;line-height:1.35;z-index:200;box-shadow:0 6px 20px rgba(0,0,0,0.35);pointer-events:none;}
@@ -12087,6 +12103,7 @@ function enterBalances(){
   window._helpKey = 'af.usa';
   document.getElementById('app-balances-menu').style.display='none';
   document.getElementById('app-balances').style.display='block';
+  if(typeof window._syncTplButtons==='function') window._syncTplButtons();
 }
 function enterExcel(){
   document.getElementById('app-balances-menu').style.display='none';
@@ -16700,7 +16717,61 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:${P.bg};color:${P.text};
   // ══════════════════ SISTEMA DE PLANTILLAS (Cloudflare KV) ══════════════════
   const TPL_API = 'https://sec-templates.tzuccotti.workers.dev';
   let _tplIndex = [];        // [{id,name,author,tickers,savedAt}]
-  let _tplActiveId = null;   // id de la plantilla activa (null = Default)
+  let _tplActiveId = null;   // id de el template activo (null = Default)
+  let _tplUnlocked = false;  // login para habilitar edición de templates
+
+  const _TPL_PASSWORD = 'BullMarket26';
+
+  // Intento de login con la contraseña del input del sidebar.
+  window.balTryLogin = function(){
+    const inp = document.getElementById('balLoginInput');
+    const st  = document.getElementById('balLoginStatus');
+    const val = inp ? inp.value : '';
+    if(val === _TPL_PASSWORD){
+      _tplUnlocked = true;
+      if(inp) inp.value='';
+      _syncTplButtons();
+      showStatus('Edición de templates habilitada ✓','ok');
+    } else {
+      _tplUnlocked = false;
+      _syncTplButtons();
+      if(st){ st.textContent='Contraseña incorrecta.'; st.style.color='#f85149'; }
+      showStatus('Contraseña incorrecta.','err');
+    }
+  };
+
+  // Habilita/deshabilita los tres botones de templates según login + estado.
+  // - Guardar: requiere login + empresa cargada.
+  // - Actualizar: requiere login + template activa (no Default).
+  // - Configurar: requiere login.
+  // El input/botón de login se ocultan una vez desbloqueado.
+  window._syncTplButtons = function(){
+    const save = document.getElementById('balSaveBtn');
+    const upd  = document.getElementById('balUpdateBtn');
+    const cfg  = document.getElementById('balCfgBtn');
+    const hasCompany = !!_lastTicker;
+    const hasActive  = _tplActiveId !== null;
+    if(save){
+      save.disabled = !(_tplUnlocked && hasCompany);
+      save.setAttribute('data-tip', !_tplUnlocked ? 'Ingresá la contraseña para editar templates'
+        : !hasCompany ? 'Buscá una empresa primero' : 'Guardar como template');
+    }
+    if(upd){
+      upd.disabled = !(_tplUnlocked && hasActive);
+      upd.setAttribute('data-tip', !_tplUnlocked ? 'Ingresá la contraseña para editar templates'
+        : !hasActive ? 'El template Default no se actualiza' : 'Actualizar template activo');
+    }
+    if(cfg){
+      cfg.disabled = !_tplUnlocked;
+      cfg.setAttribute('data-tip', !_tplUnlocked ? 'Ingresá la contraseña para editar templates' : 'Configurar templates');
+    }
+    // Mostrar u ocultar la fila de login según estado.
+    const row = document.getElementById('balLoginRow');
+    const st  = document.getElementById('balLoginStatus');
+    if(row) row.style.display = _tplUnlocked ? 'none' : 'flex';
+    if(st)  st.textContent = _tplUnlocked ? '' : (st.textContent.indexOf('incorrecta')!==-1 ? st.textContent : '');
+    if(_tplUnlocked && st){ st.textContent=''; }
+  };
 
   // ── Cliente del Worker ──
   async function _tplApiList(){
@@ -16728,7 +16799,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:${P.bg};color:${P.text};
     return true;
   }
 
-  // ── Snapshot del estado actual (lo que se guarda en una plantilla) ──
+  // ── Snapshot del estado actual (lo que se guarda en una template) ──
   function _tplCurrentPayload(){
     return {
       tableDefs: JSON.parse(JSON.stringify(_secTableDefs)),
@@ -16772,13 +16843,37 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:${P.bg};color:${P.text};
   }
 
   // ── Cargar el índice y refrescar el sidebar ──
-  window.balRefreshTemplates = async function(autoActivate){
-    const list = $('balTplList'); if(!list) return;
-    list.innerHTML = '<div class="bal-sb-msg">Cargando plantillas…</div>';
+  // ── Botón del topbar: recargar templates desde el worker sec-templates ──
+  // Da feedback visual (spinner) y re-aplica el template activo de la empresa.
+  window.secRefreshTemplates = async function(){
+    const btn = document.getElementById('secTplRefreshBtn');
+    if(btn && btn.dataset.busy==='1') return; // evitar doble click
+    if(btn){ btn.dataset.busy='1'; btn.classList.add('tb-spin'); btn.style.pointerEvents='none'; }
     try{
       _tplIndex = await _tplApiList();
-      // Auto-activar la última plantilla actualizada de esta empresa (si existe).
-      // Si hay 1 o más plantillas para el ticker, se muestra la más reciente en vez de Default.
+      // Re-aplicar el template activo actual si sigue existiendo, manteniendo la selección.
+      if(_tplActiveId){
+        const still = _tplIndex.find(t=>t.id===_tplActiveId);
+        if(still){
+          try{ const tpl=await _tplApiGet(_tplActiveId); _tplApplyPayload(tpl.payload); }catch(_){}
+        } else { _tplActiveId=null; }
+      }
+      _renderTplSidebar();
+      showStatus('Templates actualizadas ✓','ok');
+    }catch(e){
+      showStatus('Error al actualizar templates: '+e.message,'err');
+    } finally {
+      if(btn){ btn.dataset.busy='0'; btn.classList.remove('tb-spin'); btn.style.pointerEvents=''; }
+    }
+  };
+
+  window.balRefreshTemplates = async function(autoActivate){
+    const list = $('balTplList'); if(!list) return;
+    list.innerHTML = '<div class="bal-sb-msg">Cargando templates…</div>';
+    try{
+      _tplIndex = await _tplApiList();
+      // Auto-activar la última template actualizada de esta empresa (si existe).
+      // Si hay 1 o más templates para el ticker, se muestra la más reciente en vez de Default.
       if(autoActivate && _lastTicker){
         const tk = (_lastTicker||'').toUpperCase();
         const mine = _tplIndex.filter(t => (t.tickers||[]).map(x=>x.toUpperCase()).includes(tk));
@@ -16793,7 +16888,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:${P.bg};color:${P.text};
       }
       _renderTplSidebar();
     }catch(e){
-      list.innerHTML = `<div class="bal-sb-msg">No se pudieron cargar las plantillas.<br><span style="color:var(--text3)">${e.message}</span></div>`;
+      list.innerHTML = `<div class="bal-sb-msg">No se pudieron cargar las templates.<br><span style="color:var(--text3)">${e.message}</span></div>`;
     }
   };
 
@@ -16829,8 +16924,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:${P.bg};color:${P.text};
 
     const tk = (_lastTicker||'').toUpperCase();
     if(!tk){
-      list.innerHTML = '<div class="bal-sb-msg">Buscá una empresa para ver sus plantillas.</div>';
-      const ub0=$('balUpdateBtn'); if(ub0) ub0.style.display='none';
+      list.innerHTML = '<div class="bal-sb-msg">Buscá una empresa para ver sus templates.</div>';
+      _syncTplButtons();
       return;
     }
 
@@ -16854,8 +16949,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:${P.bg};color:${P.text};
       }
     }
     list.innerHTML = html;
-    const ub = $('balUpdateBtn');
-    if(ub) ub.style.display = (_tplActiveId!==null) ? 'flex' : 'none';
+    _syncTplButtons();
   }
 
   // Seleccionar desde el dropdown: cerrar menú y activar
@@ -16867,11 +16961,11 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:${P.bg};color:${P.text};
 
   function _esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-  // ── Activar una plantilla (null = Default), con popup si hay cambios ──
+  // ── Activar una template (null = Default), con popup si hay cambios ──
   window.balActivateTemplate = async function(id){
     if(!_lastTicker){ showStatus('Primero buscá una empresa.','err'); return; }
     if(_tplIsDirty()){
-      const ok = confirm('Activar la plantilla eliminará los cambios realizados. ¿Desea continuar?');
+      const ok = confirm('Activar la template eliminará los cambios realizados. ¿Desea continuar?');
       if(!ok) return;
     }
     if(id===null){
@@ -16884,7 +16978,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:${P.bg};color:${P.text};
       _tplActiveId=null;
       _refreshDashboard(); _renderAllTables();
       _renderTplSidebar();
-      showStatus('Plantilla Default activada ✓','ok');
+      showStatus('Template Default activada ✓','ok');
       return;
     }
     try{
@@ -16892,12 +16986,13 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:${P.bg};color:${P.text};
       _tplApplyPayload(tpl.payload);
       _tplActiveId = id;
       _renderTplSidebar();
-      showStatus(`Plantilla "${tpl.name}" activada ✓`,'ok');
+      showStatus(`Template "${tpl.name}" activada ✓`,'ok');
     }catch(e){ showStatus('Error al activar: '+e.message,'err'); }
   };
 
-  // ── Diálogo: Guardar como plantilla ──
+  // ── Diálogo: Guardar como template ──
   window.balOpenSaveDialog = function(){
+    if(!_tplUnlocked){ showStatus('Ingresá la contraseña para editar templates.','err'); return; }
     if(!_lastTicker){ showStatus('Primero buscá una empresa para guardar su configuración.','err'); return; }
     let ov = $('balSaveModal');
     if(!ov){
@@ -16905,7 +17000,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:${P.bg};color:${P.text};
       ov.onclick = function(e){ if(e.target===ov) ov.style.display='none'; };
       ov.innerHTML = `<div class="bal-modal">
         <div class="bal-modal-head">
-          <div class="bal-modal-title">Guardar como plantilla</div>
+          <div class="bal-modal-title">Guardar como template</div>
           <button onclick="document.getElementById('balSaveModal').style.display='none'" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;line-height:1;">×</button>
         </div>
         <div class="bal-modal-body">
@@ -16922,7 +17017,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:${P.bg};color:${P.text};
           </div>
           <div style="display:flex;gap:8px;justify-content:flex-end;">
             <button onclick="document.getElementById('balSaveModal').style.display='none'" class="bal-btn" style="width:auto;padding:8px 18px;">Cancelar</button>
-            <button onclick="balDoSaveTemplate()" class="bal-btn bal-btn-accent" style="width:auto;padding:8px 18px;">Guardar plantilla</button>
+            <button onclick="balDoSaveTemplate()" class="bal-btn bal-btn-accent" style="width:auto;padding:8px 18px;">Guardar template</button>
           </div>
         </div></div>`;
       document.body.appendChild(ov);
@@ -16945,7 +17040,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:${P.bg};color:${P.text};
     const dup = _tplIndex.find(t => (t.name||'').trim().toLowerCase() === name.toLowerCase());
     if(dup){
       const tks = (dup.tickers||[]).join(', ') || '—';
-      const ok = confirm(`Ya existe una plantilla llamada "${dup.name}" (vinculada a: ${tks}).\n\n¿Sobrescribir esa plantilla con la configuración actual? Se mantendrán sus empresas vinculadas y se agregará ${tk} si no estaba.`);
+      const ok = confirm(`Ya existe una template llamada "${dup.name}" (vinculada a: ${tks}).\n\n¿Sobrescribir esa template con la configuración actual? Se mantendrán sus empresas vinculadas y se agregará ${tk} si no estaba.`);
       if(!ok){ showStatus('Elegí otro nombre para no sobrescribir.','load'); return; }
       // Edición: reusar id, unir tickers
       const tickers = Array.from(new Set([...(dup.tickers||[]).map(x=>x.toUpperCase()), tk]));
@@ -16956,7 +17051,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:${P.bg};color:${P.text};
         $('balSaveModal').style.display='none';
         _tplActiveId = saved.id;
         await window.balRefreshTemplates();
-        showStatus(`Plantilla "${saved.name}" actualizada ✓`,'ok');
+        showStatus(`Template "${saved.name}" actualizada ✓`,'ok');
       }catch(e){ showStatus('Error al guardar: '+e.message,'err'); }
       return;
     }
@@ -16968,22 +17063,23 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:${P.bg};color:${P.text};
       $('balSaveModal').style.display='none';
       _tplActiveId = saved.id;
       await window.balRefreshTemplates();
-      showStatus(`Plantilla "${saved.name}" guardada ✓`,'ok');
+      showStatus(`Template "${saved.name}" guardada ✓`,'ok');
     }catch(e){ showStatus('Error al guardar: '+e.message,'err'); }
   };
 
-  // ── Actualizar la plantilla activa (sobrescribe payload, mismo id) ──
+  // ── Actualizar el template activo (sobrescribe payload, mismo id) ──
   window.balUpdateActiveTemplate = async function(){
-    if(!_tplActiveId){ showStatus('No hay una plantilla activa para actualizar (la Default no se modifica).','err'); return; }
+    if(!_tplUnlocked){ showStatus('Ingresá la contraseña para editar templates.','err'); return; }
+    if(!_tplActiveId){ showStatus('No hay un template activo para actualizar (la Default no se modifica).','err'); return; }
     const meta = _tplIndex.find(t=>t.id===_tplActiveId);
-    if(!meta){ showStatus('No se encontró la plantilla activa.','err'); return; }
-    const ok = confirm(`Actualizar la plantilla "${meta.name}" con la configuración actual?`);
+    if(!meta){ showStatus('No se encontró el template activo.','err'); return; }
+    const ok = confirm(`Actualizar la template "${meta.name}" con la configuración actual?`);
     if(!ok) return;
     const tpl = { id: meta.id, name: meta.name, author: meta.author, tickers: meta.tickers, payload: _tplCurrentPayload() };
     try{
       const saved = await _tplApiSave(tpl);
       await window.balRefreshTemplates();
-      showStatus(`Plantilla "${saved.name}" actualizada ✓`,'ok');
+      showStatus(`Template "${saved.name}" actualizada ✓`,'ok');
     }catch(e){ showStatus('Error al actualizar: '+e.message,'err'); }
   };
 
@@ -16992,6 +17088,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:${P.bg};color:${P.text};
   let _cfgSearch = '';
 
   window.balOpenConfigurator = async function(){
+    if(!_tplUnlocked){ showStatus('Ingresá la contraseña para editar templates.','err'); return; }
     let ov = $('balCfgModal');
     if(!ov){
       ov = document.createElement('div'); ov.id='balCfgModal'; ov.className='bal-modal-ov';
@@ -17223,7 +17320,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:${P.bg};color:${P.text};
     if(!name){ showStatus('El nombre no puede quedar vacío.','err'); return; }
     // Duplicado global (excluyendo el propio)
     const dup = _tplIndex.find(t => t.id!==id && (t.name||'').trim().toLowerCase()===name.toLowerCase());
-    if(dup){ showStatus(`Ya existe otra plantilla llamada "${dup.name}".`,'err'); return; }
+    if(dup){ showStatus(`Ya existe otra template llamada "${dup.name}".`,'err'); return; }
     try{
       await _cfgSaveMeta(id, {name});
       _cfgRenderList(); _cfgRenderDetail();
@@ -17263,7 +17360,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:${P.bg};color:${P.text};
 
   window.balCfgDelete = async function(id){
     const t = _tplIndex.find(x=>x.id===id); if(!t) return;
-    const ok = confirm(`Borrar la plantilla "${t.name}"? Esta acción no se puede deshacer.`);
+    const ok = confirm(`Borrar la template "${t.name}"? Esta acción no se puede deshacer.`);
     if(!ok) return;
     try{
       await _tplApiDelete(id);
@@ -17272,7 +17369,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:${P.bg};color:${P.text};
       _tplIndex = await _tplApiList();
       _cfgRenderList(); _cfgRenderDetail();
       window.balRefreshTemplates();
-      showStatus(`Plantilla "${t.name}" borrada ✓`,'ok');
+      showStatus(`Template "${t.name}" borrada ✓`,'ok');
     }catch(e){ showStatus('Error al borrar: '+e.message,'err'); }
   };
 
@@ -23836,7 +23933,26 @@ Al clickear un ticker se abre su valor histórico.` },
 
 Al clickear un ticker se abre su valor histórico.` },
 
-    'af.usa':       { t:'Empresas USA', b:'(pendiente)' },
+    'af.usa':       { t:'Empresas USA', b:
+`Explorador de estados financieros de empresas que reportan a la **SEC** (EDGAR). Buscás una empresa por ticker y el dashboard arma automáticamente tablas, gráficos y KPIs a partir de los datos estructurados (XBRL) que la empresa presenta en sus reportes 10-K (anuales) y 10-Q (trimestrales).
+
+**Tablas y gráficos — qué se puede editar**
+Cada tabla y cada gráfico se edita desde su ícono de lápiz. En las tablas elegís qué métricas mostrar (filas), el rango de períodos, el ancho, y si son anuales o trimestrales. En los gráficos elegís las series, el tipo (línea/barra), el eje (izquierdo/derecho), y si las barras se apilan. El **orden** de tablas y gráficos se reordena con las flechas; el ancho (100/50/33%) permite ponerlos lado a lado. Lo que **no** se edita es el dato en sí: los valores vienen de EDGAR y no son modificables a mano.
+
+**Variables personalizadas**
+Además de las métricas base, podés crear **variables propias** con fórmulas sobre las etiquetas de EDGAR (por ejemplo "Liabilities" / "StockholdersEquity"). Se gestionan desde el botón **Gestionar variables** (presente tanto en el editor de tablas como en el de gráficos). El formato (millones, %, ratio "x") se autodetecta, pero podés fijarlo a mano. Una variable creada queda disponible en tablas, gráficos y KPIs.
+
+**Variaciones**
+Las tablas y KPIs muestran la variación contra el período anterior. El tipo se ajusta al formato de cada fila: **%** en montos, **pp** (puntos porcentuales) en márgenes y porcentajes, y **diferencia absoluta** (ej. +0,74x) en ratios. La leyenda al pie aclara qué modo se usa en cada caso.
+
+**Templates**
+Un template guarda toda la configuración de tablas, gráficos, KPIs y variables personalizadas, y queda vinculado a una o varias empresas. Para **guardar** uno nuevo, usá el botón de guardar ([[ico:save]]): le ponés nombre y queda asociado al ticker actual. Para **actualizar** el template activo con los cambios que hiciste, usá el botón de actualizar ([[ico:update]]). Desde **Configurar** ([[ico:cfg]]) podés renombrar, vincular/desvincular empresas, **duplicar como copia** (clona el template completo con otro nombre, para probar cambios sin tocar el original) y borrar.
+
+La edición de templates (guardar, actualizar, configurar) está protegida por contraseña: ingresala en el campo **Password** del panel izquierdo para habilitar esos tres botones. Sin la contraseña podés navegar, editar la vista en la sesión y aplicar templates existentes, pero no crearlos ni modificarlos.
+
+El botón **↻** del topbar recarga la lista de templates desde el servidor (útil si otra persona del equipo creó o modificó uno). Al abrir una empresa, se activa automáticamente el template más reciente vinculado a ese ticker; si no hay ninguno, se usa la configuración Default.
+
+[[warn]]OJO: las métricas y variables provienen de los datos estructurados (XBRL) que cada empresa reporta a EDGAR. Una misma métrica puede tener implicancias distintas de una empresa a otra según cómo cada una clasifique sus rubros contables, así que conviene interpretarlas en el contexto de cada compañía.[[/warn]]` },
     'ear.buscar':   { t:'Empresas ARG · Buscar', b:'(pendiente)' },
     'ear.sector':   { t:'Empresas ARG · Scoring de Liquidez', b:'(pendiente)' },
     'ear.deudores': { t:'Empresas ARG · Central de Deudores', b:'(pendiente)' },
@@ -23858,6 +23974,14 @@ Equipo: Research BullMarket`;
     if(!raw) return '';
     let esc = raw
       .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    // Íconos inline (mismos glifos SVG que los botones del sidebar).
+    const _icoSvg = (inner)=>`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;">${inner}</svg>`;
+    const _ICONS = {
+      save:   '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
+      update: '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
+      cfg:    '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+    };
+    esc = esc.replace(/\[\[ico:(save|update|cfg)\]\]/g, (_,k)=>_icoSvg(_ICONS[k]));
     esc = esc.replace(/\[\[warn\]\]([\s\S]*?)\[\[\/warn\]\]/g,
       '<div class="help-warn">$1</div>');
     esc = esc.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
@@ -23874,7 +23998,13 @@ Equipo: Research BullMarket`;
     });
     const body = document.getElementById('help-body');
     const entry = HELP[window._helpKey] || HELP['landing'];
-    if(tab==='uso')             body.innerHTML = helpRender(entry.b + (window._helpKey==='landing' ? '' : '\n\n' + LAG_WARN));
+    if(tab==='uso'){
+      // El aviso de lag de precio/volumen sólo aplica a módulos con datos de mercado.
+      // Los módulos de empresas (af.*, ear.*) traen su propia nota y no llevan LAG_WARN.
+      const k = window._helpKey || '';
+      const noLag = k==='landing' || k.indexOf('af.')===0 || k.indexOf('ear.')===0;
+      body.innerHTML = helpRender(entry.b + (noLag ? '' : '\n\n' + LAG_WARN));
+    }
     else if(tab==='disclaimer') body.innerHTML = helpRenderDisclaimer();
     else                        body.innerHTML = helpRender(HELP_CONTACTO);
   };
