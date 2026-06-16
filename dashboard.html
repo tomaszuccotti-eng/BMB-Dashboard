@@ -11840,7 +11840,7 @@ const _eqRO = new ResizeObserver(entries => {
             style="padding:6px 14px;border-radius:6px;border:1px solid var(--border2);background:var(--accent-light);color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);">+ Tabla</button>
         </div>
         <!-- Modal para agregar tabla -->
-        <div id="secAddBlockModal" onclick="if(event.target===this)secCloseAddBlock()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;pointer-events:auto;">
+        <div id="secAddBlockModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;pointer-events:auto;">
           <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:24px;width:560px;max-width:95vw;max-height:85vh;overflow-y:auto;pointer-events:auto;" onclick="event.stopPropagation()">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
               <span style="font-size:14px;font-weight:700;color:var(--text);font-family:var(--mono);">Agregar tabla</span>
@@ -11850,7 +11850,7 @@ const _eqRO = new ResizeObserver(entries => {
           </div>
         </div>
         <!-- Modal gestor de variables personalizadas -->
-        <div id="secVarModal" onclick="if(event.target===this)secCloseVarManager()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10000;align-items:center;justify-content:center;pointer-events:auto;">
+        <div id="secVarModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10000;align-items:center;justify-content:center;pointer-events:auto;">
           <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:22px;width:680px;max-width:96vw;max-height:88vh;overflow-y:auto;pointer-events:auto;" onclick="event.stopPropagation()">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
               <span id="secVarModalTitle" style="font-size:14px;font-weight:700;color:var(--text);font-family:var(--mono);">Editar tabla</span>
@@ -11860,7 +11860,7 @@ const _eqRO = new ResizeObserver(entries => {
           </div>
         </div>
         <!-- Modal editor de gráfico (multi-serie) -->
-        <div id="secChartModal" onclick="if(event.target===this)secCloseChartEditor()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10000;align-items:center;justify-content:center;pointer-events:auto;">
+        <div id="secChartModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10000;align-items:center;justify-content:center;pointer-events:auto;">
           <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:22px;width:640px;max-width:96vw;max-height:88vh;overflow-y:auto;pointer-events:auto;" onclick="event.stopPropagation()">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
               <span style="font-size:14px;font-weight:700;color:var(--text);font-family:var(--mono);">Editar gráfico</span>
@@ -11870,7 +11870,7 @@ const _eqRO = new ResizeObserver(entries => {
           </div>
         </div>
         <!-- Popup agregar serie (chips toggleables) -->
-        <div id="secChartAddModal" onclick="if(event.target===this)secChartCloseAdd()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10001;align-items:center;justify-content:center;pointer-events:auto;">
+        <div id="secChartAddModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10001;align-items:center;justify-content:center;pointer-events:auto;">
           <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:22px;width:560px;max-width:96vw;max-height:88vh;overflow-y:auto;pointer-events:auto;" onclick="event.stopPropagation()">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
               <span style="font-size:14px;font-weight:700;color:var(--text);font-family:var(--mono);">Agregar serie</span>
@@ -11880,7 +11880,7 @@ const _eqRO = new ResizeObserver(entries => {
           </div>
         </div>
         <!-- Modal editor de KPIs -->
-        <div id="secKpiModal" onclick="if(event.target===this)secCloseKpiEditor()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10000;align-items:center;justify-content:center;pointer-events:auto;">
+        <div id="secKpiModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10000;align-items:center;justify-content:center;pointer-events:auto;">
           <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:22px;width:560px;max-width:96vw;max-height:88vh;overflow-y:auto;pointer-events:auto;" onclick="event.stopPropagation()">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
               <span style="font-size:14px;font-weight:700;color:var(--text);font-family:var(--mono);">Configurar KPIs</span>
@@ -14011,7 +14011,8 @@ function openDetail(especie){
     if(metricId && metricId.startsWith('c_')){
       const cv=_getCustomVar(metricId);
       if(cv){
-        const unit = (cv.fmt==='pct')?'%':(cv.fmt==='M'||cv.fmt==='raw')?'M':'num';
+        const ef=_effectiveFmt(cv);
+        const unit = (ef==='pct')?'%':(ef==='M'||ef==='raw')?'M':'num';
         return {custom:true, cv, label:cv.label, unit, type:'bar', color:'#1E27F3'};
       }
     }
@@ -14167,6 +14168,7 @@ function openDetail(especie){
           <button onclick="secChartSeriesSet(${i},'axis','left')" style="padding:3px 8px;font-size:9px;font-weight:700;cursor:pointer;border:none;background:${s.axis!=='right'?'#1E27F3':'transparent'};color:${s.axis!=='right'?'#fff':'var(--text3)'};font-family:var(--mono);">Izq</button>
           <button onclick="secChartSeriesSet(${i},'axis','right')" style="padding:3px 8px;font-size:9px;font-weight:700;cursor:pointer;border:none;background:${s.axis==='right'?'#1E27F3':'transparent'};color:${s.axis==='right'?'#fff':'var(--text3)'};font-family:var(--mono);">Der</button>
         </div>
+        ${meta.custom?`<button onclick="secChartEditSeriesVar('${s.metric}')" title="Editar variable" style="padding:2px 7px;font-size:10px;cursor:pointer;border:1px solid var(--border2);border-radius:5px;background:transparent;color:var(--text3);font-family:var(--mono);">✎</button>`:''}
         ${def.series.length>1?`<button onclick="secChartSeriesRemove(${i})" style="padding:2px 7px;font-size:10px;cursor:pointer;border:1px solid rgba(248,81,73,0.3);border-radius:5px;background:transparent;color:#f85149;font-family:var(--mono);">✕</button>`:''}
       </div>`;
     }).join('');
@@ -14255,6 +14257,8 @@ function openDetail(especie){
   };
   window.secChartCloseAdd = function(){ const m=$('secChartAddModal'); if(m) m.style.display='none'; };
   let _chartAddFilter='';
+  let _chartShowAll=false; // default: solo activas (igual que tablas)
+  window.secChartToggleShowAll = function(){ _chartShowAll=!_chartShowAll; _renderChartAdd(); };
   window.secChartAddSearch = function(q){ _chartAddFilter=q||''; _renderChartAdd(); };
 
   function _renderChartAdd(){
@@ -14271,27 +14275,35 @@ function openDetail(especie){
     const chip=(id,label,active,custom)=>`<button onclick="secChartToggleSeries('${id}')"
       style="padding:3px 9px;border-radius:10px;font-size:10px;cursor:pointer;font-family:var(--mono);border:1px solid ${active?'#1E27F3':'var(--border)'};background:${active?'rgba(30,39,243,0.15)':'transparent'};color:${active?'#a5b4fc':'var(--text3)'};">${label}${custom?' ƒ':''}</button>`;
 
-    const fixedHtml=Object.entries(byGroup).map(([grp,rows])=>`
+    const fixedHtml=Object.entries(byGroup).map(([grp,rows])=>{
+      const shown = _chartShowAll ? rows : rows.filter(m=>inUse.has(m.id));
+      if(!_chartShowAll && shown.length===0) return ''; // grupo sin activas → oculto
+      return `
       <div style="margin-bottom:6px;display:flex;align-items:flex-start;flex-wrap:wrap;gap:4px;">
         <span style="font-size:9px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;min-width:100px;padding-top:3px;">${grp}</span>
-        <div style="display:flex;flex-wrap:wrap;gap:4px;">${rows.map(m=>chip(m.id,m.label,inUse.has(m.id),false)).join('')}</div>
-      </div>`).join('');
+        <div style="display:flex;flex-wrap:wrap;gap:4px;">${shown.map(m=>chip(m.id,m.label,inUse.has(m.id),false)).join('')}</div>
+      </div>`;}).join('');
 
-    const customHtml=`<div style="margin-bottom:6px;display:flex;align-items:flex-start;flex-wrap:wrap;gap:4px;border-top:1px dashed var(--border);padding-top:10px;margin-top:6px;">
+    const customShown = _chartShowAll ? customs : customs.filter(c=>inUse.has(c.id));
+    const customHtml=(_chartShowAll || customShown.length)?`<div style="margin-bottom:6px;display:flex;align-items:flex-start;flex-wrap:wrap;gap:4px;border-top:1px dashed var(--border);padding-top:10px;margin-top:6px;">
         <span style="font-size:9px;color:#a5b4fc;font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;min-width:100px;padding-top:3px;">Personalizadas</span>
-        <div style="display:flex;flex-wrap:wrap;gap:4px;">${customs.length?customs.map(c=>chip(c.id,c.label,inUse.has(c.id),true)).join(''):'<span style="font-size:10px;color:var(--text3);font-family:var(--mono);">Ninguna aún</span>'}</div>
-      </div>`;
+        <div style="display:flex;flex-wrap:wrap;gap:4px;">${customShown.length?customShown.map(c=>chip(c.id,c.label,inUse.has(c.id),true)).join(''):'<span style="font-size:10px;color:var(--text3);font-family:var(--mono);">Ninguna aún</span>'}</div>
+      </div>`:'';
 
     el.innerHTML=`
-      <input type="text" value="${_chartAddFilter.replace(/"/g,'&quot;')}" placeholder="Buscar métrica o variable..." oninput="secChartAddSearch(this.value)"
-        style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:6px 10px;font-size:12px;color:var(--text);font-family:var(--mono);outline:none;margin-bottom:12px;" />
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
+        <input type="text" value="${_chartAddFilter.replace(/"/g,'&quot;')}" placeholder="Buscar métrica o variable..." oninput="secChartAddSearch(this.value)"
+          style="flex:1;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:6px 10px;font-size:12px;color:var(--text);font-family:var(--mono);outline:none;" />
+        <button onclick="secChartToggleShowAll()" style="flex-shrink:0;padding:6px 12px;border-radius:8px;font-size:10px;font-weight:700;cursor:pointer;font-family:var(--mono);border:1px solid var(--border2);background:${_chartShowAll?'rgba(30,39,243,0.12)':'transparent'};color:${_chartShowAll?'#a5b4fc':'var(--text3)'};">${_chartShowAll?'− Solo activas':'+ Mostrar todas'}</button>
+      </div>
       <div style="max-height:340px;overflow-y:auto;margin-bottom:12px;">
         ${fixedHtml}
         ${customHtml}
       </div>
-      <div style="display:flex;gap:8px;border-top:1px solid var(--border);padding-top:12px;">
-        <button onclick="secNewChartVar(${_chartModalId})" style="flex:1;padding:9px;border-radius:8px;border:1px solid rgba(30,39,243,0.5);background:rgba(30,39,243,0.1);color:#a5b4fc;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">+ Variable nueva</button>
-        <button onclick="secChartCloseAdd()" style="flex:1;padding:9px;border-radius:8px;border:none;background:#1E27F3;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">Listo</button>
+      <div style="display:flex;gap:8px;border-top:1px solid var(--border);padding-top:12px;flex-wrap:wrap;">
+        <button onclick="secNewChartVar(${_chartModalId})" style="flex:1;min-width:120px;padding:9px;border-radius:8px;border:1px solid rgba(30,39,243,0.5);background:rgba(30,39,243,0.1);color:#a5b4fc;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">+ Variable nueva</button>
+        <button onclick="secChartManageVars()" style="flex:1;min-width:120px;padding:9px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">Gestionar variables</button>
+        <button onclick="secChartCloseAdd()" style="flex:1;min-width:120px;padding:9px;border-radius:8px;border:none;background:#1E27F3;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">Listo</button>
       </div>`;
   }
 
@@ -14322,6 +14334,34 @@ function openDetail(especie){
     _renderModal();
   };
   let _pendingChartVar = null;
+  let _chartReturnId = null; // chart al que volver tras cerrar el gestor de variables
+
+  // Editar la variable custom de una serie puntual del gráfico. Abre el editor de
+  // esa variable; al guardar/cerrar vuelve al editor del gráfico.
+  window.secChartEditSeriesVar = function(metricId){
+    const cv=_getCustomVar(metricId); if(!cv) return;
+    _chartReturnId = _chartModalId;
+    _varModalTableId = null;
+    _varDraft = JSON.parse(JSON.stringify(cv));
+    _modalView = 'editor';
+    const am=$('secChartAddModal'); if(am) am.style.display='none';
+    const cm=$('secChartModal'); if(cm) cm.style.display='none';
+    const modal=$('secVarModal'); if(modal) modal.style.display='flex';
+    _renderModal();
+  };
+
+  // Abre el GESTOR de variables (lista) desde un gráfico. Al cerrar el modal,
+  // se reabre el editor del gráfico para seguir ajustando series.
+  window.secChartManageVars = function(){
+    _chartReturnId = _chartModalId;
+    _varModalTableId = null;
+    _varDraft = null;
+    _modalView = 'manager';
+    const am=$('secChartAddModal'); if(am) am.style.display='none';
+    const cm=$('secChartModal'); if(cm) cm.style.display='none';
+    const modal=$('secVarModal'); if(modal) modal.style.display='flex';
+    _renderModal();
+  };
 
   function _refreshDashboard(){
     // Charts ahora viven en el contenedor unificado junto a las tablas.
@@ -14385,11 +14425,19 @@ function openDetail(especie){
   let _customVars = []; // se resetea/recarga por ticker
   let _customVarIdSeq = 0;
 
-  // Extrae una serie directa desde un tag XBRL crudo, según tipo flow/stock.
+  // Extrae una serie directa desde un tag XBRL crudo.
+  // FIX: el tipo flow/stock se resuelve POR TAG con _tagIsFlow (auto-detección
+  // según si el tag tiene entradas con `start`), no por el `type` global de la
+  // variable. Así una fórmula como "Liabilities"/"StockholdersEquity" funciona
+  // aunque la variable esté marcada como flujo: ambos tags son de balance (stock)
+  // y se extraen con la lógica correcta. El `type` recibido queda solo como
+  // fallback si el tag no existe / no se puede inspeccionar.
   function _seriesFromTag(tag, type, isQ){
     if(!_lastFacts || !tag) return [];
     const ns = _getNS(_lastFacts);
-    if(type==='stock'){
+    const isStock = !_tagIsFlow(tag); // por-tag; ignora `type` salvo que no decida
+    const useStock = (_lastFacts && (ns.gaap[tag]||ns.ifrs[tag])) ? isStock : (type==='stock');
+    if(useStock){
       return isQ ? _seriesBSQ(ns, tag) : _seriesBSAnnual(ns, tag);
     }
     return isQ ? _seriesQ(ns, tag) : _seriesAnnual(ns, tag);
@@ -14551,6 +14599,25 @@ function openDetail(especie){
   }
 
   function _getCustomVar(id){ return _customVars.find(c=>c.id===id); }
+
+  // ── Formato efectivo de una custom var ──
+  // Corrige el caso en que una variable de RATIO quedó guardada con fmt 'M'/'raw'
+  // (el default), lo que hace que el valor (~5x) se trate como millones y se
+  // muestre/grafique como 0. Si la fórmula es una división de tags SIN escalar a
+  // porcentaje (no contiene "* 100"), el formato correcto es ratio (x2).
+  // No toca fmt explícitos como pct/x2/x1/dlr/shares/eps elegidos por el usuario.
+  function _effectiveFmt(cv){
+    if(!cv) return 'M';
+    const f = cv.fmt || 'M';
+    if(f!=='M' && f!=='raw') return f; // formato ya específico → respetar
+    try{
+      const toks=_tokenizeFormula(cv.expr||'');
+      const hasDiv=toks.some(t=>t.t==='op'&&t.v==='/');
+      const pctScale=toks.some(t=>t.t==='num'&&t.v===100)&&toks.some(t=>t.t==='op'&&t.v==='*');
+      if(hasDiv && !pctScale) return 'x2'; // ratio → x.xx
+    }catch(_){}
+    return f;
+  }
 
   // ── Metadata de tags: unidad y si es flujo o stock ──
   // Devuelve la unidad cruda del tag (USD, shares, USD/shares, pure, EUR...) o ''.
@@ -14730,6 +14797,13 @@ function openDetail(especie){
   window.secCloseVarManager = function(){
     const modal=$('secVarModal'); if(modal) modal.style.display='none';
     _varDraft=null; _modalView='config'; _pendingChartVar=null;
+    // Si el gestor se abrió desde un gráfico, reabrir su editor.
+    if(_chartReturnId!=null){
+      const cid=_chartReturnId; _chartReturnId=null;
+      _refreshDashboard(); _renderAllTables();
+      const cd=_chartDefs.find(c=>c.id===cid);
+      if(cd){ _chartModalId=cid; const cm=$('secChartModal'); if(cm) cm.style.display='flex'; _renderChartEditor(); }
+    }
   };
   window.secModalGoto = function(view){ _modalView=view; if(view!=='editor') _varDraft=null; _renderModal(); };
 
@@ -14850,13 +14924,10 @@ function openDetail(especie){
         </div>`;
       })()}
 
-      <div style="display:flex;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);">
-        <button onclick="secModalGotoNewVar()" style="flex:1;padding:9px;border-radius:8px;border:1px solid rgba(30,39,243,0.5);background:rgba(30,39,243,0.1);color:#a5b4fc;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">+ Variable nueva</button>
-        <button onclick="secModalGoto('manager')" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">Gestionar variables</button>
-      </div>
-
-      <div style="display:flex;justify-content:flex-end;margin-top:14px;">
-        <button onclick="secCloseVarManager()" style="padding:7px 22px;border-radius:7px;border:none;background:#1E27F3;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">Listo</button>
+      <div style="display:flex;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);flex-wrap:wrap;">
+        <button onclick="secModalGotoNewVar()" style="flex:1;min-width:120px;padding:9px;border-radius:8px;border:1px solid rgba(30,39,243,0.5);background:rgba(30,39,243,0.1);color:#a5b4fc;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">+ Variable nueva</button>
+        <button onclick="secModalGoto('manager')" style="flex:1;min-width:120px;padding:9px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">Gestionar variables</button>
+        <button onclick="secCloseVarManager()" style="flex:1;min-width:120px;padding:9px;border-radius:8px;border:none;background:#1E27F3;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">Listo</button>
       </div>`;
   }
 
@@ -14980,7 +15051,7 @@ function openDetail(especie){
     const valid=_validateExpr(d.expr);
 
     el.innerHTML = `
-      <button onclick="secModalGoto('${_varModalTableId!=null?'config':'manager'}')" style="background:transparent;border:none;color:var(--text3);font-size:11px;cursor:pointer;font-family:var(--mono);margin-bottom:12px;">← Volver</button>
+      <button onclick="${_chartReturnId!=null?'secCloseVarManager()':`secModalGoto('${_varModalTableId!=null?'config':'manager'}')`}" style="background:transparent;border:none;color:var(--text3);font-size:11px;cursor:pointer;font-family:var(--mono);margin-bottom:12px;">← Volver</button>
 
       <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
         <label style="font-size:11px;color:var(--text3);font-family:var(--mono);">Nombre visible:
@@ -15025,7 +15096,6 @@ function openDetail(especie){
       <div id="secVarPreview" style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:14px;"></div>
 
       <div style="display:flex;gap:8px;justify-content:flex-end;">
-        <button onclick="secModalGoto('${_varModalTableId!=null?'config':'manager'}')" style="padding:7px 16px;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:12px;cursor:pointer;font-family:var(--mono);">Cancelar</button>
         <button onclick="secSaveDraft()" style="padding:7px 20px;border-radius:7px;border:none;background:#1E27F3;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">Guardar variable</button>
       </div>`;
 
@@ -15050,6 +15120,7 @@ function openDetail(especie){
   window.secDraftField = function(field,val){
     if(!_varDraft) return;
     _varDraft[field]=val;
+    if(field==='fmt') _varDraft._fmtTouched=true; // el usuario fijó el formato → no auto-pisar
     _renderVarPreview(); // tipo/formato no cambian layout → solo preview
   };
 
@@ -15071,7 +15142,25 @@ function openDetail(especie){
         const tsel=document.querySelector('#secVarModalContent select'); // primer select = tipo
         if(hint) hint.textContent=`unidad SEC: ${unit} → ${fmt}${isFlow?' · flujo':' · stock'} (auto, editable)`;
       } else if(hint){ hint.textContent=''; }
-    } else if(hint){ hint.textContent = tags.length>1 ? 'fórmula con varios tags → elegí formato/tipo manual' : ''; }
+      return;
+    }
+    // Fórmulas multi-tag: detectar patrones comunes para no dejar un ratio en formato "M"
+    // (que mostraría 0). Solo se aplica si el usuario aún no eligió formato a mano.
+    if(!_varDraft._fmtTouched){
+      const hasDiv = toks.some(t=>t.t==='op' && t.v==='/');
+      const hasPctScale = toks.some(t=>t.t==='num' && t.v===100)
+        && toks.some(t=>t.t==='op' && t.v==='*'); // … * 100 → porcentaje
+      if(hasDiv && hasPctScale){
+        _varDraft.fmt='pct';
+        const sel=$('secDraftFmt'); if(sel) sel.value='pct';
+        if(hint){ hint.textContent='ratio × 100 → porcentaje (auto, editable)'; return; }
+      } else if(hasDiv){
+        _varDraft.fmt='x2';
+        const sel=$('secDraftFmt'); if(sel) sel.value='x2';
+        if(hint){ hint.textContent='división de tags → ratio (x.xx) (auto, editable)'; return; }
+      }
+    }
+    if(hint){ hint.textContent = tags.length>1 ? 'fórmula con varios tags → formato/tipo editable' : ''; }
   }
 
   // ── Buscador de tags: inserta "Tag" en el textarea de fórmula ──
@@ -15205,6 +15294,17 @@ function openDetail(especie){
       showStatus('Variable guardada ✓','ok');
       return;
     }
+    // Si la variable se editó desde una serie del gráfico, volver al editor del gráfico.
+    if(_chartReturnId!=null){
+      const cid=_chartReturnId; _chartReturnId=null;
+      const modal=$('secVarModal'); if(modal) modal.style.display='none';
+      _refreshDashboard();
+      _renderAllTables();
+      const cd=_chartDefs.find(c=>c.id===cid);
+      if(cd){ _chartModalId=cid; const cm=$('secChartModal'); if(cm) cm.style.display='flex'; _renderChartEditor(); }
+      showStatus('Variable guardada ✓','ok');
+      return;
+    }
     _modalView = _varModalTableId!=null ? 'config' : 'manager';
     _renderModal();
     _renderAllTables();
@@ -15274,7 +15374,7 @@ function openDetail(especie){
 
   function _tblFmt(key, val){
     let f;
-    if(key.startsWith('c_')){ const cv=_getCustomVar(key); f=cv?.fmt||'M'; }
+    if(key.startsWith('c_')){ const cv=_getCustomVar(key); f=_effectiveFmt(cv); }
     else { const cat = TABLE_ROW_CATALOGUE.find(r=>r.key===key); f = cat?.fmt||'M'; }
     if(f==='raw')    return (Math.abs(val)>=1e6)?fmtM(val):val.toLocaleString(undefined,{maximumFractionDigits:2});
     if(f==='pct')    return fmtPct(val);
@@ -15288,7 +15388,7 @@ function openDetail(especie){
 
   // Tipo de formato de una fila (para decidir si la variación tiene sentido).
   function _keyFmtType(key){
-    if(key.startsWith('c_')){ const cv=_getCustomVar(key); return cv?.fmt||'M'; }
+    if(key.startsWith('c_')){ const cv=_getCustomVar(key); return _effectiveFmt(cv); }
     const cat = TABLE_ROW_CATALOGUE.find(r=>r.key===key); return cat?.fmt||'M';
   }
   // Una fila es "ratio/porcentaje" si su formato no es un monto/cantidad → no mostramos variación %.
@@ -16931,7 +17031,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:${P.bg};color:${P.text};
         </div>
       </div>
 
-      <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:8px;">
+      <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+        <button onclick="balCfgDuplicate('${t.id}')" class="bal-btn" style="width:auto;padding:8px 16px;">⧉ Duplicar como copia</button>
         <button onclick="balCfgDelete('${t.id}')" class="bal-btn" style="width:auto;padding:8px 16px;border-color:#f85149;color:#f85149;">🗑 Borrar template</button>
       </div>`;
   }
@@ -17056,6 +17157,35 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:${P.bg};color:${P.text};
       window.balRefreshTemplates();
       showStatus('Renombrada ✓','ok');
     }catch(e){ showStatus('Error: '+e.message,'err'); }
+  };
+
+  // ── Duplicar como copia: clona el template completo (payload, autor, tickers)
+  //    con un nombre nuevo "… (copia)". Se guarda SIN id → el worker crea uno nuevo,
+  //    dejando el original intacto. Ideal para iterar sin afectar el template base.
+  window.balCfgDuplicate = async function(id){
+    const t = _tplIndex.find(x=>x.id===id); if(!t) return;
+    try{
+      const full = await _tplApiGet(id); // payload completo
+      // Nombre único: "Nombre (copia)", "(copia 2)", "(copia 3)"...
+      const base = (full.name||'Template').trim();
+      const lower = n => n.trim().toLowerCase();
+      const taken = new Set(_tplIndex.map(x=>lower(x.name||'')));
+      let name = `${base} (copia)`;
+      let n = 2;
+      while(taken.has(lower(name))){ name = `${base} (copia ${n})`; n++; }
+      const tpl = {
+        name,
+        author: full.author,
+        tickers: [...(full.tickers||[])],
+        payload: JSON.parse(JSON.stringify(full.payload||{})),
+      };
+      const saved = await _tplApiSave(tpl); // sin id → nuevo template
+      _tplIndex = await _tplApiList();
+      _cfgSelectedId = saved.id; // seleccionar la copia recién creada
+      _cfgRenderList(); _cfgRenderDetail();
+      window.balRefreshTemplates();
+      showStatus(`Copia "${saved.name}" creada ✓`,'ok');
+    }catch(e){ showStatus('Error al duplicar: '+e.message,'err'); }
   };
 
   window.balCfgDelete = async function(id){
