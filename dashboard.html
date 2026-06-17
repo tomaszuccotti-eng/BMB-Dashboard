@@ -11458,13 +11458,14 @@ const _eqRO = new ResizeObserver(entries => {
           style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px 9px 34px;font-size:13px;font-weight:700;letter-spacing:.03em;color:var(--text);text-transform:uppercase;outline:none;font-family:var(--mono);transition:border-color .2s;" />
         <div id="ear-autocomplete" style="display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;max-height:280px;overflow-y:auto;z-index:300;box-shadow:0 12px 40px rgba(0,0,0,0.3);"></div>
       </div>
+      <button onclick="earSearchBtn()" class="bal-btn bal-btn-accent" style="margin-bottom:10px;">Buscar →</button>
       <!-- Chips rápidos -->
-      <div style="display:flex;flex-wrap:wrap;gap:6px;" id="ear-chips"></div>
+      <div class="sec-chip-grid" id="ear-chips"></div>
     </div>
 
-    <!-- Vistas generales -->
+    <!-- Herramientas -->
     <div class="bal-sb-sec" style="flex:1;">
-      <div class="bal-sb-label">Vistas generales</div>
+      <div class="bal-sb-label">Herramientas</div>
       <div id="earNavScoring" class="ear-navbtn" onclick="earShowView('sector')">
         <span class="ear-navbtn-ico">📊</span>Scoring de Liquidez
       </div>
@@ -11990,11 +11991,17 @@ const _eqRO = new ResizeObserver(entries => {
 #app-excel .bal-main{flex:1;min-width:0;}
 #app-excel .bal-sb-sec{padding:16px 14px;border-bottom:1px solid var(--border);}
 #app-excel .bal-sb-label{font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);margin-bottom:10px;}
-/* Botones de vistas generales del sidebar */
+/* Botones de herramientas del sidebar */
 #app-excel .ear-navbtn{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:7px;border:1px solid transparent;background:transparent;margin-bottom:3px;cursor:pointer;transition:all .12s;font-size:12px;font-weight:700;font-family:var(--mono);color:var(--text2);}
 #app-excel .ear-navbtn:hover{background:var(--accent-light);color:var(--text);}
 #app-excel .ear-navbtn.active{border-color:#1E27F3;background:var(--accent-light);color:var(--text);}
-#app-excel .ear-navbtn-ico{font-size:14px;line-height:1;}
+#app-excel .ear-navbtn-ico{font-size:14px;line-height:1;filter:grayscale(1) brightness(1.4);opacity:.85;}
+/* Buscador / chips / botones del sidebar (espejo de USA) */
+#app-excel .sec-chip-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+#app-excel .bal-btn{width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-family:var(--mono);font-size:10px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;}
+#app-excel .bal-btn:hover{border-color:#1E27F3;color:var(--text);background:var(--accent-light);}
+#app-excel .bal-btn-accent{background:#1E27F3;border-color:#1E27F3;color:#fff;}
+#app-excel .bal-btn-accent:hover{background:#2d38ff;color:#fff;border-color:#2d38ff;}
 /* Tabs de empresa en el topbar (estilo subrayado, igual que USA .sec-tab) */
 #app-excel .ear-toptab{padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;white-space:nowrap;}
 #app-excel .ear-toptab:hover{color:var(--text2);}
@@ -12171,6 +12178,7 @@ function backToLanding(){
   document.getElementById('landing').style.display='flex';
   window._helpKey = 'landing';
   if(window._secResetState) window._secResetState();
+  if(window._earResetState) window._earResetState();
 }
 // enterCalcMenu eliminado — acceso directo desde landing
 function enterCalcON(){
@@ -17985,6 +17993,21 @@ function renderEquity(){
     _earRenderCompany(ticker.trim().toUpperCase());
   };
 
+  window.earSearchBtn=function(){
+    const v=(document.getElementById('ear-search-input')?.value||'').trim().toUpperCase();
+    if(v)earSelectCompany(v);
+  };
+
+  window._earResetState=function(){
+    _currentExcelTicker=null;
+    const inp=document.getElementById('ear-search-input'); if(inp)inp.value='';
+    const res=document.getElementById('ear-company-results'); if(res){res.style.display='none';res.innerHTML='';}
+    const wel=document.getElementById('ear-welcome'); if(wel)wel.style.display='block';
+    const tt=document.getElementById('earTopTabs'); if(tt){tt.style.display='none';tt.innerHTML='';}
+    earAutoHide();
+    if(window.earShowView)window.earShowView('buscar');
+  };
+
   // ─────────────────────────────────────────────────────────────
   // CHIPS RÁPIDOS
   // ─────────────────────────────────────────────────────────────
@@ -17995,13 +18018,9 @@ function renderEquity(){
 
   function _earBuildChips(){
     const chips=document.getElementById('ear-chips');if(!chips)return;
-    chips.innerHTML='<span style="font-size:10px;color:var(--text3);font-family:var(--mono);align-self:center;">Rápidos:</span>'+
-      CHIP_TICKERS.map(t=>
-        `<button onclick="earSelectCompany('${t}')"
-          style="padding:4px 12px;border-radius:20px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);font-family:var(--mono);transition:all .15s;"
-          onmouseover="this.style.borderColor='#1E27F3';this.style.color='#a5b4fc'"
-          onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">${t}</button>`
-      ).join('');
+    chips.innerHTML=CHIP_TICKERS.map(t=>
+      `<span class="sec-chip" onclick="earSelectCompany('${t}')">${t}</span>`
+    ).join('');
   }
 
   // ─────────────────────────────────────────────────────────────
