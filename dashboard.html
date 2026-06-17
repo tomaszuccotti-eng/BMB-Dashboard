@@ -18109,7 +18109,8 @@ function renderEquity(){
     // ── PESTAÑAS INTERNAS — ahora viven en el topbar (#earTopTabs) ──
     const innerTabs=[];
     if(hasEco) innerTabs.push({id:'financials',label:'Financials'},{id:'ratios',label:'Ratios'});
-    innerTabs.push({id:'deudas',label:'Deudas'});
+    innerTabs.push({id:'deudas',label:'Deuda bancaria'});
+    innerTabs.push({id:'mav',label:'MAV'});
     if(hasHist) innerTabs.push({id:'precios',label:'Precios'});
     if(hasScore) innerTabs.push({id:'scoring',label:'Scoring'});
 
@@ -18150,7 +18151,7 @@ function renderEquity(){
     const _EQH=new Set(['AGRO','ALUA','AUSO','BBAR','BHIP','BMA','BOLT','BPAT','BYMA','CADO','CAPX','CARC','CECO2','CELU','CEPU','CGPA2','COME','CRES','CTIO','CVH','DGCU2','DOME','EDN','FERR','FIPL','GAMI','GARO','GBAN','GCDI','GCLA','GGAL','GRIM','HARG','HAVA','HSAT','INTR','INVJ','IRSA','LEDE','LOMA','LONG','METR','MIRG','MOLA','MOLI','MORI','OEST','PAMP','PATA','RICH','RIGO','ROSE','SAMI','SEMI','SUPV','TECO2','TGNO4','TGSU2','TRAN','TXAR','VALO','YPFD']);
     const allTabs=[];
     if(hasEco) allTabs.push('financials','ratios');
-    allTabs.push('deudas');
+    allTabs.push('deudas','mav');
     if(_EQH.has(ticker)) allTabs.push('precios');
     {const _sc=window.EXCEL_DATA.filter(r=>(r['Ticker']||'').trim().toUpperCase()===ticker);if(_sc.length)allTabs.push('scoring');}
     allTabs.forEach(t=>{
@@ -18165,6 +18166,7 @@ function renderEquity(){
     const cuit=(window.EXCEL_CUIT_MAP||{})[ticker];
     if(tabId==='ratios')  { _renderFichaRatios(ticker, ecoHist); con.dataset.rendered='1'; }
     if(tabId==='deudas')  { _renderFichaDeudas(ticker, cuit);    con.dataset.rendered='1'; }
+    if(tabId==='mav')     { _renderFichaMav(ticker, cuit);       con.dataset.rendered='1'; }
     if(tabId==='scoring') { _renderFichaScoring(ticker);         con.dataset.rendered='1'; }
     if(tabId==='precios') {
       // No seteamos rendered acá — lo hace _renderFichaPrecios al terminar con éxito
@@ -18473,8 +18475,14 @@ function renderEquity(){
       _bcraFetchInline(ticker, cuit, bcraCid, bcraLoadId);
     }
     con.appendChild(bcraWrap);
+  }
 
-    // Sección MAV
+  // ─────────────────────────────────────────────────────────────
+  // RENDER PESTAÑA MAV (asociada a la empresa, CUIT pre-cargado)
+  // ─────────────────────────────────────────────────────────────
+  function _renderFichaMav(ticker, cuit){
+    const con=document.getElementById(`ficha-tab-content-${ticker}-mav`);if(!con)return;
+    con.innerHTML='';
     if(typeof mavBuildCompanySection==='function'){
       mavBuildCompanySection(ticker, cuit||null, con);
     }
