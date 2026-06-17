@@ -17865,6 +17865,9 @@ function renderEquity(){
   // ─────────────────────────────────────────────────────────────
   window.earShowView=function(view){
     window._helpKey = 'ear.' + view;
+    // Los tabs de empresa sólo viven en la ficha; ocultarlos al cambiar de vista
+    const topTabs=document.getElementById('earTopTabs');
+    if(topTabs && view!=='buscar') topTabs.style.display='none';
     // Contenedores: buscar (ficha) + 3 vistas generales
     ['buscar','sector','deudores','mav'].forEach(t=>{
       const key=t.charAt(0).toUpperCase()+t.slice(1);
@@ -18074,21 +18077,20 @@ function renderEquity(){
       ${hasEco?`<div id="ear-kpi-bar-${ticker}"></div>`:''}`;
     wrap.appendChild(hdr);
 
-    // ── PESTAÑAS INTERNAS — condicionales ──
+    // ── PESTAÑAS INTERNAS — ahora viven en el topbar (#earTopTabs) ──
     const innerTabs=[];
-    if(hasEco) innerTabs.push({id:'financials',label:'📊 Financials'},{id:'ratios',label:'📐 Ratios'});
-    innerTabs.push({id:'deudas',label:'🏛 Deudas'});
-    if(hasHist) innerTabs.push({id:'precios',label:'📈 Precios'});
+    if(hasEco) innerTabs.push({id:'financials',label:'Financials'},{id:'ratios',label:'Ratios'});
+    innerTabs.push({id:'deudas',label:'Deudas'});
+    if(hasHist) innerTabs.push({id:'precios',label:'Precios'});
+    if(hasScore) innerTabs.push({id:'scoring',label:'Scoring'});
 
-    const tabBar=document.createElement('div');
-    tabBar.style.cssText='display:flex;border-bottom:1px solid var(--border);margin-bottom:24px;overflow-x:auto;';
-    tabBar.innerHTML=innerTabs.map((t,i)=>`
-      <button id="ficha-tab-btn-${ticker}-${t.id}" onclick="_fichaShowTab('${ticker}','${t.id}')"
-        style="padding:12px 20px;font-size:12px;font-weight:700;cursor:pointer;border:none;border-bottom:2px solid ${i===0?'#1E27F3':'transparent'};background:transparent;color:${i===0?'var(--text)':'var(--text3)'};font-family:var(--mono);white-space:nowrap;transition:all .15s;"
-        onmouseover="this.style.color='var(--text)'"
-        onmouseout="if(document.getElementById('ficha-tab-btn-${ticker}-${t.id}').style.borderBottomColor!=='rgb(30, 39, 243)')this.style.color='var(--text3)'"
-      >${t.label}</button>`).join('');
-    wrap.appendChild(tabBar);
+    const topTabs=document.getElementById('earTopTabs');
+    if(topTabs){
+      topTabs.innerHTML=innerTabs.map((t,i)=>`
+        <div id="ficha-tab-btn-${ticker}-${t.id}" class="ear-toptab${i===0?' active':''}"
+          onclick="_fichaShowTab('${ticker}','${t.id}')">${t.label}</div>`).join('');
+      topTabs.style.display='flex';
+    }
 
     const tabContents=document.createElement('div');
     innerTabs.forEach((t,i)=>{
@@ -18121,11 +18123,12 @@ function renderEquity(){
     if(hasEco) allTabs.push('financials','ratios');
     allTabs.push('deudas');
     if(_EQH.has(ticker)) allTabs.push('precios');
+    {const _sc=window.EXCEL_DATA.filter(r=>(r['Ticker']||'').trim().toUpperCase()===ticker);if(_sc.length)allTabs.push('scoring');}
     allTabs.forEach(t=>{
       const btn=document.getElementById(`ficha-tab-btn-${ticker}-${t}`);
       const con=document.getElementById(`ficha-tab-content-${ticker}-${t}`);
       const active=t===tabId;
-      if(btn){btn.style.borderBottom=active?'2px solid #1E27F3':'2px solid transparent';btn.style.color=active?'var(--text)':'var(--text3)';}
+      if(btn)btn.classList.toggle('active', active);
       if(con)con.style.display=active?'block':'none';
     });
     const con=document.getElementById(`ficha-tab-content-${ticker}-${tabId}`);
@@ -18133,6 +18136,7 @@ function renderEquity(){
     const cuit=(window.EXCEL_CUIT_MAP||{})[ticker];
     if(tabId==='ratios')  { _renderFichaRatios(ticker, ecoHist); con.dataset.rendered='1'; }
     if(tabId==='deudas')  { _renderFichaDeudas(ticker, cuit);    con.dataset.rendered='1'; }
+    if(tabId==='scoring') { _renderFichaScoring(ticker);         con.dataset.rendered='1'; }
     if(tabId==='precios') {
       // No seteamos rendered acá — lo hace _renderFichaPrecios al terminar con éxito
       // Si falla, el usuario puede re-intentar clickeando la tab de nuevo
@@ -18316,6 +18320,28 @@ function renderEquity(){
         </div>`;
       con.appendChild(scoringDiv);
     }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // RENDER PESTAÑA SCORING (puntual de la empresa)
+  // ─────────────────────────────────────────────────────────────
+  function _renderFichaScoring(ticker){
+    const con=document.getElementById(`ficha-tab-content-${ticker}-scoring`);if(!con)return;
+    con.innerHTML='';
+    const hist=window.EXCEL_DATA.filter(r=>(r['Ticker']||'').trim().toUpperCase()===ticker)
+      .sort((a,b)=>parseDate(b['Fecha Balance'])-parseDate(a['Fecha Balance']));
+    if(!hist.length){
+      con.innerHTML='<div style="padding:24px;color:var(--text3);font-family:var(--mono);font-size:11px;">Sin scoring de liquidez cargado para esta empresa.</div>';
+      return;
+    }
+    const div=document.createElement('div');
+    div.style.marginBottom='28px';
+    div.innerHTML=`
+      <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#1E27F3;font-family:var(--mono);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);">🏅 Scoring de Liquidez · Histórico</div>
+      <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;">
+        ${_buildScoringHistTable(hist)}
+      </div>`;
+    con.appendChild(div);
   }
 
   window._setColOrder=function(ticker,order){
