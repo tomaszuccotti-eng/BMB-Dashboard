@@ -18578,9 +18578,24 @@ function renderEquity(){
     }
     // Rasterizar un nodo DOM (heatmap) → dataURL via html2canvas
     async function domToImg(el){
-      try{ if(!el||typeof html2canvas==='undefined') return null;
-        const cv=await html2canvas(el,{backgroundColor:'#11151f',scale:2,logging:false});
-        return {data:cv.toDataURL('image/png'), ratio:cv.height/cv.width};
+      if(!el||typeof html2canvas==='undefined') return null;
+      try{
+        // Clonar y neutralizar sticky/overflow (rompen html2canvas) en un contenedor off-screen
+        const clone=el.cloneNode(true);
+        clone.querySelectorAll('*').forEach(n=>{
+          const s=n.style;
+          if(s){ if(getComputedStyle(n).position==='sticky'||s.position==='sticky') s.position='static';
+                 s.overflow='visible'; s.overflowX='visible'; s.overflowY='visible'; }
+        });
+        const holder=document.createElement('div');
+        holder.style.cssText='position:fixed;left:-10000px;top:0;background:#11151f;width:'+Math.max(el.scrollWidth,el.offsetWidth,700)+'px;';
+        holder.appendChild(clone); document.body.appendChild(holder);
+        const render=html2canvas(clone,{backgroundColor:'#11151f',scale:1.5,logging:false,useCORS:true,removeContainer:true,imageTimeout:3000})
+          .then(cv=>({data:cv.toDataURL('image/png'), ratio:cv.height/cv.width}));
+        const timeout=new Promise(res=>setTimeout(()=>res(null),5000));
+        const out=await Promise.race([render,timeout]);
+        try{ document.body.removeChild(holder); }catch(_){}
+        return out;
       }catch(_){ return null; }
     }
 
@@ -18636,7 +18651,7 @@ function renderEquity(){
         if(!cuit){ T.note('CUIT no cargado para esta empresa.'); }
         else{
           try{
-            const json=await _bcraFetch(cuit);
+            const json=await Promise.race([_bcraFetch(cuit), new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout BCRA')),8000))]);
             const deudas=json.deudas?.results||json.deudas||null;
             const hist=json.hist?.results||json.hist||null;
             const cheques=json.cheques?.results||json.cheques||null;
