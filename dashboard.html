@@ -7,6 +7,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -18549,103 +18551,162 @@ function renderEquity(){
     const ticker=_currentExcelTicker; if(!ticker)return;
     const checked=Array.from(document.querySelectorAll('.ear-rep-chk:checked')).map(c=>c.value);
     if(!checked.length){ alert('Elegí al menos una sección.'); return; }
+    if(typeof html2canvas==='undefined' || !(window.jspdf&&window.jspdf.jsPDF)){
+      alert('Las librerías de PDF aún se están cargando. Probá de nuevo en unos segundos.');
+      return;
+    }
     const tabsMeta=_earAvailableTabs(ticker);
     const labelOf=id=>(tabsMeta.find(t=>t.id===id)||{}).label||id;
+
+    const genBtn=document.querySelector('#ear-report-overlay button[onclick="earBuildReport()"]');
+    if(genBtn){genBtn.textContent='Generando…';genBtn.disabled=true;}
 
     // Forzar render de cada tab elegido (los lazy) sin perder la vista actual
     const _restoreTab=document.querySelector(`#earTopTabs .ear-toptab.active`)?.id||'';
     for(const id of checked){
       const con=document.getElementById(`ficha-tab-content-${ticker}-${id}`);
-      if(con && !con.dataset.rendered && con.innerHTML.trim()===''){
-        _fichaShowTab(ticker, id);
-      }
+      if(con && con.innerHTML.trim()===''){ _fichaShowTab(ticker, id); }
     }
-    // Esperar a que precios (async) y charts terminen de pintar
-    await new Promise(r=>setTimeout(r, checked.includes('precios')?1400:500));
+    await new Promise(r=>setTimeout(r, checked.includes('precios')?1500:600));
 
-    // Construir secciones — clonar contenido y rasterizar canvas a PNG
-    const cssBg='#0b0e17', cssCard='#11151f', cssBorder='#1e2536', cssText='#e8eaf6', cssText3='#7e87b8', cssAccent='#1E27F3';
-    let sectionsHtml='';
-    for(let i=0;i<checked.length;i++){
-      const id=checked[i];
-      const src=document.getElementById(`ficha-tab-content-${ticker}-${id}`);
-      if(!src){continue;}
-      const clone=src.cloneNode(true);
-      // Reemplazar canvas del clon por <img> rasterizada del canvas original
-      const srcCanvases=src.querySelectorAll('canvas');
-      const cloneCanvases=clone.querySelectorAll('canvas');
-      cloneCanvases.forEach((cv,idx)=>{
-        const orig=srcCanvases[idx];
-        try{
-          if(orig && orig.width){
-            const off=document.createElement('canvas');
-            off.width=orig.width; off.height=orig.height;
-            const ctx=off.getContext('2d');
-            ctx.fillStyle=cssCard; ctx.fillRect(0,0,off.width,off.height);
-            ctx.drawImage(orig,0,0);
-            const img=document.createElement('img');
-            img.src=off.toDataURL('image/png');
-            img.style.cssText='width:100%;height:auto;display:block;';
-            cv.parentNode.replaceChild(img,cv);
-          }
-        }catch(_){/* canvas tainted o vacío: dejar como está */}
+    // Paleta del reporte
+    const C={bg:'#0b0e17',card:'#11151f',card2:'#161b28',border:'#222a3d',border2:'#2c3650',text:'#e8eaf6',text2:'#c3c9e6',text3:'#7e87b8',accent:'#1E27F3'};
+
+    // Helper: limpia un clon de controles interactivos y normaliza tablas
+    const PAGE_W=794; // px ~ A4 @ 96dpi
+    function cleanSection(srcEl){
+      const clone=srcEl.cloneNode(true);
+      // Rasterizar canvas → img (antes de quitar nada)
+      const srcCv=srcEl.querySelectorAll('canvas'), clCv=clone.querySelectorAll('canvas');
+      clCv.forEach((cv,idx)=>{
+        const orig=srcCv[idx];
+        try{ if(orig&&orig.width){
+          const off=document.createElement('canvas'); off.width=orig.width; off.height=orig.height;
+          const cx=off.getContext('2d'); cx.fillStyle=C.card; cx.fillRect(0,0,off.width,off.height); cx.drawImage(orig,0,0);
+          const img=document.createElement('img'); img.src=off.toDataURL('image/png');
+          img.style.cssText='width:100%;height:auto;display:block;border-radius:8px;';
+          cv.parentNode.replaceChild(img,cv);
+        } }catch(_){ }
       });
-      const pb=i===0?'':'page-break-before:always;';
-      sectionsHtml+=`<section style="${pb}padding-top:${i===0?'0':'12px'};">
-        <div class="rep-sec-title">${labelOf(id)}</div>
-        <div class="rep-sec-body">${clone.innerHTML}</div>
-      </section>`;
+      // Quitar controles de edición: botones, inputs, selects, toggles de orden
+      clone.querySelectorAll('button,input,select,textarea').forEach(el=>el.remove());
+      // Quitar barras "Orden columnas" y similares (divs que quedaron con solo texto de control)
+      clone.querySelectorAll('[onclick]').forEach(el=>{ el.removeAttribute('onclick'); el.style.cursor='default'; });
+      // Eliminar contenedores de control que ahora quedaron vacíos o con label suelto
+      clone.querySelectorAll('div').forEach(d=>{
+        const t=(d.textContent||'').trim();
+        if(t==='Orden columnas:'||t===''){ if(!d.querySelector('table,img')) d.remove(); }
+      });
+      return clone;
     }
 
-    // Restaurar la vista activa que tenía el usuario
-    if(_restoreTab){const m=_restoreTab.match(/ficha-tab-btn-.+-(\w+)$/);if(m)_fichaShowTab(ticker,m[1]);}
+    // Construir nodo off-screen con estilo de reporte limpio
+    const stage=document.createElement('div');
+    stage.style.cssText=`position:fixed;left:-10000px;top:0;width:${PAGE_W}px;background:${C.bg};color:${C.text};font-family:'Segoe UI',Arial,sans-serif;padding:0;`;
+    stage.innerHTML=`<style>
+      .rep-stage *{box-sizing:border-box;}
+      .rep-stage table{width:100%;border-collapse:collapse;font-size:11px;background:${C.card};border:1px solid ${C.border};border-radius:8px;overflow:hidden;}
+      .rep-stage thead th,.rep-stage th{background:${C.card2};color:${C.text3};font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;text-align:left;padding:8px 12px;border-bottom:1px solid ${C.border2};white-space:nowrap;}
+      .rep-stage td{padding:7px 12px;border-bottom:1px solid ${C.border};color:${C.text2};vertical-align:middle;}
+      .rep-stage tbody tr:nth-child(even) td{background:rgba(255,255,255,0.015);}
+      .rep-stage tbody tr:last-child td{border-bottom:none;}
+      .rep-stage td:not(:first-child){text-align:right;font-variant-numeric:tabular-nums;}
+      .rep-stage th:not(:first-child){text-align:right;}
+      .rep-block{margin-bottom:14px;}
+    </style>`;
+    const inner=document.createElement('div');
+    inner.className='rep-stage';
+    stage.appendChild(inner);
+    document.body.appendChild(stage);
 
+    // Header del reporte
     const name=_currentExcelEmpresa&&_currentExcelEmpresa!==ticker?_currentExcelEmpresa:'';
     const sector=(_currentExcelSector||'').replace(/_+/g,' ');
     const date=new Date().toLocaleDateString('es-AR',{year:'numeric',month:'long',day:'numeric'});
 
-    const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-<title>${ticker} — Reporte · ${date}</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Segoe UI',Arial,sans-serif;background:${cssBg};color:${cssText};font-size:13px;padding:28px;}
-.rep-header{border-bottom:3px solid ${cssAccent};padding-bottom:14px;margin-bottom:22px;display:flex;justify-content:space-between;align-items:flex-end;}
-.rep-ticker{font-size:34px;font-weight:800;color:${cssAccent};letter-spacing:.04em;line-height:1;}
-.rep-name{font-size:16px;font-weight:600;color:${cssText};margin-top:6px;}
-.rep-meta{font-size:11px;color:${cssText3};margin-top:3px;}
-.rep-date{font-size:10px;color:${cssText3};text-align:right;}
-.rep-sec-title{font-size:11px;font-weight:700;color:${cssText3};text-transform:uppercase;letter-spacing:.1em;margin:0 0 14px;padding-bottom:6px;border-bottom:1px solid ${cssBorder};}
-.rep-sec-body table{border-collapse:collapse;}
-.rep-footer{margin-top:26px;padding-top:12px;border-top:1px solid ${cssBorder};font-size:10px;color:${cssText3};text-align:center;}
-/* Evitar cortes a mitad de tabla/gráfico/card */
-.rep-sec-title{break-after:avoid;page-break-after:avoid;}
-.rep-sec-body img{break-inside:avoid;page-break-inside:avoid;display:block;}
-.rep-sec-body tr,.rep-sec-body thead{break-inside:avoid;page-break-inside:avoid;}
-.rep-sec-body thead{display:table-header-group;}
-/* Cada bloque/card (hijo directo o tabla envuelta) entero en una hoja */
-.rep-sec-body > div,.rep-sec-body > div > div{break-inside:avoid;page-break-inside:avoid;}
-@media print{
-  body{padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-  section{padding:18px 16px;}
-  .rep-header{padding:18px 16px 14px;}
-  .rep-sec-body img{break-inside:avoid;page-break-inside:avoid;}
-  .rep-sec-body tr,.rep-sec-body thead{break-inside:avoid;page-break-inside:avoid;}
-  .rep-sec-body > div,.rep-sec-body > div > div{break-inside:avoid;page-break-inside:avoid;}
-}
-</style></head><body>
-<div class="rep-header">
-  <div><div class="rep-ticker">${ticker}</div>${name?`<div class="rep-name">${name}</div>`:''}<div class="rep-meta">${sector}</div></div>
-  <div class="rep-date">Reporte generado<br>${date}<br>Bull Market Brokers</div>
-</div>
-${sectionsHtml}
-<div class="rep-footer">Dashboard · Análisis Financiero · No constituye asesoramiento de inversión</div>
-</body></html>`;
+    // Recolectar "bloques" a paginar: header + por sección (título + sus cards/tablas)
+    const blocks=[]; // cada uno: {el}
+    function pushEl(html){ const d=document.createElement('div'); d.className='rep-block'; d.innerHTML=html; inner.appendChild(d); blocks.push(d); return d; }
 
-    const w=window.open('','_blank');
-    if(!w){ alert('Habilitá las ventanas emergentes para generar el reporte.'); return; }
-    w.document.open(); w.document.write(html); w.document.close();
-    w.onload=()=>{ setTimeout(()=>{ try{w.focus();w.print();}catch(_){} }, 300); };
-    earCloseReportDialog();
+    pushEl(`<div style="border-bottom:3px solid ${C.accent};padding-bottom:14px;display:flex;justify-content:space-between;align-items:flex-end;">
+        <div><div style="font-size:32px;font-weight:800;color:${C.accent};letter-spacing:.04em;line-height:1;">${ticker}</div>
+        ${name?`<div style="font-size:16px;font-weight:600;color:${C.text};margin-top:6px;">${name}</div>`:''}
+        <div style="font-size:11px;color:${C.text3};margin-top:3px;">${sector}</div></div>
+        <div style="font-size:10px;color:${C.text3};text-align:right;">Reporte generado<br>${date}<br>Bull Market Brokers</div>
+      </div>`);
+
+    for(const id of checked){
+      const src=document.getElementById(`ficha-tab-content-${ticker}-${id}`);
+      if(!src) continue;
+      // Título de sección como bloque propio
+      pushEl(`<div style="font-size:13px;font-weight:700;color:${C.accent};text-transform:uppercase;letter-spacing:.1em;padding:6px 0 4px;border-bottom:1px solid ${C.border};">${labelOf(id)}</div>`);
+      const cleaned=cleanSection(src);
+      // Cada hijo directo del contenido limpio → bloque (card/tabla/gráfico)
+      Array.from(cleaned.children).forEach(child=>{
+        if(!(child.textContent||'').trim() && !child.querySelector('img,table')) return;
+        const b=document.createElement('div'); b.className='rep-block';
+        b.appendChild(child); inner.appendChild(b); blocks.push(b);
+      });
+    }
+
+    // Restaurar vista activa del usuario
+    if(_restoreTab){const m=_restoreTab.match(/ficha-tab-btn-.+-(\w+)$/);if(m)_fichaShowTab(ticker,m[1]);}
+
+    // Esperar render de imágenes embebidas
+    await new Promise(r=>setTimeout(r,150));
+
+    // Rasterizar cada bloque y armar PDF paginando sin cortar bloques
+    const { jsPDF }=window.jspdf;
+    const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
+    const PW=pdf.internal.pageSize.getWidth();   // ~595pt
+    const PH=pdf.internal.pageSize.getHeight();   // ~842pt
+    const MARGIN=28;
+    const usableW=PW-MARGIN*2;
+    const usableH=PH-MARGIN*2;
+    let cursorY=MARGIN;
+
+    try{
+      for(const b of blocks){
+        const canvas=await html2canvas(b,{backgroundColor:C.bg,scale:2,logging:false,useCORS:true});
+        const imgW=usableW;
+        const imgH=canvas.height*(imgW/canvas.width);
+        const imgData=canvas.toDataURL('image/png');
+        if(imgH<=usableH){
+          // Bloque entero: salta de página si no entra en lo que queda
+          if(cursorY+imgH>PH-MARGIN){ pdf.addPage(); cursorY=MARGIN; }
+          pdf.addImage(imgData,'PNG',MARGIN,cursorY,imgW,imgH);
+          cursorY+=imgH+10;
+        }else{
+          // Bloque más alto que una página: ocupa páginas completas escalando al ancho
+          // (caso raro: tabla larguísima). Lo partimos por alto de imagen.
+          let remaining=imgH, sy=0;
+          // siempre arranca en página nueva
+          if(cursorY>MARGIN){ pdf.addPage(); cursorY=MARGIN; }
+          const ratio=canvas.width/imgW; // px por pt
+          while(remaining>0){
+            const sliceH=Math.min(usableH, remaining);
+            const sliceCanvas=document.createElement('canvas');
+            sliceCanvas.width=canvas.width;
+            sliceCanvas.height=Math.round(sliceH*ratio);
+            const sctx=sliceCanvas.getContext('2d');
+            sctx.fillStyle=C.bg; sctx.fillRect(0,0,sliceCanvas.width,sliceCanvas.height);
+            sctx.drawImage(canvas,0,Math.round(sy*ratio),canvas.width,sliceCanvas.height,0,0,canvas.width,sliceCanvas.height);
+            pdf.addImage(sliceCanvas.toDataURL('image/png'),'PNG',MARGIN,MARGIN,imgW,sliceH);
+            remaining-=sliceH; sy+=sliceH;
+            if(remaining>0){ pdf.addPage(); }
+          }
+          cursorY=MARGIN+ (imgH%usableH || usableH) +10;
+          if(cursorY>PH-MARGIN){ pdf.addPage(); cursorY=MARGIN; }
+        }
+      }
+      pdf.save(`${ticker}_reporte_${new Date().toISOString().slice(0,10)}.pdf`);
+    }catch(err){
+      alert('No se pudo generar el PDF: '+err.message);
+    }finally{
+      document.body.removeChild(stage);
+      if(genBtn){genBtn.textContent='Generar →';genBtn.disabled=false;}
+      earCloseReportDialog();
+    }
   };
 
   window._bcraRefreshInline=function(ticker,cuit,contentId,loadId){
