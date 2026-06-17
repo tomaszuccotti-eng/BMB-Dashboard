@@ -18683,11 +18683,13 @@ function renderEquity(){
             const chartCv=deudasCon?deudasCon.querySelector('canvas'):null;
             const chartImg=canvasToImg(chartCv);
             if(chartImg) T.image(chartImg,'Exposición crediticia por banco');
-            // Heatmap: ubicar el wrapper que tiene la tabla del historial, pero rasterizar
-            // solo la tabla interna (su título lo pone el caption del PDF, no la imagen)
-            let heatNode=null;
-            if(deudasCon){ deudasCon.querySelectorAll('div').forEach(d=>{ if(!heatNode && /Historial 24/i.test(d.textContent||'') && d.querySelector('table')) heatNode=d; }); }
-            const heatTable=heatNode?heatNode.querySelector('table'):null;
+            // Heatmap: es la ÚNICA tabla con muchas columnas (24 meses → ~25 <th>).
+            // La de situación tiene 4 columnas; buscamos la de mayor nº de columnas.
+            let heatTable=null, maxCols=6;
+            if(deudasCon){ deudasCon.querySelectorAll('table').forEach(tb=>{
+              const nCols=tb.querySelectorAll('thead th').length;
+              if(nCols>maxCols){ maxCols=nCols; heatTable=tb; }
+            }); }
             const heatImg=heatTable?await domToImg(heatTable):null;
             if(heatImg) T.image(heatImg,'Historial 24 meses');
             // Detalle de cheques en hoja aparte
@@ -18772,9 +18774,9 @@ function renderEquity(){
       else if(it.type==='pageNew'){ y=newPage(); }
       else if(it.type==='sub'){
         // Reservar espacio para el subtítulo + arranque de tabla (evita huérfanos)
-        if(y+60>PH-M){ y=newPage(); }
-        pdf.setFont('helvetica','bold'); pdf.setFontSize(9); pdf.setTextColor(...RGB.text3);
-        pdf.text(it.text.toUpperCase(),M,y+10); y+=18;
+        if(y+48>PH-M){ y=newPage(); }
+        pdf.setFont('helvetica','bold'); pdf.setFontSize(8.5); pdf.setTextColor(...RGB.text3);
+        pdf.text(it.text.toUpperCase(),M,y+9); y+=14;
       }
       else if(it.type==='note'){
         if(y+24>PH-M){ y=newPage(); }
@@ -18782,15 +18784,15 @@ function renderEquity(){
         pdf.text(it.text,M,y+10); y+=22;
       }
       else if(it.type==='kpis'){
-        const data=it.data, n=data.length, gap=8, cardW=(usableW-gap*(n-1))/n, cardH=42;
-        if(y+cardH+10>PH-M){ y=newPage(); }
+        const data=it.data, n=data.length, gap=7, cardW=(usableW-gap*(n-1))/n, cardH=34;
+        if(y+cardH+8>PH-M){ y=newPage(); }
         data.forEach((kp,i)=>{ const x=M+i*(cardW+gap);
           pdf.setFillColor(...RGB.card2); pdf.roundedRect(x,y,cardW,cardH,4,4,'F');
-          pdf.setFont('helvetica','normal'); pdf.setFontSize(6.5); pdf.setTextColor(...RGB.text3);
-          pdf.text(kp.label.toUpperCase(),x+8,y+14,{maxWidth:cardW-16});
-          pdf.setFont('helvetica','bold'); pdf.setFontSize(13); pdf.setTextColor(...RGB.text);
-          pdf.text(String(kp.val),x+8,y+33); });
-        y+=cardH+14;
+          pdf.setFont('helvetica','normal'); pdf.setFontSize(6); pdf.setTextColor(...RGB.text3);
+          pdf.text(kp.label.toUpperCase(),x+7,y+12,{maxWidth:cardW-14});
+          pdf.setFont('helvetica','bold'); pdf.setFontSize(12); pdf.setTextColor(...RGB.text);
+          pdf.text(String(kp.val),x+7,y+27); });
+        y+=cardH+12;
       }
       else if(it.type==='risk'){
         const d=it.data, boxH=54;
@@ -18835,11 +18837,11 @@ function renderEquity(){
         y+=boxH+14;
       }
       else if(it.type==='table'){
-        const rowH=16, headH=18;
+        const rowH=13, headH=15;
         const drawTable=(rows,sy)=>{ pdf.autoTable({ startY:sy, margin:{left:M,right:M},
           head:[it.head], body:rows, theme:'grid',
-          styles:{font:'helvetica',fontSize:8,cellPadding:4,textColor:RGB.text2,lineColor:RGB.border,lineWidth:0.4,fillColor:RGB.card},
-          headStyles:{fillColor:RGB.head,textColor:RGB.text3,fontStyle:'bold',fontSize:7.5,halign:'right'},
+          styles:{font:'helvetica',fontSize:7.5,cellPadding:2.6,textColor:RGB.text2,lineColor:RGB.border,lineWidth:0.4,fillColor:RGB.card},
+          headStyles:{fillColor:RGB.head,textColor:RGB.text3,fontStyle:'bold',fontSize:7,halign:'right'},
           bodyStyles:{fillColor:RGB.card}, alternateRowStyles:{fillColor:[20,25,37]},
           columnStyles:{0:{halign:'left',textColor:RGB.text,fontStyle:'bold'}},
           didParseCell:d=>{ if(d.column.index>0) d.cell.styles.halign='right'; },
@@ -18852,7 +18854,7 @@ function renderEquity(){
         let rows=it.body.slice();
         while(rows.length){
           const avail=(PH-M)-y; let n=Math.max(1,Math.floor((avail-headH)/rowH));
-          if(n>=rows.length){ y=drawTable(rows,y)+14; rows=[]; }
+          if(n>=rows.length){ y=drawTable(rows,y)+10; rows=[]; }
           else{ drawTable(rows.slice(0,n),y); rows=rows.slice(n); y=newPage(); }
         }
       }
