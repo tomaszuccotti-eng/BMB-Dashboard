@@ -11464,7 +11464,7 @@ const _eqRO = new ResizeObserver(entries => {
     </div>
 
     <!-- Herramientas -->
-    <div class="bal-sb-sec" style="flex:1;">
+    <div class="bal-sb-sec">
       <div class="bal-sb-label">Herramientas</div>
       <div id="earNavScoring" class="ear-navbtn" onclick="earShowView('sector')">
         <span class="ear-navbtn-ico">📊</span>Scoring de Liquidez
@@ -11475,6 +11475,12 @@ const _eqRO = new ResizeObserver(entries => {
       <div id="earNavMav" class="ear-navbtn" onclick="earShowView('mav')">
         <span class="ear-navbtn-ico">📈</span>MAV
       </div>
+    </div>
+
+    <!-- Reporte -->
+    <div class="bal-sb-sec" style="flex:1;">
+      <div class="bal-sb-label">Reporte</div>
+      <button onclick="earOpenReportDialog()" class="bal-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>Generar reporte</button>
     </div>
 
   </aside>
@@ -11674,6 +11680,21 @@ const _eqRO = new ResizeObserver(entries => {
           <button onclick="closeExcelModal()" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(30,39,243,0.25);background:transparent;color:#4a5280;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--mono);">Cancelar</button>
           <button id="excel-submit-btn" onclick="submitExcelManual()" style="flex:2;padding:10px;border-radius:8px;border:none;background:#1E27F3;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">Guardar en Sheet →</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: elegir tabs del reporte -->
+  <div id="ear-report-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:300;align-items:center;justify-content:center;">
+    <div style="background:#0f1422;border:1px solid rgba(30,39,243,0.35);border-radius:16px;padding:28px;width:100%;max-width:460px;position:relative;">
+      <div style="font-size:16px;font-weight:800;font-family:var(--display);color:#e8eaf6;margin-bottom:4px;">Generar reporte</div>
+      <div id="ear-report-company" style="font-size:11px;color:#7e87b8;font-family:var(--mono);margin-bottom:18px;">—</div>
+      <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#7e87b8;font-family:var(--mono);margin-bottom:10px;">Secciones a incluir</div>
+      <div id="ear-report-checks" style="display:flex;flex-direction:column;gap:2px;margin-bottom:6px;"></div>
+      <div style="font-size:10px;color:#5a6291;font-family:var(--mono);line-height:1.5;margin:10px 0 18px;">Cada sección sale en una hoja separada. Se abre la vista de impresión: elegí <strong style="color:#9aa3d4;">Guardar como PDF</strong>.</div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="earCloseReportDialog()" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(30,39,243,0.25);background:transparent;color:#7e87b8;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--mono);">Cancelar</button>
+        <button onclick="earBuildReport()" style="flex:2;padding:10px;border-radius:8px;border:none;background:#1E27F3;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">Generar →</button>
       </div>
     </div>
   </div>
@@ -18487,6 +18508,145 @@ function renderEquity(){
       mavBuildCompanySection(ticker, cuit||null, con);
     }
   }
+
+  // ─────────────────────────────────────────────────────────────
+  // REPORTE — elegir tabs → HTML con una hoja por sección → print
+  // ─────────────────────────────────────────────────────────────
+  function _earAvailableTabs(ticker){
+    const hasEco=(window.ECO_DATA[ticker]||[]).length>0;
+    const _EQH=new Set(['AGRO','ALUA','AUSO','BBAR','BHIP','BMA','BOLT','BPAT','BYMA','CADO','CAPX','CARC','CECO2','CELU','CEPU','CGPA2','COME','CRES','CTIO','CVH','DGCU2','DOME','EDN','FERR','FIPL','GAMI','GARO','GBAN','GCDI','GCLA','GGAL','GRIM','HARG','HAVA','HSAT','INTR','INVJ','IRSA','LEDE','LOMA','LONG','METR','MIRG','MOLA','MOLI','MORI','OEST','PAMP','PATA','RICH','RIGO','ROSE','SAMI','SEMI','SUPV','TECO2','TGNO4','TGSU2','TRAN','TXAR','VALO','YPFD']);
+    const hasScore=window.EXCEL_DATA.filter(r=>(r['Ticker']||'').trim().toUpperCase()===ticker).length>0;
+    const tabs=[];
+    if(hasEco) tabs.push({id:'financials',label:'Financials'},{id:'ratios',label:'Ratios'});
+    tabs.push({id:'deudas',label:'Deuda bancaria'},{id:'mav',label:'MAV'});
+    if(_EQH.has(ticker)) tabs.push({id:'precios',label:'Precios'});
+    if(hasScore) tabs.push({id:'scoring',label:'Scoring'});
+    return tabs;
+  }
+
+  window.earOpenReportDialog=function(){
+    const ticker=_currentExcelTicker;
+    if(!ticker){ alert('Primero buscá y cargá una empresa.'); return; }
+    const tabs=_earAvailableTabs(ticker);
+    const co=_currentExcelEmpresa&&_currentExcelEmpresa!==ticker?`${ticker} · ${_currentExcelEmpresa}`:ticker;
+    const lblEl=document.getElementById('ear-report-company'); if(lblEl)lblEl.textContent=co;
+    const box=document.getElementById('ear-report-checks');
+    if(box){
+      box.innerHTML=tabs.map(t=>`
+        <label style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:7px;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);transition:all .12s;"
+          onmouseover="this.style.borderColor='#1E27F3'" onmouseout="this.style.borderColor='var(--border2)'">
+          <input type="checkbox" class="ear-rep-chk" value="${t.id}" checked style="width:15px;height:15px;accent-color:#1E27F3;cursor:pointer;">
+          <span style="font-size:12px;font-weight:700;color:var(--text2);font-family:var(--mono);">${t.label}</span>
+        </label>`).join('');
+    }
+    document.getElementById('ear-report-overlay').style.display='flex';
+  };
+  window.earCloseReportDialog=function(){
+    const o=document.getElementById('ear-report-overlay'); if(o)o.style.display='none';
+  };
+
+  window.earBuildReport=async function(){
+    const ticker=_currentExcelTicker; if(!ticker)return;
+    const checked=Array.from(document.querySelectorAll('.ear-rep-chk:checked')).map(c=>c.value);
+    if(!checked.length){ alert('Elegí al menos una sección.'); return; }
+    const tabsMeta=_earAvailableTabs(ticker);
+    const labelOf=id=>(tabsMeta.find(t=>t.id===id)||{}).label||id;
+
+    // Forzar render de cada tab elegido (los lazy) sin perder la vista actual
+    const _restoreTab=document.querySelector(`#earTopTabs .ear-toptab.active`)?.id||'';
+    for(const id of checked){
+      const con=document.getElementById(`ficha-tab-content-${ticker}-${id}`);
+      if(con && !con.dataset.rendered && con.innerHTML.trim()===''){
+        _fichaShowTab(ticker, id);
+      }
+    }
+    // Esperar a que precios (async) y charts terminen de pintar
+    await new Promise(r=>setTimeout(r, checked.includes('precios')?1400:500));
+
+    // Construir secciones — clonar contenido y rasterizar canvas a PNG
+    const cssBg='#0b0e17', cssCard='#11151f', cssBorder='#1e2536', cssText='#e8eaf6', cssText3='#7e87b8', cssAccent='#1E27F3';
+    let sectionsHtml='';
+    for(let i=0;i<checked.length;i++){
+      const id=checked[i];
+      const src=document.getElementById(`ficha-tab-content-${ticker}-${id}`);
+      if(!src){continue;}
+      const clone=src.cloneNode(true);
+      // Reemplazar canvas del clon por <img> rasterizada del canvas original
+      const srcCanvases=src.querySelectorAll('canvas');
+      const cloneCanvases=clone.querySelectorAll('canvas');
+      cloneCanvases.forEach((cv,idx)=>{
+        const orig=srcCanvases[idx];
+        try{
+          if(orig && orig.width){
+            const off=document.createElement('canvas');
+            off.width=orig.width; off.height=orig.height;
+            const ctx=off.getContext('2d');
+            ctx.fillStyle=cssCard; ctx.fillRect(0,0,off.width,off.height);
+            ctx.drawImage(orig,0,0);
+            const img=document.createElement('img');
+            img.src=off.toDataURL('image/png');
+            img.style.cssText='width:100%;height:auto;display:block;';
+            cv.parentNode.replaceChild(img,cv);
+          }
+        }catch(_){/* canvas tainted o vacío: dejar como está */}
+      });
+      const pb=i===0?'':'page-break-before:always;';
+      sectionsHtml+=`<section style="${pb}padding-top:${i===0?'0':'12px'};">
+        <div class="rep-sec-title">${labelOf(id)}</div>
+        <div class="rep-sec-body">${clone.innerHTML}</div>
+      </section>`;
+    }
+
+    // Restaurar la vista activa que tenía el usuario
+    if(_restoreTab){const m=_restoreTab.match(/ficha-tab-btn-.+-(\w+)$/);if(m)_fichaShowTab(ticker,m[1]);}
+
+    const name=_currentExcelEmpresa&&_currentExcelEmpresa!==ticker?_currentExcelEmpresa:'';
+    const sector=(_currentExcelSector||'').replace(/_+/g,' ');
+    const date=new Date().toLocaleDateString('es-AR',{year:'numeric',month:'long',day:'numeric'});
+
+    const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>${ticker} — Reporte · ${date}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',Arial,sans-serif;background:${cssBg};color:${cssText};font-size:13px;padding:28px;}
+.rep-header{border-bottom:3px solid ${cssAccent};padding-bottom:14px;margin-bottom:22px;display:flex;justify-content:space-between;align-items:flex-end;}
+.rep-ticker{font-size:34px;font-weight:800;color:${cssAccent};letter-spacing:.04em;line-height:1;}
+.rep-name{font-size:16px;font-weight:600;color:${cssText};margin-top:6px;}
+.rep-meta{font-size:11px;color:${cssText3};margin-top:3px;}
+.rep-date{font-size:10px;color:${cssText3};text-align:right;}
+.rep-sec-title{font-size:11px;font-weight:700;color:${cssText3};text-transform:uppercase;letter-spacing:.1em;margin:0 0 14px;padding-bottom:6px;border-bottom:1px solid ${cssBorder};}
+.rep-sec-body table{border-collapse:collapse;}
+.rep-footer{margin-top:26px;padding-top:12px;border-top:1px solid ${cssBorder};font-size:10px;color:${cssText3};text-align:center;}
+/* Evitar cortes a mitad de tabla/gráfico/card */
+.rep-sec-title{break-after:avoid;page-break-after:avoid;}
+.rep-sec-body img{break-inside:avoid;page-break-inside:avoid;display:block;}
+.rep-sec-body tr,.rep-sec-body thead{break-inside:avoid;page-break-inside:avoid;}
+.rep-sec-body thead{display:table-header-group;}
+/* Cada bloque/card (hijo directo o tabla envuelta) entero en una hoja */
+.rep-sec-body > div,.rep-sec-body > div > div{break-inside:avoid;page-break-inside:avoid;}
+@media print{
+  body{padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  section{padding:18px 16px;}
+  .rep-header{padding:18px 16px 14px;}
+  .rep-sec-body img{break-inside:avoid;page-break-inside:avoid;}
+  .rep-sec-body tr,.rep-sec-body thead{break-inside:avoid;page-break-inside:avoid;}
+  .rep-sec-body > div,.rep-sec-body > div > div{break-inside:avoid;page-break-inside:avoid;}
+}
+</style></head><body>
+<div class="rep-header">
+  <div><div class="rep-ticker">${ticker}</div>${name?`<div class="rep-name">${name}</div>`:''}<div class="rep-meta">${sector}</div></div>
+  <div class="rep-date">Reporte generado<br>${date}<br>Bull Market Brokers</div>
+</div>
+${sectionsHtml}
+<div class="rep-footer">Dashboard · Análisis Financiero · No constituye asesoramiento de inversión</div>
+</body></html>`;
+
+    const w=window.open('','_blank');
+    if(!w){ alert('Habilitá las ventanas emergentes para generar el reporte.'); return; }
+    w.document.open(); w.document.write(html); w.document.close();
+    w.onload=()=>{ setTimeout(()=>{ try{w.focus();w.print();}catch(_){} }, 300); };
+    earCloseReportDialog();
+  };
 
   window._bcraRefreshInline=function(ticker,cuit,contentId,loadId){
     const loadEl=document.getElementById(loadId);
