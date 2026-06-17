@@ -18676,16 +18676,19 @@ function renderEquity(){
               T.table(['Entidad','Situación','Monto','Atraso'],
                 ents.map(e=>[e.entidad,`${e.situacion} — ${SIT[e.situacion]||'—'}`,`$${Math.round((e.monto||0)/1000).toLocaleString('es-AR')}M`,(e.diasAtrasoPago||0)>0?e.diasAtrasoPago+'d':'—']));
             }
-            // Gráfico exposición + heatmap (en hoja nueva si hay muchas entidades)
-            if(ents.length>14) T.pageNew();
-            const chartCv=document.querySelector(`#ficha-tab-content-${ticker}-deudas canvas`);
+            // Gráfico + heatmap siempre en hoja nueva (quedan grandes y la situación suele ser larga)
+            T.pageNew();
+            const deudasCon=document.getElementById(`ficha-tab-content-${ticker}-deudas`);
+            // Gráfico: rasterizar SOLO el canvas (sin títulos ajenos)
+            const chartCv=deudasCon?deudasCon.querySelector('canvas'):null;
             const chartImg=canvasToImg(chartCv);
             if(chartImg) T.image(chartImg,'Exposición crediticia por banco');
-            // Heatmap: buscar el nodo de la tabla "Historial 24 Meses"
-            const deudasCon=document.getElementById(`ficha-tab-content-${ticker}-deudas`);
+            // Heatmap: ubicar el wrapper que tiene la tabla del historial, pero rasterizar
+            // solo la tabla interna (su título lo pone el caption del PDF, no la imagen)
             let heatNode=null;
             if(deudasCon){ deudasCon.querySelectorAll('div').forEach(d=>{ if(!heatNode && /Historial 24/i.test(d.textContent||'') && d.querySelector('table')) heatNode=d; }); }
-            const heatImg=heatNode?await domToImg(heatNode):null;
+            const heatTable=heatNode?heatNode.querySelector('table'):null;
+            const heatImg=heatTable?await domToImg(heatTable):null;
             if(heatImg) T.image(heatImg,'Historial 24 meses');
             // Detalle de cheques en hoja aparte
             if(chSummary.has){
@@ -18768,7 +18771,8 @@ function renderEquity(){
       }
       else if(it.type==='pageNew'){ y=newPage(); }
       else if(it.type==='sub'){
-        if(y+30>PH-M){ y=newPage(); }
+        // Reservar espacio para el subtítulo + arranque de tabla (evita huérfanos)
+        if(y+60>PH-M){ y=newPage(); }
         pdf.setFont('helvetica','bold'); pdf.setFontSize(9); pdf.setTextColor(...RGB.text3);
         pdf.text(it.text.toUpperCase(),M,y+10); y+=18;
       }
@@ -18831,7 +18835,7 @@ function renderEquity(){
         y+=boxH+14;
       }
       else if(it.type==='table'){
-        const rowH=15, headH=16;
+        const rowH=16, headH=18;
         const drawTable=(rows,sy)=>{ pdf.autoTable({ startY:sy, margin:{left:M,right:M},
           head:[it.head], body:rows, theme:'grid',
           styles:{font:'helvetica',fontSize:8,cellPadding:4,textColor:RGB.text2,lineColor:RGB.border,lineWidth:0.4,fillColor:RGB.card},
@@ -18841,6 +18845,10 @@ function renderEquity(){
           didParseCell:d=>{ if(d.column.index>0) d.cell.styles.halign='right'; },
           tableLineColor:RGB.border, tableLineWidth:0.4, pageBreak:'avoid' });
           return pdf.lastAutoTable.finalY; };
+        const fullPageRows=Math.floor(((PH-M)-(M+22)-headH)/rowH);  // filas que entran en hoja fresca
+        const tableTotalH=headH+it.body.length*rowH;
+        // Si la tabla entera entra en una hoja fresca pero no en lo que queda → saltar antes
+        if(it.body.length<=fullPageRows && y+tableTotalH>PH-M){ y=newPage(); }
         let rows=it.body.slice();
         while(rows.length){
           const avail=(PH-M)-y; let n=Math.max(1,Math.floor((avail-headH)/rowH));
