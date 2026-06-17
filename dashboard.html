@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -18551,159 +18552,199 @@ function renderEquity(){
     const ticker=_currentExcelTicker; if(!ticker)return;
     const checked=Array.from(document.querySelectorAll('.ear-rep-chk:checked')).map(c=>c.value);
     if(!checked.length){ alert('Elegí al menos una sección.'); return; }
-    if(typeof html2canvas==='undefined' || !(window.jspdf&&window.jspdf.jsPDF)){
-      alert('Las librerías de PDF aún se están cargando. Probá de nuevo en unos segundos.');
-      return;
+    if(!(window.jspdf&&window.jspdf.jsPDF)){
+      alert('Las librerías de PDF aún se están cargando. Probá de nuevo en unos segundos.'); return;
     }
-    const tabsMeta=_earAvailableTabs(ticker);
-    const labelOf=id=>(tabsMeta.find(t=>t.id===id)||{}).label||id;
-
+    const labelOf=id=>(_earAvailableTabs(ticker).find(t=>t.id===id)||{}).label||id;
     const genBtn=document.querySelector('#ear-report-overlay button[onclick="earBuildReport()"]');
     if(genBtn){genBtn.textContent='Generando…';genBtn.disabled=true;}
 
-    // Forzar render de cada tab elegido (los lazy) sin perder la vista actual
+    // Forzar render de tabs elegidos (para que existan canvas de BCRA/precios)
     const _restoreTab=document.querySelector(`#earTopTabs .ear-toptab.active`)?.id||'';
     for(const id of checked){
       const con=document.getElementById(`ficha-tab-content-${ticker}-${id}`);
       if(con && con.innerHTML.trim()===''){ _fichaShowTab(ticker, id); }
     }
-    await new Promise(r=>setTimeout(r, checked.includes('precios')?1500:600));
+    await new Promise(r=>setTimeout(r, checked.includes('precios')?1600:700));
 
-    // Paleta del reporte
-    const C={bg:'#0b0e17',card:'#11151f',card2:'#161b28',border:'#222a3d',border2:'#2c3650',text:'#e8eaf6',text2:'#c3c9e6',text3:'#7e87b8',accent:'#1E27F3'};
+    // Paleta
+    const RGB={bg:[11,14,23],card:[17,21,31],card2:[22,27,40],head:[26,31,48],border:[34,42,61],text:[232,234,246],text2:[195,201,230],text3:[126,135,184],accent:[30,39,243]};
+    const ecoHist=[...(window.ECO_DATA[ticker]||[])].sort((a,b)=>parseDate(b.fechaBal)-parseDate(a.fechaBal));
+    const cols=ecoHist.map(p=>p.fechaBal.substring(0,10));
 
-    // Helper: limpia un clon de controles interactivos y normaliza tablas
-    const PAGE_W=794; // px ~ A4 @ 96dpi
-    function cleanSection(srcEl){
-      const clone=srcEl.cloneNode(true);
-      // Rasterizar canvas → img (antes de quitar nada)
-      const srcCv=srcEl.querySelectorAll('canvas'), clCv=clone.querySelectorAll('canvas');
-      clCv.forEach((cv,idx)=>{
-        const orig=srcCv[idx];
-        try{ if(orig&&orig.width){
-          const off=document.createElement('canvas'); off.width=orig.width; off.height=orig.height;
-          const cx=off.getContext('2d'); cx.fillStyle=C.card; cx.fillRect(0,0,off.width,off.height); cx.drawImage(orig,0,0);
-          const img=document.createElement('img'); img.src=off.toDataURL('image/png');
-          img.style.cssText='width:100%;height:auto;display:block;border-radius:8px;';
-          cv.parentNode.replaceChild(img,cv);
-        } }catch(_){ }
-      });
-      // Quitar controles de edición: botones, inputs, selects, toggles de orden
-      clone.querySelectorAll('button,input,select,textarea').forEach(el=>el.remove());
-      // Quitar barras "Orden columnas" y similares (divs que quedaron con solo texto de control)
-      clone.querySelectorAll('[onclick]').forEach(el=>{ el.removeAttribute('onclick'); el.style.cursor='default'; });
-      // Eliminar contenedores de control que ahora quedaron vacíos o con label suelto
-      clone.querySelectorAll('div').forEach(d=>{
-        const t=(d.textContent||'').trim();
-        if(t==='Orden columnas:'||t===''){ if(!d.querySelector('table,img')) d.remove(); }
-      });
-      return clone;
+    // Helper: rasterizar un canvas existente a dataURL (para gráficos)
+    function canvasToImg(orig){
+      try{
+        if(!orig||!orig.width) return null;
+        const off=document.createElement('canvas'); off.width=orig.width; off.height=orig.height;
+        const cx=off.getContext('2d'); cx.fillStyle='#11151f'; cx.fillRect(0,0,off.width,off.height); cx.drawImage(orig,0,0);
+        return {data:off.toDataURL('image/png'), ratio:orig.height/orig.width};
+      }catch(_){ return null; }
     }
 
-    // Construir nodo off-screen con estilo de reporte limpio
-    const stage=document.createElement('div');
-    stage.style.cssText=`position:fixed;left:-10000px;top:0;width:${PAGE_W}px;background:${C.bg};color:${C.text};font-family:'Segoe UI',Arial,sans-serif;padding:0;`;
-    stage.innerHTML=`<style>
-      .rep-stage *{box-sizing:border-box;}
-      .rep-stage table{width:100%;border-collapse:collapse;font-size:11px;background:${C.card};border:1px solid ${C.border};border-radius:8px;overflow:hidden;}
-      .rep-stage thead th,.rep-stage th{background:${C.card2};color:${C.text3};font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;text-align:left;padding:8px 12px;border-bottom:1px solid ${C.border2};white-space:nowrap;}
-      .rep-stage td{padding:7px 12px;border-bottom:1px solid ${C.border};color:${C.text2};vertical-align:middle;}
-      .rep-stage tbody tr:nth-child(even) td{background:rgba(255,255,255,0.015);}
-      .rep-stage tbody tr:last-child td{border-bottom:none;}
-      .rep-stage td:not(:first-child){text-align:right;font-variant-numeric:tabular-nums;}
-      .rep-stage th:not(:first-child){text-align:right;}
-      .rep-block{margin-bottom:14px;}
-    </style>`;
-    const inner=document.createElement('div');
-    inner.className='rep-stage';
-    stage.appendChild(inner);
-    document.body.appendChild(stage);
+    // Construir lista de "items" (title | table | image | note)
+    const items=[];
+    const pushTitle=(t)=>items.push({type:'title',text:t});
+    const pushSub=(t)=>items.push({type:'sub',text:t});
+    const pushTable=(head,body)=>{ if(body.length) items.push({type:'table',head,body}); };
+    const pushImg=(im,cap)=>{ if(im) items.push({type:'image',img:im,cap}); };
+    const pushNote=(t)=>items.push({type:'note',text:t});
 
-    // Header del reporte
+    function ecoGroupTable(groups){
+      groups.forEach(grp=>{
+        const body=grp.keys.map(key=>{
+          const def=ECO_COLS.find(c=>c.key===key); if(!def) return null;
+          const cells=ecoHist.map(p=>{ const v=p[key]; return v!=null?fmtEco(key,v):'—'; });
+          return [def.label, ...cells];
+        }).filter(Boolean);
+        if(body.length){ pushSub(grp.label.replace(/^[^\wÁÉÍÓÚ]+/,'').trim()); pushTable(['Métrica',...cols], body); }
+      });
+    }
+
+    for(const id of checked){
+      pushTitle(labelOf(id));
+      if(id==='financials'){
+        if(!ecoHist.length){ pushNote('Sin datos de Economatica para esta empresa.'); }
+        else ecoGroupTable(FIN_GROUPS);
+      }
+      else if(id==='ratios'){
+        if(!ecoHist.length){ pushNote('Sin datos de Economatica para esta empresa.'); }
+        else ecoGroupTable(RAT_GROUPS);
+      }
+      else if(id==='scoring'){
+        const hist=window.EXCEL_DATA.filter(r=>(r['Ticker']||'').trim().toUpperCase()===ticker)
+          .sort((a,b)=>parseDate(b['Fecha Balance'])-parseDate(a['Fecha Balance']));
+        if(!hist.length){ pushNote('Sin scoring de liquidez cargado.'); }
+        else{
+          const head=['Fecha','Score',...RATIOS.map(r=>r.short),'Origen'];
+          const body=hist.map(r=>[
+            (r['Fecha Balance']||'').substring(0,10),
+            r['Score']!=null?String(r['Score']):'—',
+            ...RATIOS.map(rt=>{const v=r[rt.key];return v!=null&&v!==''?(isNaN(+v)?v:(+v).toFixed(2)):'—';}),
+            r['Origen']||r['origen']||'—'
+          ]);
+          pushTable(head,body);
+        }
+      }
+      else if(id==='deudas'){
+        const cuit=(window.EXCEL_CUIT_MAP||{})[ticker];
+        if(!cuit){ pushNote('CUIT no cargado para esta empresa.'); }
+        else{
+          try{
+            const json=await _bcraFetch(cuit);
+            const deudas=json.deudas?.results||json.deudas||null;
+            const ents=(deudas?.periodos?.[0]?.entidades||[]).filter(e=>e.situacion>0).sort((a,b)=>b.situacion-a.situacion);
+            const SIT_LBL={1:'Normal',2:'Riesgo Bajo',3:'Con Problemas',4:'Alto Riesgo',5:'Irrecuperable'};
+            const periodo=deudas?.periodos?.[0]?.periodo||'';
+            pushSub(`Central de Deudores — BCRA  ·  CUIT ${cuit}${periodo?`  ·  Período ${periodo.slice(0,4)}/${periodo.slice(4,6)}`:''}`);
+            if(ents.length){
+              const body=ents.map(e=>[e.entidad, `${e.situacion} — ${SIT_LBL[e.situacion]||'—'}`, `$${Math.round((e.monto||0)/1000).toLocaleString('es-AR')}M`, (e.diasAtrasoPago||0)>0?e.diasAtrasoPago+'d':'—']);
+              pushTable(['Entidad','Situación','Monto','Atraso'], body);
+            } else pushNote('Sin entidades activas en Central de Deudores.');
+            // Gráfico de exposición (canvas existente en la ficha)
+            const cv=document.querySelector(`#ficha-tab-content-${ticker}-deudas canvas`);
+            pushImg(canvasToImg(cv),'Exposición crediticia por banco');
+          }catch(e){ pushNote('No se pudo consultar BCRA: '+e.message); }
+        }
+      }
+      else if(id==='mav'){
+        // MAV: tabla si hay datos cargados; si no, nota
+        const mavTbl=document.querySelector(`#ficha-tab-content-${ticker}-mav table`);
+        if(mavTbl){
+          const head=Array.from(mavTbl.querySelectorAll('thead th')).map(th=>th.textContent.trim());
+          const body=Array.from(mavTbl.querySelectorAll('tbody tr')).map(tr=>Array.from(tr.querySelectorAll('td')).map(td=>td.textContent.trim()));
+          if(head.length&&body.length) pushTable(head,body); else pushNote('Sin instrumentos MAV cargados.');
+        } else pushNote('Sin archivo CENDEU cargado para MAV.');
+      }
+      else if(id==='precios'){
+        // Gráficos de precio y volumen (canvas) + tabla de datos históricos
+        const cvs=document.querySelectorAll(`#ficha-tab-content-${ticker}-precios canvas`);
+        if(cvs[0]) pushImg(canvasToImg(cvs[0]),'Precio de cierre');
+        if(cvs[1]) pushImg(canvasToImg(cvs[1]),'Volumen diario');
+        const ptbl=document.querySelector(`#ficha-tab-content-${ticker}-precios table`);
+        if(ptbl){
+          const head=Array.from(ptbl.querySelectorAll('thead th')).map(th=>th.textContent.replace(/[↕↑↓]/g,'').trim());
+          const rowsAll=Array.from(ptbl.querySelectorAll('tbody tr'));
+          const body=rowsAll.slice(0,40).map(tr=>Array.from(tr.querySelectorAll('td')).map(td=>td.textContent.trim()));
+          if(head.length&&body.length){ pushSub('Datos históricos (últimas 40 ruedas)'); pushTable(head,body); }
+        }
+        if(!cvs.length && !ptbl) pushNote('Sin histórico de precios disponible.');
+      }
+    }
+
+    // Restaurar vista activa
+    if(_restoreTab){const m=_restoreTab.match(/ficha-tab-btn-.+-(\w+)$/);if(m)_fichaShowTab(ticker,m[1]);}
+
+    // ── Render PDF ──
+    const { jsPDF }=window.jspdf;
+    const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
+    const PW=pdf.internal.pageSize.getWidth(), PH=pdf.internal.pageSize.getHeight();
+    const M=36, usableW=PW-M*2;
+    let y=M;
     const name=_currentExcelEmpresa&&_currentExcelEmpresa!==ticker?_currentExcelEmpresa:'';
     const sector=(_currentExcelSector||'').replace(/_+/g,' ');
     const date=new Date().toLocaleDateString('es-AR',{year:'numeric',month:'long',day:'numeric'});
 
-    // Recolectar "bloques" a paginar: header + por sección (título + sus cards/tablas)
-    const blocks=[]; // cada uno: {el}
-    function pushEl(html){ const d=document.createElement('div'); d.className='rep-block'; d.innerHTML=html; inner.appendChild(d); blocks.push(d); return d; }
+    function pageBg(){ pdf.setFillColor(...RGB.bg); pdf.rect(0,0,PW,PH,'F'); }
+    function ensure(h){ if(y+h>PH-M){ pdf.addPage(); pageBg(); y=M; } }
 
-    pushEl(`<div style="border-bottom:3px solid ${C.accent};padding-bottom:14px;display:flex;justify-content:space-between;align-items:flex-end;">
-        <div><div style="font-size:32px;font-weight:800;color:${C.accent};letter-spacing:.04em;line-height:1;">${ticker}</div>
-        ${name?`<div style="font-size:16px;font-weight:600;color:${C.text};margin-top:6px;">${name}</div>`:''}
-        <div style="font-size:11px;color:${C.text3};margin-top:3px;">${sector}</div></div>
-        <div style="font-size:10px;color:${C.text3};text-align:right;">Reporte generado<br>${date}<br>Bull Market Brokers</div>
-      </div>`);
+    pageBg();
+    // Header
+    pdf.setFont('helvetica','bold'); pdf.setTextColor(...RGB.accent); pdf.setFontSize(26);
+    pdf.text(ticker, M, y+18);
+    let hy=y+34;
+    if(name){ pdf.setFontSize(13); pdf.setTextColor(...RGB.text); pdf.text(name, M, hy); hy+=15; }
+    if(sector){ pdf.setFont('helvetica','normal'); pdf.setFontSize(9); pdf.setTextColor(...RGB.text3); pdf.text(sector, M, hy); hy+=12; }
+    pdf.setFontSize(8); pdf.setTextColor(...RGB.text3);
+    pdf.text(`Reporte generado ${date}`, PW-M, y+10, {align:'right'});
+    pdf.text('Bull Market Brokers', PW-M, y+21, {align:'right'});
+    pdf.setDrawColor(...RGB.accent); pdf.setLineWidth(2); pdf.line(M, hy+4, PW-M, hy+4);
+    y=hy+20;
 
-    for(const id of checked){
-      const src=document.getElementById(`ficha-tab-content-${ticker}-${id}`);
-      if(!src) continue;
-      // Título de sección como bloque propio
-      pushEl(`<div style="font-size:13px;font-weight:700;color:${C.accent};text-transform:uppercase;letter-spacing:.1em;padding:6px 0 4px;border-bottom:1px solid ${C.border};">${labelOf(id)}</div>`);
-      const cleaned=cleanSection(src);
-      // Cada hijo directo del contenido limpio → bloque (card/tabla/gráfico)
-      Array.from(cleaned.children).forEach(child=>{
-        if(!(child.textContent||'').trim() && !child.querySelector('img,table')) return;
-        const b=document.createElement('div'); b.className='rep-block';
-        b.appendChild(child); inner.appendChild(b); blocks.push(b);
-      });
+    for(const it of items){
+      if(it.type==='title'){
+        ensure(34);
+        pdf.setFillColor(...RGB.card2); pdf.roundedRect(M, y, usableW, 24, 3,3,'F');
+        pdf.setFont('helvetica','bold'); pdf.setFontSize(11); pdf.setTextColor(...RGB.accent);
+        pdf.text(it.text.toUpperCase(), M+10, y+16);
+        y+=34;
+      }
+      else if(it.type==='sub'){
+        ensure(22);
+        pdf.setFont('helvetica','bold'); pdf.setFontSize(9); pdf.setTextColor(...RGB.text3);
+        pdf.text(it.text.toUpperCase(), M, y+10); y+=18;
+      }
+      else if(it.type==='note'){
+        ensure(20);
+        pdf.setFont('helvetica','normal'); pdf.setFontSize(9); pdf.setTextColor(...RGB.text3);
+        pdf.text(it.text, M, y+10); y+=22;
+      }
+      else if(it.type==='table'){
+        pdf.autoTable({
+          startY:y, margin:{left:M,right:M},
+          head:[it.head], body:it.body,
+          theme:'grid', styles:{font:'helvetica',fontSize:8,cellPadding:4,textColor:RGB.text2,lineColor:RGB.border,lineWidth:0.4,fillColor:RGB.card},
+          headStyles:{fillColor:RGB.head,textColor:RGB.text3,fontStyle:'bold',fontSize:7.5,halign:'right'},
+          bodyStyles:{fillColor:RGB.card},
+          alternateRowStyles:{fillColor:[20,25,37]},
+          columnStyles:{0:{halign:'left',textColor:RGB.text,fontStyle:'bold'}},
+          didParseCell:(d)=>{ if(d.column.index>0) d.cell.styles.halign='right'; },
+          tableLineColor:RGB.border, tableLineWidth:0.4,
+        });
+        y=pdf.lastAutoTable.finalY+14;
+      }
+      else if(it.type==='image'){
+        const imgW=usableW, imgH=Math.min(usableW*it.img.ratio, PH-M*2);
+        ensure(imgH+ (it.cap?16:0)+6);
+        if(it.cap){ pdf.setFont('helvetica','bold'); pdf.setFontSize(8); pdf.setTextColor(...RGB.text3); pdf.text(it.cap.toUpperCase(), M, y+8); y+=14; }
+        pdf.addImage(it.img.data,'PNG',M,y,imgW,imgH);
+        y+=imgH+14;
+      }
     }
 
-    // Restaurar vista activa del usuario
-    if(_restoreTab){const m=_restoreTab.match(/ficha-tab-btn-.+-(\w+)$/);if(m)_fichaShowTab(ticker,m[1]);}
-
-    // Esperar render de imágenes embebidas
-    await new Promise(r=>setTimeout(r,150));
-
-    // Rasterizar cada bloque y armar PDF paginando sin cortar bloques
-    const { jsPDF }=window.jspdf;
-    const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
-    const PW=pdf.internal.pageSize.getWidth();   // ~595pt
-    const PH=pdf.internal.pageSize.getHeight();   // ~842pt
-    const MARGIN=28;
-    const usableW=PW-MARGIN*2;
-    const usableH=PH-MARGIN*2;
-    let cursorY=MARGIN;
-
-    try{
-      for(const b of blocks){
-        const canvas=await html2canvas(b,{backgroundColor:C.bg,scale:2,logging:false,useCORS:true});
-        const imgW=usableW;
-        const imgH=canvas.height*(imgW/canvas.width);
-        const imgData=canvas.toDataURL('image/png');
-        if(imgH<=usableH){
-          // Bloque entero: salta de página si no entra en lo que queda
-          if(cursorY+imgH>PH-MARGIN){ pdf.addPage(); cursorY=MARGIN; }
-          pdf.addImage(imgData,'PNG',MARGIN,cursorY,imgW,imgH);
-          cursorY+=imgH+10;
-        }else{
-          // Bloque más alto que una página: ocupa páginas completas escalando al ancho
-          // (caso raro: tabla larguísima). Lo partimos por alto de imagen.
-          let remaining=imgH, sy=0;
-          // siempre arranca en página nueva
-          if(cursorY>MARGIN){ pdf.addPage(); cursorY=MARGIN; }
-          const ratio=canvas.width/imgW; // px por pt
-          while(remaining>0){
-            const sliceH=Math.min(usableH, remaining);
-            const sliceCanvas=document.createElement('canvas');
-            sliceCanvas.width=canvas.width;
-            sliceCanvas.height=Math.round(sliceH*ratio);
-            const sctx=sliceCanvas.getContext('2d');
-            sctx.fillStyle=C.bg; sctx.fillRect(0,0,sliceCanvas.width,sliceCanvas.height);
-            sctx.drawImage(canvas,0,Math.round(sy*ratio),canvas.width,sliceCanvas.height,0,0,canvas.width,sliceCanvas.height);
-            pdf.addImage(sliceCanvas.toDataURL('image/png'),'PNG',MARGIN,MARGIN,imgW,sliceH);
-            remaining-=sliceH; sy+=sliceH;
-            if(remaining>0){ pdf.addPage(); }
-          }
-          cursorY=MARGIN+ (imgH%usableH || usableH) +10;
-          if(cursorY>PH-MARGIN){ pdf.addPage(); cursorY=MARGIN; }
-        }
-      }
-      pdf.save(`${ticker}_reporte_${new Date().toISOString().slice(0,10)}.pdf`);
-    }catch(err){
-      alert('No se pudo generar el PDF: '+err.message);
-    }finally{
-      document.body.removeChild(stage);
+    try{ pdf.save(`${ticker}_reporte_${new Date().toISOString().slice(0,10)}.pdf`); }
+    catch(err){ alert('No se pudo generar el PDF: '+err.message); }
+    finally{
       if(genBtn){genBtn.textContent='Generar →';genBtn.disabled=false;}
       earCloseReportDialog();
     }
