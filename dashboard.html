@@ -18548,127 +18548,304 @@ function renderEquity(){
     const o=document.getElementById('ear-report-overlay'); if(o)o.style.display='none';
   };
 
-  window.earBuildReport=function(){
+  window.earBuildReport=async function(){
     const ticker=_currentExcelTicker; if(!ticker)return;
     const checked=Array.from(document.querySelectorAll('.ear-rep-chk:checked')).map(c=>c.value);
     if(!checked.length){ alert('Elegí al menos una sección.'); return; }
+    if(!(window.jspdf&&window.jspdf.jsPDF)){ alert('Las librerías de PDF aún se están cargando. Probá de nuevo.'); return; }
     const labelOf=id=>(_earAvailableTabs(ticker).find(t=>t.id===id)||{}).label||id;
     const genBtn=document.querySelector('#ear-report-overlay button[onclick="earBuildReport()"]');
     if(genBtn){genBtn.textContent='Generando…';genBtn.disabled=true;}
 
     const _restoreTab=document.querySelector(`#earTopTabs .ear-toptab.active`)?.id||'';
-    const finish=()=>{ if(genBtn){genBtn.textContent='Generar →';genBtn.disabled=false;} earCloseReportDialog(); };
-
-    // Forzar render de tabs elegidos (para que existan canvas de BCRA/precios)
     for(const id of checked){
       const con=document.getElementById(`ficha-tab-content-${ticker}-${id}`);
       if(con && con.innerHTML.trim()===''){ _fichaShowTab(ticker, id); }
     }
+    await new Promise(r=>setTimeout(r, checked.includes('precios')?1600:700));
 
-    setTimeout(()=>{
-      try{
-        const name=_currentExcelEmpresa&&_currentExcelEmpresa!==ticker?_currentExcelEmpresa:'';
-        const sector=(_currentExcelSector||'').replace(/_+/g,' ');
-        const date=new Date().toLocaleDateString('es-AR',{year:'numeric',month:'long',day:'numeric'});
+    const RGB={bg:[11,14,23],card:[17,21,31],card2:[22,27,40],head:[26,31,48],border:[34,42,61],text:[232,234,246],text2:[195,201,230],text3:[126,135,184],accent:[30,39,243],green:[63,185,80],red:[248,81,73],amber:[251,191,36]};
+    const ecoHist=[...(window.ECO_DATA[ticker]||[])].sort((a,b)=>parseDate(b.fechaBal)-parseDate(a.fechaBal));
+    const cols=ecoHist.map(p=>p.fechaBal.substring(0,10));
 
-        // Clonar una sección, rasterizar canvas → img y quitar controles
-        function buildSection(id){
-          const src=document.getElementById(`ficha-tab-content-${ticker}-${id}`);
-          if(!src) return '';
-          const clone=src.cloneNode(true);
-          // canvas → img (usar el canvas original ya pintado)
-          const srcCv=src.querySelectorAll('canvas'), clCv=clone.querySelectorAll('canvas');
-          clCv.forEach((cv,idx)=>{
-            const orig=srcCv[idx];
-            try{ if(orig&&orig.width){
-              const off=document.createElement('canvas'); off.width=orig.width; off.height=orig.height;
-              const cx=off.getContext('2d'); cx.fillStyle='#11151f'; cx.fillRect(0,0,off.width,off.height); cx.drawImage(orig,0,0);
-              const img=document.createElement('img'); img.src=off.toDataURL('image/png');
-              img.style.cssText='width:100%;height:auto;display:block;border-radius:8px;margin:4px 0;';
-              cv.parentNode.replaceChild(img,cv);
-            } }catch(_){ }
-          });
-          // Quitar controles interactivos
-          clone.querySelectorAll('button,input,select,textarea').forEach(el=>el.remove());
-          clone.querySelectorAll('[onclick]').forEach(el=>{ el.removeAttribute('onclick'); el.style.cursor='default'; });
-          clone.querySelectorAll('[onmouseover],[onmouseout]').forEach(el=>{ el.removeAttribute('onmouseover'); el.removeAttribute('onmouseout'); });
-          // Quitar "Orden columnas:" y divs de control vacíos
-          clone.querySelectorAll('div').forEach(d=>{
-            const t=(d.textContent||'').trim();
-            if((t==='Orden columnas:'||t==='') && !d.querySelector('table,img,canvas')) d.remove();
-          });
-          return clone.innerHTML;
-        }
+    // Rasterizar canvas existente → dataURL
+    function canvasToImg(orig){
+      try{ if(!orig||!orig.width) return null;
+        const off=document.createElement('canvas'); off.width=orig.width; off.height=orig.height;
+        const cx=off.getContext('2d'); cx.fillStyle='#11151f'; cx.fillRect(0,0,off.width,off.height); cx.drawImage(orig,0,0);
+        return {data:off.toDataURL('image/png'), ratio:orig.height/orig.width};
+      }catch(_){ return null; }
+    }
+    // Rasterizar un nodo DOM (heatmap) → dataURL via html2canvas
+    async function domToImg(el){
+      try{ if(!el||typeof html2canvas==='undefined') return null;
+        const cv=await html2canvas(el,{backgroundColor:'#11151f',scale:2,logging:false});
+        return {data:cv.toDataURL('image/png'), ratio:cv.height/cv.width};
+      }catch(_){ return null; }
+    }
 
-        const headerHtml=`<div class="rep-head">
-          <div class="rep-head-l">
-            <div class="rep-ticker">${ticker}</div>
-            ${name?`<div class="rep-name">${name}</div>`:''}
-            ${sector?`<div class="rep-sector">${sector}</div>`:''}
-          </div>
-          <div class="rep-head-r">Reporte generado<br>${date}<br><strong>Bull Market Brokers</strong></div>
-        </div>`;
+    // Lista de items
+    const items=[];
+    const T={ title:t=>items.push({type:'title',text:t}),
+              sub:t=>items.push({type:'sub',text:t}),
+              note:t=>items.push({type:'note',text:t}),
+              table:(head,body)=>{ if(body&&body.length) items.push({type:'table',head,body}); },
+              image:(im,cap)=>{ if(im) items.push({type:'image',img:im,cap}); },
+              kpis:arr=>items.push({type:'kpis',data:arr}),
+              risk:obj=>items.push({type:'risk',data:obj}),
+              cheq:obj=>items.push({type:'cheq',data:obj}),
+              pageNew:()=>items.push({type:'pageNew'}) };
 
-        let sections='';
-        checked.forEach((id,i)=>{
-          const body=buildSection(id);
-          sections+=`<section class="rep-section">
-            ${headerHtml}
-            <div class="rep-sec-name">${labelOf(id)}</div>
-            <div class="rep-sec-body">${body}</div>
-          </section>`;
-        });
+    function kpiRow(){
+      if(!ecoHist.length) return null;
+      const latest=ecoHist[0];
+      return KPI_DEFAULT.map(k=>{ const def=ECO_COLS.find(c=>c.key===k); const v=latest[k];
+        return {label:def?def.label.replace(/\s*\(.*?\)/,'').replace(/\s*\$M/,''):k, val:v!=null?fmtEco(k,v):'—'}; });
+    }
+    function ecoGroups(groups){
+      groups.forEach(grp=>{
+        const body=grp.keys.map(key=>{ const def=ECO_COLS.find(c=>c.key===key); if(!def)return null;
+          return [def.label, ...ecoHist.map(p=>{const v=p[key];return v!=null?fmtEco(key,v):'—';})]; }).filter(Boolean);
+        if(body.length){ T.sub(grp.label.replace(/^[^A-Za-zÁÉÍÓÚ]+/,'').trim()); T.table(['Métrica',...cols],body); }
+      });
+    }
 
-        const doc=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-<title>${ticker} — Reporte ${date}</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0;}
-  :root{--bg:#0b0e17;--bg2:#11151f;--bg3:#161b28;--border:#222a3d;--border2:#2c3650;--text:#e8eaf6;--text2:#c3c9e6;--text3:#7e87b8;--accent:#1E27F3;--green:#3fb950;--red:#f85149;--accent-light:rgba(30,39,243,0.12);}
-  body{font-family:'Segoe UI',-apple-system,Arial,sans-serif;background:var(--bg);color:var(--text);font-size:12px;line-height:1.45;}
-  .rep-section{padding:30px 34px;page-break-before:always;break-before:page;}
-  .rep-section:first-child{page-break-before:avoid;break-before:avoid;}
-  .rep-head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid var(--accent);padding-bottom:12px;margin-bottom:18px;}
-  .rep-ticker{font-size:30px;font-weight:800;color:var(--accent);letter-spacing:.03em;line-height:1;}
-  .rep-name{font-size:15px;font-weight:600;color:var(--text);margin-top:5px;}
-  .rep-sector{font-size:11px;color:var(--text3);margin-top:2px;}
-  .rep-head-r{font-size:10px;color:var(--text3);text-align:right;line-height:1.6;}
-  .rep-sec-name{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#fff;background:var(--accent);padding:6px 14px;border-radius:5px;margin-bottom:18px;}
-  .rep-sec-body table{width:100%;border-collapse:collapse;margin:6px 0 16px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
-  .rep-sec-body th{background:var(--bg3);color:var(--text3);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:8px 12px;text-align:right;border-bottom:1px solid var(--border2);white-space:nowrap;}
-  .rep-sec-body th:first-child{text-align:left;}
-  .rep-sec-body td{padding:7px 12px;font-size:11px;border-bottom:1px solid var(--border);color:var(--text2);text-align:right;white-space:nowrap;}
-  .rep-sec-body td:first-child{text-align:left;color:var(--text);font-weight:600;}
-  .rep-sec-body tbody tr:nth-child(even) td{background:rgba(255,255,255,0.015);}
-  .rep-sec-body tbody tr:last-child td{border-bottom:none;}
-  .rep-sec-body img{max-width:100%;height:auto;}
-  /* No cortar filas, tablas ni gráficos a la mitad */
-  .rep-sec-body tr,.rep-sec-body img,.rep-sec-body thead{break-inside:avoid;page-break-inside:avoid;}
-  .rep-sec-body thead{display:table-header-group;}
-  .rep-sec-name{break-after:avoid;page-break-after:avoid;}
-  @page{margin:0;size:A4;}
-  @media print{
-    body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-    .rep-section{padding:22px 26px;}
-  }
-</style></head><body>
-${sections}
-<script>window.onload=function(){setTimeout(function(){window.focus();window.print();},350);};<\/script>
-</body></html>`;
-
-        // Restaurar vista activa antes de abrir la ventana
-        if(_restoreTab){const m=_restoreTab.match(/ficha-tab-btn-.+-(\w+)$/);if(m)_fichaShowTab(ticker,m[1]);}
-
-        const w=window.open('','_blank');
-        if(!w){ alert('Habilitá las ventanas emergentes para generar el reporte.'); finish(); return; }
-        w.document.open(); w.document.write(doc); w.document.close();
-        finish();
-      }catch(err){
-        alert('No se pudo generar el reporte: '+err.message);
-        finish();
+    for(const id of checked){
+      T.title(labelOf(id));
+      if(id==='financials'){
+        if(!ecoHist.length){ T.note('Sin datos de Economatica para esta empresa.'); }
+        else { const k=kpiRow(); if(k)T.kpis(k); ecoGroups(FIN_GROUPS); }
       }
-    }, checked.includes('precios')?1500:600);
-  };
+      else if(id==='ratios'){
+        if(!ecoHist.length){ T.note('Sin datos de Economatica para esta empresa.'); }
+        else { const k=kpiRow(); if(k)T.kpis(k); ecoGroups(RAT_GROUPS); }
+      }
+      else if(id==='scoring'){
+        const hist=window.EXCEL_DATA.filter(r=>(r['Ticker']||'').trim().toUpperCase()===ticker)
+          .sort((a,b)=>parseDate(b['Fecha Balance'])-parseDate(a['Fecha Balance']));
+        if(!hist.length){ T.note('Sin scoring de liquidez cargado.'); }
+        else{
+          const head=['Fecha','Score',...RATIOS.map(r=>r.short),'Origen'];
+          const body=hist.map(r=>[(r['Fecha Balance']||'').substring(0,10), r['Score']!=null?String(r['Score']):'—',
+            ...RATIOS.map(rt=>{const v=r[rt.key];return v!=null&&v!==''?(isNaN(+v)?v:(+v).toFixed(2)):'—';}), r['Origen']||r['origen']||'—']);
+          T.table(head,body);
+        }
+      }
+      else if(id==='deudas'){
+        const cuit=(window.EXCEL_CUIT_MAP||{})[ticker];
+        if(!cuit){ T.note('CUIT no cargado para esta empresa.'); }
+        else{
+          try{
+            const json=await _bcraFetch(cuit);
+            const deudas=json.deudas?.results||json.deudas||null;
+            const hist=json.hist?.results||json.hist||null;
+            const cheques=json.cheques?.results||json.cheques||null;
+            const risk=window._deuCalcRisk?window._deuCalcRisk(deudas):{nivel:'—',color:'#7e87b8'};
+            const ents=(deudas?.periodos?.[0]?.entidades||[]).filter(e=>e.situacion>0).sort((a,b)=>b.situacion-a.situacion);
+            const montoTotal=ents.reduce((s,e)=>s+(e.monto||0),0)*1000;
+            const periodo=deudas?.periodos?.[0]?.periodo||'';
+            const periodLabel=periodo?`${periodo.slice(0,4)}/${periodo.slice(4,6)}`:'—';
+            // Resumen de cheques
+            let chSummary={has:false,total:0,sinReg:0,reg:0};
+            if(cheques?.causales?.length){
+              const all=[]; cheques.causales.forEach(ca=>ca.entidades.forEach(en=>en.detalle.forEach(d=>all.push({...d}))));
+              chSummary={has:true,total:all.length,sinReg:all.filter(c=>!c.fechaPago).length,reg:all.filter(c=>c.fechaPago).length};
+            }
+            // Bloques arriba: riesgo + cheques resumen
+            T.risk({cuit,periodLabel,nEnt:ents.length,montoTotal,nivel:risk.nivel});
+            T.cheq(chSummary);
+            // Tabla situación
+            const SIT={1:'Normal',2:'Riesgo Bajo',3:'Con Problemas',4:'Alto Riesgo',5:'Irrecuperable'};
+            if(ents.length){
+              T.sub('Situación actual');
+              T.table(['Entidad','Situación','Monto','Atraso'],
+                ents.map(e=>[e.entidad,`${e.situacion} — ${SIT[e.situacion]||'—'}`,`$${Math.round((e.monto||0)/1000).toLocaleString('es-AR')}M`,(e.diasAtrasoPago||0)>0?e.diasAtrasoPago+'d':'—']));
+            }
+            // Gráfico exposición + heatmap (en hoja nueva si hay muchas entidades)
+            if(ents.length>14) T.pageNew();
+            const chartCv=document.querySelector(`#ficha-tab-content-${ticker}-deudas canvas`);
+            const chartImg=canvasToImg(chartCv);
+            if(chartImg) T.image(chartImg,'Exposición crediticia por banco');
+            // Heatmap: buscar el nodo de la tabla "Historial 24 Meses"
+            const deudasCon=document.getElementById(`ficha-tab-content-${ticker}-deudas`);
+            let heatNode=null;
+            if(deudasCon){ deudasCon.querySelectorAll('div').forEach(d=>{ if(!heatNode && /Historial 24/i.test(d.textContent||'') && d.querySelector('table')) heatNode=d; }); }
+            const heatImg=heatNode?await domToImg(heatNode):null;
+            if(heatImg) T.image(heatImg,'Historial 24 meses');
+            // Detalle de cheques en hoja aparte
+            if(chSummary.has){
+              const all=[]; cheques.causales.forEach(ca=>ca.entidades.forEach(en=>en.detalle.forEach(d=>all.push({...d,causal:ca.causal,entidad:en.entidad}))));
+              all.sort((a,b)=>(a.fechaPago?1:0)-(b.fechaPago?1:0));
+              const fmtM=v=>{if(!v&&v!==0)return'—';const n=parseFloat(String(v).replace(/\./g,'').replace(',','.'));if(isNaN(n))return v;if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';if(n>=1e6)return'$'+(n/1e6).toFixed(1)+'M';return'$'+Math.round(n).toLocaleString('es-AR');};
+              T.pageNew(); T.sub('Cheques rechazados — detalle');
+              T.table(['Causal','Banco','N° Cheque','Monto','F. Rechazo','Estado'],
+                all.map(c=>[c.causal||'—',c.entidad||'—',c.nroCheque||'—',fmtM(c.monto),c.fechaRechazo||'—',c.fechaPago?`Regularizado ${c.fechaPago}`:'Sin regularizar']));
+            }
+          }catch(e){ T.note('No se pudo consultar BCRA: '+e.message); }
+        }
+      }
+      else if(id==='mav'){
+        const mavTbl=document.querySelector(`#ficha-tab-content-${ticker}-mav table`);
+        if(mavTbl){
+          const head=Array.from(mavTbl.querySelectorAll('thead th')).map(th=>th.textContent.trim());
+          const body=Array.from(mavTbl.querySelectorAll('tbody tr')).map(tr=>Array.from(tr.querySelectorAll('td')).map(td=>td.textContent.trim()));
+          if(head.length&&body.length) T.table(head,body); else T.note('Sin instrumentos MAV cargados.');
+        } else T.note('Sin archivo CENDEU cargado para MAV.');
+      }
+      else if(id==='precios'){
+        const cvs=document.querySelectorAll(`#ficha-tab-content-${ticker}-precios canvas`);
+        if(cvs[0]) T.image(canvasToImg(cvs[0]),'Precio de cierre');
+        if(cvs[1]) T.image(canvasToImg(cvs[1]),'Volumen diario');
+        const ptbl=document.querySelector(`#ficha-tab-content-${ticker}-precios table`);
+        if(ptbl){
+          const head=Array.from(ptbl.querySelectorAll('thead th')).map(th=>th.textContent.replace(/[↕↑↓]/g,'').trim());
+          const rowsAll=Array.from(ptbl.querySelectorAll('tbody tr'));
+          // Las que entren en lo que resta de hoja tras los 2 gráficos: ~18 filas
+          const N=18;
+          const body=rowsAll.slice(0,N).map(tr=>Array.from(tr.querySelectorAll('td')).map(td=>td.textContent.trim()));
+          if(head.length&&body.length){ T.sub(`Datos históricos (últimas ${body.length} ruedas)`); T.table(head,body); }
+        }
+        if(!cvs.length && !ptbl) T.note('Sin histórico de precios disponible.');
+      }
+    }
 
+    if(_restoreTab){const m=_restoreTab.match(/ficha-tab-btn-.+-(\w+)$/);if(m)_fichaShowTab(ticker,m[1]);}
+
+    // ── Render PDF ──
+    const { jsPDF }=window.jspdf;
+    const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
+    const PW=pdf.internal.pageSize.getWidth(), PH=pdf.internal.pageSize.getHeight();
+    const M=36, usableW=PW-M*2;
+    const name=_currentExcelEmpresa&&_currentExcelEmpresa!==ticker?_currentExcelEmpresa:'';
+    const sector=(_currentExcelSector||'').replace(/_+/g,' ');
+    const date=new Date().toLocaleDateString('es-AR',{year:'numeric',month:'long',day:'numeric'});
+    function pageBg(){ pdf.setFillColor(...RGB.bg); pdf.rect(0,0,PW,PH,'F'); }
+    function drawHeader(){
+      let yy=M;
+      pdf.setFont('helvetica','bold'); pdf.setTextColor(...RGB.accent); pdf.setFontSize(24); pdf.text(ticker,M,yy+16);
+      let hy=yy+32;
+      if(name){ pdf.setFontSize(12); pdf.setTextColor(...RGB.text); pdf.text(name,M,hy); hy+=14; }
+      if(sector){ pdf.setFont('helvetica','normal'); pdf.setFontSize(8.5); pdf.setTextColor(...RGB.text3); pdf.text(sector,M,hy); hy+=11; }
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(7.5); pdf.setTextColor(...RGB.text3);
+      pdf.text(`Reporte generado ${date}`,PW-M,yy+9,{align:'right'}); pdf.text('Bull Market Brokers',PW-M,yy+19,{align:'right'});
+      pdf.setDrawColor(...RGB.accent); pdf.setLineWidth(2); pdf.line(M,hy+3,PW-M,hy+3);
+      return hy+18;
+    }
+    function miniHeader(){
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(10); pdf.setTextColor(...RGB.accent); pdf.text(ticker,M,M+4);
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(7.5); pdf.setTextColor(...RGB.text3);
+      if(name) pdf.text(name,M+pdf.getTextWidth(ticker)+10,M+4);
+      pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.5); pdf.line(M,M+10,PW-M,M+10);
+    }
+    function newPage(){ pdf.addPage(); pageBg(); miniHeader(); return M+22; }
+
+    pageBg();
+    let y=drawHeader();
+    let firstSection=true;
+
+    for(const it of items){
+      if(it.type==='title'){
+        if(!firstSection){ pdf.addPage(); pageBg(); y=drawHeader(); }
+        firstSection=false;
+        pdf.setFillColor(...RGB.card2); pdf.roundedRect(M,y,usableW,24,3,3,'F');
+        pdf.setFont('helvetica','bold'); pdf.setFontSize(11); pdf.setTextColor(...RGB.accent);
+        pdf.text(it.text.toUpperCase(),M+10,y+16); y+=34;
+      }
+      else if(it.type==='pageNew'){ y=newPage(); }
+      else if(it.type==='sub'){
+        if(y+30>PH-M){ y=newPage(); }
+        pdf.setFont('helvetica','bold'); pdf.setFontSize(9); pdf.setTextColor(...RGB.text3);
+        pdf.text(it.text.toUpperCase(),M,y+10); y+=18;
+      }
+      else if(it.type==='note'){
+        if(y+24>PH-M){ y=newPage(); }
+        pdf.setFont('helvetica','normal'); pdf.setFontSize(9); pdf.setTextColor(...RGB.text3);
+        pdf.text(it.text,M,y+10); y+=22;
+      }
+      else if(it.type==='kpis'){
+        const data=it.data, n=data.length, gap=8, cardW=(usableW-gap*(n-1))/n, cardH=42;
+        if(y+cardH+10>PH-M){ y=newPage(); }
+        data.forEach((kp,i)=>{ const x=M+i*(cardW+gap);
+          pdf.setFillColor(...RGB.card2); pdf.roundedRect(x,y,cardW,cardH,4,4,'F');
+          pdf.setFont('helvetica','normal'); pdf.setFontSize(6.5); pdf.setTextColor(...RGB.text3);
+          pdf.text(kp.label.toUpperCase(),x+8,y+14,{maxWidth:cardW-16});
+          pdf.setFont('helvetica','bold'); pdf.setFontSize(13); pdf.setTextColor(...RGB.text);
+          pdf.text(String(kp.val),x+8,y+33); });
+        y+=cardH+14;
+      }
+      else if(it.type==='risk'){
+        const d=it.data, boxH=54;
+        if(y+boxH+10>PH-M){ y=newPage(); }
+        pdf.setFillColor(...RGB.card2); pdf.roundedRect(M,y,usableW,boxH,5,5,'F');
+        pdf.setFont('helvetica','normal'); pdf.setFontSize(8); pdf.setTextColor(...RGB.text3);
+        pdf.text(`CUIT ${d.cuit}  ·  Período ${d.periodLabel}`,M+14,y+18);
+        pdf.setFont('helvetica','bold'); pdf.setFontSize(11); pdf.setTextColor(...RGB.text);
+        const totalTxt=window._deuFmtPesos?window._deuFmtPesos(d.montoTotal):('$'+(d.montoTotal/1e6).toFixed(1)+'M');
+        pdf.text(`${d.nEnt} entidades activas  ·  Deuda total: ${totalTxt}`,M+14,y+38);
+        // Badge nivel de riesgo a la derecha
+        const isNormal=/normal/i.test(d.nivel); const rc=isNormal?RGB.green:RGB.amber;
+        const bw=120,bh=34,bx=PW-M-bw-12,by=y+(boxH-bh)/2;
+        pdf.setFillColor(rc[0],rc[1],rc[2]); pdf.setDrawColor(rc[0],rc[1],rc[2]);
+        pdf.roundedRect(bx,by,bw,bh,4,4,'S');
+        pdf.setFont('helvetica','normal'); pdf.setFontSize(6.5); pdf.setTextColor(...RGB.text3);
+        pdf.text('NIVEL DE RIESGO',bx+bw/2,by+12,{align:'center'});
+        pdf.setFont('helvetica','bold'); pdf.setFontSize(12); pdf.setTextColor(rc[0],rc[1],rc[2]);
+        pdf.text(String(d.nivel).toUpperCase(),bx+bw/2,by+27,{align:'center'});
+        y+=boxH+14;
+      }
+      else if(it.type==='cheq'){
+        const d=it.data, boxH=40;
+        if(y+boxH+10>PH-M){ y=newPage(); }
+        if(!d.has){
+          pdf.setFillColor(...RGB.card2); pdf.roundedRect(M,y,usableW,boxH,5,5,'F');
+          pdf.setFont('helvetica','bold'); pdf.setFontSize(10); pdf.setTextColor(...RGB.green);
+          pdf.text('✓',M+14,y+25);
+          pdf.setTextColor(...RGB.text); pdf.text('Sin cheques rechazados',M+30,y+22);
+          pdf.setFont('helvetica','normal'); pdf.setFontSize(8); pdf.setTextColor(...RGB.text3);
+          pdf.text('No se encontraron cheques vinculados a este CUIT',M+30,y+33);
+        }else{
+          const rc=d.sinReg>0?RGB.red:RGB.amber;
+          pdf.setFillColor(...RGB.card2); pdf.roundedRect(M,y,usableW,boxH,5,5,'F');
+          pdf.setFont('helvetica','bold'); pdf.setFontSize(10); pdf.setTextColor(rc[0],rc[1],rc[2]);
+          pdf.text('⚠',M+14,y+25);
+          pdf.setTextColor(...RGB.text);
+          pdf.text(`${d.total} cheques rechazados`,M+30,y+22);
+          pdf.setFont('helvetica','normal'); pdf.setFontSize(8); pdf.setTextColor(...RGB.text3);
+          pdf.text(`${d.sinReg} sin regularizar  ·  ${d.reg} regularizados  ·  detalle en hoja aparte`,M+30,y+33);
+        }
+        y+=boxH+14;
+      }
+      else if(it.type==='table'){
+        const rowH=15, headH=16;
+        const drawTable=(rows,sy)=>{ pdf.autoTable({ startY:sy, margin:{left:M,right:M},
+          head:[it.head], body:rows, theme:'grid',
+          styles:{font:'helvetica',fontSize:8,cellPadding:4,textColor:RGB.text2,lineColor:RGB.border,lineWidth:0.4,fillColor:RGB.card},
+          headStyles:{fillColor:RGB.head,textColor:RGB.text3,fontStyle:'bold',fontSize:7.5,halign:'right'},
+          bodyStyles:{fillColor:RGB.card}, alternateRowStyles:{fillColor:[20,25,37]},
+          columnStyles:{0:{halign:'left',textColor:RGB.text,fontStyle:'bold'}},
+          didParseCell:d=>{ if(d.column.index>0) d.cell.styles.halign='right'; },
+          tableLineColor:RGB.border, tableLineWidth:0.4, pageBreak:'avoid' });
+          return pdf.lastAutoTable.finalY; };
+        let rows=it.body.slice();
+        while(rows.length){
+          const avail=(PH-M)-y; let n=Math.max(1,Math.floor((avail-headH)/rowH));
+          if(n>=rows.length){ y=drawTable(rows,y)+14; rows=[]; }
+          else{ drawTable(rows.slice(0,n),y); rows=rows.slice(n); y=newPage(); }
+        }
+      }
+      else if(it.type==='image'){
+        const capH=it.cap?14:0; let imgW=usableW, imgH=usableW*it.img.ratio;
+        const maxH=PH-M-(M+22)-capH-6; if(imgH>maxH){ imgH=maxH; imgW=imgH/it.img.ratio; }
+        if(y+imgH+capH+6>PH-M){ y=newPage(); }
+        if(it.cap){ pdf.setFont('helvetica','bold'); pdf.setFontSize(8); pdf.setTextColor(...RGB.text3); pdf.text(it.cap.toUpperCase(),M,y+8); y+=14; }
+        pdf.addImage(it.img.data,'PNG',M,y,imgW,imgH); y+=imgH+14;
+      }
+    }
+
+    try{ pdf.save(`${ticker}_reporte_${new Date().toISOString().slice(0,10)}.pdf`); }
+    catch(err){ alert('No se pudo generar el PDF: '+err.message); }
+    finally{ if(genBtn){genBtn.textContent='Generar →';genBtn.disabled=false;} earCloseReportDialog(); }
+  };
   window._bcraRefreshInline=function(ticker,cuit,contentId,loadId){
     const loadEl=document.getElementById(loadId);
     const conEl=document.getElementById(contentId);
