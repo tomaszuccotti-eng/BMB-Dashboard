@@ -18680,62 +18680,99 @@ function renderEquity(){
     const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
     const PW=pdf.internal.pageSize.getWidth(), PH=pdf.internal.pageSize.getHeight();
     const M=36, usableW=PW-M*2;
-    let y=M;
     const name=_currentExcelEmpresa&&_currentExcelEmpresa!==ticker?_currentExcelEmpresa:'';
     const sector=(_currentExcelSector||'').replace(/_+/g,' ');
     const date=new Date().toLocaleDateString('es-AR',{year:'numeric',month:'long',day:'numeric'});
 
     function pageBg(){ pdf.setFillColor(...RGB.bg); pdf.rect(0,0,PW,PH,'F'); }
-    function ensure(h){ if(y+h>PH-M){ pdf.addPage(); pageBg(); y=M; } }
+
+    // Header completo de empresa (al inicio de cada sección). Devuelve Y final.
+    function drawHeader(){
+      let yy=M;
+      pdf.setFont('helvetica','bold'); pdf.setTextColor(...RGB.accent); pdf.setFontSize(24);
+      pdf.text(ticker, M, yy+16);
+      let hy=yy+32;
+      if(name){ pdf.setFontSize(12); pdf.setTextColor(...RGB.text); pdf.text(name, M, hy); hy+=14; }
+      if(sector){ pdf.setFont('helvetica','normal'); pdf.setFontSize(8.5); pdf.setTextColor(...RGB.text3); pdf.text(sector, M, hy); hy+=11; }
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(7.5); pdf.setTextColor(...RGB.text3);
+      pdf.text(`Reporte generado ${date}`, PW-M, yy+9, {align:'right'});
+      pdf.text('Bull Market Brokers', PW-M, yy+19, {align:'right'});
+      pdf.setDrawColor(...RGB.accent); pdf.setLineWidth(2); pdf.line(M, hy+3, PW-M, hy+3);
+      return hy+18;
+    }
+    // Header compacto (en páginas de continuación creadas por autotable)
+    function drawMiniHeader(){
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(10); pdf.setTextColor(...RGB.accent);
+      pdf.text(ticker, M, M+4);
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(7.5); pdf.setTextColor(...RGB.text3);
+      if(name) pdf.text(name, M+pdf.getTextWidth(ticker)+10, M+4);
+      pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.5); pdf.line(M, M+10, PW-M, M+10);
+    }
 
     pageBg();
-    // Header
-    pdf.setFont('helvetica','bold'); pdf.setTextColor(...RGB.accent); pdf.setFontSize(26);
-    pdf.text(ticker, M, y+18);
-    let hy=y+34;
-    if(name){ pdf.setFontSize(13); pdf.setTextColor(...RGB.text); pdf.text(name, M, hy); hy+=15; }
-    if(sector){ pdf.setFont('helvetica','normal'); pdf.setFontSize(9); pdf.setTextColor(...RGB.text3); pdf.text(sector, M, hy); hy+=12; }
-    pdf.setFontSize(8); pdf.setTextColor(...RGB.text3);
-    pdf.text(`Reporte generado ${date}`, PW-M, y+10, {align:'right'});
-    pdf.text('Bull Market Brokers', PW-M, y+21, {align:'right'});
-    pdf.setDrawColor(...RGB.accent); pdf.setLineWidth(2); pdf.line(M, hy+4, PW-M, hy+4);
-    y=hy+20;
+    let y=drawHeader();
+    let curSection=null;
+    let firstPage=true;
 
     for(const it of items){
       if(it.type==='title'){
-        ensure(34);
+        // Nueva sección → página nueva con header repetido (salvo la primera)
+        if(!firstPage){ pdf.addPage(); pageBg(); y=drawHeader(); }
+        firstPage=false;
+        curSection=it.text;
         pdf.setFillColor(...RGB.card2); pdf.roundedRect(M, y, usableW, 24, 3,3,'F');
         pdf.setFont('helvetica','bold'); pdf.setFontSize(11); pdf.setTextColor(...RGB.accent);
         pdf.text(it.text.toUpperCase(), M+10, y+16);
         y+=34;
       }
       else if(it.type==='sub'){
-        ensure(22);
+        if(y+30>PH-M){ pdf.addPage(); pageBg(); drawMiniHeader(); y=M+22; }
         pdf.setFont('helvetica','bold'); pdf.setFontSize(9); pdf.setTextColor(...RGB.text3);
         pdf.text(it.text.toUpperCase(), M, y+10); y+=18;
       }
       else if(it.type==='note'){
-        ensure(20);
+        if(y+24>PH-M){ pdf.addPage(); pageBg(); drawMiniHeader(); y=M+22; }
         pdf.setFont('helvetica','normal'); pdf.setFontSize(9); pdf.setTextColor(...RGB.text3);
         pdf.text(it.text, M, y+10); y+=22;
       }
       else if(it.type==='table'){
-        pdf.autoTable({
-          startY:y, margin:{left:M,right:M},
-          head:[it.head], body:it.body,
-          theme:'grid', styles:{font:'helvetica',fontSize:8,cellPadding:4,textColor:RGB.text2,lineColor:RGB.border,lineWidth:0.4,fillColor:RGB.card},
-          headStyles:{fillColor:RGB.head,textColor:RGB.text3,fontStyle:'bold',fontSize:7.5,halign:'right'},
-          bodyStyles:{fillColor:RGB.card},
-          alternateRowStyles:{fillColor:[20,25,37]},
-          columnStyles:{0:{halign:'left',textColor:RGB.text,fontStyle:'bold'}},
-          didParseCell:(d)=>{ if(d.column.index>0) d.cell.styles.halign='right'; },
-          tableLineColor:RGB.border, tableLineWidth:0.4,
-        });
-        y=pdf.lastAutoTable.finalY+14;
+        // Estimar filas por página y partir manualmente para controlar el fondo
+        const rowH=15;                       // alto aprox por fila (fontSize 8 + padding)
+        const headH=16;
+        const drawTable=(bodyRows, startY)=>{
+          pdf.autoTable({
+            startY:startY, margin:{left:M,right:M},
+            head:[it.head], body:bodyRows,
+            theme:'grid', styles:{font:'helvetica',fontSize:8,cellPadding:4,textColor:RGB.text2,lineColor:RGB.border,lineWidth:0.4,fillColor:RGB.card},
+            headStyles:{fillColor:RGB.head,textColor:RGB.text3,fontStyle:'bold',fontSize:7.5,halign:'right'},
+            bodyStyles:{fillColor:RGB.card},
+            alternateRowStyles:{fillColor:[20,25,37]},
+            columnStyles:{0:{halign:'left',textColor:RGB.text,fontStyle:'bold'}},
+            didParseCell:(d)=>{ if(d.column.index>0) d.cell.styles.halign='right'; },
+            tableLineColor:RGB.border, tableLineWidth:0.4,
+            pageBreak:'avoid',  // no auto-paginar; controlamos nosotros
+          });
+          return pdf.lastAutoTable.finalY;
+        };
+        let rows=it.body.slice();
+        while(rows.length){
+          const avail=(PH-M)-y;
+          let n=Math.max(1, Math.floor((avail-headH)/rowH));
+          if(n>=rows.length){ y=drawTable(rows, y)+14; rows=[]; }
+          else{
+            const chunk=rows.slice(0,n);
+            drawTable(chunk, y);
+            rows=rows.slice(n);
+            pdf.addPage(); pageBg(); drawMiniHeader(); y=M+22;
+          }
+        }
       }
       else if(it.type==='image'){
-        const imgW=usableW, imgH=Math.min(usableW*it.img.ratio, PH-M*2);
-        ensure(imgH+ (it.cap?16:0)+6);
+        const capH=it.cap?14:0;
+        let imgW=usableW, imgH=usableW*it.img.ratio;
+        const maxH=PH-M-(M+22)-capH-6;
+        if(imgH>maxH){ imgH=maxH; imgW=imgH/it.img.ratio; }
+        if(y+imgH+capH+6>PH-M){ pdf.addPage(); pageBg(); drawMiniHeader(); y=M+22; }
         if(it.cap){ pdf.setFont('helvetica','bold'); pdf.setFontSize(8); pdf.setTextColor(...RGB.text3); pdf.text(it.cap.toUpperCase(), M, y+8); y+=14; }
         pdf.addImage(it.img.data,'PNG',M,y,imgW,imgH);
         y+=imgH+14;
