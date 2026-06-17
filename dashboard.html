@@ -18564,15 +18564,20 @@ function renderEquity(){
     }
     await new Promise(r=>setTimeout(r, checked.includes('precios')?1600:700));
 
-    const RGB={bg:[11,14,23],card:[17,21,31],card2:[22,27,40],head:[26,31,48],border:[34,42,61],text:[232,234,246],text2:[195,201,230],text3:[126,135,184],accent:[30,39,243],green:[63,185,80],red:[248,81,73],amber:[251,191,36]};
+    // Paleta según el tema activo del dashboard
+    const _dark = (typeof _isDark!=='undefined')? _isDark : true;
+    const RGB = _dark
+      ? {bg:[11,14,23],card:[17,21,31],card2:[22,27,40],head:[26,31,48],border:[34,42,61],text:[232,234,246],text2:[195,201,230],text3:[126,135,184],accent:[30,39,243],green:[63,185,80],red:[248,81,73],amber:[251,191,36],alt:[20,25,37]}
+      : {bg:[255,255,255],card:[247,248,252],card2:[238,240,247],head:[228,231,242],border:[210,214,235],text:[10,12,26],text2:[58,63,92],text3:[138,144,176],accent:[30,39,243],green:[13,158,110],red:[224,49,49],amber:[217,119,6],alt:[241,243,250]};
     const ecoHist=[...(window.ECO_DATA[ticker]||[])].sort((a,b)=>parseDate(b.fechaBal)-parseDate(a.fechaBal));
     const cols=ecoHist.map(p=>p.fechaBal.substring(0,10));
 
     // Rasterizar canvas existente → dataURL
+    const imgBg = _dark ? '#11151f' : '#f7f8fc';
     function canvasToImg(orig){
       try{ if(!orig||!orig.width) return null;
         const off=document.createElement('canvas'); off.width=orig.width; off.height=orig.height;
-        const cx=off.getContext('2d'); cx.fillStyle='#11151f'; cx.fillRect(0,0,off.width,off.height); cx.drawImage(orig,0,0);
+        const cx=off.getContext('2d'); cx.fillStyle=imgBg; cx.fillRect(0,0,off.width,off.height); cx.drawImage(orig,0,0);
         return {data:off.toDataURL('image/png'), ratio:orig.height/orig.width};
       }catch(_){ return null; }
     }
@@ -18588,9 +18593,9 @@ function renderEquity(){
                  s.overflow='visible'; s.overflowX='visible'; s.overflowY='visible'; }
         });
         const holder=document.createElement('div');
-        holder.style.cssText='position:fixed;left:-10000px;top:0;background:#11151f;width:'+Math.max(el.scrollWidth,el.offsetWidth,700)+'px;';
+        holder.style.cssText='position:fixed;left:-10000px;top:0;background:'+imgBg+';width:'+Math.max(el.scrollWidth,el.offsetWidth,700)+'px;';
         holder.appendChild(clone); document.body.appendChild(holder);
-        const render=html2canvas(clone,{backgroundColor:'#11151f',scale:1.5,logging:false,useCORS:true,removeContainer:true,imageTimeout:3000})
+        const render=html2canvas(clone,{backgroundColor:imgBg,scale:1.5,logging:false,useCORS:true,removeContainer:true,imageTimeout:3000})
           .then(cv=>({data:cv.toDataURL('image/png'), ratio:cv.height/cv.width}));
         const timeout=new Promise(res=>setTimeout(()=>res(null),5000));
         const out=await Promise.race([render,timeout]);
@@ -18705,11 +18710,41 @@ function renderEquity(){
         }
       }
       else if(id==='mav'){
-        const mavTbl=document.querySelector(`#ficha-tab-content-${ticker}-mav table`);
-        if(mavTbl){
-          const head=Array.from(mavTbl.querySelectorAll('thead th')).map(th=>th.textContent.trim());
-          const body=Array.from(mavTbl.querySelectorAll('tbody tr')).map(tr=>Array.from(tr.querySelectorAll('td')).map(td=>td.textContent.trim()));
-          if(head.length&&body.length) T.table(head,body); else T.note('Sin instrumentos MAV cargados.');
+        const mavCon=document.getElementById(`ficha-tab-content-${ticker}-mav`);
+        const tables=mavCon?Array.from(mavCon.querySelectorAll('table')):[];
+        // Tabla de detalle = la de más columnas (8); breakdown = la de 2 columnas
+        let detTbl=null, monTbl=null, maxC=0;
+        tables.forEach(tb=>{ const c=tb.querySelectorAll('thead th').length; if(c>maxC){maxC=c;detTbl=tb;} if(c===2) monTbl=tb; });
+        if(detTbl){
+          const head=Array.from(detTbl.querySelectorAll('thead th')).map(th=>th.textContent.trim());
+          const body=Array.from(detTbl.querySelectorAll('tbody tr')).map(tr=>Array.from(tr.querySelectorAll('td')).map(td=>td.textContent.trim()));
+          // Fila TOTAL (tfoot)
+          const foot=detTbl.querySelector('tfoot tr');
+          if(foot){
+            const cells=Array.from(foot.querySelectorAll('td'));
+            // colspan agrupa; tomamos label + valor final
+            const lbl=cells[0]?cells[0].textContent.trim():'TOTAL EN PESOS';
+            const val=cells[cells.length-1]?cells[cells.length-1].textContent.trim():'';
+            const totalRow=head.map((_,i)=> i===0?lbl : (i===head.length-1?val:''));
+            body.push(totalRow);
+          }
+          if(head.length&&body.length){ T.sub('Detalle de instrumentos'); T.table(head,body); }
+          // Vencimientos por mes (barras → tabla Mes/Monto)
+          const venRows=mavCon?Array.from(mavCon.querySelectorAll('.mav-ven-row')):[];
+          if(venRows.length){
+            const vbody=venRows.map(r=>{
+              const mes=r.querySelector('.mav-ven-label')?.textContent.trim()||'—';
+              const val=r.querySelector('.mav-ven-val')?.textContent.trim()||'—';
+              return [mes,val];
+            });
+            T.sub('Vencimientos por mes'); T.table(['Mes','Monto'],vbody);
+          }
+          // Breakdown por moneda
+          if(monTbl){
+            const mhead=Array.from(monTbl.querySelectorAll('thead th')).map(th=>th.textContent.trim());
+            const mbody=Array.from(monTbl.querySelectorAll('tbody tr')).map(tr=>Array.from(tr.querySelectorAll('td')).map(td=>td.textContent.trim())).filter(r=>r.length===2);
+            if(mhead.length&&mbody.length){ T.sub('Breakdown por moneda'); T.table(mhead,mbody); }
+          }
         } else T.note('Sin archivo CENDEU cargado para MAV.');
       }
       else if(id==='precios'){
@@ -18842,7 +18877,7 @@ function renderEquity(){
           head:[it.head], body:rows, theme:'grid',
           styles:{font:'helvetica',fontSize:7.5,cellPadding:2.6,textColor:RGB.text2,lineColor:RGB.border,lineWidth:0.4,fillColor:RGB.card},
           headStyles:{fillColor:RGB.head,textColor:RGB.text3,fontStyle:'bold',fontSize:7,halign:'right'},
-          bodyStyles:{fillColor:RGB.card}, alternateRowStyles:{fillColor:[20,25,37]},
+          bodyStyles:{fillColor:RGB.card}, alternateRowStyles:{fillColor:RGB.alt},
           columnStyles:{0:{halign:'left',textColor:RGB.text,fontStyle:'bold'}},
           didParseCell:d=>{ if(d.column.index>0) d.cell.styles.halign='right'; },
           tableLineColor:RGB.border, tableLineWidth:0.4, pageBreak:'avoid' });
