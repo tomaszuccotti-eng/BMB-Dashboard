@@ -11745,6 +11745,28 @@ const _eqRO = new ResizeObserver(entries => {
     </div>
   </div>
 
+  <!-- Modal: historial de scoring (paso previo al análisis completo) -->
+  <div id="scoring-popup-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:300;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+    <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:28px;width:100%;max-width:860px;max-height:88vh;overflow-y:auto;position:relative;">
+      <button onclick="closeScoringPopup()" title="Cerrar" style="position:absolute;top:14px;right:14px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:none;border-radius:6px;background:transparent;color:var(--text3);font-size:18px;line-height:1;cursor:pointer;font-family:var(--mono);" onmouseover="this.style.background='var(--bg3)';this.style.color='var(--text)'" onmouseout="this.style.background='transparent';this.style.color='var(--text3)'">✕</button>
+      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:4px;">
+        <span id="scoring-popup-ticker" style="font-size:22px;font-weight:800;font-family:var(--mono);color:var(--text2);">—</span>
+        <span id="scoring-popup-empresa" style="font-size:12px;color:var(--text3);font-family:var(--mono);">—</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border);flex-wrap:wrap;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#1E27F3;font-family:var(--mono);">Scoring de Liquidez · Histórico</div>
+        <button onclick="openExcelManual()"
+          style="padding:5px 13px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(30,39,243,0.4);border-radius:6px;background:transparent;color:#a5b4fc;font-family:var(--mono);white-space:nowrap;flex-shrink:0;">
+          + Manual
+        </button>
+      </div>
+      <div id="scoring-popup-body"></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:22px;">
+        <button onclick="scoringPopupFull()" class="bal-btn bal-btn-accent" style="white-space:nowrap;">Ver análisis completo →</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: elegir tabs del reporte -->
   <div id="ear-report-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:300;align-items:center;justify-content:center;">
     <div style="background:#0f1422;border:1px solid rgba(30,39,243,0.35);border-radius:16px;padding:28px;width:100%;max-width:460px;position:relative;">
@@ -18437,7 +18459,7 @@ function renderEquity(){
     histDiv.style.marginBottom='28px';
     const histHead=`
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);">
-        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#1E27F3;font-family:var(--mono);">🏅 Scoring de Liquidez · Histórico</div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#1E27F3;font-family:var(--mono);">Scoring de Liquidez · Histórico</div>
         <button onclick="openExcelManual()"
           style="padding:5px 13px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(30,39,243,0.4);border-radius:6px;background:transparent;color:#a5b4fc;font-family:var(--mono);white-space:nowrap;flex-shrink:0;">
           + Manual
@@ -18468,7 +18490,7 @@ function renderEquity(){
     const bodyId=`ficha-sector-body-${ticker}`;
     secDiv.innerHTML=`
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);flex-wrap:wrap;">
-        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#1E27F3;font-family:var(--mono);">📊 Scoring de Liquidez · Sectorial</div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#1E27F3;font-family:var(--mono);">Scoring de liquidez - Comparativa Sectorial</div>
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;">Sector</span>
           <select id="${selId}" onchange="_renderFichaSector('${ticker}',this.value)"
@@ -19297,7 +19319,7 @@ function renderEquity(){
         const trBg=isHl?'background:rgba(30,39,243,0.14);':'';
         const hlFirst=isHl?'box-shadow:inset 2px 0 0 var(--accent),inset 0 2px 0 var(--accent),inset 0 -2px 0 var(--accent);':'';
         const hlMid=isHl?'box-shadow:inset 0 2px 0 var(--accent),inset 0 -2px 0 var(--accent);':'';
-        return`<tr style="cursor:pointer;${trBg}" onclick="openExcelDetail('${ticker}')"
+        return`<tr style="cursor:pointer;${trBg}" onclick="openScoringPopup('${ticker}')"
           ${isHl?'':`onmouseover="this.style.background='rgba(30,39,243,0.06)'" onmouseout="this.style.background='transparent'"`}>
           <td style="${tdBase('left','color:var(--text2);font-weight:700;')}${hlFirst}">${ticker}</td>
           <td style="${tdBase('left','color:var(--text);')}${hlMid}">${r['Empresa']||'—'}</td>
@@ -19320,35 +19342,148 @@ function renderEquity(){
   // ─────────────────────────────────────────────────────────────
   let _excelSearchQuery='';
   Object.defineProperty(window,'_excelSearchQuery',{get(){return _excelSearchQuery;},set(v){_excelSearchQuery=v;}});
+  let _excelSelectedTicker='';   // empresa elegida desde el buscador (resaltada)
+  let _excelAutoIdx=-1;
 
   function renderExcel(){
     const container=document.getElementById('excel-content');if(!container)return;
     container.innerHTML='';
     const latest=getLatestByTicker(window.EXCEL_DATA);
     const searchWrap=document.createElement('div');
-    searchWrap.style.cssText='margin-bottom:20px;position:relative;max-width:380px;';
+    searchWrap.style.cssText='margin-bottom:20px;position:relative;max-width:420px;';
     searchWrap.innerHTML=`
-      <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--text3);pointer-events:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <input id="excel-search-input" type="text" placeholder="Buscar empresa o ticker..."
+      <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--text3);pointer-events:none;z-index:1;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input id="excel-search-input" type="text" placeholder="Buscar empresa o ticker..." autocomplete="off"
         value="${_excelSearchQuery}"
-        oninput="window._excelSearchQuery=this.value;renderExcel()"
-        style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:9px 14px 9px 34px;font-size:12px;color:var(--text);font-family:var(--mono);outline:none;transition:border-color .2s;"
-        onfocus="this.style.borderColor='#1E27F3'" onblur="this.style.borderColor='var(--border2)'" />
-      ${_excelSearchQuery?`<button onclick="window._excelSearchQuery='';document.getElementById('excel-search-input').value='';renderExcel()"
-        style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px 4px;">✕</button>`:''}`;
+        oninput="window._excelAutoFilter(this.value)"
+        onkeydown="window._excelAutoKey(event)"
+        onfocus="this.style.borderColor='#1E27F3';window._excelAutoFilter(this.value)"
+        onblur="this.style.borderColor='var(--border2)';setTimeout(window._excelAutoHide,150)"
+        style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:9px 34px 9px 34px;font-size:12px;color:var(--text);font-family:var(--mono);outline:none;transition:border-color .2s;box-sizing:border-box;" />
+      ${_excelSelectedTicker?`<button onclick="window._excelClearSelection()" title="Limpiar selección"
+        style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px 4px;z-index:1;">✕</button>`:''}
+      <div id="excel-autocomplete" style="display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;max-height:300px;overflow-y:auto;z-index:300;box-shadow:0 12px 40px rgba(0,0,0,0.3);"></div>`;
     container.appendChild(searchWrap);
-    const ql=(_excelSearchQuery||'').toLowerCase().trim();
-    let filtered=ql?latest.filter(r=>{const t=(r['Ticker']||'').toLowerCase();const e=(r['Empresa']||'').toLowerCase();const s=(r['sector']||r['Sector']||'').toLowerCase();return t.includes(ql)||e.includes(ql)||s.includes(ql);}):latest;
+
+    // Determinar qué sectores mostrar
+    const sel=(_excelSelectedTicker||'').trim().toUpperCase();
+    let rowsToShow=latest, hlTicker='';
+    if(sel){
+      const selRow=latest.find(r=>(r['Ticker']||'').trim().toUpperCase()===sel);
+      const selSector=selRow?((selRow['sector']||selRow['Sector']||'Sin sector').trim()):'';
+      if(selRow){
+        hlTicker=sel;
+        rowsToShow=latest.filter(r=>((r['sector']||r['Sector']||'Sin sector').trim())===selSector);
+      }
+    }
     const sectors={};
-    filtered.forEach(r=>{const sec=(r['sector']||r['Sector']||'Sin sector').trim();if(!sectors[sec])sectors[sec]=[];sectors[sec].push(r);});
+    rowsToShow.forEach(r=>{const sec=(r['sector']||r['Sector']||'Sin sector').trim();if(!sectors[sec])sectors[sec]=[];sectors[sec].push(r);});
     const sectorNames=Object.keys(sectors).sort();
     if(!sectorNames.length){
       const msg=document.createElement('div');msg.style.cssText='color:var(--text3);font-family:var(--mono);font-size:12px;text-align:center;padding:40px;';
-      msg.textContent=ql?`Sin resultados para "${ql}"` : 'Sin datos disponibles.';container.appendChild(msg);return;
+      msg.textContent='Sin datos disponibles.';container.appendChild(msg);return;
     }
-    if(ql){const badge=document.createElement('div');badge.style.cssText='font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:14px;';badge.textContent=`${filtered.length} empresa${filtered.length!==1?'s':''} encontrada${filtered.length!==1?'s':''}`;container.appendChild(badge);}
-    sectorNames.forEach((sec,si)=>{const sectorId='sector-'+si;container.appendChild(buildSectorCard(sec,sectors[sec],sectorId));});
+    sectorNames.forEach((sec,si)=>{const sectorId='sector-'+si;container.appendChild(buildSectorCard(sec,sectors[sec],sectorId,hlTicker));});
   }
+
+  // — Autocomplete del buscador sectorial —
+  window._excelAutoFilter=function(q){
+    _excelSearchQuery=q;
+    const box=document.getElementById('excel-autocomplete');if(!box)return;
+    const ql=(q||'').toLowerCase().trim();
+    if(!ql){box.style.display='none';return;}
+    const latest=getLatestByTicker(window.EXCEL_DATA);
+    const matches=latest.filter(r=>{
+      const t=(r['Ticker']||'').toLowerCase();const e=(r['Empresa']||'').toLowerCase();
+      return t.includes(ql)||e.includes(ql);
+    }).sort((a,b)=>(a['Ticker']||'').localeCompare(b['Ticker']||'')).slice(0,14);
+    if(!matches.length){box.innerHTML=`<div style="padding:12px 14px;color:var(--text3);font-family:var(--mono);font-size:11px;">Sin resultados</div>`;box.style.display='block';return;}
+    _excelAutoIdx=-1;
+    box.innerHTML=matches.map((r,i)=>{
+      const t=(r['Ticker']||'').trim().toUpperCase();
+      const sc=parseFloat(r['Score']);const scDisp=!isNaN(sc)?sc.toFixed(1):'—';
+      const scCol=!isNaN(sc)?(sc>=7?'#3fb950':sc>=4?'#d97706':'#f85149'):'var(--text3)';
+      const sec=(r['sector']||r['Sector']||'').trim();
+      return`<div data-ticker="${t}" data-idx="${i}"
+        onmousedown="window._excelSelectFromAuto('${t}')"
+        style="padding:10px 14px;cursor:pointer;font-family:var(--mono);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;"
+        onmouseover="this.style.background='var(--accent-light)';" onmouseout="this.style.background=''">
+        <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+          <span style="font-size:13px;font-weight:700;color:var(--text2);">${t}</span>
+          <span style="font-size:12px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r['Empresa']||''}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <span style="font-size:10px;color:var(--text3);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${sec.substring(0,36)}</span>
+          <span style="font-size:12px;font-weight:700;color:${scCol};">${scDisp}</span>
+        </div>
+      </div>`;
+    }).join('');
+    box.style.display='block';
+  };
+  window._excelAutoHide=function(){const box=document.getElementById('excel-autocomplete');if(box)box.style.display='none';};
+  window._excelAutoKey=function(e){
+    const box=document.getElementById('excel-autocomplete');
+    const items=box?box.querySelectorAll('[data-ticker]'):[];
+    if(e.key==='ArrowDown'){e.preventDefault();_excelAutoIdx=Math.min(_excelAutoIdx+1,items.length-1);items.forEach((it,i)=>it.style.background=i===_excelAutoIdx?'var(--accent-light)':'');}
+    else if(e.key==='ArrowUp'){e.preventDefault();_excelAutoIdx=Math.max(_excelAutoIdx-1,0);items.forEach((it,i)=>it.style.background=i===_excelAutoIdx?'var(--accent-light)':'');}
+    else if(e.key==='Enter'){
+      e.preventDefault();
+      if(_excelAutoIdx>=0&&items[_excelAutoIdx])window._excelSelectFromAuto(items[_excelAutoIdx].dataset.ticker);
+      else if(items.length===1)window._excelSelectFromAuto(items[0].dataset.ticker);
+    } else if(e.key==='Escape'){window._excelAutoHide();}
+  };
+  window._excelSelectFromAuto=function(ticker){
+    ticker=(ticker||'').trim().toUpperCase();
+    _excelSelectedTicker=ticker;
+    const row=getLatestByTicker(window.EXCEL_DATA).find(r=>(r['Ticker']||'').trim().toUpperCase()===ticker);
+    _excelSearchQuery=row?`${ticker} · ${row['Empresa']||''}`.trim():ticker;
+    window._excelAutoHide();
+    renderExcel();
+  };
+  window._excelClearSelection=function(){
+    _excelSelectedTicker='';_excelSearchQuery='';
+    renderExcel();
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // POPUP HISTORIAL SCORING — paso previo al análisis completo
+  // ─────────────────────────────────────────────────────────────
+  window.openScoringPopup=function(ticker){
+    ticker=(ticker||'').trim().toUpperCase();
+    const hist=window.EXCEL_DATA.filter(r=>(r['Ticker']||'').trim().toUpperCase()===ticker)
+      .sort((a,b)=>parseDate(b['Fecha Balance'])-parseDate(a['Fecha Balance']));
+    const latestScore=hist[0]||null;
+    // Setear estado para que la carga manual apunte a esta empresa
+    _currentExcelTicker=ticker;
+    _currentExcelEmpresa=latestScore?.['Empresa']||ticker;
+    _currentExcelSector=latestScore?.['sector']||latestScore?.['Sector']||'';
+    document.getElementById('scoring-popup-ticker').textContent=ticker;
+    document.getElementById('scoring-popup-empresa').textContent=
+      (_currentExcelEmpresa&&_currentExcelEmpresa!==ticker)?_currentExcelEmpresa:'';
+    const body=document.getElementById('scoring-popup-body');
+    if(hist.length){
+      body.innerHTML=`<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;">${_buildScoringHistTable(hist)}</div>`;
+    } else {
+      body.innerHTML=`<div style="padding:24px;color:var(--text3);font-family:var(--mono);font-size:11px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;">Sin scoring de liquidez cargado para esta empresa.</div>`;
+    }
+    document.getElementById('scoring-popup-overlay').style.display='flex';
+  };
+  window.closeScoringPopup=function(){document.getElementById('scoring-popup-overlay').style.display='none';};
+  window.scoringPopupFull=function(){
+    const t=_currentExcelTicker;
+    closeScoringPopup();
+    if(t)openExcelDetail(t);
+  };
+  // Refresca el historial dentro del popup si está abierto (tras carga manual)
+  window._refreshScoringPopup=function(ticker){
+    const ov=document.getElementById('scoring-popup-overlay');
+    if(!ov||ov.style.display==='none')return;
+    if((_currentExcelTicker||'').toUpperCase()!==(ticker||'').toUpperCase())return;
+    const hist=window.EXCEL_DATA.filter(r=>(r['Ticker']||'').trim().toUpperCase()===(ticker||'').toUpperCase())
+      .sort((a,b)=>parseDate(b['Fecha Balance'])-parseDate(a['Fecha Balance']));
+    const body=document.getElementById('scoring-popup-body');
+    if(body&&hist.length)body.innerHTML=`<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;">${_buildScoringHistTable(hist)}</div>`;
+  };
 
   // ─────────────────────────────────────────────────────────────
   // openExcelDetail — redirige a tab buscar con la ficha
@@ -19406,6 +19541,7 @@ function renderEquity(){
       // Re-render ficha activa
       if(_currentExcelTicker)_earRenderCompany(_currentExcelTicker);
       renderExcel();
+      if(window._refreshScoringPopup)_refreshScoringPopup(_currentExcelTicker);
       okEl.textContent='✓ Guardado correctamente.';okEl.style.display='block';
       btn.textContent='Agregar Dato';btn.disabled=false;
       setTimeout(()=>closeExcelModal(),1800);
