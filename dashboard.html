@@ -19328,7 +19328,6 @@ function renderEquity(){
       const cBg=c.causal==='SIN FONDOS'?'rgba(248,81,73,0.15)':'rgba(251,191,36,0.15)';
       return`<tr style="background:${rowBg};" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='${rowBg}'">
         <td style="padding:8px 12px;border-bottom:1px solid var(--border);"><span style="font-size:10px;background:${cBg};color:${cColor};padding:2px 8px;border-radius:8px;font-weight:700;">${c.causal}</span></td>
-        <td style="padding:8px 12px;font-size:11px;color:var(--text3);border-bottom:1px solid var(--border);">${c.entidad}</td>
         <td style="padding:8px 12px;font-size:11px;color:var(--text2);text-align:right;border-bottom:1px solid var(--border);">${c.nroCheque||'—'}</td>
         <td style="padding:8px 12px;font-size:11px;color:var(--text);text-align:right;font-weight:600;border-bottom:1px solid var(--border);">${fmtM(c.monto)}</td>
         <td style="padding:8px 12px;font-size:11px;color:var(--text3);text-align:center;border-bottom:1px solid var(--border);">${c.fechaRechazo||'—'}</td>
@@ -19349,7 +19348,7 @@ function renderEquity(){
       </div>
       <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;"><div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;font-family:var(--mono);">
-          <thead><tr><th style="${thS}">Causal</th><th style="${thS}">Banco</th><th style="${thR}">N° Cheque</th><th style="${thR}">Monto</th><th style="${thC}">F. Rechazo</th><th style="${thC}">Estado</th><th style="${thC}">Multa</th></tr></thead>
+          <thead><tr><th style="${thS}">Causal</th><th style="${thR}">N° Cheque</th><th style="${thR}">Monto</th><th style="${thC}">F. Rechazo</th><th style="${thC}">Estado</th><th style="${thC}">Multa</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div></div>`;
