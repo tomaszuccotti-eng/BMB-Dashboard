@@ -18196,17 +18196,12 @@ function renderEquity(){
     hdr.innerHTML=`
       <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:${hasEco?'16px':'0'};">
         <div>
-          <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
+          <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:5px;">
             <span style="font-size:26px;font-weight:800;font-family:var(--display);color:var(--text);letter-spacing:-.5px;line-height:1.1;">${_currentExcelEmpresa&&_currentExcelEmpresa!==ticker?_currentExcelEmpresa:ticker}</span>
             ${_currentExcelEmpresa&&_currentExcelEmpresa!==ticker?`<span style="font-size:16px;font-weight:700;color:var(--text3);font-family:var(--mono);">(${ticker})</span>`:''}
           </div>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-            <span style="font-size:13px;color:var(--text2);font-family:var(--mono);">${_currentExcelSector.replace(/_+/g,' ')}${fechaBal&&fechaBal!=='—'?' · Balance: '+fechaBal:''}</span>
-            ${cuitFmt?`<span title="Click para copiar CUIT" onclick="navigator.clipboard.writeText('${cuit}')"
-              style="font-size:11px;color:var(--text3);font-family:var(--mono);cursor:pointer;padding:2px 8px;border:1px solid var(--border2);border-radius:4px;"
-              onmouseover="this.style.borderColor='#1E27F3';this.style.color='#a5b4fc'"
-              onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text3)'">CUIT ${cuitFmt}</span>`:''}
-          </div>
+          <div style="font-size:12px;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">${cuitFmt?`CUIT ${cuitFmt}`:''}${cuitFmt&&fechaBal&&fechaBal!=='—'?' · ':''}${fechaBal&&fechaBal!=='—'?'Balance: '+fechaBal:''}</div>
+          <div style="font-size:13px;color:var(--text2);font-family:var(--mono);">${_currentExcelSector.replace(/_+/g,' ')}</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">${badgesHTML}</div>
       </div>
@@ -19191,6 +19186,11 @@ function renderEquity(){
           ${_kpiRow('Cheques rechazados', String(_chkCount), '#f87171', false)}
           <div style="border-top:1px solid rgba(248,81,73,0.18);">${_kpiRow('Monto total cheques', _fmtPesosRaw(_chkMonto), '#f87171', false)}</div>
         </div>`;
+      } else {
+        chequesBlock=`<div style="display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:18px;padding:9px 0;margin-bottom:8px;border-bottom:1px solid var(--border);">
+          <span style="font-size:14px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);font-family:var(--mono);">Cheques rechazados</span>
+          <span style="font-size:14px;font-weight:600;color:#3fb950;font-family:var(--mono);">Sin cheques</span>
+        </div>`;
       }
       // Bloque DEUDA: total + situaciones
       let kpiRows=`<div style="border-bottom:2px solid var(--border);margin-bottom:6px;">${_kpiRow('Deuda Total Sistema', _fmtPesosEnt(_sumAll), 'var(--text)', true)}</div>`;
@@ -19256,15 +19256,7 @@ function renderEquity(){
       if(cheques?.causales?.length){
         _renderChequesInline(cheques,chkDiv);
       } else {
-        chkDiv.innerHTML=`
-          <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono);margin-bottom:8px;">Cheques Rechazados</div>
-          <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:24px;display:flex;align-items:center;gap:14px;">
-            <span style="font-size:24px;">✅</span>
-            <div>
-              <div style="font-size:13px;font-weight:600;color:var(--text);font-family:var(--mono);">Sin cheques rechazados</div>
-              <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:3px;">No se encontraron cheques rechazados vinculados a este CUIT</div>
-            </div>
-          </div>`;
+        chkDiv.innerHTML='';
       }
     }catch(e){
       if(loadEl)loadEl.style.display='none';
