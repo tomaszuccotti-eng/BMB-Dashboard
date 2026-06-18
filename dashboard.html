@@ -10833,7 +10833,6 @@ let eqMepMap = {}, eqCclMap = {}, eqFxDates = [];
 window.eqMepMap = eqMepMap;
 window.eqCclMap = eqCclMap;
 window.eqFxDates = eqFxDates;
-
 // ── FX ──
 async function eqLoadFx() {
   try {
@@ -10861,7 +10860,7 @@ async function eqLoadFx() {
     // pero ya no se muestra en el topbar (reemplazado por leyenda fija "Conectado a BYMA").
   } catch(e) {}
 }
-
+window.eqLoadFx = eqLoadFx;  // exponer para carga on-demand desde otros módulos (ej. Precios en ficha)
 function eqFfill(date, map) {
   if(map[date]) return map[date];
   const before = eqFxDates.filter(d=>d<=date);
@@ -17688,6 +17687,8 @@ function renderEquity(){
   let _currentExcelTicker=null;
   let _currentExcelEmpresa=null;
   let _currentExcelSector=null;
+  // Tickers de equity con histórico de precios en data912 (compartido en el módulo)
+  const _EQH_SET=new Set(['AGRO','ALUA','AUSO','BBAR','BHIP','BMA','BOLT','BPAT','BYMA','CADO','CAPX','CARC','CECO2','CELU','CEPU','CGPA2','COME','CRES','CTIO','CVH','DGCU2','DOME','EDN','FERR','FIPL','GAMI','GARO','GBAN','GCDI','GCLA','GGAL','GRIM','HARG','HAVA','HSAT','INTR','INVJ','IRSA','LEDE','LOMA','LONG','METR','MIRG','MOLA','MOLI','MORI','OEST','PAMP','PATA','RICH','RIGO','ROSE','SAMI','SEMI','SUPV','TECO2','TGNO4','TGSU2','TRAN','TXAR','VALO','YPFD']);
   let _excelSortKeys={};
   let _excelSortDirs={};
   let _kpiActive=[...KPI_DEFAULT];
@@ -18164,6 +18165,9 @@ function renderEquity(){
 
     // ── Fetch BCRA badge async (solo si tiene CUIT) ──
     if(cuit) _fetchBcraBadge(ticker, cuit);
+
+    // ── Pre-cargar histórico de precios en background (si el ticker cotiza) ──
+    if(_EQH_SET.has(ticker) && typeof window._prefetchPrecios==='function') window._prefetchPrecios(ticker);
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -20196,6 +20200,33 @@ function renderCheques(cheques){
   const _earPriceCharts={};  // ticker → { priceChart, volChart }
   const _earPriceState={};   // ticker → { allData, range, ccy }
 
+  // Pre-carga el histórico al estado SIN tocar la UI (para disparar al buscar la empresa)
+  async function _prefetchPrecios(ticker){
+    // Pre-cargar también el FX (MEP/CCL) en background si aún no está
+    if(!(window.eqFxDates||[]).length && typeof window.eqLoadFx==='function'){ window.eqLoadFx(); }
+    if(_earPriceState[ticker]?.allData?.length) return;          // ya cacheado
+    if(_earPriceState[ticker]?._loading) return;                  // ya en curso
+    _earPriceState[ticker]={_loading:true, range:365, ccy:'ARS'};
+    try{
+      const res=await fetch(`https://data912.com/historical/stocks/${ticker}`);
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const raw=await res.json();
+      const arr=(Array.isArray(raw)?raw:(raw?.data||[])).filter(d=>d.date&&d.c!=null).sort((a,b)=>a.date.localeCompare(b.date));
+      if(!arr.length) throw new Error('Sin datos');
+      _earPriceState[ticker]={allData:arr, range:365, ccy:'ARS'};
+      // Si el tab de precios ya está abierto y a la espera, renderizar ahora
+      const con=document.getElementById(`ficha-tab-content-${ticker}-precios`);
+      if(con && con.style.display!=='none' && !con.dataset.rendered){
+        con.dataset.rendered='1';
+        _earBuildPriciosUI(ticker, con);
+      }
+    }catch(e){
+      // Falla silenciosa: si el usuario entra al tab, _renderFichaPrecios reintenta y muestra el error
+      delete _earPriceState[ticker];
+    }
+  }
+  window._prefetchPrecios = _prefetchPrecios;
+
   async function _renderFichaPrecios(ticker){
     const con=document.getElementById(`ficha-tab-content-${ticker}-precios`);
     if(!con)return;
@@ -20428,12 +20459,21 @@ function renderCheques(cheques){
     _earBuildVolChart(ticker);
   };
 
-  window._earSetCcy=function(ticker, ccy, btn){
+  window._earSetCcy=async function(ticker, ccy, btn){
     _earPriceState[ticker].ccy=ccy;
     ['ARS','MEP','CCL'].forEach(c=>{
       const b=document.getElementById(`ear-ccy-${ticker}-${c}`);
       if(b){b.style.background=c===ccy?'var(--accent)':'transparent';b.style.color=c===ccy?'#fff':'var(--text3)';}
     });
+    // Si se pide MEP/CCL y los mapas FX aún no están cargados, cargarlos on-demand
+    if(ccy!=='ARS'){
+      const fxD=window.eqFxDates||[];
+      if(!fxD.length && typeof window.eqLoadFx==='function'){
+        const warnEl=document.getElementById(`ear-fx-warn-${ticker}`);
+        if(warnEl) warnEl.innerHTML='<span style="color:var(--text3);">Cargando cotización '+ccy+'…</span>';
+        try{ await window.eqLoadFx(); }catch(_){}
+      }
+    }
     _earRefreshPrecios(ticker);
   };
 
@@ -20583,8 +20623,11 @@ function renderCheques(cheques){
     const normValid = (validCUIT||'').replace(/[-\s]/g,'');
     const normFile  = (fileCUIT||'').replace(/[-\s]/g,'');
     if(normValid && normFile && normFile!==normValid){
-      container.innerHTML=`<div style="padding:16px;background:rgba(248,81,73,0.08);border:1px solid rgba(248,81,73,0.3);border-radius:8px;font-family:var(--mono);font-size:12px;color:#f87171;">
-        ⚠ El archivo corresponde al CUIT ${normFile} — esta empresa tiene CUIT ${normValid}. Cargá el archivo correcto.
+      container.innerHTML=`<div data-mav-wrap="1">
+        <div style="padding:16px 18px;background:rgba(248,81,73,0.08);border:1px solid rgba(248,81,73,0.3);border-radius:8px;font-family:var(--mono);font-size:12px;color:#f87171;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;">
+          <span>⚠ El archivo corresponde al CUIT ${normFile} — esta empresa tiene CUIT ${normValid}. Cargá el archivo correcto.</span>
+          <button onclick="mavReset(this,'${targetId||''}')" style="padding:5px 14px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid rgba(248,81,73,0.4);border-radius:5px;background:transparent;color:#f87171;font-family:var(--mono);white-space:nowrap;">↩ Cargar otro</button>
+        </div>
       </div>`;
       return;
     }
