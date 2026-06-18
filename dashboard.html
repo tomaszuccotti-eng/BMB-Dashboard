@@ -10719,8 +10719,10 @@ window.rfHmCloseCategory = rfHmCloseCategory;
         <div class="stat-card"><div class="stat-label">Último</div><div class="stat-value" id="eq-s-live">—</div></div>
         <div class="stat-card"><div class="stat-label">Bid</div><div class="stat-value" id="eq-s-bid">—</div></div>
         <div class="stat-card"><div class="stat-label">Ask</div><div class="stat-value" id="eq-s-ask">—</div></div>
-        <div class="stat-card"><div class="stat-label">Volumen</div><div class="stat-value" id="eq-s-vol">—</div></div>
+        <div class="stat-card"><div class="stat-label">Vol. nominal diario</div><div class="stat-value" id="eq-s-vol">—</div></div>
+        <div class="stat-card"><div class="stat-label" id="eq-s-volavglabel">Vol. nominal prom. período</div><div class="stat-value" id="eq-s-volavg">—</div></div>
         <div class="stat-card"><div class="stat-label">Var % día</div><div class="stat-value" id="eq-s-dr">—</div></div>
+        <div class="stat-card"><div class="stat-label" id="eq-s-perlabel">Var % período</div><div class="stat-value" id="eq-s-pervar">—</div></div>
         <div class="stat-card"><div class="stat-label">Registros hist.</div><div class="stat-value" id="eq-s-count">—</div></div>
       </div>
 
@@ -10729,12 +10731,15 @@ window.rfHmCloseCategory = rfHmCloseCategory;
         <div class="card-header" style="flex-wrap:wrap;gap:8px;">
           <span class="card-title">Precio de cierre</span>
           <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap;">
-            <div style="display:flex;gap:3px;">
+            <div style="display:flex;gap:3px;flex-wrap:wrap;">
               <button class="hist-btn" onclick="eqSetRange(30,this)">1M</button>
               <button class="hist-btn" onclick="eqSetRange(90,this)">3M</button>
               <button class="hist-btn" onclick="eqSetRange(180,this)">6M</button>
               <button class="hist-btn active" onclick="eqSetRange(365,this)">1A</button>
-              <button class="hist-btn" onclick="eqSetRange(9999,this)">TODO</button>
+              <button class="hist-btn" onclick="eqSetRange(730,this)">2A</button>
+              <button class="hist-btn" onclick="eqSetRange(1095,this)">3A</button>
+              <button class="hist-btn" onclick="eqSetRange(1825,this)">5A</button>
+              <button class="hist-btn" onclick="eqSetRange(99999,this)">TODO</button>
             </div>
             <div style="width:1px;height:16px;background:var(--border2);"></div>
             <div style="display:flex;gap:3px;">
@@ -11217,13 +11222,10 @@ function eqGetConvertedSlice() {
   const map = eqActiveCcy==='MEP'?eqMepMap:eqCclMap;
   const firstFxDate = eqFxDates.find(d=>map[d]);
   if(!firstFxDate) { if(warnEl) warnEl.textContent='⚠ Serie MEP/CCL no disponible.'; return {dates:slice.map(d=>d.date),closes:slice.map(d=>null),ccy:eqActiveCcy}; }
-  const originalStart = slice[0]?.date;
-  if(originalStart&&originalStart<firstFxDate) {
-    slice=slice.filter(d=>d.date>=firstFxDate);
-    if(warnEl&&(eqActiveRange===9999||(slice.length>0&&slice[0].date>originalStart)))
-      warnEl.textContent=`⚠ Rango recortado: datos ${eqActiveCcy} disponibles desde ${firstFxDate}.`;
-  }
-  return { dates:slice.map(d=>d.date), closes:slice.map(d=>{ const fx=eqGetFx(d.date,eqActiveCcy); return (d.c!=null&&fx!=null)?d.c/fx:null; }), ccy:eqActiveCcy };
+  // NO recortar el eje: mantener todas las fechas; donde no hay FX → null (hueco, sin estirar)
+  if(warnEl && slice.length && slice[0].date<firstFxDate)
+    warnEl.textContent=`⚠ Serie ${eqActiveCcy} disponible desde ${firstFxDate} — el tramo previo no se grafica.`;
+  return { dates:slice.map(d=>d.date), closes:slice.map(d=>{ const fx=(d.date<firstFxDate)?null:eqGetFx(d.date,eqActiveCcy); return (d.c!=null&&fx!=null)?d.c/fx:null; }), ccy:eqActiveCcy };
 }
 
 function eqRefreshPriceChart() {
@@ -11258,6 +11260,9 @@ function eqBuildPriceChart(dates,closes,ccy) {
   const prefix=ccy==='ARS'?'ARS $':ccy==='MEP'?'USD MEP ':'USD CCL ';
   const tickPfx=ccy==='ARS'?'$':'U$D ';
   const accent='#1E27F3';
+  const baseVal=valid.length?valid[0]:null;
+  const _rangeLbl={30:'1M',90:'3M',180:'6M',365:'1A',730:'2A',1095:'3A',1825:'5A'}[eqActiveRange]||'todo el período';
+  const _volByDate={}; eqAllData.forEach(d=>{ _volByDate[d.date]=d.v; });
   eqPriceChart=new Chart(ctx,{
     type:'line',
     data:{labels:dates,datasets:[{
@@ -11272,7 +11277,18 @@ function eqBuildPriceChart(dates,closes,ccy) {
         backgroundColor:'var(--bg2,#0d1020)',borderColor:accent,borderWidth:1,
         titleFont:{family:"'DM Mono'",size:11},bodyFont:{family:"'DM Mono'",size:12},
         titleColor:'#a5b4fc',bodyColor:'#e8eaf6',
-        callbacks:{label:c=>c.parsed.y!=null?' '+prefix+eqFmt(c.parsed.y):'—'}
+        callbacks:{label:c=>{
+          const y=c.parsed.y;
+          if(y==null) return '—';
+          const lines=[' '+prefix+eqFmt(y)];
+          if(baseVal!=null && baseVal!==0){
+            const pct=(y/baseVal-1)*100;
+            lines.push(' '+(pct>=0?'▲ +':'▼ ')+pct.toFixed(2)+'% en '+_rangeLbl);
+          }
+          const vol=_volByDate[c.label];
+          if(vol!=null) lines.push(' Vol nominal: '+eqFmtVol(vol));
+          return lines;
+        }}
       }},
       scales:{
         x:{grid:{color:'rgba(30,39,243,0.08)'},ticks:{font:{family:"'DM Mono'",size:10},color:'#4a5280',maxTicksLimit:8,maxRotation:0},border:{color:'rgba(30,39,243,0.14)'}},
@@ -11280,6 +11296,35 @@ function eqBuildPriceChart(dates,closes,ccy) {
       }
     }
   });
+
+  // ── Var % período (card de stats) ──
+  const pvEl=document.getElementById('eq-s-pervar');
+  const plEl=document.getElementById('eq-s-perlabel');
+  if(pvEl){
+    const v0=valid.length?valid[0]:null, v1=valid.length?valid[valid.length-1]:null;
+    if(v0!=null&&v1!=null&&v0!==0){
+      const pct=(v1/v0-1)*100;
+      pvEl.textContent=(pct>=0?'+':'')+pct.toFixed(2)+'%';
+      pvEl.style.color=pct>=0?'var(--green)':'var(--red)';
+    } else { pvEl.textContent='—'; pvEl.style.color=''; }
+  }
+  if(plEl){
+    const rl={30:'1M',90:'3M',180:'6M',365:'1A',730:'2A',1095:'3A',1825:'5A'}[eqActiveRange]||'TODO';
+    plEl.textContent=`Var % ${rl} · ${ccy}`;
+  }
+
+  // ── Vol. nominal promedio del período ──
+  const vaEl=document.getElementById('eq-s-volavg');
+  const valEl=document.getElementById('eq-s-volavglabel');
+  if(vaEl){
+    const sliceRaw=eqGetSlice(eqActiveRange);
+    const vols=sliceRaw.map(d=>d.v).filter(v=>v!=null);
+    vaEl.textContent=vols.length?eqFmtVol(vols.reduce((a,b)=>a+b,0)/vols.length):'—';
+  }
+  if(valEl){
+    const rl={30:'1M',90:'3M',180:'6M',365:'1A',730:'2A',1095:'3A',1825:'5A'}[eqActiveRange]||'TODO';
+    valEl.textContent=`Vol. nominal prom. ${rl}`;
+  }
 }
 
 function eqBuildVolChart(data) {
@@ -20266,26 +20311,26 @@ function renderCheques(cheques){
 
     con.innerHTML=`
       <!-- Stats rápidos -->
-      <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px;">
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:110px;">
-          <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">Último cierre</div>
-          <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--text2);">${last.c!=null?last.c.toLocaleString('es-AR',{minimumFractionDigits:2}):'—'}</div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;">
+        <div style="background:var(--bg2);border:1.5px solid var(--border2);border-radius:10px;padding:14px 18px;flex:1 1 0;min-width:150px;">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:6px;">Último cierre</div>
+          <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--text2);">${last.c!=null?last.c.toLocaleString('es-AR',{minimumFractionDigits:2}):'—'}</div>
         </div>
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:110px;">
-          <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">Var % día</div>
-          <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:${last.dr>=0?'var(--green)':'var(--red)'};">${last.dr!=null?((last.dr>=0?'+':'')+last.dr.toFixed(2)+'%'):'—'}</div>
+        <div style="background:var(--bg2);border:1.5px solid var(--border2);border-radius:10px;padding:14px 18px;flex:1 1 0;min-width:150px;">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:6px;">Var % día</div>
+          <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:${last.dr>=0?'var(--green)':'var(--red)'};">${last.dr!=null?((last.dr>=0?'+':'')+last.dr.toFixed(2)+'%'):'—'}</div>
         </div>
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:130px;">
-          <div id="ear-perlabel-${ticker}" style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">Var % período</div>
-          <div id="ear-pervar-${ticker}" style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--text2);">—</div>
+        <div style="background:var(--bg2);border:1.5px solid var(--border2);border-radius:10px;padding:14px 18px;flex:1 1 0;min-width:150px;">
+          <div id="ear-perlabel-${ticker}" style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:6px;">Var % período</div>
+          <div id="ear-pervar-${ticker}" style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--text2);">—</div>
         </div>
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:120px;">
-          <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">Volumen nominal diario</div>
-          <div id="ear-volday-${ticker}" style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--text2);">—</div>
+        <div style="background:var(--bg2);border:1.5px solid var(--border2);border-radius:10px;padding:14px 18px;flex:1 1 0;min-width:150px;">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:6px;">Volumen nominal diario</div>
+          <div id="ear-volday-${ticker}" style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--text2);">—</div>
         </div>
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:130px;">
-          <div id="ear-volavglabel-${ticker}" style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">Vol. nominal prom. período</div>
-          <div id="ear-volavg-${ticker}" style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--text2);">—</div>
+        <div style="background:var(--bg2);border:1.5px solid var(--border2);border-radius:10px;padding:14px 18px;flex:1 1 0;min-width:150px;">
+          <div id="ear-volavglabel-${ticker}" style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:6px;">Vol. nominal prom. período</div>
+          <div id="ear-volavg-${ticker}" style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--text2);">—</div>
         </div>
       </div>
 
@@ -20397,6 +20442,9 @@ function renderCheques(cheques){
     // Base para variación acumulada: primer valor válido del período
     const baseVal=valid.length?valid[0]:null;
     const _rangeLbl={30:'1M',90:'3M',180:'6M',365:'1A',730:'2A',1095:'3A',1825:'5A'}[_earPriceState[ticker].range]||'todo el período';
+    // Mapa fecha→volumen para mostrar el volumen de la jornada en el tooltip
+    const _volByDate={}; _earPriceState[ticker].allData.forEach(d=>{ _volByDate[d.date]=d.v; });
+    const _fmtVolTip=n=>n==null?'—':(n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(0)+'K':Math.round(n).toString());
     const chart=new Chart(ctx,{
       type:'line',
       data:{labels:dates,datasets:[{data:closes,borderColor:color,borderWidth:1.8,backgroundColor:grad,fill:true,tension:.3,pointRadius:0,pointHoverRadius:4,pointHoverBackgroundColor:color,spanGaps:false}]},
@@ -20415,6 +20463,8 @@ function renderCheques(cheques){
               const pct=(y/baseVal-1)*100;
               lines.push(' '+(pct>=0?'▲ +':'▼ ')+pct.toFixed(2)+'% en '+_rangeLbl);
             }
+            const vol=_volByDate[c.label];
+            if(vol!=null) lines.push(' Vol nominal: '+_fmtVolTip(vol));
             return lines;
           }}
         }},
