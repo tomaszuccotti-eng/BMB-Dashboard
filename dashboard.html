@@ -18431,33 +18431,81 @@ function renderEquity(){
     con.innerHTML='';
     const hist=window.EXCEL_DATA.filter(r=>(r['Ticker']||'').trim().toUpperCase()===ticker)
       .sort((a,b)=>parseDate(b['Fecha Balance'])-parseDate(a['Fecha Balance']));
-    if(!hist.length){
-      con.innerHTML=`
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);">
-          <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#1E27F3;font-family:var(--mono);">🏅 Scoring de Liquidez · Histórico</div>
-          <button onclick="openExcelManual()"
-            style="padding:5px 13px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(30,39,243,0.4);border-radius:6px;background:transparent;color:#a5b4fc;font-family:var(--mono);white-space:nowrap;flex-shrink:0;">
-            + Manual
-          </button>
-        </div>
-        <div style="padding:24px;color:var(--text3);font-family:var(--mono);font-size:11px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;">Sin scoring de liquidez cargado para esta empresa.</div>`;
-      return;
-    }
-    const div=document.createElement('div');
-    div.style.marginBottom='28px';
-    div.innerHTML=`
+
+    // ── Sección 1: Histórico ──
+    const histDiv=document.createElement('div');
+    histDiv.style.marginBottom='28px';
+    const histHead=`
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);">
         <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#1E27F3;font-family:var(--mono);">🏅 Scoring de Liquidez · Histórico</div>
         <button onclick="openExcelManual()"
           style="padding:5px 13px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(30,39,243,0.4);border-radius:6px;background:transparent;color:#a5b4fc;font-family:var(--mono);white-space:nowrap;flex-shrink:0;">
           + Manual
         </button>
-      </div>
-      <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;">
-        ${_buildScoringHistTable(hist)}
       </div>`;
-    con.appendChild(div);
+    if(!hist.length){
+      histDiv.innerHTML=histHead+`<div style="padding:24px;color:var(--text3);font-family:var(--mono);font-size:11px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;">Sin scoring de liquidez cargado para esta empresa.</div>`;
+    } else {
+      histDiv.innerHTML=histHead+`<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;">${_buildScoringHistTable(hist)}</div>`;
+    }
+    con.appendChild(histDiv);
+
+    // ── Sección 2: Sectorial ──
+    const latest=getLatestByTicker(window.EXCEL_DATA);
+    const sectorSet=new Set();
+    latest.forEach(r=>{const s=(r['sector']||r['Sector']||'').trim();if(s)sectorSet.add(s);});
+    const sectorNames=[...sectorSet].sort();
+    if(!sectorNames.length)return;
+
+    // Sector default = el de la empresa actual (si está en scoring)
+    const ownRow=latest.find(r=>(r['Ticker']||'').trim().toUpperCase()===ticker);
+    const ownSector=ownRow?((ownRow['sector']||ownRow['Sector']||'').trim()):'';
+    const defSector=(ownSector&&sectorNames.includes(ownSector))?ownSector:sectorNames[0];
+
+    const secDiv=document.createElement('div');
+    secDiv.style.marginBottom='28px';
+    const selId=`ficha-sector-sel-${ticker}`;
+    const bodyId=`ficha-sector-body-${ticker}`;
+    secDiv.innerHTML=`
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);flex-wrap:wrap;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#1E27F3;font-family:var(--mono);">📊 Scoring de Liquidez · Sectorial</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;">Sector</span>
+          <select id="${selId}" onchange="_renderFichaSector('${ticker}',this.value)"
+            style="background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:5px 10px;font-size:11px;color:var(--text);font-family:var(--mono);outline:none;cursor:pointer;max-width:260px;"
+            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'">
+            ${sectorNames.map(s=>`<option value="${s.replace(/"/g,'&quot;')}"${s===defSector?' selected':''}>${s.replace(/_+/g,' ').trim()}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div id="${bodyId}"></div>`;
+    con.appendChild(secDiv);
+    _renderFichaSector(ticker,defSector);
   }
+
+  // Renderiza la tabla sectorial dentro de la ficha, resaltando la empresa actual
+  window._renderFichaSector=function(ticker,sector){
+    ticker=(ticker||'').trim().toUpperCase();
+    const body=document.getElementById(`ficha-sector-body-${ticker}`);if(!body)return;
+    body.innerHTML='';
+    const latest=getLatestByTicker(window.EXCEL_DATA);
+    let rows=latest.filter(r=>((r['sector']||r['Sector']||'').trim())===sector);
+    // Si la empresa actual no está en el sector elegido, la inyectamos para comparar
+    if(!rows.some(r=>(r['Ticker']||'').trim().toUpperCase()===ticker)){
+      const own=latest.find(r=>(r['Ticker']||'').trim().toUpperCase()===ticker);
+      if(own)rows=[...rows,own];
+    }
+    if(!rows.length){
+      body.innerHTML=`<div style="padding:24px;color:var(--text3);font-family:var(--mono);font-size:11px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;">Sin empresas en este sector.</div>`;
+      return;
+    }
+    const card=buildSectorCard(sector,rows,`ficha-sec-${ticker}`,ticker);
+    // buildSectorCard agrega su propio header de sector; lo quitamos (ya tenemos el selector arriba)
+    const innerHdr=card.querySelector(':scope > div');
+    if(innerHdr&&innerHdr.querySelector('span'))innerHdr.remove();
+    card.style.marginBottom='0';
+    body.appendChild(card);
+  };
 
   window._setColOrder=function(ticker,order){
     _fichaColOrder=order;
@@ -19207,7 +19255,8 @@ function renderEquity(){
     return null;
   }
 
-  function buildSectorCard(sector,rows,sectorId){
+  function buildSectorCard(sector,rows,sectorId,highlightTicker){
+    const _hl=(highlightTicker||'').trim().toUpperCase();
     const wrap=document.createElement('div');wrap.style.cssText='margin-bottom:28px;';
     const hdr=document.createElement('div');hdr.style.cssText='display:flex;align-items:center;gap:12px;margin-bottom:12px;';
     hdr.innerHTML=`<span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#1E27F3;font-family:var(--mono);">${sector.replace(/_+/g,' ').trim()}</span>
@@ -19242,14 +19291,18 @@ function renderEquity(){
       tbody.innerHTML=sorted.map(r=>{
         const sc=parseFloat(r['Score']),scC=scoreColor(r['Score']),scB=scoreBg(r['Score']);
         const ticker=(r['Ticker']||'').trim().toUpperCase();
+        const isHl=_hl&&ticker===_hl;
         const fb=(r['Fecha Balance']||'').trim().substring(0,10)||'—';
-        const rCells=RATIOS.map(rat=>{const raw=r[rat.key];const color=ratioColor(rat.key,raw);return`<td style="${tdBase('right',color?`color:${color};font-weight:600;`:'color:#7a82a8;')}">${fmtR(raw)}</td>`;}).join('');
-        return`<tr style="cursor:pointer;" onclick="openExcelDetail('${ticker}')"
-          onmouseover="this.style.background='rgba(30,39,243,0.06)'" onmouseout="this.style.background='transparent'">
-          <td style="${tdBase('left','color:var(--text2);font-weight:700;')}">${ticker}</td>
-          <td style="${tdBase('left','color:var(--text);')}">${r['Empresa']||'—'}</td>
-          <td style="${tdBase('right','')}"><span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:'DM Mono',monospace;color:${scC};background:${scB};border:1px solid ${scC}33;">${isNaN(sc)?'—':sc.toFixed(1)}</span></td>
-          <td style="${tdBase('right','color:var(--text3);')}">${fb}</td>
+        const rCells=RATIOS.map((rat,ri)=>{const raw=r[rat.key];const color=ratioColor(rat.key,raw);const isLastRat=ri===RATIOS.length-1;const hlCell=isHl?(isLastRat?'box-shadow:inset -2px 0 0 var(--accent),inset 0 2px 0 var(--accent),inset 0 -2px 0 var(--accent);':'box-shadow:inset 0 2px 0 var(--accent),inset 0 -2px 0 var(--accent);'):'';return`<td style="${tdBase('right',color?`color:${color};font-weight:600;`:'color:#7a82a8;')}${hlCell}">${fmtR(raw)}</td>`;}).join('');
+        const trBg=isHl?'background:rgba(30,39,243,0.14);':'';
+        const hlFirst=isHl?'box-shadow:inset 2px 0 0 var(--accent),inset 0 2px 0 var(--accent),inset 0 -2px 0 var(--accent);':'';
+        const hlMid=isHl?'box-shadow:inset 0 2px 0 var(--accent),inset 0 -2px 0 var(--accent);':'';
+        return`<tr style="cursor:pointer;${trBg}" onclick="openExcelDetail('${ticker}')"
+          ${isHl?'':`onmouseover="this.style.background='rgba(30,39,243,0.06)'" onmouseout="this.style.background='transparent'"`}>
+          <td style="${tdBase('left','color:var(--text2);font-weight:700;')}${hlFirst}">${ticker}</td>
+          <td style="${tdBase('left','color:var(--text);')}${hlMid}">${r['Empresa']||'—'}</td>
+          <td style="${tdBase('right','')}${hlMid}"><span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:'DM Mono',monospace;color:${scC};background:${scB};border:1px solid ${scC}33;">${isNaN(sc)?'—':sc.toFixed(1)}</span></td>
+          <td style="${tdBase('right','color:var(--text3);')}${hlMid}">${fb}</td>
           ${rCells}
         </tr>`;
       }).join('');
