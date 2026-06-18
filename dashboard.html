@@ -18168,25 +18168,22 @@ function renderEquity(){
     results.appendChild(wrap);
 
     // ── HEADER ──
+    const cardStyle='border-radius:10px;padding:10px 18px;text-align:center;min-width:84px;box-sizing:border-box;';
     const badgesHTML=`
       ${hasScore?`
-      <div style="background:${scBg};border:2px solid ${scColor}44;border-radius:10px;padding:10px 18px;text-align:center;min-width:80px;">
+      <div style="background:${scBg};border:2px solid ${scColor}44;${cardStyle}">
         <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:${scColor};font-family:var(--mono);margin-bottom:3px;">Score</div>
         <div style="font-size:22px;font-weight:800;color:${scColor};font-family:var(--mono);line-height:1;">${isNaN(score)?'—':score.toFixed(1)}</div>
         <div style="font-size:9px;color:${scColor};font-family:var(--mono);opacity:.7;">/ 10</div>
       </div>`:''}
       ${cuit?`
-      <div id="bcra-badge-${ticker}" style="background:var(--bg2);border:2px solid var(--border2);border-radius:10px;padding:10px 18px;text-align:center;min-width:80px;">
+      <div id="bcra-badge-${ticker}" title="Click para actualizar BCRA"
+        onclick="_bcraCardRefresh('${ticker}','${cuit}')"
+        style="background:var(--bg2);border:2px solid var(--border2);${cardStyle}cursor:pointer;transition:opacity .2s,border-color .2s,background .2s;">
         <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">BCRA</div>
         <div style="font-size:22px;font-weight:800;color:var(--text3);font-family:var(--mono);line-height:1;">—</div>
         <div style="font-size:9px;color:var(--text3);font-family:var(--mono);opacity:.7;">situación</div>
-      </div>`:''}
-      <div style="display:flex;flex-direction:column;gap:6px;">
-        ${cuit?`<button onclick="_bcraRefreshInline('${ticker}','${cuit}','bcra-inline-${ticker}','bcra-load-inline-${ticker}')"
-          style="padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(30,39,243,0.4);border-radius:6px;background:transparent;color:#a5b4fc;font-family:var(--mono);white-space:nowrap;">
-          ↺ BCRA
-        </button>`:''}
-      </div>`;
+      </div>`:''}`;
 
     const hdr=document.createElement('div');
     hdr.style.cssText='padding-bottom:20px;border-bottom:1px solid var(--border);margin-bottom:0;';
@@ -18617,8 +18614,8 @@ function renderEquity(){
       bcraWrap.innerHTML=bcraTitle+`
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
           <span style="font-size:10px;color:var(--text3);font-family:var(--mono);">CUIT ${cuit}</span>
-          <button onclick="_bcraRefreshInline('${ticker}','${cuit}','${bcraCid}','${bcraLoadId}')"
-            style="padding:3px 12px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--border2);border-radius:5px;background:transparent;color:var(--text3);font-family:var(--mono);">🔄 Actualizar</button>
+          <button id="bcra-refresh-btn-${ticker}" class="tb-icon" data-tip="Actualizar BCRA"
+            onclick="_bcraRefreshInline('${ticker}','${cuit}','${bcraCid}','${bcraLoadId}')">↻</button>
         </div>
         <div id="${bcraLoadId}" style="display:flex;align-items:center;gap:10px;padding:14px;color:var(--text3);font-family:var(--mono);font-size:11px;">
           <div class="spinner"></div>Consultando BCRA...
@@ -19066,6 +19063,22 @@ function renderEquity(){
     catch(err){ alert('No se pudo generar el PDF: '+err.message); }
     finally{ if(genBtn){genBtn.textContent='Generar →';genBtn.disabled=false;} earCloseReportDialog(); }
   };
+  // Refresh disparado desde el card BCRA del header: repinta badge + panel si está montado
+  window._bcraCardRefresh=function(ticker,cuit){
+    const badge=document.getElementById(`bcra-badge-${ticker}`);
+    if(badge)badge.style.opacity='0.45';
+    // Invalidar cache para forzar consulta fresca
+    delete window._bcraCache[cuit];
+    // Repintar badge del header
+    Promise.resolve(_fetchBcraBadge(ticker,cuit)).finally(()=>{ if(badge)badge.style.opacity='1'; });
+    // Si el panel inline de la pestaña está montado, refrescarlo también
+    const conEl=document.getElementById(`bcra-inline-${ticker}`);
+    if(conEl){
+      conEl.dataset.bcraRendered='';
+      _bcraFetchInline(ticker,cuit,`bcra-inline-${ticker}`,`bcra-load-inline-${ticker}`);
+    }
+  };
+
   window._bcraRefreshInline=function(ticker,cuit,contentId,loadId){
     const loadEl=document.getElementById(loadId);
     const conEl=document.getElementById(contentId);
@@ -19080,6 +19093,8 @@ function renderEquity(){
     const loadEl=document.getElementById(loadId);
     const conEl=document.getElementById(contentId);
     if(conEl&&conEl.dataset.bcraRendered==='1')return;
+    const refreshBtn=document.getElementById(`bcra-refresh-btn-${ticker}`);
+    if(refreshBtn)refreshBtn.classList.add('tb-spin');
     try{
       // Reusar el fetch del badge si ya está en vuelo — cero consultas extra
       const json = await _bcraFetch(cuit);
@@ -19141,6 +19156,9 @@ function renderEquity(){
     }catch(e){
       if(loadEl)loadEl.style.display='none';
       if(conEl)conEl.innerHTML=`<div style="padding:14px;color:var(--text3);font-family:var(--mono);font-size:11px;">Error al consultar BCRA: ${e.message}</div>`;
+    }finally{
+      const rb=document.getElementById(`bcra-refresh-btn-${ticker}`);
+      if(rb)rb.classList.remove('tb-spin');
     }
   }
 
