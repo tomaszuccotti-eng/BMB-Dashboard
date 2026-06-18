@@ -23926,7 +23926,7 @@ window.onsCmp_reactivate = function(lbl) {
   onsCmpState.excluded.delete(lbl);
   onsCmp_render();
 };
-window._onsScoring = { data: null, loading: false };
+window._onsScoring = { data: null, loading: false, promise: null };
 
 // ── Scoring helpers globales (usados en tabla y sidebar) ─────────────────────
 const _ONS_ALIAS_GLOBAL = {
@@ -24023,36 +24023,42 @@ function ons_scoreBg(v){
 // ── Scoring ONs ───────────────────────────────────────────────────────────────
 async function ons_loadScoringData() {
   if (window._onsScoring.data) return window._onsScoring.data;
-  if (window._onsScoring.loading) return null;
+  // Si ya hay una carga en vuelo, esperarla en vez de devolver null
+  if (window._onsScoring.promise) return window._onsScoring.promise;
   window._onsScoring.loading = true;
-  try {
-    const res = await fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vTG24q0SWcJ-Bxc171MibEHe5HepPR4ydhb7iVsUbyiytz4qJ8hvdn4fxCbgAiNhwdleSrYTgaXrQw7/pub?gid=0&single=true&output=csv', {cache:'no-store'});
-    const text = await res.text();
-    if (text.trim().startsWith('<')) throw new Error('Sheet no publicado o sin acceso');
-    const rows = parseCSV(text).map(r => { const out={}; Object.keys(r).forEach(k=>{out[k.trim()]=r[k];}); return out; });
-    // Deduplicar: quedarse con la fecha balance más reciente por ticker
-    const map = {};
-    rows.forEach(r => {
-      const t = (r['Ticker']||'').trim().toUpperCase();
-      const fb = (r['Fecha Balance']||'').trim();
-      if (!t || !fb) return;
-      const key = t + '|' + fb;
-      if (!map[key] || ons_parseDate(r['fecha_carga']) > ons_parseDate(map[key]['fecha_carga'])) map[key] = r;
-    });
-    const deduped = Object.values(map);
-    // Latest por ticker
-    const latest = {};
-    deduped.forEach(r => {
-      const t = (r['Ticker']||'').trim().toUpperCase();
-      if (!t) return;
-      if (!latest[t] || ons_parseDate(r['Fecha Balance']) > ons_parseDate(latest[t]['Fecha Balance'])) latest[t] = r;
-    });
-    window._onsScoring.data = Object.values(latest);
-    return window._onsScoring.data;
-  } catch(e) {
-    window._onsScoring.loading = false;
-    throw e;
-  }
+  window._onsScoring.promise = (async () => {
+    try {
+      const res = await fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vTG24q0SWcJ-Bxc171MibEHe5HepPR4ydhb7iVsUbyiytz4qJ8hvdn4fxCbgAiNhwdleSrYTgaXrQw7/pub?gid=0&single=true&output=csv', {cache:'no-store'});
+      const text = await res.text();
+      if (text.trim().startsWith('<')) throw new Error('Sheet no publicado o sin acceso');
+      const rows = parseCSV(text).map(r => { const out={}; Object.keys(r).forEach(k=>{out[k.trim()]=r[k];}); return out; });
+      // Deduplicar: quedarse con la fecha balance más reciente por ticker
+      const map = {};
+      rows.forEach(r => {
+        const t = (r['Ticker']||'').trim().toUpperCase();
+        const fb = (r['Fecha Balance']||'').trim();
+        if (!t || !fb) return;
+        const key = t + '|' + fb;
+        if (!map[key] || ons_parseDate(r['fecha_carga']) > ons_parseDate(map[key]['fecha_carga'])) map[key] = r;
+      });
+      const deduped = Object.values(map);
+      // Latest por ticker
+      const latest = {};
+      deduped.forEach(r => {
+        const t = (r['Ticker']||'').trim().toUpperCase();
+        if (!t) return;
+        if (!latest[t] || ons_parseDate(r['Fecha Balance']) > ons_parseDate(latest[t]['Fecha Balance'])) latest[t] = r;
+      });
+      window._onsScoring.data = Object.values(latest);
+      window._onsScoring.loading = false;
+      return window._onsScoring.data;
+    } catch(e) {
+      window._onsScoring.loading = false;
+      window._onsScoring.promise = null; // permitir reintento
+      throw e;
+    }
+  })();
+  return window._onsScoring.promise;
 }
 
 async function ons_renderScoring() {
@@ -24069,6 +24075,14 @@ async function ons_renderScoring() {
     scoringRows = await ons_loadScoringData();
   } catch(e) {
     con.innerHTML = `<div style="padding:40px;color:#f85149;font-family:var(--mono);font-size:11px;">Error al cargar scoring: ${e.message}</div>`;
+    return;
+  }
+  if (!scoringRows || !scoringRows.length) {
+    con.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:40px;color:var(--text3);font-family:var(--mono);font-size:11px;"><div class="spinner"></div>Cargando scoring…</div>`;
+    // Reintentar una vez que la carga en vuelo termine
+    if (window._onsScoring.promise) {
+      window._onsScoring.promise.then(() => { con.dataset.rendered=''; ons_renderScoring(); }).catch(()=>{});
+    }
     return;
   }
 
@@ -24174,7 +24188,7 @@ async function ons_renderScoring() {
       <span style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);">🔍 Match checker (temporal)</span>
       <span style="background:rgba(63,185,80,0.15);color:#3fb950;border:1px solid rgba(63,185,80,0.3);padding:2px 10px;border-radius:10px;font-weight:700;">${matched.length} match</span>
       <span style="background:rgba(248,81,73,0.15);color:#f85149;border:1px solid rgba(248,81,73,0.3);padding:2px 10px;border-radius:10px;font-weight:700;">${unmatched.length} sin match</span>
-      <button onclick="event.stopPropagation();window._onsScoring.data=null;window._onsScoring.loading=false;document.getElementById('ons-scoring-content').dataset.rendered='';ons_renderScoring();" style="margin-left:auto;padding:2px 10px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:10px;cursor:pointer;font-family:var(--mono);">↻ Recargar</button>
+      <button onclick="event.stopPropagation();window._onsScoring.data=null;window._onsScoring.loading=false;window._onsScoring.promise=null;document.getElementById('ons-scoring-content').dataset.rendered='';ons_renderScoring();" style="margin-left:auto;padding:2px 10px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:10px;cursor:pointer;font-family:var(--mono);">↻ Recargar</button>
       <span style="color:var(--text3);font-size:10px;">▼</span>
     </div>
     <div style="display:none;">
