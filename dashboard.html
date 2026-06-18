@@ -19125,8 +19125,8 @@ function renderEquity(){
       const heroDiv=document.createElement('div');heroDiv.style.marginBottom='16px';
       const sitDiv=document.createElement('div');sitDiv.style.marginBottom='16px';
       const heatDiv=document.createElement('div');heatDiv.style.marginBottom='16px';
-      const chkDiv=document.createElement('div');
-      conEl.appendChild(heroDiv);conEl.appendChild(sitDiv);conEl.appendChild(heatDiv);conEl.appendChild(chkDiv);
+      const chkDiv=document.createElement('div');chkDiv.style.marginBottom='16px';
+      conEl.appendChild(heroDiv);conEl.appendChild(chkDiv);conEl.appendChild(sitDiv);conEl.appendChild(heatDiv);
       const risk=window._deuCalcRisk?window._deuCalcRisk(deudas):{nivel:'\u2014',color:'var(--text3)',bg:'var(--bg2)',causa:'',peorSit:0};
       const entidades=(deudas.periodos?.[0]?.entidades||[]).filter(e=>e.situacion>0);
       const montoTotal=entidades.reduce((s,e)=>s+(e.monto||0),0)*1000;
@@ -19153,40 +19153,42 @@ function renderEquity(){
       const _fmtPesosEnt=(miles)=>'$'+Math.round((miles||0)*1000).toLocaleString('es-AR');
       const _fmtPesosRaw=(pesos)=>'$'+Math.round(pesos||0).toLocaleString('es-AR');
       // Fila KPI: label izq, valor der, alineadas en grilla
-      const _kpiRow=(label,value,col,strong,sub)=>`<div style="display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:18px;padding:9px 0;">
-        <span style="font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:${col||'var(--text3)'};font-family:var(--mono);">${label}</span>
-        <span style="font-size:${strong?'19px':'16px'};font-weight:${strong?'800':'700'};color:${col||'var(--text)'};font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums;">${value}${sub?`<span style="font-size:11px;color:var(--text3);font-weight:600;margin-left:6px;">${sub}</span>`:''}</span>
+      const _kpiRow=(label,value,col,strong)=>`<div style="display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:18px;padding:10px 0;">
+        <span style="font-size:14px;text-transform:uppercase;letter-spacing:.05em;color:${col||'var(--text3)'};font-family:var(--mono);">${label}</span>
+        <span style="font-size:${strong?'21px':'17px'};font-weight:${strong?'800':'700'};color:${col||'var(--text)'};font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums;">${value}</span>
       </div>`;
-      // Encabezado: cheques (cantidad + monto) primero, luego deuda total
-      let kpiRows='';
+      // Bloque CHEQUES (separado, con su propio recuadro)
+      let chequesBlock='';
       if(_chkCount>0){
-        kpiRows+=`<div style="border-bottom:1px solid ${risk.color}18;">${_kpiRow('Cheques rechazados', String(_chkCount), '#f87171', false)}</div>`;
-        kpiRows+=`<div style="border-bottom:1px solid ${risk.color}18;">${_kpiRow('Monto total cheques', _fmtPesosRaw(_chkMonto), '#f87171', false)}</div>`;
+        chequesBlock=`<div style="background:rgba(248,81,73,0.06);border:1px solid rgba(248,81,73,0.25);border-radius:10px;padding:6px 16px;margin-bottom:16px;">
+          ${_kpiRow('Cheques rechazados', String(_chkCount), '#f87171', false)}
+          <div style="border-top:1px solid rgba(248,81,73,0.18);">${_kpiRow('Monto total cheques', _fmtPesosRaw(_chkMonto), '#f87171', false)}</div>
+        </div>`;
       }
-      kpiRows+=`<div style="border-bottom:2px solid ${risk.color}33;margin-bottom:4px;">${_kpiRow('Deuda Total Sistema', _fmtPesosEnt(_sumAll), 'var(--text)', true)}</div>`;
+      // Bloque DEUDA: total + situaciones
+      let kpiRows=`<div style="border-bottom:2px solid var(--border);margin-bottom:6px;">${_kpiRow('Deuda Total Sistema', _fmtPesosEnt(_sumAll), 'var(--text)', true)}</div>`;
       _sitPresentes.forEach((s,i)=>{
         const col=_SIT_COL[s]||'var(--text3)';
         const pct=_sumAll>0?((_montoPorSit[s]/_sumAll)*100):0;
         const nEnt=_entPorSit[s]||0;
-        kpiRows+=`<div style="padding:10px 0;${i<_sitPresentes.length-1?`border-bottom:1px solid ${risk.color}18;`:''}">
+        kpiRows+=`<div style="padding:12px 0;${i<_sitPresentes.length-1?`border-bottom:1px solid var(--border);`:''}">
           ${_kpiRow(`Situaci\u00F3n ${s} \u2014 ${_SIT_LEG[s]}`, _fmtPesosEnt(_montoPorSit[s]), col, true)}
-          <div style="display:grid;grid-template-columns:1fr auto;gap:18px;padding:3px 0;">
-            <span style="font-size:11px;color:var(--text3);font-family:var(--mono);">% del total</span>
-            <span style="font-size:13px;font-weight:600;color:${col};font-family:var(--mono);font-variant-numeric:tabular-nums;">${pct.toFixed(1)}%</span>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:18px;padding:4px 0;">
+            <span style="font-size:12px;color:var(--text3);font-family:var(--mono);">% del total</span>
+            <span style="font-size:14px;font-weight:600;color:${col};font-family:var(--mono);font-variant-numeric:tabular-nums;">${pct.toFixed(1)}%</span>
           </div>
-          <div style="display:grid;grid-template-columns:1fr auto;gap:18px;padding:3px 0;">
-            <span style="font-size:11px;color:var(--text3);font-family:var(--mono);">Entidades</span>
-            <span style="font-size:13px;font-weight:600;color:${col};font-family:var(--mono);font-variant-numeric:tabular-nums;">${nEnt} ${nEnt===1?'entidad':'entidades'}</span>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:18px;padding:4px 0;">
+            <span style="font-size:12px;color:var(--text3);font-family:var(--mono);">Entidades</span>
+            <span style="font-size:14px;font-weight:600;color:${col};font-family:var(--mono);font-variant-numeric:tabular-nums;">${nEnt} ${nEnt===1?'entidad':'entidades'}</span>
           </div>
         </div>`;
       });
-      const legendSit=_sitPresentes.length?`<div style="display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:18px;padding-top:16px;border-top:1px solid ${risk.color}22;"><span style="font-size:11px;font-weight:600;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-right:2px;">Referencia BCRA:</span>`+_sitPresentes.map(s=>`<span style="font-size:11px;color:${_SIT_COL[s]||'var(--text3)'};font-family:var(--mono);">Situaci\u00F3n ${s} \u2014 ${_SIT_LEG[s]}</span>`).join('')+`</div>`:'';
+      const legendSit=_sitPresentes.length?`<div style="display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:18px;padding-top:16px;border-top:1px solid var(--border);"><span style="font-size:11px;font-weight:600;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-right:2px;">Referencia BCRA:</span>`+_sitPresentes.map(s=>`<span style="font-size:11px;color:${_SIT_COL[s]||'var(--text3)'};font-family:var(--mono);">Situaci\u00F3n ${s} \u2014 ${_SIT_LEG[s]}</span>`).join('')+`</div>`:'';
       const chequesCard=_chkCount>0?`<div style="text-align:center;background:rgba(248,81,73,0.12);border:2px solid #f87171;border-radius:12px;padding:12px 22px;min-width:150px;">
         <div style="font-size:11px;color:#f87171;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px;">Cheques Rechazados</div>
         <div style="font-size:22px;font-weight:800;color:#f87171;font-family:var(--mono);">${_chkCount}</div>
       </div>`:'';
-      heroDiv.innerHTML=`<div style="background:${risk.bg};border:1px solid ${risk.color}33;border-radius:14px;padding:28px 32px;position:relative;overflow:hidden;">
-        <div style="position:absolute;top:0;right:0;width:200px;height:200px;background:${risk.color}08;border-radius:50%;transform:translate(40%,-40%);pointer-events:none;"></div>
+      heroDiv.innerHTML=`<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:28px 32px;position:relative;overflow:hidden;">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;position:relative;">
           <div style="flex:1 1 320px;min-width:260px;">
             <div style="font-size:26px;font-weight:800;color:var(--text);font-family:var(--display);letter-spacing:-.5px;line-height:1.1;margin-bottom:6px;">${_razon}</div>
@@ -19200,7 +19202,7 @@ function renderEquity(){
             ${chequesCard}
           </div>
         </div>
-        <div style="margin-top:20px;padding-top:18px;border-top:1px solid ${risk.color}22;position:relative;">${kpiRows}</div>
+        <div style="margin-top:20px;padding-top:18px;border-top:1px solid var(--border);position:relative;">${chequesBlock}${kpiRows}</div>
         ${legendSit}
       </div>`;
       if(entidades.length){
