@@ -19132,6 +19132,17 @@ function renderEquity(){
       const montoTotal=entidades.reduce((s,e)=>s+(e.monto||0),0)*1000;
       const periodo=deudas.periodos?.[0]?.periodo||'';
       const periodLabel=periodo?`${periodo.slice(0,4)}/${periodo.slice(4,6)}`:'\u2014';
+      // Resumen de cheques (cantidad + monto total) para hero
+      let _chkCount=0, _chkMonto=0;
+      if(cheques?.causales?.length){
+        cheques.causales.forEach(ca=>ca.entidades.forEach(en=>en.detalle.forEach(d=>{
+          _chkCount++;
+          const n=parseFloat(String(d.monto||'0').replace(/\./g,'').replace(',','.'));
+          if(!isNaN(n))_chkMonto+=n;
+        })));
+      }
+      // Razón social para el título grande
+      const _razon=(deudas.denominacion&&deudas.denominacion!=='—')?deudas.denominacion:(_currentExcelEmpresa&&_currentExcelEmpresa!==ticker?_currentExcelEmpresa:ticker);
       // KPIs por situación (filas internas) + leyenda — estilo herramienta Central de Deudores
       const _SIT_COL={1:'#16a34a',2:'#ca8a04',3:'#ea580c',4:'#dc2626',5:'#dc2626'};
       const _SIT_LEG={1:'Normal',2:'Riesgo bajo',3:'Riesgo medio',4:'Riesgo alto',5:'Irrecuperable'};
@@ -19139,45 +19150,57 @@ function renderEquity(){
       entidades.forEach(e=>{ _montoPorSit[e.situacion]=(_montoPorSit[e.situacion]||0)+(e.monto||0); _entPorSit[e.situacion]=(_entPorSit[e.situacion]||0)+1; });
       const _sumAll=Object.values(_montoPorSit).reduce((s,v)=>s+v,0);
       const _sitPresentes=[1,2,3,4,5].filter(s=>(_montoPorSit[s]||0)>0);
-      // Monto entero en pesos (e.monto viene en miles)
       const _fmtPesosEnt=(miles)=>'$'+Math.round((miles||0)*1000).toLocaleString('es-AR');
+      const _fmtPesosRaw=(pesos)=>'$'+Math.round(pesos||0).toLocaleString('es-AR');
       // Fila KPI: label izq, valor der, alineadas en grilla
-      const _kpiRow=(label,value,col,strong)=>`<div style="display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:16px;padding:7px 0;">
-        <span style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:${col||'var(--text3)'};font-family:var(--mono);">${label}</span>
-        <span style="font-size:${strong?'16px':'14px'};font-weight:${strong?'800':'700'};color:${col||'var(--text)'};font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums;">${value}</span>
+      const _kpiRow=(label,value,col,strong,sub)=>`<div style="display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:18px;padding:9px 0;">
+        <span style="font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:${col||'var(--text3)'};font-family:var(--mono);">${label}</span>
+        <span style="font-size:${strong?'19px':'16px'};font-weight:${strong?'800':'700'};color:${col||'var(--text)'};font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums;">${value}${sub?`<span style="font-size:11px;color:var(--text3);font-weight:600;margin-left:6px;">${sub}</span>`:''}</span>
       </div>`;
-      // Encabezado total + grupos por situación
-      let kpiRows=`<div style="border-bottom:2px solid ${risk.color}33;margin-bottom:4px;">${_kpiRow('Deuda Total Sistema', _fmtPesosEnt(_sumAll), 'var(--text)', true)}</div>`;
+      // Encabezado: cheques (cantidad + monto) primero, luego deuda total
+      let kpiRows='';
+      if(_chkCount>0){
+        kpiRows+=`<div style="border-bottom:1px solid ${risk.color}18;">${_kpiRow('Cheques rechazados', String(_chkCount), '#f87171', false)}</div>`;
+        kpiRows+=`<div style="border-bottom:1px solid ${risk.color}18;">${_kpiRow('Monto total cheques', _fmtPesosRaw(_chkMonto), '#f87171', false)}</div>`;
+      }
+      kpiRows+=`<div style="border-bottom:2px solid ${risk.color}33;margin-bottom:4px;">${_kpiRow('Deuda Total Sistema', _fmtPesosEnt(_sumAll), 'var(--text)', true)}</div>`;
       _sitPresentes.forEach((s,i)=>{
         const col=_SIT_COL[s]||'var(--text3)';
         const pct=_sumAll>0?((_montoPorSit[s]/_sumAll)*100):0;
         const nEnt=_entPorSit[s]||0;
-        kpiRows+=`<div style="padding:8px 0;${i<_sitPresentes.length-1?`border-bottom:1px solid ${risk.color}18;`:''}">
+        kpiRows+=`<div style="padding:10px 0;${i<_sitPresentes.length-1?`border-bottom:1px solid ${risk.color}18;`:''}">
           ${_kpiRow(`Situaci\u00F3n ${s} \u2014 ${_SIT_LEG[s]}`, _fmtPesosEnt(_montoPorSit[s]), col, true)}
-          <div style="display:grid;grid-template-columns:1fr auto;gap:16px;padding:2px 0;">
-            <span style="font-size:9px;color:var(--text3);font-family:var(--mono);">% del total</span>
-            <span style="font-size:11px;font-weight:600;color:${col};font-family:var(--mono);font-variant-numeric:tabular-nums;">${pct.toFixed(1)}%</span>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:18px;padding:3px 0;">
+            <span style="font-size:11px;color:var(--text3);font-family:var(--mono);">% del total</span>
+            <span style="font-size:13px;font-weight:600;color:${col};font-family:var(--mono);font-variant-numeric:tabular-nums;">${pct.toFixed(1)}%</span>
           </div>
-          <div style="display:grid;grid-template-columns:1fr auto;gap:16px;padding:2px 0;">
-            <span style="font-size:9px;color:var(--text3);font-family:var(--mono);">Entidades</span>
-            <span style="font-size:11px;font-weight:600;color:${col};font-family:var(--mono);font-variant-numeric:tabular-nums;">${nEnt} ${nEnt===1?'entidad':'entidades'}</span>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:18px;padding:3px 0;">
+            <span style="font-size:11px;color:var(--text3);font-family:var(--mono);">Entidades</span>
+            <span style="font-size:13px;font-weight:600;color:${col};font-family:var(--mono);font-variant-numeric:tabular-nums;">${nEnt} ${nEnt===1?'entidad':'entidades'}</span>
           </div>
         </div>`;
       });
-      const legendSit=_sitPresentes.length?`<div style="display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:16px;padding-top:14px;border-top:1px solid ${risk.color}22;"><span style="font-size:9px;font-weight:600;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-right:2px;">Referencia BCRA:</span>`+_sitPresentes.map(s=>`<span style="font-size:9px;color:${_SIT_COL[s]||'var(--text3)'};font-family:var(--mono);">Situaci\u00F3n ${s} \u2014 ${_SIT_LEG[s]}</span>`).join('')+`</div>`:'';
-      heroDiv.innerHTML=`<div style="background:${risk.bg};border:1px solid ${risk.color}33;border-radius:14px;padding:24px 28px;position:relative;overflow:hidden;">
-        <div style="position:absolute;top:0;right:0;width:180px;height:180px;background:${risk.color}08;border-radius:50%;transform:translate(40%,-40%);pointer-events:none;"></div>
+      const legendSit=_sitPresentes.length?`<div style="display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:18px;padding-top:16px;border-top:1px solid ${risk.color}22;"><span style="font-size:11px;font-weight:600;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-right:2px;">Referencia BCRA:</span>`+_sitPresentes.map(s=>`<span style="font-size:11px;color:${_SIT_COL[s]||'var(--text3)'};font-family:var(--mono);">Situaci\u00F3n ${s} \u2014 ${_SIT_LEG[s]}</span>`).join('')+`</div>`:'';
+      const chequesCard=_chkCount>0?`<div style="text-align:center;background:rgba(248,81,73,0.12);border:2px solid #f87171;border-radius:12px;padding:12px 22px;min-width:150px;">
+        <div style="font-size:11px;color:#f87171;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px;">Cheques Rechazados</div>
+        <div style="font-size:22px;font-weight:800;color:#f87171;font-family:var(--mono);">${_chkCount}</div>
+      </div>`:'';
+      heroDiv.innerHTML=`<div style="background:${risk.bg};border:1px solid ${risk.color}33;border-radius:14px;padding:28px 32px;position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;right:0;width:200px;height:200px;background:${risk.color}08;border-radius:50%;transform:translate(40%,-40%);pointer-events:none;"></div>
         <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;position:relative;">
-          <div>
-            <div style="font-size:12px;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">CUIT ${cuit} \u00B7 \u00DAltimo per\u00EDodo: ${periodLabel}</div>
-            <div style="font-size:12px;color:${risk.color};font-family:var(--mono);opacity:.9;">${risk.causa||''}</div>
+          <div style="flex:1 1 320px;min-width:260px;">
+            <div style="font-size:26px;font-weight:800;color:var(--text);font-family:var(--display);letter-spacing:-.5px;line-height:1.1;margin-bottom:6px;">${_razon}</div>
+            <div style="font-size:13px;color:var(--text3);font-family:var(--mono);">CUIT ${cuit} \u00B7 \u00DAltimo per\u00EDodo: ${periodLabel}</div>
           </div>
-          <div style="text-align:center;background:${risk.color}22;border:2px solid ${risk.color};border-radius:12px;padding:12px 22px;min-width:150px;">
-            <div style="font-size:9px;color:${risk.color};font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px;">Nivel de Riesgo</div>
-            <div style="font-size:20px;font-weight:800;color:${risk.color};font-family:var(--mono);">${risk.nivel}</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;">
+            <div style="text-align:center;background:${risk.color}22;border:2px solid ${risk.color};border-radius:12px;padding:12px 22px;min-width:150px;">
+              <div style="font-size:11px;color:${risk.color};font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px;">Nivel de Riesgo</div>
+              <div style="font-size:22px;font-weight:800;color:${risk.color};font-family:var(--mono);">${risk.nivel}</div>
+            </div>
+            ${chequesCard}
           </div>
         </div>
-        <div style="margin-top:18px;padding-top:16px;border-top:1px solid ${risk.color}22;position:relative;">${kpiRows}</div>
+        <div style="margin-top:20px;padding-top:18px;border-top:1px solid ${risk.color}22;position:relative;">${kpiRows}</div>
         ${legendSit}
       </div>`;
       if(entidades.length){
