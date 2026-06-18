@@ -18183,6 +18183,12 @@ function renderEquity(){
         <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">BCRA</div>
         <div style="font-size:22px;font-weight:800;color:var(--text3);font-family:var(--mono);line-height:1;">—</div>
         <div style="font-size:9px;color:var(--text3);font-family:var(--mono);opacity:.7;">situación</div>
+      </div>`:''}
+      ${cuit?`
+      <div id="cheques-badge-${ticker}" style="display:none;background:rgba(248,81,73,0.1);border:2px solid #f8714944;${cardStyle}">
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#f87171;font-family:var(--mono);margin-bottom:3px;">Cheques</div>
+        <div style="font-size:22px;font-weight:800;color:#f87171;font-family:var(--mono);line-height:1;">—</div>
+        <div style="font-size:9px;color:#f87171;font-family:var(--mono);opacity:.7;">rechazados</div>
       </div>`:''}`;
 
     const hdr=document.createElement('div');
@@ -18191,7 +18197,7 @@ function renderEquity(){
       <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:${hasEco?'16px':'0'};">
         <div>
           <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:4px;">
-            <span style="font-size:28px;font-weight:800;font-family:var(--mono);color:var(--text2);">${ticker}</span>
+            <span style="font-size:26px;font-weight:800;font-family:var(--display);color:var(--text);letter-spacing:-.5px;line-height:1.1;">${ticker}</span>
             ${cuitFmt?`<span title="Click para copiar CUIT" onclick="navigator.clipboard.writeText('${cuit}')"
               style="font-size:11px;color:var(--text3);font-family:var(--mono);cursor:pointer;padding:2px 8px;border:1px solid var(--border2);border-radius:4px;"
               onmouseover="this.style.borderColor='#1E27F3';this.style.color='#a5b4fc'"
@@ -18370,6 +18376,24 @@ function renderEquity(){
         <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:${color};font-family:var(--mono);margin-bottom:3px;">BCRA</div>
         <div style="font-size:22px;font-weight:800;color:${color};font-family:var(--mono);line-height:1;">${peorSit}</div>
         <div style="font-size:9px;color:${color};font-family:var(--mono);opacity:.85;">${lbl}</div>`;
+      // Card de cheques rechazados (solo si hay)
+      const chequesData=(json && !json._fetchError) ? (json.cheques?.results||json.cheques||null) : null;
+      let chkN=0;
+      if(chequesData?.causales?.length){
+        chequesData.causales.forEach(ca=>ca.entidades.forEach(en=>en.detalle.forEach(()=>chkN++)));
+      }
+      const chkBadge=document.getElementById(`cheques-badge-${ticker}`);
+      if(chkBadge){
+        if(chkN>0){
+          chkBadge.style.display='';
+          chkBadge.innerHTML=`
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#f87171;font-family:var(--mono);margin-bottom:3px;">Cheques</div>
+            <div style="font-size:22px;font-weight:800;color:#f87171;font-family:var(--mono);line-height:1;">${chkN}</div>
+            <div style="font-size:9px;color:#f87171;font-family:var(--mono);opacity:.85;">rechazados</div>`;
+        } else {
+          chkBadge.style.display='none';
+        }
+      }
     }catch(e){/* silencioso */}
   }
 
@@ -19340,12 +19364,6 @@ function renderEquity(){
     const thC=thS+'text-align:center;';
     container.innerHTML=`
       <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono);margin-bottom:8px;">Cheques Rechazados</div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
-        <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:12px 20px;flex:1;min-width:100px;"><div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">Total rebotados</div><div style="font-size:22px;font-weight:700;color:var(--text);font-family:var(--mono);">${allCheques.length}</div></div>
-        <div style="background:rgba(248,81,73,0.08);border:1px solid rgba(248,81,73,0.3);border-radius:8px;padding:12px 20px;flex:1;min-width:100px;"><div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">Sin regularizar</div><div style="font-size:22px;font-weight:700;color:#f87171;font-family:var(--mono);">${sinReg}</div></div>
-        <div style="background:rgba(63,185,80,0.08);border:1px solid rgba(63,185,80,0.25);border-radius:8px;padding:12px 20px;flex:1;min-width:100px;"><div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">Regularizados</div><div style="font-size:22px;font-weight:700;color:#3fb950;font-family:var(--mono);">${regularizados}</div></div>
-        <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:8px;padding:12px 20px;flex:1;min-width:100px;"><div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">Multa impaga</div><div style="font-size:22px;font-weight:700;color:#fbbf24;font-family:var(--mono);">${multaImpaga}</div></div>
-      </div>
       <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;"><div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;font-family:var(--mono);">
           <thead><tr><th style="${thS}">Causal</th><th style="${thR}">N° Cheque</th><th style="${thR}">Monto</th><th style="${thC}">F. Rechazo</th><th style="${thC}">Estado</th><th style="${thC}">Multa</th></tr></thead>
