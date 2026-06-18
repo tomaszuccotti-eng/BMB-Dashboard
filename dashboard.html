@@ -20327,23 +20327,23 @@ function renderCheques(cheques){
       <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;">
         <div style="background:var(--bg2);border:1.5px solid var(--border2);border-radius:10px;padding:14px 18px;flex:1 1 0;min-width:150px;">
           <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:6px;">Último cierre</div>
-          <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--text2);">${last.c!=null?last.c.toLocaleString('es-AR',{minimumFractionDigits:2}):'—'}</div>
+          <div style="font-size:24px;font-weight:700;font-family:var(--mono);color:var(--text2);">${last.c!=null?last.c.toLocaleString('es-AR',{minimumFractionDigits:2}):'—'}</div>
         </div>
         <div style="background:var(--bg2);border:1.5px solid var(--border2);border-radius:10px;padding:14px 18px;flex:1 1 0;min-width:150px;">
           <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:6px;">Var % día</div>
-          <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:${last.dr>=0?'var(--green)':'var(--red)'};">${last.dr!=null?((last.dr>=0?'+':'')+last.dr.toFixed(2)+'%'):'—'}</div>
+          <div style="font-size:24px;font-weight:700;font-family:var(--mono);color:${last.dr>=0?'var(--green)':'var(--red)'};">${last.dr!=null?((last.dr>=0?'+':'')+last.dr.toFixed(2)+'%'):'—'}</div>
         </div>
         <div style="background:var(--bg2);border:1.5px solid var(--border2);border-radius:10px;padding:14px 18px;flex:1 1 0;min-width:150px;">
           <div id="ear-perlabel-${ticker}" style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:6px;">Var % período</div>
-          <div id="ear-pervar-${ticker}" style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--text2);">—</div>
+          <div id="ear-pervar-${ticker}" style="font-size:24px;font-weight:700;font-family:var(--mono);color:var(--text2);">—</div>
         </div>
         <div style="background:var(--bg2);border:1.5px solid var(--border2);border-radius:10px;padding:14px 18px;flex:1 1 0;min-width:150px;">
           <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:6px;">Volumen nominal diario</div>
-          <div id="ear-volday-${ticker}" style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--text2);">—</div>
+          <div id="ear-volday-${ticker}" style="font-size:24px;font-weight:700;font-family:var(--mono);color:var(--text2);">—</div>
         </div>
         <div style="background:var(--bg2);border:1.5px solid var(--border2);border-radius:10px;padding:14px 18px;flex:1 1 0;min-width:150px;">
           <div id="ear-volavglabel-${ticker}" style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:6px;">Vol. nominal prom. período</div>
-          <div id="ear-volavg-${ticker}" style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--text2);">—</div>
+          <div id="ear-volavg-${ticker}" style="font-size:24px;font-weight:700;font-family:var(--mono);color:var(--text2);">—</div>
         </div>
       </div>
 
