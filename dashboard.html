@@ -18356,7 +18356,12 @@ function renderEquity(){
         return;
       }
       const entidades=(deudas.periodos?.[0]?.entidades||[]).filter(e=>e.situacion>0);
-      const peorSit=entidades.length ? Math.max(...entidades.map(e=>e.situacion)) : 0;
+      // Regla: solo se considera para el badge una situación con monto agregado > 1% del total
+      const _totMonto=entidades.reduce((s,e)=>s+(e.monto||0),0);
+      const _mpsBadge={};
+      entidades.forEach(e=>{ _mpsBadge[e.situacion]=(_mpsBadge[e.situacion]||0)+(e.monto||0); });
+      const _entRelevantes=entidades.filter(e=> _totMonto>0 ? ((_mpsBadge[e.situacion]||0)/_totMonto*100)>1 : true);
+      const peorSit=_entRelevantes.length ? Math.max(..._entRelevantes.map(e=>e.situacion)) : 0;
       const SIT_COLOR={0:'var(--text3)',1:'#4ade80',2:'#fbbf24',3:'#fb923c',4:'#f87171',5:'#fca5a5'};
       const SIT_BG={0:'var(--bg2)',1:'rgba(22,163,74,0.12)',2:'rgba(202,138,4,0.12)',3:'rgba(234,88,12,0.12)',4:'rgba(220,38,38,0.12)',5:'rgba(127,29,29,0.25)'};
       const SIT_LBL={0:'Sin deuda',1:'Normal',2:'Riesgo Bajo',3:'Alerta',4:'Alto Riesgo',5:'Crítico'};
@@ -20102,7 +20107,13 @@ window.deuSearch = async function(){
 function deuCalcRisk(deudas){
   if(!deudas) return {nivel:'SIN DATOS', color:'#6b7280', bg:'rgba(107,114,128,0.12)', causa:'Sin datos disponibles'};
   const entidades = deudas.periodos?.[0]?.entidades || [];
-  const activas   = entidades.filter(e => e.situacion > 0);
+  const todasActivas = entidades.filter(e => e.situacion > 0);
+  // Regla: solo se considera para el riesgo una situación cuyo monto agregado supere el 1% del total.
+  const totalMonto = todasActivas.reduce((s,e)=>s+(e.monto||0),0);
+  const montoPorSit = {};
+  todasActivas.forEach(e=>{ montoPorSit[e.situacion]=(montoPorSit[e.situacion]||0)+(e.monto||0); });
+  const sitRelevante = (sit)=> totalMonto>0 ? ((montoPorSit[sit]||0)/totalMonto*100) > 1 : true;
+  const activas = todasActivas.filter(e => sitRelevante(e.situacion));
   const peorSit   = activas.length ? Math.max(...activas.map(e=>e.situacion)) : 0;
   const enJuicio  = activas.some(e => e.situacionJuridica || e.procesoJud);
   const irrec     = activas.some(e => e.irrecDisposicionTecnica);
