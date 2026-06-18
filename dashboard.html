@@ -20201,50 +20201,54 @@ function renderCheques(cheques){
   const _earPriceState={};   // ticker → { allData, range, ccy }
 
   // Pre-carga el histórico al estado SIN tocar la UI (para disparar al buscar la empresa)
-  async function _prefetchPrecios(ticker){
-    // Pre-cargar también el FX (MEP/CCL) en background si aún no está
-    if(!(window.eqFxDates||[]).length && typeof window.eqLoadFx==='function'){ window.eqLoadFx(); }
-    if(_earPriceState[ticker]?.allData?.length) return;          // ya cacheado
-    if(_earPriceState[ticker]?._loading) return;                  // ya en curso
-    _earPriceState[ticker]={_loading:true, range:365, ccy:'ARS'};
-    try{
+  const _earPricePromise={};  // ticker → promesa de carga en curso
+
+  // Carga el histórico a _earPriceState. Devuelve una promesa reutilizable.
+  function _loadPreciosData(ticker){
+    if(_earPriceState[ticker]?.allData?.length) return Promise.resolve(_earPriceState[ticker]);
+    if(_earPricePromise[ticker]) return _earPricePromise[ticker];  // ya en curso → reusar
+    const p=(async()=>{
       const res=await fetch(`https://data912.com/historical/stocks/${ticker}`);
       if(!res.ok) throw new Error('HTTP '+res.status);
       const raw=await res.json();
       const arr=(Array.isArray(raw)?raw:(raw?.data||[])).filter(d=>d.date&&d.c!=null).sort((a,b)=>a.date.localeCompare(b.date));
-      if(!arr.length) throw new Error('Sin datos');
+      if(!arr.length) throw new Error('Sin datos históricos para '+ticker);
       _earPriceState[ticker]={allData:arr, range:365, ccy:'ARS'};
-      // Si el tab de precios ya está abierto y a la espera, renderizar ahora
+      return _earPriceState[ticker];
+    })();
+    _earPricePromise[ticker]=p;
+    p.catch(()=>{ delete _earPricePromise[ticker]; });  // permitir reintento si falla
+    return p;
+  }
+
+  // Pre-carga al buscar la empresa (background, sin tocar UI)
+  async function _prefetchPrecios(ticker){
+    // FX (MEP/CCL) en paralelo
+    if(!(window.eqFxDates||[]).length && typeof window.eqLoadFx==='function'){ window.eqLoadFx(); }
+    try{
+      await _loadPreciosData(ticker);
+      // Si el tab ya está abierto esperando, renderizar
       const con=document.getElementById(`ficha-tab-content-${ticker}-precios`);
       if(con && con.style.display!=='none' && !con.dataset.rendered){
         con.dataset.rendered='1';
         _earBuildPriciosUI(ticker, con);
       }
-    }catch(e){
-      // Falla silenciosa: si el usuario entra al tab, _renderFichaPrecios reintenta y muestra el error
-      delete _earPriceState[ticker];
-    }
+    }catch(_){/* silencioso: el tab reintenta y muestra error */}
   }
   window._prefetchPrecios = _prefetchPrecios;
 
   async function _renderFichaPrecios(ticker){
     const con=document.getElementById(`ficha-tab-content-${ticker}-precios`);
     if(!con)return;
-    // Si ya tiene datos cargados, solo re-renderizar charts (sin refetch)
+    // Ya cargado → render directo
     if(_earPriceState[ticker]?.allData?.length){
       _earBuildPriciosUI(ticker, con);
       return;
     }
+    // En curso o por iniciar → mostrar spinner y esperar la MISMA promesa (no refetch)
     con.innerHTML=`<div style="display:flex;align-items:center;gap:10px;padding:32px 0;color:var(--text3);font-family:var(--mono);font-size:11px;"><div class="spinner"></div>Cargando histórico de precios...</div>`;
-
     try{
-      const res=await fetch(`https://data912.com/historical/stocks/${ticker}`);
-      if(!res.ok) throw new Error('HTTP '+res.status);
-      const raw=await res.json();
-      const arr=(Array.isArray(raw)?raw:(raw?.data||[])).filter(d=>d.date&&d.c!=null).sort((a,b)=>a.date.localeCompare(b.date));
-      if(!arr.length) throw new Error('Sin datos históricos para '+ticker);
-
-      _earPriceState[ticker]={allData:arr, range:365, ccy:'ARS'};
+      await _loadPreciosData(ticker);
       con.dataset.rendered='1';
       _earBuildPriciosUI(ticker, con);
     }catch(e){
@@ -20261,15 +20265,26 @@ function renderCheques(cheques){
     con.innerHTML=`
       <!-- Stats rápidos -->
       <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px;">
-        ${[
-          ['Último cierre', last.c!=null?last.c.toLocaleString('es-AR',{minimumFractionDigits:2})+'':'—'],
-          ['Var % día',     last.dr!=null?((last.dr>=0?'+':'')+last.dr.toFixed(2)+'%'):'—', last.dr>=0?'var(--green)':'var(--red)'],
-          ['Registros',     st.allData.length],
-          ['Desde',         first.date],
-        ].map(([l,v,c])=>`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:110px;">
-          <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">${l}</div>
-          <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:${c||'var(--text2)'};">${v}</div>
-        </div>`).join('')}
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:110px;">
+          <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">Último cierre</div>
+          <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--text2);">${last.c!=null?last.c.toLocaleString('es-AR',{minimumFractionDigits:2}):'—'}</div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:110px;">
+          <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">Var % día</div>
+          <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:${last.dr>=0?'var(--green)':'var(--red)'};">${last.dr!=null?((last.dr>=0?'+':'')+last.dr.toFixed(2)+'%'):'—'}</div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:130px;">
+          <div id="ear-perlabel-${ticker}" style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">Var % período</div>
+          <div id="ear-pervar-${ticker}" style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--text2);">—</div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:110px;">
+          <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">Registros</div>
+          <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--text2);">${st.allData.length}</div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:110px;">
+          <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">Desde</div>
+          <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--text2);">${first.date}</div>
+        </div>
       </div>
 
       <!-- Gráfico precio -->
@@ -20277,9 +20292,9 @@ function renderCheques(cheques){
         <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;flex-wrap:wrap;gap:8px;">
           <span style="font-size:11px;font-weight:600;font-family:var(--mono);color:var(--text2);">Precio de cierre</span>
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-            <div style="display:flex;gap:3px;" id="ear-range-btns-${ticker}">
-              ${['1M','3M','6M','1A','TODO'].map((l,i)=>`<button
-                onclick="_earSetRange('${ticker}',${[30,90,180,365,9999][i]},this)"
+            <div style="display:flex;gap:3px;flex-wrap:wrap;" id="ear-range-btns-${ticker}">
+              ${['1M','3M','6M','1A','2A','3A','5A','TODO'].map((l,i)=>`<button
+                onclick="_earSetRange('${ticker}',${[30,90,180,365,730,1095,1825,99999][i]},this)"
                 style="padding:3px 8px;font-size:10px;font-family:var(--mono);cursor:pointer;border-radius:3px;border:1px solid var(--border2);background:${l==='1A'?'var(--accent)':'transparent'};color:${l==='1A'?'#fff':'var(--text3)'};">${l}</button>`).join('')}
             </div>
             <div style="width:1px;height:14px;background:var(--border2);"></div>
@@ -20397,6 +20412,22 @@ function renderCheques(cheques){
     });
     if(!_earPriceCharts[ticker]) _earPriceCharts[ticker]={};
     _earPriceCharts[ticker].priceChart=chart;
+
+    // ── Var % período: primer valor válido vs último, en la moneda y rango actuales ──
+    const pvEl=document.getElementById(`ear-pervar-${ticker}`);
+    const plEl=document.getElementById(`ear-perlabel-${ticker}`);
+    if(pvEl){
+      const v0=valid.length?valid[0]:null, v1=valid.length?valid[valid.length-1]:null;
+      if(v0!=null && v1!=null && v0!==0){
+        const pct=(v1/v0-1)*100;
+        pvEl.textContent=(pct>=0?'+':'')+pct.toFixed(2)+'%';
+        pvEl.style.color=pct>=0?'var(--green)':'var(--red)';
+      } else { pvEl.textContent='—'; pvEl.style.color='var(--text2)'; }
+    }
+    if(plEl){
+      const rangeLabel={30:'1M',90:'3M',180:'6M',365:'1A',730:'2A',1095:'3A',1825:'5A'}[_earPriceState[ticker].range]||'TODO';
+      plEl.textContent=`Var % ${rangeLabel} · ${ccy}`;
+    }
   }
 
   function _earBuildVolChart(ticker){
