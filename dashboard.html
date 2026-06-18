@@ -18831,7 +18831,7 @@ function renderEquity(){
             if(ents.length){
               T.sub('Situación actual');
               T.table(['Entidad','Situación','Monto','Atraso'],
-                ents.map(e=>[e.entidad,`${e.situacion} — ${SIT[e.situacion]||'—'}`,`$${Math.round((e.monto||0)/1000).toLocaleString('es-AR')}M`,(e.diasAtrasoPago||0)>0?e.diasAtrasoPago+'d':'—']));
+                ents.map(e=>[e.entidad,`${e.situacion} — ${SIT[e.situacion]||'—'}`,`${window._deuFmtMontoMiles?window._deuFmtMontoMiles(e.monto):('$'+Math.round((e.monto||0)/1000).toLocaleString('es-AR')+'M')}`,(e.diasAtrasoPago||0)>0?e.diasAtrasoPago+'d':'—']));
             }
             // Gráfico + heatmap siempre en hoja nueva (quedan grandes y la situación suele ser larga)
             T.pageNew();
@@ -19132,22 +19132,43 @@ function renderEquity(){
       const montoTotal=entidades.reduce((s,e)=>s+(e.monto||0),0)*1000;
       const periodo=deudas.periodos?.[0]?.periodo||'';
       const periodLabel=periodo?`${periodo.slice(0,4)}/${periodo.slice(4,6)}`:'\u2014';
-      // Cards por situación: % del total, solo los que tienen monto > 0
+      // KPIs por situación (filas internas) + leyenda — estilo herramienta Central de Deudores
       const _SIT_COL={1:'#16a34a',2:'#ca8a04',3:'#ea580c',4:'#dc2626',5:'#dc2626'};
-      const _SIT_LB={1:'Normal',2:'Riesgo Bajo',3:'Con Problemas',4:'Alto Riesgo',5:'Irrecuperable'};
-      const _montoPorSit={};
-      entidades.forEach(e=>{ _montoPorSit[e.situacion]=(_montoPorSit[e.situacion]||0)+(e.monto||0); });
-      const _sumAll=Object.values(_montoPorSit).reduce((s,v)=>s+v,0);
-      const sitCards=[1,2,3,4,5].filter(s=>(_montoPorSit[s]||0)>0).map(s=>{
-        const pct=_sumAll>0?((_montoPorSit[s]/_sumAll)*100):0;
-        const col=_SIT_COL[s]||'var(--text3)';
-        return `<div style="flex:1 1 76px;min-width:76px;max-width:140px;text-align:center;background:${col}22;border:2px solid ${col};border-radius:10px;padding:8px 10px;box-sizing:border-box;"><div style="font-size:20px;font-weight:800;color:${col};font-family:var(--mono);line-height:1;margin-bottom:3px;">${s}</div><div style="font-size:13px;font-weight:700;color:${col};font-family:var(--mono);line-height:1;margin-bottom:3px;">${pct.toFixed(0)}%</div><div style="font-size:8px;color:${col};font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;opacity:.9;">${_SIT_LB[s]||''}</div></div>`;
-      }).join('');
-      // Leyenda: solo situaciones presentes en esta empresa (mismo filtro que los cards)
       const _SIT_LEG={1:'Normal',2:'Riesgo bajo',3:'Riesgo medio',4:'Riesgo alto',5:'Irrecuperable'};
+      const _montoPorSit={}, _entPorSit={};
+      entidades.forEach(e=>{ _montoPorSit[e.situacion]=(_montoPorSit[e.situacion]||0)+(e.monto||0); _entPorSit[e.situacion]=(_entPorSit[e.situacion]||0)+1; });
+      const _sumAll=Object.values(_montoPorSit).reduce((s,v)=>s+v,0);
       const _sitPresentes=[1,2,3,4,5].filter(s=>(_montoPorSit[s]||0)>0);
-      const legendSit=_sitPresentes.length?`<div style="display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:10px;padding:0 4px;"><span style="font-size:9px;font-weight:600;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-right:2px;">Referencia BCRA:</span>`+_sitPresentes.map(s=>`<span style="font-size:9px;color:${_SIT_COL[s]||'var(--text3)'};font-family:var(--mono);">Situación ${s} \u2014 ${_SIT_LEG[s]}</span>`).join('')+`</div>`:'';
-      heroDiv.innerHTML=`<div style="background:${risk.bg};border:1px solid ${risk.color}33;border-radius:12px;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;"><div style="flex:1 1 240px;min-width:200px;"><div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">CUIT ${cuit} \u00B7 Per\u00EDodo: ${periodLabel}</div><div style="font-size:13px;color:var(--text2);font-family:var(--mono);">${entidades.length} entidades activas \u00B7 Deuda total: <strong style="color:var(--text);">${window._deuFmtPesos?window._deuFmtPesos(montoTotal):('$'+(montoTotal/1e6).toFixed(1)+'M')}</strong></div></div><div style="display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;flex:1 1 auto;justify-content:flex-end;">${sitCards}</div></div>${legendSit}`;
+      const _fmtM=(miles)=> window._deuFmtMontoMiles?window._deuFmtMontoMiles(miles):('$'+Math.round((miles||0)/1000).toLocaleString('es-AR')+'M');
+      // Fila KPI reutilizable
+      const _kpiRow=(label,value,sub,col)=>`<div style="display:flex;align-items:baseline;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid ${risk.color}18;">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:${col||'var(--text3)'};font-family:var(--mono);">${label}</div>
+        <div style="display:flex;align-items:baseline;gap:8px;"><span style="font-size:15px;font-weight:700;color:${col||'var(--text)'};font-family:var(--mono);">${value}</span>${sub?`<span style="font-size:9px;color:var(--text3);font-family:var(--mono);">${sub}</span>`:''}</div>
+      </div>`;
+      let kpiRows=_kpiRow('Deuda Total Sistema', _fmtM(_sumAll), 'miles de ARS \u2192 pesos', 'var(--text)');
+      _sitPresentes.forEach(s=>{
+        const col=_SIT_COL[s]||'var(--text3)';
+        const pct=_sumAll>0?((_montoPorSit[s]/_sumAll)*100):0;
+        kpiRows+=_kpiRow(`Total Situaci\u00F3n ${s}`, _fmtM(_montoPorSit[s]), _SIT_LEG[s], col);
+        kpiRows+=_kpiRow(`% del total \u00B7 Sit. ${s}`, pct.toFixed(1)+'%', '', col);
+        kpiRows+=_kpiRow(`Entidades \u00B7 Sit. ${s}`, String(_entPorSit[s]||0), (_entPorSit[s]||0)===1?'entidad':'entidades', col);
+      });
+      const legendSit=_sitPresentes.length?`<div style="display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:16px;padding-top:14px;border-top:1px solid ${risk.color}22;"><span style="font-size:9px;font-weight:600;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-right:2px;">Referencia BCRA:</span>`+_sitPresentes.map(s=>`<span style="font-size:9px;color:${_SIT_COL[s]||'var(--text3)'};font-family:var(--mono);">Situaci\u00F3n ${s} \u2014 ${_SIT_LEG[s]}</span>`).join('')+`</div>`:'';
+      heroDiv.innerHTML=`<div style="background:${risk.bg};border:1px solid ${risk.color}33;border-radius:14px;padding:24px 28px;position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;right:0;width:180px;height:180px;background:${risk.color}08;border-radius:50%;transform:translate(40%,-40%);pointer-events:none;"></div>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;position:relative;">
+          <div>
+            <div style="font-size:12px;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">CUIT ${cuit} \u00B7 \u00DAltimo per\u00EDodo: ${periodLabel}</div>
+            <div style="font-size:12px;color:${risk.color};font-family:var(--mono);opacity:.9;">${risk.causa||''}</div>
+          </div>
+          <div style="text-align:center;background:${risk.color}22;border:2px solid ${risk.color};border-radius:12px;padding:12px 22px;min-width:150px;">
+            <div style="font-size:9px;color:${risk.color};font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px;">Nivel de Riesgo</div>
+            <div style="font-size:20px;font-weight:800;color:${risk.color};font-family:var(--mono);">${risk.nivel}</div>
+          </div>
+        </div>
+        <div style="margin-top:18px;padding-top:16px;border-top:1px solid ${risk.color}22;position:relative;">${kpiRows}</div>
+        ${legendSit}
+      </div>`;
       if(entidades.length){
         const SIT_BG={0:'transparent',1:'#16a34a',2:'#ca8a04',3:'#ea580c',4:'#dc2626',5:'#7f1d1d'};
         const SIT_TXT={0:'var(--text3)',1:'#fff',2:'#fff',3:'#fff',4:'#fff',5:'#fca5a5'};
@@ -19155,7 +19176,7 @@ function renderEquity(){
         const _sumMonto=entidades.reduce((s,e)=>s+(e.monto||0),0);
         const trows=entidades.sort((a,b)=>b.situacion-a.situacion).map(e=>{
           const pond=_sumMonto>0?((e.monto||0)/_sumMonto*100):0;
-          return `<tr onmouseover="this.querySelectorAll('td').forEach(td=>td.style.background='var(--accent-light)')" onmouseout="this.querySelectorAll('td').forEach(td=>td.style.background='')"><td style="padding:6px 12px;font-size:11px;color:var(--text2);font-family:var(--mono);border-bottom:1px solid var(--border);white-space:nowrap;">${e.entidad}</td><td style="padding:6px 10px;text-align:center;border-bottom:1px solid var(--border);"><span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;background:${SIT_BG[e.situacion]||'var(--bg3)'};color:${SIT_TXT[e.situacion]||'var(--text)'};">${e.situacion} \u2014 ${SIT_LBL[e.situacion]||'\u2014'}</span></td><td style="padding:6px 10px;font-size:11px;text-align:right;color:var(--text);font-family:var(--mono);border-bottom:1px solid var(--border);white-space:nowrap;">$${Math.round((e.monto||0)/1000).toLocaleString('es-AR')}M</td><td style="padding:6px 10px;font-size:11px;text-align:right;color:var(--text3);font-family:var(--mono);border-bottom:1px solid var(--border);white-space:nowrap;">${pond.toFixed(1)}%</td><td style="padding:6px 10px;font-size:11px;text-align:center;color:${(e.diasAtrasoPago||0)>0?'#f87171':'var(--text3)'};font-family:var(--mono);border-bottom:1px solid var(--border);">${(e.diasAtrasoPago||0)>0?e.diasAtrasoPago+'d':'\u2014'}</td></tr>`;
+          return `<tr onmouseover="this.querySelectorAll('td').forEach(td=>td.style.background='var(--accent-light)')" onmouseout="this.querySelectorAll('td').forEach(td=>td.style.background='')"><td style="padding:6px 12px;font-size:11px;color:var(--text2);font-family:var(--mono);border-bottom:1px solid var(--border);white-space:nowrap;">${e.entidad}</td><td style="padding:6px 10px;text-align:center;border-bottom:1px solid var(--border);"><span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;background:${SIT_BG[e.situacion]||'var(--bg3)'};color:${SIT_TXT[e.situacion]||'var(--text)'};">${e.situacion} \u2014 ${SIT_LBL[e.situacion]||'\u2014'}</span></td><td style="padding:6px 10px;font-size:11px;text-align:right;color:var(--text);font-family:var(--mono);border-bottom:1px solid var(--border);white-space:nowrap;">${window._deuFmtMontoMiles?window._deuFmtMontoMiles(e.monto):('$'+Math.round((e.monto||0)/1000).toLocaleString('es-AR')+'M')}</td><td style="padding:6px 10px;font-size:11px;text-align:right;color:var(--text3);font-family:var(--mono);border-bottom:1px solid var(--border);white-space:nowrap;">${pond.toFixed(1)}%</td><td style="padding:6px 10px;font-size:11px;text-align:center;color:${(e.diasAtrasoPago||0)>0?'#f87171':'var(--text3)'};font-family:var(--mono);border-bottom:1px solid var(--border);">${(e.diasAtrasoPago||0)>0?e.diasAtrasoPago+'d':'\u2014'}</td></tr>`;
         }).join('');
         sitDiv.innerHTML=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono);margin-bottom:8px;">Situaci\u00F3n Actual</div><div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;overflow:hidden;"><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:var(--bg3);"><th style="padding:7px 12px;font-size:10px;font-weight:600;color:var(--text2);text-align:left;border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;">Entidad</th><th style="padding:7px 10px;font-size:10px;font-weight:600;color:var(--text2);text-align:center;border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;">Situaci\u00F3n</th><th style="padding:7px 10px;font-size:10px;font-weight:600;color:var(--text2);text-align:right;border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;">Monto</th><th style="padding:7px 10px;font-size:10px;font-weight:600;color:var(--text2);text-align:right;border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;">Pond.</th><th style="padding:7px 10px;font-size:10px;font-weight:600;color:var(--text2);text-align:center;border-bottom:1px solid var(--border);font-family:var(--mono);text-transform:uppercase;">Atraso</th></tr></thead><tbody>${trows}</tbody></table></div></div>`;
       }
@@ -20079,6 +20100,15 @@ function fmtPesos(v){
   return '$'+Math.round(v).toLocaleString('es-AR');
 }
 window._deuFmtPesos = fmtPesos;
+// Formato escalonado para celdas de monto. Recibe el valor EN MILES de pesos (como viene e.monto).
+// >= 1M pesos -> $X.XM | 1K..1M -> $XXXK | < 1K -> $XXX (entero)
+function _deuFmtMontoMiles(montoMiles){
+  const pesos=(montoMiles||0)*1000;
+  if(pesos>=1e6) return '$'+(pesos/1e6).toLocaleString('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1})+'M';
+  if(pesos>=1e3) return '$'+Math.round(pesos/1e3).toLocaleString('es-AR')+'K';
+  return '$'+Math.round(pesos).toLocaleString('es-AR');
+}
+window._deuFmtMontoMiles = _deuFmtMontoMiles;
 function fmtCUIT(c){ return c.length===11?`${c.slice(0,2)}-${c.slice(2,10)}-${c.slice(10)}`:c; }
 function periodoLabel(p){ return `${p.slice(0,4)}/${p.slice(4,6)}`; }
 
@@ -21690,7 +21720,7 @@ function renderCheques(cheques){
           <td style="padding:6px 10px;text-align:center;border-bottom:1px solid var(--border);">
             <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;background:${SIT_BG[e.situacion]||'var(--bg3)'};color:${SIT_TXT[e.situacion]||'var(--text)'}">${e.situacion} — ${SIT_LBL[e.situacion]||'—'}</span>
           </td>
-          <td style="padding:6px 10px;font-size:11px;text-align:right;color:var(--text);font-family:var(--mono);border-bottom:1px solid var(--border);white-space:nowrap;">$${Math.round((e.monto||0)/1000).toLocaleString('es-AR')}M</td>
+          <td style="padding:6px 10px;font-size:11px;text-align:right;color:var(--text);font-family:var(--mono);border-bottom:1px solid var(--border);white-space:nowrap;">${window._deuFmtMontoMiles?window._deuFmtMontoMiles(e.monto):('$'+Math.round((e.monto||0)/1000).toLocaleString('es-AR')+'M')}</td>
           <td style="padding:6px 10px;font-size:11px;text-align:center;color:${(e.diasAtrasoPago||0)>0?'#f87171':'var(--text3)'};font-family:var(--mono);border-bottom:1px solid var(--border);">${(e.diasAtrasoPago||0)>0?e.diasAtrasoPago+'d':'—'}</td>
         </tr>`).join('');
       sitDiv.innerHTML=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono);margin-bottom:6px;">Situación Actual</div>
