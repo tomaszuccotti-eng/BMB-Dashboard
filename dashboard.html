@@ -18327,21 +18327,31 @@ function renderEquity(){
   window._bcraCache = {};  // { cuit: Promise<json> }
 
   function _bcraFetch(cuit){
-    // Si ya hay un fetch en vuelo o completo, devolver la misma Promise
+    // Si ya hay un fetch en vuelo o completo (exitoso), devolver la misma Promise
     if(window._bcraCache[cuit]) return window._bcraCache[cuit];
     const p = fetch(`${window.DEU_WORKER||'https://central-deudores.tzuccotti.workers.dev'}/deudas/${cuit}/full`)
       .then(r=>r.json())
       .catch(e=>({_fetchError:e.message}));
     window._bcraCache[cuit] = p;
+    // No cachear resultados fallidos: si vino error o sin datos, liberar para permitir reintento
+    p.then(json=>{
+      const deudas=json && !json._fetchError ? (json.deudas?.results||json.deudas||null) : null;
+      if(!json || json._fetchError || !deudas){
+        if(window._bcraCache[cuit]===p) delete window._bcraCache[cuit];
+      }
+    }).catch(()=>{ if(window._bcraCache[cuit]===p) delete window._bcraCache[cuit]; });
     return p;
   }
 
-  async function _fetchBcraBadge(ticker, cuit){
+  async function _fetchBcraBadge(ticker, cuit, _retry){
     try{
       const json = await _bcraFetch(cuit);
-      if(!json || json._fetchError) return;
-      const deudas=json.deudas?.results||json.deudas||null;
-      if(!deudas)return;
+      const deudas = (json && !json._fetchError) ? (json.deudas?.results||json.deudas||null) : null;
+      if(!deudas){
+        // Primer intento sin datos (worker frío / error transitorio): reintentar una vez
+        if(!_retry){ await new Promise(r=>setTimeout(r,1200)); return _fetchBcraBadge(ticker,cuit,true); }
+        return;
+      }
       const entidades=(deudas.periodos?.[0]?.entidades||[]).filter(e=>e.situacion>0);
       const peorSit=entidades.length ? Math.max(...entidades.map(e=>e.situacion)) : 0;
       const SIT_COLOR={0:'var(--text3)',1:'#4ade80',2:'#fbbf24',3:'#fb923c',4:'#f87171',5:'#fca5a5'};
@@ -19199,6 +19209,8 @@ function renderEquity(){
       </div>`;
     const canvas=document.getElementById(canvasId);
     if(!canvas||typeof Chart==='undefined')return;
+    // Destruir instancia previa sobre este canvas (evita "Canvas is already in use")
+    try{ Chart.getChart(canvas)?.destroy(); }catch(e){}
     new Chart(canvas,{
       type:'line',
       data:{labels,datasets},
