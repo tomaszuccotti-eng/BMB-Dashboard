@@ -11610,6 +11610,10 @@ const _eqRO = new ResizeObserver(entries => {
       <!-- Results -->
       <div id="deu-results" style="display:none;">
         <div id="deu-hero" style="margin-bottom:24px;"></div>
+        <div id="deu-cheques-wrap" style="margin-bottom:24px;">
+          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:12px;">Cheques Rechazados</div>
+          <div id="deu-cheques"></div>
+        </div>
         <div id="deu-situacion-wrap" style="margin-bottom:24px;">
           <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:12px;">Situación Actual — Último período informado</div>
           <div id="deu-situacion"></div>
@@ -11625,10 +11629,6 @@ const _eqRO = new ResizeObserver(entries => {
           <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:20px;">
             <canvas id="deu-chart" height="280"></canvas>
           </div>
-        </div>
-        <div id="deu-cheques-wrap" style="margin-bottom:24px;">
-          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:12px;">Cheques Rechazados</div>
-          <div id="deu-cheques"></div>
         </div>
       </div>
 
@@ -19989,16 +19989,7 @@ window._deuInitialized = false;
 window.deuInit = function(){
   window._deuInitialized = true;
   const chips = document.getElementById('deu-chips');
-  if(!chips) return;
-  chips.innerHTML = DEU_EMPRESAS.map(e =>
-    `<button onclick="deuQuick('${e.cuit}','${e.nombre}')"
-      style="padding:4px 12px;border-radius:20px;font-size:10px;font-weight:600;cursor:pointer;
-             border:1px solid var(--border2);background:var(--bg2);color:var(--text2);
-             font-family:var(--mono);transition:all .15s;"
-      onmouseover="this.style.borderColor='#1E27F3';this.style.color='#a5b4fc'"
-      onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'"
-    >${e.nombre}</button>`
-  ).join('');
+  if(chips) chips.innerHTML = '';
 };
 
 window.deuQuick = function(cuit, nombre){
@@ -20173,7 +20164,7 @@ function periodoLabel(p){ return `${p.slice(0,4)}/${p.slice(4,6)}`; }
 
 // ── Main render orchestrator ──────────────────────────
 function deuRender(cuit, deudas, hist, cheques, warnings){
-  renderHero(cuit, deudas);
+  renderHero(cuit, deudas, cheques);
   renderSituacion(deudas);
   renderHeatmap(hist);
   renderChart(hist);
@@ -20183,58 +20174,87 @@ function deuRender(cuit, deudas, hist, cheques, warnings){
 }
 
 // ── Hero card ─────────────────────────────────────────
-function renderHero(cuit, deudas){
+function renderHero(cuit, deudas, cheques){
   const el = document.getElementById('deu-hero'); if(!el) return;
   const risk = deuCalcRisk(deudas);
   const denominacion = deudas?.denominacion || '—';
   const periodo = deudas?.periodos?.[0]?.periodo;
   const entidades = (deudas?.periodos?.[0]?.entidades||[]).filter(e=>e.situacion>0);
-  const montoTotal = entidades.reduce((s,e)=>s+(e.monto||0),0);
-  // monto en /deudas viene en miles de pesos
-  const montoARS = montoTotal * 1000;
-
-  // Count cheques sinfonos from hist (we don't have cheques result here, rely on hero state)
-  const nEntidades = entidades.length;
   const periodLabel = periodo ? `${periodo.slice(0,4)}/${periodo.slice(4,6)}` : '—';
-
-  el.innerHTML = `
-    <div style="background:${risk.bg};border:1px solid ${risk.color}33;border-radius:14px;padding:28px 32px;position:relative;overflow:hidden;">
-      <div style="position:absolute;top:0;right:0;width:180px;height:180px;background:${risk.color}08;border-radius:50%;transform:translate(40%,-40%);pointer-events:none;"></div>
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:20px;">
-        <div>
-          <div style="font-size:28px;font-weight:800;color:var(--text);font-family:var(--display);letter-spacing:-.5px;margin-bottom:4px;">${denominacion}</div>
-          <div style="font-size:13px;color:var(--text3);font-family:var(--mono);">CUIT ${fmtCUIT(cuit)} · Último período: ${periodLabel}</div>
-        </div>
-        <div style="text-align:center;background:${risk.color}22;border:2px solid ${risk.color};border-radius:12px;padding:14px 24px;min-width:160px;">
-          <div style="font-size:10px;color:${risk.color};font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;">Nivel de Riesgo</div>
-          <div style="font-size:22px;font-weight:800;color:${risk.color};font-family:var(--mono);">${risk.nivel}</div>
-        </div>
+  // Resumen de cheques
+  let _chkCount=0, _chkMonto=0;
+  if(cheques?.causales?.length){
+    cheques.causales.forEach(ca=>ca.entidades.forEach(en=>en.detalle.forEach(d=>{
+      _chkCount++;
+      const n=parseFloat(String(d.monto||'0').replace(/\./g,'').replace(',','.'));
+      if(!isNaN(n))_chkMonto+=n;
+    })));
+  }
+  const _SIT_COL={1:'#16a34a',2:'#ca8a04',3:'#ea580c',4:'#dc2626',5:'#dc2626'};
+  const _SIT_LEG={1:'Normal',2:'Riesgo bajo',3:'Riesgo medio',4:'Riesgo alto',5:'Irrecuperable'};
+  const _montoPorSit={}, _entPorSit={};
+  entidades.forEach(e=>{ _montoPorSit[e.situacion]=(_montoPorSit[e.situacion]||0)+(e.monto||0); _entPorSit[e.situacion]=(_entPorSit[e.situacion]||0)+1; });
+  const _sumAll=Object.values(_montoPorSit).reduce((s,v)=>s+v,0);
+  const _sitPresentes=[1,2,3,4,5].filter(s=>(_montoPorSit[s]||0)>0);
+  const _fmtPesosEnt=(miles)=>'$'+Math.round((miles||0)*1000).toLocaleString('es-AR');
+  const _fmtPesosRaw=(pesos)=>'$'+Math.round(pesos||0).toLocaleString('es-AR');
+  const _kpiRow=(label,value,col,strong)=>`<div style="display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:18px;padding:10px 0;">
+    <span style="font-size:14px;text-transform:uppercase;letter-spacing:.05em;color:${col||'var(--text3)'};font-family:var(--mono);">${label}</span>
+    <span style="font-size:${strong?'21px':'17px'};font-weight:${strong?'800':'700'};color:${col||'var(--text)'};font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums;">${value}</span>
+  </div>`;
+  // Bloque cheques
+  let chequesBlock='';
+  if(_chkCount>0){
+    chequesBlock=`<div style="background:rgba(248,81,73,0.06);border:1px solid rgba(248,81,73,0.25);border-radius:10px;padding:6px 16px;margin-bottom:16px;">
+      ${_kpiRow('Cheques rechazados', String(_chkCount), '#f87171', false)}
+      <div style="border-top:1px solid rgba(248,81,73,0.18);">${_kpiRow('Monto total cheques', _fmtPesosRaw(_chkMonto), '#f87171', false)}</div>
+    </div>`;
+  } else {
+    chequesBlock=`<div style="display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:18px;padding:9px 0;margin-bottom:8px;border-bottom:1px solid var(--border);">
+      <span style="font-size:14px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);font-family:var(--mono);">Cheques rechazados</span>
+      <span style="font-size:14px;font-weight:600;color:#3fb950;font-family:var(--mono);">Sin cheques</span>
+    </div>`;
+  }
+  // Bloque deuda
+  let kpiRows=`<div style="border-bottom:2px solid var(--border);margin-bottom:6px;">${_kpiRow('Deuda Total Sistema', _fmtPesosEnt(_sumAll), 'var(--text)', true)}</div>`;
+  _sitPresentes.forEach((s,i)=>{
+    const col=_SIT_COL[s]||'var(--text3)';
+    const pct=_sumAll>0?((_montoPorSit[s]/_sumAll)*100):0;
+    const nEnt=_entPorSit[s]||0;
+    kpiRows+=`<div style="padding:12px 0;${i<_sitPresentes.length-1?`border-bottom:1px solid var(--border);`:''}">
+      ${_kpiRow(`Situaci\u00F3n ${s} \u2014 ${_SIT_LEG[s]}`, _fmtPesosEnt(_montoPorSit[s]), col, true)}
+      <div style="display:grid;grid-template-columns:1fr auto;gap:18px;padding:4px 0;">
+        <span style="font-size:12px;color:var(--text3);font-family:var(--mono);">% del total</span>
+        <span style="font-size:14px;font-weight:600;color:${col};font-family:var(--mono);font-variant-numeric:tabular-nums;">${pct.toFixed(1)}%</span>
       </div>
-      <div style="font-size:11px;color:${risk.color};font-family:var(--mono);margin-top:12px;opacity:.85;">${risk.causa}</div>
-      <!-- KPIs -->
-      <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:20px;border-top:1px solid ${risk.color}22;padding-top:20px;">
-        <div style="flex:1;min-width:120px;">
-          <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">Deuda Total Sistema</div>
-          <div style="font-size:22px;font-weight:700;color:var(--text);font-family:var(--mono);">${fmtPesos(montoARS)}</div>
-          <div style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-top:2px;">miles de ARS</div>
-        </div>
-        <div style="flex:1;min-width:120px;">
-          <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">Entidades Activas</div>
-          <div style="font-size:22px;font-weight:700;color:var(--text);font-family:var(--mono);">${nEntidades}</div>
-          <div style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-top:2px;">con deuda informada</div>
-        </div>
-        <div style="flex:1;min-width:120px;">
-          <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">Peor Situación</div>
-          <div style="font-size:22px;font-weight:700;font-family:var(--mono);" id="deu-hero-sit-num">${risk.peorSit||'—'}</div>
-          <div style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-top:2px;" id="deu-hero-sit-lbl">${SIT_LABEL[risk.peorSit]||'—'}</div>
-        </div>
-        <div style="flex:1;min-width:120px;" id="deu-hero-cheques-kpi">
-          <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:4px;">Cheques Rebotados</div>
-          <div style="font-size:22px;font-weight:700;color:var(--text);font-family:var(--mono);" id="deu-hero-cheques-n">—</div>
-          <div style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-top:2px;">sin regularizar</div>
-        </div>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:18px;padding:4px 0;">
+        <span style="font-size:12px;color:var(--text3);font-family:var(--mono);">Entidades</span>
+        <span style="font-size:14px;font-weight:600;color:${col};font-family:var(--mono);font-variant-numeric:tabular-nums;">${nEnt} ${nEnt===1?'entidad':'entidades'}</span>
       </div>
     </div>`;
+  });
+  const legendSit=_sitPresentes.length?`<div style="display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:18px;padding-top:16px;border-top:1px solid var(--border);"><span style="font-size:11px;font-weight:600;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-right:2px;">Referencia BCRA:</span>`+_sitPresentes.map(s=>`<span style="font-size:11px;color:${_SIT_COL[s]||'var(--text3)'};font-family:var(--mono);">Situaci\u00F3n ${s} \u2014 ${_SIT_LEG[s]}</span>`).join('')+`</div>`:'';
+  const chequesCard=_chkCount>0?`<div style="text-align:center;background:rgba(248,81,73,0.12);border:2px solid #f87171;border-radius:12px;padding:12px 22px;min-width:150px;">
+    <div style="font-size:11px;color:#f87171;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px;">Cheques Rechazados</div>
+    <div style="font-size:22px;font-weight:800;color:#f87171;font-family:var(--mono);">${_chkCount}</div>
+  </div>`:'';
+  el.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:28px 32px;position:relative;overflow:hidden;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;position:relative;">
+      <div style="flex:1 1 320px;min-width:260px;">
+        <div style="font-size:26px;font-weight:800;color:var(--text);font-family:var(--display);letter-spacing:-.5px;line-height:1.1;margin-bottom:6px;">${denominacion}</div>
+        <div style="font-size:13px;color:var(--text3);font-family:var(--mono);">CUIT ${fmtCUIT(cuit)} \u00B7 \u00DAltimo per\u00EDodo: ${periodLabel}</div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;">
+        <div style="text-align:center;background:${risk.color}22;border:2px solid ${risk.color};border-radius:12px;padding:12px 22px;min-width:150px;">
+          <div style="font-size:11px;color:${risk.color};font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px;">Nivel de Riesgo</div>
+          <div style="font-size:22px;font-weight:800;color:${risk.color};font-family:var(--mono);">${risk.nivel}</div>
+        </div>
+        ${chequesCard}
+      </div>
+    </div>
+    <div style="margin-top:20px;padding-top:18px;border-top:1px solid var(--border);position:relative;">${chequesBlock}${kpiRows}</div>
+    ${legendSit}
+  </div>`;
 }
 
 // ── Situación actual ──────────────────────────────────
@@ -20250,6 +20270,7 @@ function renderSituacion(deudas){
   }
 
   const colW = 86;
+  const _sumMontoSit = entidades.reduce((s,e)=>s+(e.monto||0),0);
   el.innerHTML = `
     <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;">
       <div style="overflow-x:auto;">
@@ -20258,6 +20279,7 @@ function renderSituacion(deudas){
             <th style="padding:9px 14px;font-size:10px;font-weight:600;color:var(--text2);text-align:left;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Entidad</th>
             <th style="padding:9px 10px;font-size:10px;font-weight:600;color:var(--text2);text-align:center;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Situación</th>
             <th style="padding:9px 10px;font-size:10px;font-weight:600;color:var(--text2);text-align:right;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Monto</th>
+            <th style="padding:9px 10px;font-size:10px;font-weight:600;color:var(--text2);text-align:right;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Pond.</th>
             <th style="padding:9px 10px;font-size:10px;font-weight:600;color:var(--text2);text-align:center;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Días Atraso</th>
             <th style="padding:9px 10px;font-size:10px;font-weight:600;color:var(--text2);text-align:center;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Flags</th>
           </tr></thead>
@@ -20281,7 +20303,8 @@ function renderSituacion(deudas){
                     ${e.situacion} — ${SIT_LABEL[e.situacion]||'—'}
                   </span>
                 </td>
-                <td style="padding:8px 10px;font-size:11px;text-align:right;color:var(--text);border-bottom:1px solid var(--border);white-space:nowrap;">${fmtPesos(montoARS)}</td>
+                <td style="padding:8px 10px;font-size:11px;text-align:right;color:var(--text);border-bottom:1px solid var(--border);white-space:nowrap;">${window._deuFmtMontoMiles?window._deuFmtMontoMiles(e.monto):fmtPesos(montoARS)}</td>
+                <td style="padding:8px 10px;font-size:11px;text-align:right;color:var(--text3);border-bottom:1px solid var(--border);white-space:nowrap;">${_sumMontoSit>0?((e.monto||0)/_sumMontoSit*100).toFixed(1):'0.0'}%</td>
                 <td style="padding:8px 10px;font-size:11px;text-align:center;color:${e.diasAtrasoPago>0?'#f87171':'var(--text3)'};border-bottom:1px solid var(--border);">${e.diasAtrasoPago>0?e.diasAtrasoPago+'d':'—'}</td>
                 <td style="padding:8px 10px;font-size:11px;text-align:center;border-bottom:1px solid var(--border);">${flags||'<span style="color:var(--text3);font-size:10px;">—</span>'}</td>
               </tr>`;
@@ -20539,7 +20562,6 @@ function renderCheques(cheques){
         <table style="width:100%;border-collapse:collapse;font-family:var(--mono);">
           <thead><tr style="background:var(--bg3);">
             <th style="padding:9px 12px;font-size:10px;font-weight:600;color:var(--text2);text-align:left;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Causal</th>
-            <th style="padding:9px 12px;font-size:10px;font-weight:600;color:var(--text2);text-align:left;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Banco</th>
             <th style="padding:9px 12px;font-size:10px;font-weight:600;color:var(--text2);text-align:right;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">N° Cheque</th>
             <th style="padding:9px 12px;font-size:10px;font-weight:600;color:var(--text2);text-align:right;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Monto</th>
             <th style="padding:9px 12px;font-size:10px;font-weight:600;color:var(--text2);text-align:center;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">F. Rechazo</th>
@@ -20562,7 +20584,6 @@ function renderCheques(cheques){
                 <td style="padding:8px 12px;border-bottom:1px solid var(--border);">
                   <span style="font-size:10px;background:${causalBg};color:${causalColor};padding:2px 8px;border-radius:8px;font-weight:700;">${c.causal}</span>
                 </td>
-                <td style="padding:8px 12px;font-size:11px;color:var(--text3);border-bottom:1px solid var(--border);">Banco ${c.entidad}</td>
                 <td style="padding:8px 12px;font-size:11px;color:var(--text2);text-align:right;border-bottom:1px solid var(--border);">${c.nroCheque}</td>
                 <td style="padding:8px 12px;font-size:11px;color:var(--text);text-align:right;font-weight:600;border-bottom:1px solid var(--border);">${fmtPesos(c.monto)}</td>
                 <td style="padding:8px 12px;font-size:11px;color:var(--text3);text-align:center;border-bottom:1px solid var(--border);">${c.fechaRechazo||'—'}</td>
