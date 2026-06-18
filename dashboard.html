@@ -18528,6 +18528,14 @@ function renderEquity(){
   }
 
   window.earOpenReportDialog=function(){
+    // Contexto MAV (acceso por herramienta): si el tab MAV está visible, el reporte es solo de MAV
+    const mavTab=document.getElementById('earTabMav');
+    if(mavTab && mavTab.style.display!=='none'){
+      const wrap=document.querySelector('#mav-global-results [data-mav-wrap]');
+      if(!wrap){ alert('Primero cargá un archivo CENDEU en MAV.'); return; }
+      window.mavGlobalReport();
+      return;
+    }
     const ticker=_currentExcelTicker;
     if(!ticker){ alert('Primero buscá y cargá una empresa.'); return; }
     const tabs=_earAvailableTabs(ticker);
@@ -18720,9 +18728,9 @@ function renderEquity(){
       else if(id==='mav'){
         const mavCon=document.getElementById(`ficha-tab-content-${ticker}-mav`);
         const tables=mavCon?Array.from(mavCon.querySelectorAll('table')):[];
-        // Tabla de detalle = la de más columnas (8); breakdown = la de 2 columnas
-        let detTbl=null, monTbl=null, maxC=0;
-        tables.forEach(tb=>{ const c=tb.querySelectorAll('thead th').length; if(c>maxC){maxC=c;detTbl=tb;} if(c===2) monTbl=tb; });
+        // Tabla de detalle = la de más columnas (9 ahora)
+        let detTbl=null, maxC=0;
+        tables.forEach(tb=>{ const c=tb.querySelectorAll('thead th').length; if(c>maxC){maxC=c;detTbl=tb;} });
         if(detTbl){
           const head=Array.from(detTbl.querySelectorAll('thead th')).map(th=>th.textContent.trim());
           const body=Array.from(detTbl.querySelectorAll('tbody tr')).map(tr=>Array.from(tr.querySelectorAll('td')).map(td=>td.textContent.trim()));
@@ -18730,28 +18738,33 @@ function renderEquity(){
           const foot=detTbl.querySelector('tfoot tr');
           if(foot){
             const cells=Array.from(foot.querySelectorAll('td'));
-            // colspan agrupa; tomamos label + valor final
             const lbl=cells[0]?cells[0].textContent.trim():'TOTAL EN PESOS';
             const val=cells[cells.length-1]?cells[cells.length-1].textContent.trim():'';
             const totalRow=head.map((_,i)=> i===0?lbl : (i===head.length-1?val:''));
             body.push(totalRow);
           }
           if(head.length&&body.length){ T.sub('Detalle de instrumentos'); T.table(head,body); }
-          // Vencimientos por mes (barras → tabla Mes/Monto)
-          const venRows=mavCon?Array.from(mavCon.querySelectorAll('.mav-ven-row')):[];
+          // Vencimientos por mes (nuevas filas apiladas → tabla Mes/Desglose/Total)
+          const venRows=mavCon?Array.from(mavCon.querySelectorAll('.mav-vrow')):[];
           if(venRows.length){
             const vbody=venRows.map(r=>{
-              const mes=r.querySelector('.mav-ven-label')?.textContent.trim()||'—';
-              const val=r.querySelector('.mav-ven-val')?.textContent.trim()||'—';
-              return [mes,val];
+              const mes=r.querySelector('.mav-vrow-mes')?.textContent.trim()||'—';
+              const desg=r.querySelector('.mav-vrow-desg')?.textContent.trim()||'—';
+              const tot=r.querySelector('.mav-vrow-tot')?.textContent.trim()||'—';
+              return [mes,desg,tot];
             });
-            T.sub('Vencimientos por mes'); T.table(['Mes','Monto'],vbody);
+            T.sub('Vencimientos por mes'); T.table(['Mes','Desglose por moneda','Total'],vbody);
           }
-          // Breakdown por moneda
-          if(monTbl){
-            const mhead=Array.from(monTbl.querySelectorAll('thead th')).map(th=>th.textContent.trim());
-            const mbody=Array.from(monTbl.querySelectorAll('tbody tr')).map(tr=>Array.from(tr.querySelectorAll('td')).map(td=>td.textContent.trim())).filter(r=>r.length===2);
-            if(mhead.length&&mbody.length){ T.sub('Breakdown por moneda'); T.table(mhead,mbody); }
+          // Breakdown por moneda (cards del Nivel 2)
+          const monCards=mavCon?Array.from(mavCon.querySelectorAll('.mav-moncard')):[];
+          if(monCards.length){
+            const mbody=monCards.map(c=>{
+              const lbl=c.querySelector('.mav-moncard-head')?.textContent.trim()||'—';
+              const tot=c.querySelector('.mav-moncard-total')?.textContent.trim()||'—';
+              const meta=c.querySelector('.mav-moncard-meta')?.textContent.trim()||'';
+              return [lbl,tot,meta];
+            });
+            T.sub('Resumen por moneda'); T.table(['Moneda','Total','Detalle'],mbody);
           }
         } else T.note('Sin archivo CENDEU cargado para MAV.');
       }
@@ -20443,49 +20456,126 @@ function renderCheques(cheques){
     return{headers,rows};
   }
 
+  // ── Parseo de números formato AR (1.234.567,89 → 1234567.89) ──
+  function mavParseAR(val){
+    const n=parseFloat(String(val==null?'':val).replace(/\./g,'').replace(',','.').replace(/\s/g,'').trim());
+    return isNaN(n)?0:n;
+  }
   function mavFmtPesos(val){
-    const n=parseFloat(String(val).replace(/\./g,'').replace(',','.').trim());
+    const n=(typeof val==='number')?val:mavParseAR(val);
     if(!n||isNaN(n)) return'—';
-    if(n>=1e9) return'$'+(n/1e9).toFixed(2)+'MM';
-    if(n>=1e6) return'$'+(n/1e6).toFixed(1)+'M';
-    return'$'+n.toLocaleString('es-AR');
+    return '$'+Math.round(n).toLocaleString('es-AR',{maximumFractionDigits:0});
   }
   function mavFmtNum(val){
-    const n=parseFloat(String(val).replace(/\./g,'').replace(',','.').trim());
+    const n=(typeof val==='number')?val:mavParseAR(val);
     if(!n||isNaN(n)) return'—';
-    return n.toLocaleString('es-AR');
+    return n.toLocaleString('es-AR',{maximumFractionDigits:0});
   }
-  function mavPillTipo(t){
-    if(!t) return'—';
+  // USD entero (para ≈USD): USD 7.434.546
+  function mavFmtUSD(n){
+    if(!n||isNaN(n)) return'—';
+    return 'USD '+Math.round(n).toLocaleString('es-AR',{maximumFractionDigits:0});
+  }
+  // ── Tipo de instrumento: nombre normalizado + color de texto ──
+  function mavTipoLabel(t){
+    if(!t) return{label:'—',cls:''};
     const u=t.toUpperCase();
-    if(u.includes('PAG')) return'<span class="mav-pill mav-pill-pagare">Pagaré</span>';
-    if(u.includes('CPD')||u.includes('CHEQUE')) return'<span class="mav-pill mav-pill-cpd">CPD</span>';
-    if(u.includes('FCE')) return'<span class="mav-pill mav-pill-fce">FCE</span>';
-    return`<span class="mav-pill mav-pill-other">${t}</span>`;
+    if(u.includes('PAG')) return{label:'Pagaré',cls:'mav-t-pagare'};
+    if(u.includes('CPD')||u.includes('CHEQUE')) return{label:'CPD',cls:'mav-t-cpd'};
+    if(u.includes('FCE')) return{label:'FCE',cls:'mav-t-fce'};
+    return{label:t,cls:''};
   }
-  function mavPillMoneda(m){
-    if(!m) return'—';
-    const u=m.toUpperCase();
-    if(u.includes('HARD')) return'<span class="mav-pill mav-pill-hd">Hard $</span>';
-    if(u==='$'||u.includes('PESO')) return'<span class="mav-pill mav-pill-ars">ARS</span>';
-    return`<span class="mav-pill mav-pill-other">${m}</span>`;
+  function mavTipoTxt(t){ const o=mavTipoLabel(t); return`<span class="${o.cls}">${o.label}</span>`; }
+
+  // ── Clasificación de moneda por TC implícito (montoPesos/montoOrig) ──
+  // tc viene del .txt: {bna, bcra}. Devuelve {key,label,cls,tc}
+  function mavClasifMoneda(montoOrig, montoPesos, tc){
+    const o=mavParseAR(montoOrig), p=mavParseAR(montoPesos);
+    // pesos nativo: TC≈1 o sin monto original distinto
+    if(o<=0 || Math.abs(p/o-1)<0.02) return{key:'ARS',label:'ARS',cls:'mav-c-ars',tc:1};
+    const tcImp=p/o;
+    const tol=0.005; // ±0.5%
+    if(tc&&tc.bcra && Math.abs(tcImp/tc.bcra-1)<tol) return{key:'A3500',label:'USD A3500',cls:'mav-c-a3500',tc:tcImp};
+    if(tc&&tc.bna  && Math.abs(tcImp/tc.bna -1)<tol) return{key:'HARD', label:'Hard USD', cls:'mav-c-hard', tc:tcImp};
+    // fallback genérico: muestra el TC implícito calculado
+    return{key:'OTHER',label:'USD @'+tcImp.toLocaleString('es-AR',{maximumFractionDigits:2}),cls:'mav-c-other',tc:tcImp};
   }
+
   function mavExtractCUIT(name){
     // Soporta: cendeu-30682434720.zip, cendeu-30682434720 (1).zip, cendeu-30682434720_20250101.zip
-    const m=name.match(/(\d{11})/);
+    const m=String(name||'').match(/(\d{11})/);
     if(!m) return null;
     return m[1];
   }
-  function mavExtractDate(name){
-    // Busca 8 dígitos seguidos antes del .zip (o antes de espacio/(n).zip)
-    const m=name.match(/(\d{8})(?:\s*(?:\(\d+\))?)?\s*\.zip$/i);
-    if(!m) return'';
-    const d=m[1];
-    return d.slice(0,2)+'/'+d.slice(2,4)+'/'+d.slice(4);
+  // ── Fecha del informe — robusto: toma los 8 dígitos DDMMYYYY que vengan
+  //    DESPUÉS del CUIT (11 dígitos). Devuelve {str:'DD/MM/YYYY', date:Date}
+  function mavExtractInforme(name){
+    const s=String(name||'');
+    // patrón: -<11 díg cuit>-<8 díg fecha> (con sufijos opcionales)
+    let m=s.match(/\d{11}\D+(\d{2})(\d{2})(\d{4})/);
+    if(!m) m=s.match(/(\d{2})(\d{2})(\d{4})(?:\D|$)/); // fallback: cualquier DDMMYYYY
+    if(!m) return{str:'',date:null};
+    const dd=+m[1], mm=+m[2], yyyy=+m[3];
+    if(dd<1||dd>31||mm<1||mm>12||yyyy<2000||yyyy>2100) return{str:'',date:null};
+    const date=new Date(yyyy,mm-1,dd);
+    return{str:String(m[1])+'/'+String(m[2])+'/'+String(m[3]),date};
+  }
+  // Parseo de fecha DD/MM/YY o DD/MM/YYYY → Date
+  function mavParseFecha(s){
+    if(!s) return null;
+    const m=String(s).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+    if(!m) return null;
+    let yyyy=+m[3]; if(yyyy<100) yyyy+=2000;
+    return new Date(yyyy, +m[2]-1, +m[1]);
+  }
+  // Días corridos entre dos fechas (b - a)
+  function mavDiasEntre(a,b){
+    if(!a||!b) return null;
+    return Math.round((b-a)/86400000);
+  }
+  // Formato contable de días: positivo "5", cero "0", negativo "(5)"
+  function mavFmtDias(d){
+    if(d==null) return'—';
+    if(d<0) return'('+Math.abs(d)+')';
+    return String(d);
+  }
+
+  // ── Parseo del .txt (ref): disclaimer (1)(2) + cotizaciones (3)(4) ──
+  function mavParseRef(txt){
+    const out={disclaimer:'', tc:{bcra:0,bna:0,eur:0}};
+    if(!txt) return out;
+    const clean=txt.replace(/\r/g,'');
+    // Disclaimer: puntos (1) y (2)
+    const p1=clean.match(/\(1\)\s*([^\n]*(?:\n(?!\(\d)[^\n]*)*)/);
+    const p2=clean.match(/\(2\)\s*([^\n]*(?:\n(?!\(\d)[^\n]*)*)/);
+    const d1=p1?p1[1].trim().replace(/\s+/g,' '):'';
+    const d2=p2?p2[1].trim().replace(/\s+/g,' '):'';
+    out.disclaimer=d1;  // solo punto (1); el (2) ya no aplica (hay multimoneda)
+    // Cotizaciones: buscar "U$D: $1.430,81", "U$S: $1.450,00", "EUR: $0,00"
+    // (3) BCRA Com A 3500 → usa U$D ; (4) BNA → U$S / EUR
+    const numAfter=(re)=>{ const m=clean.match(re); return m?mavParseAR(m[1]):0; };
+    // punto 3 (BCRA): valor de referencia U$D
+    const seg3=clean.match(/\(3\)[\s\S]*?(?=\(4\)|$)/);
+    if(seg3){ out.tc.bcra=numAfter.call(null,/U\$D[:\s]*\$?\s*([\d.,]+)/i) || (seg3[0].match(/\$?\s*([\d.]+,\d+)/)?mavParseAR(seg3[0].match(/\$?\s*([\d.]+,\d+)/)[1]):0); }
+    // punto 4 (BNA): U$S y EUR
+    const seg4=clean.match(/\(4\)[\s\S]*/);
+    if(seg4){
+      const mu=seg4[0].match(/U\$S[:\s]*\$?\s*([\d.,]+)/i); if(mu) out.tc.bna=mavParseAR(mu[1]);
+      const me=seg4[0].match(/EUR[:\s]*\$?\s*([\d.,]+)/i);  if(me) out.tc.eur=mavParseAR(me[1]);
+    }
+    // refuerzo BCRA si no se capturó arriba
+    if(!out.tc.bcra){ const m=clean.match(/\(3\)[\s\S]*?U\$D[:\s]*\$?\s*([\d.,]+)/i); if(m) out.tc.bcra=mavParseAR(m[1]); }
+    return out;
+  }
+  // TC elegido para conversión USD: BNA preferido, fallback BCRA. {tc,label} o null
+  function mavTcUSD(tc){
+    if(tc&&tc.bna>0) return{tc:tc.bna,label:'(Hard Dollar BNA)'};
+    if(tc&&tc.bcra>0) return{tc:tc.bcra,label:'(BCRA A3500)'};
+    return null;
   }
 
   // ── Main render ───────────────────────────────────────────────
-  function mavRender(files, filename, container, validCUIT){
+  function mavRender(files, filename, container, validCUIT, targetId){
     if(!container) return;
 
     // Validate CUIT if passed — normalizar ambos lados (quitar guiones/espacios)
@@ -20499,6 +20589,7 @@ function renderCheques(cheques){
       return;
     }
 
+    // ── Parseo de fuentes ──
     const det=mavParseCSV(files.det||'');
     const ci=name=>det.headers.findIndex(h=>h.toUpperCase().includes(name.toUpperCase()));
     const iCod=ci('CODIGO'), iTipo=ci('TIPO'), iSeg=ci('SEGMENTO');
@@ -20507,134 +20598,438 @@ function renderCheques(cheques){
     const iMto=det.headers.findIndex(h=>h.toUpperCase()==='MONTO');
     const iMtoP=ci('MONTO PESOS');
 
+    const ref=mavParseRef(files.ref||'');           // disclaimer + cotizaciones del .txt
+    const tcUSD=mavTcUSD(ref.tc);                    // {tc,label} | null
+    const usd=v=>tcUSD?(v/tcUSD.tc):null;            // pesos → USD (o null si no hay TC)
+
     const razonSocial=(det.rows.length&&iRaz>=0)?det.rows[0][iRaz]||'':'';
-    const fechaInforme=mavExtractDate(filename||'');
+    const informe=mavExtractInforme(filename||'');   // {str,date}
     const cuitFmt=fileCUIT?fileCUIT.slice(0,2)+'-'+fileCUIT.slice(2,10)+'-'+fileCUIT.slice(10):'—';
 
-    let totalPesos=0;
-    det.rows.forEach(r=>{
-      const v=parseFloat(String(r[iMtoP]||'0').replace(/\./g,'').replace(',','.').trim());
-      if(!isNaN(v)) totalPesos+=v;
+    // ── Modelo de datos por fila del detalle ──
+    const items=det.rows.map(r=>{
+      const orig=mavParseAR(r[iMto]), pesos=mavParseAR(r[iMtoP]);
+      const cls=mavClasifMoneda(r[iMto], r[iMtoP], ref.tc);
+      const vtoDate=mavParseFecha(r[iVto]);
+      const dias=mavDiasEntre(informe.date, vtoDate);
+      const tipo=mavTipoLabel(r[iTipo]);
+      return {cod:r[iCod]||'—', tipoLabel:tipo.label, tipoCls:tipo.cls, tipoRaw:r[iTipo]||'',
+              seg:r[iSeg]||'—', emi:r[iEmi]||'—', vto:r[iVto]||'—', dias,
+              orig, pesos, monKey:cls.key, monLabel:cls.label, monCls:cls.cls};
     });
+    const totalPesos=items.reduce((s,it)=>s+it.pesos,0);
 
-    // Info bar
+    // ════════════════════════════════════════════════
+    // 1 ── INFO BAR
+    // ════════════════════════════════════════════════
+    const disclaimerFallback='Instrumentos CPD/Pagarés/FCE — segmento No Garantizado del MAV, pendientes de vencimiento a la fecha del informe.';
+    const disclaimer=ref.disclaimer||disclaimerFallback;
     const infoBar=`
-      <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-        <div>
-          <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--text);">CUIT ${cuitFmt}</div>
-          ${razonSocial?`<div style="font-size:11px;color:#a5b4fc;font-family:var(--mono);margin-top:2px;">${razonSocial}</div>`:''}
+      <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:16px 20px;margin-bottom:20px;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+          <div>
+            <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:#1E27F3;line-height:1.15;">${razonSocial||'—'}</div>
+            <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:3px;">CUIT ${cuitFmt}</div>
+          </div>
+          <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            ${informe.str?`<div style="font-size:11px;color:var(--text3);font-family:var(--mono);">Informe: ${informe.str}</div>`:''}
+            <button onclick="mavReset(this,'${targetId||''}')"
+              style="padding:4px 12px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid var(--border2);border-radius:5px;background:transparent;color:var(--text3);font-family:var(--mono);">↩ Cargar otro</button>
+          </div>
         </div>
-        <div style="text-align:right;">
-          ${fechaInforme?`<div style="font-size:11px;color:var(--text3);font-family:var(--mono);">Informe: ${fechaInforme}</div>`:''}
-          <button onclick="this.closest('[data-mav-wrap]').remove()"
-            style="margin-top:6px;padding:4px 12px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid var(--border2);border-radius:5px;background:transparent;color:var(--text3);font-family:var(--mono);">↩ Cargar otro</button>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);font-family:var(--mono);line-height:1.5;">
+          ${disclaimer}
         </div>
       </div>`;
 
-    // KPIs
-    const ins=mavParseCSV(files.ins||'');
-    let kpiHTML=`
-      <div class="mav-kpi highlight">
-        <div class="mav-kpi-label">Total en $</div>
-        <div class="mav-kpi-value">${mavFmtPesos(totalPesos)}</div>
-        <div class="mav-kpi-sub">Monto total pendiente</div>
+    // ════════════════════════════════════════════════
+    // 2 ── KPIs (3 niveles)
+    // ════════════════════════════════════════════════
+    const nInstr=items.length;
+    const promGlobal=nInstr?totalPesos/nInstr:0;
+    const diasValidos=items.map(it=>it.dias).filter(d=>d!=null);
+    const diasProm=diasValidos.length?Math.round(diasValidos.reduce((a,b)=>a+b,0)/diasValidos.length):null;
+    const usdGlobal=usd(totalPesos);
+
+    // Nivel 1 — cards globales
+    const n1=`
+      <div class="mav-kpi highlight mav-kpi-main" style="flex:2;min-width:260px;">
+        <div class="mav-kpi-label">Monto total en pesos</div>
+        <div class="mav-kpi-value mav-kpi-value-xl">${mavFmtPesos(totalPesos)}</div>
+        ${usdGlobal!=null?`<div class="mav-kpi-sub mav-kpi-usd">≈ ${mavFmtUSD(usdGlobal)} <span style="opacity:.7;">${tcUSD.label}</span></div>`:'<div class="mav-kpi-sub">Monto total pendiente</div>'}
       </div>
-      <div class="mav-kpi">
-        <div class="mav-kpi-label">Instrumentos</div>
-        <div class="mav-kpi-value">${det.rows.length}</div>
-        <div class="mav-kpi-sub">Pendientes de vto.</div>
-      </div>`;
-    ins.rows.forEach(r=>{
-      const tipo=r[0]?.trim(), mto=r[1]?.trim();
-      const n=parseFloat(String(mto||'').replace(/\./g,'').replace(',','.'));
-      if(n>0) kpiHTML+=`<div class="mav-kpi"><div class="mav-kpi-label">${tipo}</div><div class="mav-kpi-value">${mavFmtPesos(n)}</div><div class="mav-kpi-sub">por instrumento</div></div>`;
-    });
+      <div class="mav-kpi"><div class="mav-kpi-label">Instrumentos</div><div class="mav-kpi-value">${nInstr}</div><div class="mav-kpi-sub">pendientes de vto.</div></div>
+      <div class="mav-kpi"><div class="mav-kpi-label">Promedio</div><div class="mav-kpi-value">${mavFmtPesos(promGlobal)}</div><div class="mav-kpi-sub">por instrumento</div></div>
+      <div class="mav-kpi"><div class="mav-kpi-label">Días a vto.</div><div class="mav-kpi-value">${diasProm!=null?diasProm:'—'}</div><div class="mav-kpi-sub">promedio simple</div></div>`;
 
-    // Detail table
-    const detRows=det.rows.map(r=>`
+    // Cotizaciones de referencia (solo TC > 0)
+    const cotChips=[];
+    if(ref.tc.bcra>0) cotChips.push(`<span><b style="color:var(--text2);">A3500 (BCRA)</b> USD $${ref.tc.bcra.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`);
+    if(ref.tc.bna>0)  cotChips.push(`<span><b style="color:var(--text2);">BNA (Vend.Billete)</b> USD $${ref.tc.bna.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`);
+    if(ref.tc.eur>0)  cotChips.push(`<span><b style="color:var(--text2);">BNA EUR</b> $${ref.tc.eur.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`);
+    const cotBar=cotChips.length?`
+      <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:10px 16px;margin-bottom:18px;display:flex;flex-wrap:wrap;gap:6px 24px;align-items:center;">
+        <span style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);font-family:var(--mono);">Cotizaciones de referencia</span>
+        <span style="display:flex;flex-wrap:wrap;gap:6px 24px;font-size:11px;color:var(--text);font-family:var(--mono);">${cotChips.join('')}</span>
+      </div>`:'';
+
+    // Nivel 2 — matriz moneda × tipo (solo celdas con datos)
+    const monOrder=[['ARS','Pesos','mav-c-ars'],['HARD','Hard USD (BNA)','mav-c-hard'],['A3500','USD A3500 (BCRA)','mav-c-a3500'],['OTHER','Otras monedas','mav-c-other']];
+    const tipoOrder=['Pagaré','CPD','FCE'];
+    const monCards=monOrder.map(([key,label,cls])=>{
+      const grp=items.filter(it=>it.monKey===key);
+      if(!grp.length) return'';
+      const sum=grp.reduce((s,it)=>s+it.pesos,0);
+      const prom=sum/grp.length;
+      const dv=grp.map(it=>it.dias).filter(d=>d!=null);
+      const dProm=dv.length?Math.round(dv.reduce((a,b)=>a+b,0)/dv.length):null;
+      const uSum=usd(sum);
+      const pct=totalPesos>0?(sum/totalPesos*100):0;
+      // sub-niveles por tipo (solo con datos): monto · cantidad
+      const subs=tipoOrder.map(tl=>{
+        const sub=grp.filter(it=>it.tipoLabel===tl);
+        if(!sub.length) return'';
+        const ssum=sub.reduce((s,it)=>s+it.pesos,0);
+        return`<div class="mav-sub"><span class="mav-sub-t">${tl} <span style="color:var(--text3);">(${sub.length})</span></span><span class="mav-sub-v">${mavFmtPesos(ssum)}</span></div>`;
+      }).join('');
+      // sub-niveles por SEGMENTO (dinámico): cada segmento presente, % sobre el total de la moneda
+      const segMap={};
+      grp.forEach(it=>{ const k=it.seg||'—'; if(!segMap[k])segMap[k]={sum:0,n:0}; segMap[k].sum+=it.pesos; segMap[k].n++; });
+      const segs=Object.keys(segMap).sort((a,b)=>segMap[b].sum-segMap[a].sum).map(k=>{
+        const o=segMap[k], p=sum>0?(o.sum/sum*100):0;
+        return`<div class="mav-sub"><span class="mav-sub-t">${k} <span style="color:var(--text3);">(${o.n})</span></span><span class="mav-sub-v">${p.toLocaleString('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1})}%</span></div>`;
+      }).join('');
+      return`
+        <div class="mav-moncard">
+          <div class="mav-moncard-head ${cls}">${label}</div>
+          <div class="mav-moncard-total">${mavFmtPesos(sum)}</div>
+          ${uSum!=null?`<div class="mav-moncard-usd">≈ ${mavFmtUSD(uSum)}</div>`:''}
+          <div class="mav-moncard-metrics">
+            <div class="mav-metric"><span class="mav-metric-l">Número de instrumentos</span><span class="mav-metric-v">${grp.length}</span></div>
+            <div class="mav-metric"><span class="mav-metric-l">Monto promedio</span><span class="mav-metric-v">${mavFmtPesos(prom)}</span></div>
+            <div class="mav-metric"><span class="mav-metric-l">Plazo promedio</span><span class="mav-metric-v">${dProm!=null?dProm+' días':'—'}</span></div>
+            <div class="mav-metric"><span class="mav-metric-l">% del total</span><span class="mav-metric-v">${pct.toLocaleString('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1})}%</span></div>
+          </div>
+          <div class="mav-moncard-subs">
+            <div class="mav-subs-title">Desagregado por instrumento</div>
+            ${subs}
+          </div>
+          <div class="mav-moncard-subs">
+            <div class="mav-subs-title">Desagregado por segmento (% de la moneda)</div>
+            ${segs}
+          </div>
+        </div>`;
+    }).join('');
+
+    // ════════════════════════════════════════════════
+    // 3 ── VENCIMIENTOS POR MES (apilado horizontal + salto)
+    // ════════════════════════════════════════════════
+    const ven=mavParseCSV(files.ven||'');
+    // mapear columnas de moneda del ven a nuestras categorías
+    const venMonCols=[]; // {idx,key,cls}
+    ven.headers.forEach((h,idx)=>{
+      const u=h.toUpperCase();
+      if(idx===0) return;
+      if(u.includes('TOTAL')) return;
+      let key='OTHER',cls='mav-c-other';
+      if(u==='$'||u.includes('PESO')){ key='ARS'; cls='mav-c-ars'; }
+      else if(u.includes('HARD')){ key='HARD'; cls='mav-c-hard'; }
+      else if(u.includes('BCRA')||u.includes('A 3500')||u.includes('A3500')){ key='A3500'; cls='mav-c-a3500'; }
+      venMonCols.push({idx,key,cls,label:h});
+    });
+    const iVenTot=ven.headers.findIndex(h=>h.toUpperCase().includes('TOTAL'));
+    // filas crudas (todas, incluso 0)
+    let venRaw=ven.rows.map(r=>{
+      const segs=venMonCols.map(c=>({key:c.key,cls:c.cls,val:mavParseAR(r[c.idx])}));
+      const tot=iVenTot>=0?mavParseAR(r[iVenTot]):segs.reduce((s,x)=>s+x.val,0);
+      return {mes:r[0]||'—', segs, tot};
+    });
+    // Recortar vacías al inicio y al final: solo el rango entre el 1er y último mes con monto
+    const firstIdx=venRaw.findIndex(r=>r.tot>0);
+    let lastIdx=-1; for(let k=venRaw.length-1;k>=0;k--){ if(venRaw[k].tot>0){ lastIdx=k; break; } }
+    venRaw=(firstIdx>=0)?venRaw.slice(firstIdx,lastIdx+1):[];
+    const venMax=Math.max(...venRaw.map(r=>r.tot),1);
+    const monShort={ARS:'P',HARD:'H',A3500:'A',OTHER:'U'};
+    const monName ={ARS:'Pesos',HARD:'Hard USD',A3500:'USD A3500',OTHER:'Otras'};
+    // Monedas presentes en los datos (para leyenda dinámica)
+    const monPresent=new Set();
+    venRaw.forEach(r=>r.segs.forEach(s=>{ if(s.val>0) monPresent.add(s.key); }));
+
+    function venRowHTML(r){
+      const bar=r.segs.filter(s=>s.val>0).map(s=>`<div class="mav-vbar-seg ${s.cls}" style="width:${(s.val/venMax*100).toFixed(2)}%" title="${monName[s.key]}: ${mavFmtPesos(s.val)}"></div>`).join('');
+      // desglose: cada moneda en su propia línea (consistente)
+      const desgItems=r.segs.filter(s=>s.val>0).map(s=>`<span class="mav-desg-item"><b class="${s.cls}">${monShort[s.key]||'·'}</b> ${mavFmtPesos(s.val)}</span>`).join('');
+      const desg=desgItems||'';
+      const u=usd(r.tot);
+      const totTxt=r.tot>0?`<span class="mav-tot-pesos">${mavFmtPesos(r.tot)}</span>${u!=null?`<span class="mav-tot-usd">≈ ${mavFmtUSD(u)}</span>`:''}`:'';
+      return`<div class="mav-vrow">
+        <span class="mav-vrow-mes">${r.mes}</span>
+        <div class="mav-vrow-bar">${bar}</div>
+        <span class="mav-vrow-desg">${desg}</span>
+        <span class="mav-vrow-tot">${totTxt}</span>
+      </div>`;
+    }
+    // Lógica de salto: ≤3 vacías consecutivas se muestran; ≥4 → 1ª + salto + última
+    let venHTML='', i=0;
+    while(i<venRaw.length){
+      if(venRaw[i].tot>0){ venHTML+=venRowHTML(venRaw[i]); i++; continue; }
+      // racha de vacías
+      let j=i; while(j<venRaw.length && venRaw[j].tot<=0) j++;
+      const run=j-i; // cantidad de vacías consecutivas
+      if(run<=3){
+        for(let k=i;k<j;k++) venHTML+=venRowHTML(venRaw[k]);
+      } else {
+        venHTML+=venRowHTML(venRaw[i]);             // 1ª vacía de respiro
+        const desde=venRaw[i+1].mes, hasta=venRaw[j-2].mes, ocultos=run-2;
+        venHTML+=`<div class="mav-vskip">⋯ ${ocultos} ${ocultos===1?'mes':'meses'} sin vencimientos (${desde} – ${hasta}) ⋯</div>`;
+        venHTML+=venRowHTML(venRaw[j-1]);           // última vacía de respiro
+      }
+      i=j;
+    }
+    // Leyenda dinámica: solo monedas presentes, con su abreviatura
+    const legItems=[['ARS','mav-c-ars','Pesos','P'],['HARD','mav-c-hard','Hard USD','H'],['A3500','mav-c-a3500','USD A3500','A'],['OTHER','mav-c-other','Otras','U']]
+      .filter(([k])=>monPresent.has(k))
+      .map(([k,cls,name,ab])=>`<span><i class="${cls}"></i>${name} <b style="color:var(--text2);">(${ab})</b></span>`).join('');
+    const venBlock=venRaw.length?`
+      <div class="mav-vleg">${legItems}</div>
+      <div class="mav-vhdr">
+        <span class="mav-vrow-mes"></span>
+        <span class="mav-vhdr-bar">Composición (% del mes)</span>
+        <span class="mav-vrow-desg">Desagregado por moneda original</span>
+        <span class="mav-vrow-tot">Total acumulado (en pesos)</span>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:8px 16px 14px;">${venHTML}</div>`
+      :'<div style="color:var(--text3);font-size:12px;font-family:var(--mono);padding:8px;">Sin datos de vencimientos.</div>';
+
+    // ════════════════════════════════════════════════
+    // 4 ── TABLA DETALLE (Días + colores sin pills)
+    // ════════════════════════════════════════════════
+    const tdBase='padding:8px 10px;font-size:11px;text-align:center;font-family:var(--mono);border-bottom:1px solid var(--border);';
+    const detRows=items.map(it=>`
       <tr onmouseover="this.querySelectorAll('td').forEach(td=>td.style.background='var(--accent-light)')" onmouseout="this.querySelectorAll('td').forEach(td=>td.style.background='')">
-        <td style="padding:8px 12px;font-size:10px;color:var(--text3);font-family:var(--mono);border-bottom:1px solid var(--border);">${r[iCod]||'—'}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid var(--border);">${mavPillTipo(r[iTipo])}</td>
-        <td style="padding:8px 12px;font-size:10px;color:var(--text3);font-family:var(--mono);border-bottom:1px solid var(--border);">${r[iSeg]||'—'}</td>
-        <td style="padding:8px 12px;font-size:11px;text-align:right;color:var(--text2);font-family:var(--mono);border-bottom:1px solid var(--border);">${r[iEmi]||'—'}</td>
-        <td style="padding:8px 12px;font-size:11px;text-align:right;color:#a5b4fc;font-family:var(--mono);border-bottom:1px solid var(--border);font-weight:600;">${r[iVto]||'—'}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid var(--border);">${mavPillMoneda(r[iMon])}</td>
-        <td style="padding:8px 12px;font-size:11px;text-align:right;color:var(--text);font-family:var(--mono);border-bottom:1px solid var(--border);">${mavFmtNum(r[iMto])}</td>
-        <td style="padding:8px 12px;font-size:11px;text-align:right;color:var(--text);font-family:var(--mono);border-bottom:1px solid var(--border);font-weight:600;">${mavFmtPesos(r[iMtoP])}</td>
+        <td style="${tdBase}color:var(--text3);">${it.cod}</td>
+        <td style="${tdBase}"><span class="${it.tipoCls}">${it.tipoLabel}</span></td>
+        <td style="${tdBase}color:var(--text3);">${it.seg}</td>
+        <td style="${tdBase}color:var(--text2);">${it.emi}</td>
+        <td style="${tdBase}color:var(--text);font-weight:600;">${it.vto}</td>
+        <td style="${tdBase}color:var(--text3);">${mavFmtDias(it.dias)}</td>
+        <td style="${tdBase}color:var(--text);">${mavFmtNum(it.orig)}</td>
+        <td style="${tdBase}"><span class="${it.monCls}">${it.monLabel}</span></td>
+        <td style="${tdBase}color:var(--text);font-weight:600;">${mavFmtPesos(it.pesos)}</td>
       </tr>`).join('');
 
-    const thStyle='padding:8px 12px;font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;text-align:left;border-bottom:1px solid var(--border);background:var(--bg3);font-family:var(--mono);white-space:nowrap;';
-    const thR=thStyle+'text-align:right;';
+    const thStyle='padding:8px 10px;font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;text-align:center;border-bottom:1px solid var(--border);background:var(--bg3);font-family:var(--mono);white-space:nowrap;';
     const detTable=`
       <div style="overflow-x:auto;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;">
         <table style="width:100%;border-collapse:collapse;">
           <thead><tr>
             <th style="${thStyle}">Código</th><th style="${thStyle}">Tipo</th><th style="${thStyle}">Segmento</th>
-            <th style="${thR}">Emisión</th><th style="${thR}">Vto.</th><th style="${thStyle}">Moneda</th>
-            <th style="${thR}">Monto orig.</th><th style="${thR}">Monto $</th>
+            <th style="${thStyle}">Emisión</th><th style="${thStyle}">Vto.</th><th style="${thStyle}">Días</th>
+            <th style="${thStyle}">Monto orig.</th><th style="${thStyle}">Moneda</th><th style="${thStyle}">Monto $</th>
           </tr></thead>
           <tbody>${detRows}</tbody>
-          <tfoot><tr>
-            <td colspan="7" style="padding:8px 12px;text-align:right;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);border-top:1px solid var(--border2);">Total en pesos</td>
-            <td style="padding:8px 12px;text-align:right;font-size:12px;font-weight:700;color:#a5b4fc;font-family:var(--mono);border-top:1px solid var(--border2);">${mavFmtPesos(totalPesos)}</td>
-          </tr></tfoot>
+          <tfoot>
+            <tr>
+              <td colspan="8" style="padding:8px 10px;text-align:right;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);border-top:1px solid var(--border2);">Total en pesos</td>
+              <td style="padding:8px 10px;text-align:center;font-size:12px;font-weight:700;color:#1E27F3;font-family:var(--mono);border-top:1px solid var(--border2);">${mavFmtPesos(totalPesos)}</td>
+            </tr>
+            ${usd(totalPesos)!=null?`<tr>
+              <td colspan="8" style="padding:6px 10px;text-align:right;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);">Equivalente en USD <span style="opacity:.7;">${tcUSD.label}</span></td>
+              <td style="padding:6px 10px;text-align:center;font-size:11px;font-weight:600;color:var(--text2);font-family:var(--mono);">≈ ${mavFmtUSD(usd(totalPesos))}</td>
+            </tr>`:''}
+          </tfoot>
         </table>
       </div>`;
 
-    // Vencimientos bar chart
-    const ven=mavParseCSV(files.ven||'');
-    const iTotal=ven.headers.findIndex(h=>h.toUpperCase().includes('TOTAL'));
-    const venData=ven.rows
-      .map(r=>({mes:r[0],val:parseFloat(String(r[iTotal]||'0').replace(/\./g,'').replace(',','.').trim())||0}))
-      .filter(r=>r.val>0);
-    const maxVal=Math.max(...venData.map(r=>r.val),1);
-    const venChart=venData.length
-      ? venData.map(r=>`
-        <div class="mav-ven-row">
-          <span class="mav-ven-label">${r.mes}</span>
-          <div class="mav-ven-bar-wrap"><div class="mav-ven-bar" style="width:${(r.val/maxVal*100).toFixed(1)}%"></div></div>
-          <span class="mav-ven-val">${mavFmtPesos(r.val)}</span>
-        </div>`).join('')
-      : '<div style="color:var(--text3);font-size:12px;font-family:var(--mono);padding:8px;">Sin vencimientos con monto.</div>';
-
-    // Moneda breakdown
-    const mon=mavParseCSV(files.mon||'');
-    const monRows=mon.rows.map(r=>{
-      const n=parseFloat(String(r[1]||'0').replace(/\./g,'').replace(',','.').trim());
-      if(!n) return'';
-      return`<tr onmouseover="this.querySelectorAll('td').forEach(td=>td.style.background='var(--accent-light)')" onmouseout="this.querySelectorAll('td').forEach(td=>td.style.background='')">
-        <td style="padding:7px 12px;font-size:11px;color:var(--text2);font-family:var(--mono);border-bottom:1px solid var(--border);">${r[0]||'—'}</td>
-        <td style="padding:7px 12px;font-size:11px;text-align:right;color:#a5b4fc;font-family:var(--mono);border-bottom:1px solid var(--border);font-weight:600;">${mavFmtPesos(n)}</td>
-      </tr>`;
-    }).join('');
-
-    container.innerHTML=`<div data-mav-wrap="1">
+    // ════════════════════════════════════════════════
+    // ENSAMBLE: Info → KPIs → Vencimientos → Tabla
+    // ════════════════════════════════════════════════
+    container.innerHTML=`<div data-mav-wrap="1" data-mav-razon="${(razonSocial||'').replace(/"/g,'&quot;')}" data-mav-cuit="${cuitFmt}" data-mav-informe="${informe.str||''}">
       ${infoBar}
-      <div class="mav-kpi-grid">${kpiHTML}</div>
+      <div class="mav-kpi-grid">${n1}</div>
+      ${cotBar}
+      ${monCards?`<div class="mav-section-title">Resumen por moneda</div><div class="mav-moncard-grid">${monCards}</div>`:''}
+      <div class="mav-section-title">Vencimientos por mes</div>
+      ${venBlock}
       <div class="mav-section-title">Detalle de instrumentos</div>
       ${detTable}
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:0;">
-        <div>
-          <div class="mav-section-title">Vencimientos por mes</div>
-          <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:16px;">
-            ${venChart}
-          </div>
-        </div>
-        <div>
-          <div class="mav-section-title">Breakdown por moneda</div>
-          <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;overflow:hidden;">
-            <table style="width:100%;border-collapse:collapse;">
-              <thead><tr>
-                <th style="padding:7px 12px;font-size:10px;font-weight:600;color:var(--text2);text-align:left;border-bottom:1px solid var(--border);background:var(--bg3);font-family:var(--mono);text-transform:uppercase;">Moneda</th>
-                <th style="padding:7px 12px;font-size:10px;font-weight:600;color:var(--text2);text-align:right;border-bottom:1px solid var(--border);background:var(--bg3);font-family:var(--mono);text-transform:uppercase;">Monto</th>
-              </tr></thead>
-              <tbody>${monRows||'<tr><td colspan="2" style="padding:10px 12px;color:var(--text3);font-family:var(--mono);font-size:11px;">Sin datos</td></tr>'}</tbody>
-            </table>
-          </div>
-        </div>
-      </div>
     </div>`;
   }
+
+  // ── Reset: borra el render y re-muestra la dropzone correspondiente ──
+  window.mavReset = function(btn, targetId){
+    // Determinar el container de resultados y la dropzone hermana
+    let resultsEl=null, dropEl=null;
+    if(targetId==='mav-global-results'){
+      resultsEl=document.getElementById('mav-global-results');
+      dropEl=document.getElementById('mav-global-drop');
+    } else if(targetId && targetId.indexOf('mav-results-')===0){
+      const ticker=targetId.slice('mav-results-'.length);
+      resultsEl=document.getElementById(targetId);
+      dropEl=document.getElementById('mav-drop-'+ticker);
+    } else {
+      // fallback: subir desde el botón al wrap y limpiar
+      const wrap=btn.closest('[data-mav-wrap]');
+      if(wrap){ resultsEl=wrap.parentElement; }
+    }
+    if(resultsEl) resultsEl.innerHTML='';
+    if(dropEl){
+      dropEl.style.display='';
+      // resetear el input file para permitir re-cargar el mismo archivo
+      const inp=dropEl.querySelector('input[type=file]'); if(inp) inp.value='';
+    }
+  };
+
+  // ── Reporte PDF del MAV global (acceso por herramienta) ──────────
+  window.mavGlobalReport = async function(){
+    const wrap=document.querySelector('#mav-global-results [data-mav-wrap]');
+    if(!wrap){ alert('Primero cargá un archivo CENDEU.'); return; }
+    if(!(window.jspdf&&window.jspdf.jsPDF)){ alert('Las librerías de PDF aún se están cargando. Probá de nuevo.'); return; }
+    const razon=wrap.getAttribute('data-mav-razon')||'MAV';
+    const cuit=wrap.getAttribute('data-mav-cuit')||'';
+    const informe=wrap.getAttribute('data-mav-informe')||'';
+    const btn=document.querySelector('button[onclick="earOpenReportDialog()"]');
+    const btnHTML=btn?btn.innerHTML:'';
+    if(btn){ btn.textContent='Generando…'; btn.disabled=true; }
+
+    try{
+      // Paleta según tema
+      const _dark=(typeof _isDark!=='undefined')?_isDark:true;
+      const RGB=_dark
+        ? {bg:[11,14,23],card:[17,21,31],card2:[22,27,40],head:[26,31,48],border:[34,42,61],text:[232,234,246],text2:[195,201,230],text3:[126,135,184],accent:[30,39,243],alt:[20,25,37]}
+        : {bg:[255,255,255],card:[247,248,252],card2:[238,240,247],head:[228,231,242],border:[210,214,235],text:[10,12,26],text2:[58,63,92],text3:[138,144,176],accent:[30,39,243],alt:[241,243,250]};
+
+      // Armar items desde el DOM ya renderizado
+      const items=[];
+      const T={ sub:t=>items.push({type:'sub',text:t}),
+                note:t=>items.push({type:'note',text:t}),
+                table:(head,body)=>{ if(body&&body.length) items.push({type:'table',head,body}); } };
+
+      // 1) Resumen por moneda (cards Nivel 2)
+      const monCards=Array.from(wrap.querySelectorAll('.mav-moncard'));
+      if(monCards.length){
+        const body=monCards.map(c=>{
+          const lbl=c.querySelector('.mav-moncard-head')?.textContent.trim()||'—';
+          const tot=c.querySelector('.mav-moncard-total')?.textContent.trim()||'—';
+          const metrics=Array.from(c.querySelectorAll('.mav-metric')).map(m=>m.querySelector('.mav-metric-v')?.textContent.trim()||'');
+          // metrics: [nInstr, prom, plazo, %]
+          return [lbl, tot, metrics[0]||'', metrics[1]||'', metrics[2]||'', metrics[3]||''];
+        });
+        T.sub('Resumen por moneda');
+        T.table(['Moneda','Total','N° instr.','Monto prom.','Plazo prom.','% total'], body);
+      }
+
+      // 2) Vencimientos por mes
+      const venRows=Array.from(wrap.querySelectorAll('.mav-vrow'));
+      if(venRows.length){
+        const vbody=venRows.map(r=>{
+          const mes=r.querySelector('.mav-vrow-mes')?.textContent.trim()||'—';
+          const desg=Array.from(r.querySelectorAll('.mav-desg-item')).map(x=>x.textContent.trim().replace(/\s+/g,' ')).join('  ')||'—';
+          const tp=r.querySelector('.mav-tot-pesos')?.textContent.trim()||'';
+          const tu=r.querySelector('.mav-tot-usd')?.textContent.trim()||'';
+          return [mes, desg, tp, tu];
+        });
+        T.sub('Vencimientos por mes');
+        T.table(['Mes','Desagregado (moneda original)','Total (pesos)','≈ USD'], vbody);
+      }
+
+      // 3) Detalle de instrumentos (tabla con más columnas)
+      let detTbl=null, maxC=0;
+      wrap.querySelectorAll('table').forEach(tb=>{ const c=tb.querySelectorAll('thead th').length; if(c>maxC){maxC=c;detTbl=tb;} });
+      if(detTbl){
+        const head=Array.from(detTbl.querySelectorAll('thead th')).map(th=>th.textContent.trim());
+        const dbody=Array.from(detTbl.querySelectorAll('tbody tr')).map(tr=>Array.from(tr.querySelectorAll('td')).map(td=>td.textContent.trim()));
+        const foot=detTbl.querySelector('tfoot');
+        T.sub('Detalle de instrumentos');
+        T.table(head, dbody);
+        if(foot){
+          const ftrs=Array.from(foot.querySelectorAll('tr')).map(tr=>{
+            const c=Array.from(tr.querySelectorAll('td'));
+            return (c[0]?.textContent.trim()||'')+': '+(c[c.length-1]?.textContent.trim()||'');
+          });
+          ftrs.forEach(t=>T.note(t));
+        }
+      }
+
+      // ── Render PDF ──
+      const { jsPDF }=window.jspdf;
+      const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
+      const PW=pdf.internal.pageSize.getWidth(), PH=pdf.internal.pageSize.getHeight();
+      const M=36, usableW=PW-M*2;
+      const date=new Date().toLocaleDateString('es-AR',{year:'numeric',month:'long',day:'numeric'});
+      function pageBg(){ pdf.setFillColor(...RGB.bg); pdf.rect(0,0,PW,PH,'F'); }
+      function drawHeader(){
+        let yy=M;
+        pdf.setFont('helvetica','bold'); pdf.setTextColor(...RGB.accent); pdf.setFontSize(18); pdf.text(razon,M,yy+14,{maxWidth:usableW-180});
+        let hy=yy+30;
+        pdf.setFont('helvetica','normal'); pdf.setFontSize(8.5); pdf.setTextColor(...RGB.text3);
+        if(cuit){ pdf.text('CUIT '+cuit,M,hy); hy+=11; }
+        pdf.setFontSize(7.5);
+        pdf.text('MAV · Central de Deuda',PW-M,yy+9,{align:'right'});
+        if(informe) pdf.text('Informe: '+informe,PW-M,yy+19,{align:'right'});
+        pdf.text('Research · Bull Market Brokers',PW-M,yy+29,{align:'right'});
+        pdf.setDrawColor(...RGB.accent); pdf.setLineWidth(2); pdf.line(M,hy+3,PW-M,hy+3);
+        return hy+18;
+      }
+      function miniHeader(){
+        pdf.setFont('helvetica','bold'); pdf.setFontSize(10); pdf.setTextColor(...RGB.accent); pdf.text(razon,M,M+4,{maxWidth:usableW-120});
+        pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.5); pdf.line(M,M+10,PW-M,M+10);
+      }
+      function newPage(){ pdf.addPage(); pageBg(); miniHeader(); return M+22; }
+
+      pageBg();
+      let y=drawHeader();
+
+      for(const it of items){
+        if(it.type==='sub'){
+          if(y+48>PH-M){ y=newPage(); }
+          pdf.setFont('helvetica','bold'); pdf.setFontSize(9); pdf.setTextColor(...RGB.accent);
+          pdf.text(it.text.toUpperCase(),M,y+9); y+=16;
+        }
+        else if(it.type==='note'){
+          if(y+20>PH-M){ y=newPage(); }
+          pdf.setFont('helvetica','normal'); pdf.setFontSize(8); pdf.setTextColor(...RGB.text3);
+          pdf.text(it.text,M,y+9); y+=16;
+        }
+        else if(it.type==='table'){
+          const rowH=13, headH=15;
+          const drawTable=(rows,sy)=>{ pdf.autoTable({ startY:sy, margin:{left:M,right:M},
+            head:[it.head], body:rows, theme:'grid',
+            styles:{font:'helvetica',fontSize:7,cellPadding:2.4,textColor:RGB.text2,lineColor:RGB.border,lineWidth:0.4,fillColor:RGB.card},
+            headStyles:{fillColor:RGB.head,textColor:RGB.text3,fontStyle:'bold',fontSize:6.5,halign:'center'},
+            bodyStyles:{fillColor:RGB.card}, alternateRowStyles:{fillColor:RGB.alt},
+            didParseCell:d=>{ d.cell.styles.halign='center'; },
+            tableLineColor:RGB.border, tableLineWidth:0.4, pageBreak:'avoid' });
+            return pdf.lastAutoTable.finalY; };
+          const fullPageRows=Math.floor(((PH-M)-(M+22)-headH)/rowH);
+          const tableTotalH=headH+it.body.length*rowH;
+          if(it.body.length<=fullPageRows && y+tableTotalH>PH-M){ y=newPage(); }
+          let rows=it.body.slice();
+          while(rows.length){
+            const avail=(PH-M)-y; let n=Math.max(1,Math.floor((avail-headH)/rowH));
+            if(n>=rows.length){ y=drawTable(rows,y)+10; rows=[]; }
+            else{ drawTable(rows.slice(0,n),y); rows=rows.slice(n); y=newPage(); }
+          }
+        }
+      }
+
+      // Footer
+      const footerTxt='La información contenida es de carácter informativo y no representa una recomendación de inversión.';
+      const totalPages=pdf.internal.getNumberOfPages();
+      for(let p=1;p<=totalPages;p++){
+        pdf.setPage(p);
+        pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.5); pdf.line(M,PH-22,PW-M,PH-22);
+        pdf.setFont('helvetica','normal'); pdf.setFontSize(6.5); pdf.setTextColor(...RGB.text3);
+        pdf.text(footerTxt,PW/2,PH-13,{align:'center'});
+      }
+      const safeName=(razon||'MAV').replace(/[^\w\s-]/g,'').trim().replace(/\s+/g,'_')||'MAV';
+      pdf.save(`${safeName}_MAV_${new Date().toISOString().slice(0,10)}.pdf`);
+    }catch(err){
+      alert('No se pudo generar el PDF: '+err.message);
+    }finally{
+      if(btn){ btn.innerHTML=btnHTML||'Generar reporte'; btn.disabled=false; }
+    }
+  };
 
   // ── File handler ──────────────────────────────────────────────
   window.mavHandleFile = async function(file, validCUIT, targetId){
@@ -20653,9 +21048,38 @@ function renderCheques(cheques){
     try{
       const zip=await JSZip.loadAsync(file);
       const files={};
-      for(const [name,entry] of Object.entries(zip.files)){
-        const key=name.includes('-det-')?'det':name.includes('-mon-')?'mon':name.includes('-ven-')?'ven':name.includes('-ins-')?'ins':name.endsWith('.txt')?'ref':null;
+      let innerName='';   // nombre de un CSV interno (trae fecha confiable)
+      let errorMsg='';    // contenido del cendeu-error-*.txt si existe
+      let errorName='';   // nombre del archivo de error (para extraer CUIT/fecha)
+      for(const [rawName,entry] of Object.entries(zip.files)){
+        if(entry.dir) continue;                       // saltear entradas de carpeta
+        const base=rawName.split('/').pop().toLowerCase(); // solo el nombre, en minúsculas
+        // Archivo de error del MAV (empresa sin instrumentos)
+        if(base.includes('-error-') && base.endsWith('.txt')){
+          errorMsg=(await entry.async('string')).trim();
+          errorName=rawName;
+          continue;
+        }
+        const key=base.includes('-det-')?'det':base.includes('-mon-')?'mon':base.includes('-ven-')?'ven':base.includes('-ins-')?'ins':base.endsWith('.txt')?'ref':null;
         if(key) files[key]=await entry.async('string');
+        if(/-(det|mon|ven|ins)-\d{11}-\d{8}/i.test(base) && !innerName) innerName=rawName;
+      }
+      // Caso: empresa sin instrumentos (el MAV devuelve solo un archivo de error)
+      if(!files.det && errorMsg){
+        const dropEl0=document.getElementById(targetId==='mav-global-results'?'mav-global-drop':null);
+        if(dropEl0) dropEl0.style.display='none';
+        const cuitM=errorName.match(/(\d{11})/);
+        const cuitFmt0=cuitM?cuitM[1].slice(0,2)+'-'+cuitM[1].slice(2,10)+'-'+cuitM[1].slice(10):'';
+        if(container) container.innerHTML=`<div data-mav-wrap="1">
+          <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:24px 20px;text-align:center;">
+            <div style="font-size:26px;opacity:.4;margin-bottom:10px;">✓</div>
+            <div style="font-size:13px;font-weight:600;color:var(--text2);font-family:var(--mono);margin-bottom:6px;">Sin deuda en el MAV</div>
+            <div style="font-size:11px;color:var(--text3);font-family:var(--mono);line-height:1.6;max-width:460px;margin:0 auto;">${errorMsg}</div>
+            ${cuitFmt0?`<div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:8px;">CUIT ${cuitFmt0}</div>`:''}
+            <button onclick="mavReset(this,'${targetId||''}')" style="margin-top:16px;padding:5px 14px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid var(--border2);border-radius:5px;background:transparent;color:var(--text3);font-family:var(--mono);">↩ Cargar otro</button>
+          </div>
+        </div>`;
+        return;
       }
       if(!files.det){
         if(container) container.innerHTML='<div style="padding:16px;background:rgba(248,81,73,0.08);border:1px solid rgba(248,81,73,0.3);border-radius:8px;color:#f87171;font-family:var(--mono);font-size:12px;">No se encontró el archivo DET en el ZIP. Verificá que sea un ZIP de CENDEU válido.</div>';
@@ -20664,7 +21088,8 @@ function renderCheques(cheques){
       // Hide dropzone
       const dropEl=document.getElementById(targetId==='mav-global-results'?'mav-global-drop':null);
       if(dropEl) dropEl.style.display='none';
-      mavRender(files, file.name, container, validCUIT);
+      // Preferir nombre interno (trae fecha) sobre el nombre del ZIP
+      mavRender(files, innerName||file.name, container, validCUIT, targetId);
     }catch(e){
       if(container) container.innerHTML=`<div style="padding:16px;background:rgba(248,81,73,0.08);border:1px solid rgba(248,81,73,0.3);border-radius:8px;color:#f87171;font-family:var(--mono);font-size:12px;">Error al procesar el ZIP: ${e.message}</div>`;
     }
@@ -20957,19 +21382,59 @@ function renderCheques(cheques){
   .mav-kpi-label{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);font-family:var(--mono);margin-bottom:5px;}
   .mav-kpi-value{font-size:20px;font-weight:700;color:var(--text);font-family:var(--mono);line-height:1;}
   .mav-kpi-sub{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:3px;}
-  .mav-kpi.highlight .mav-kpi-value{color:#a5b4fc;}
-  .mav-pill{display:inline-block;padding:2px 8px;font-size:10px;letter-spacing:.05em;border:1px solid;border-radius:4px;font-family:var(--mono);}
-  .mav-pill-pagare{color:#a5b4fc;border-color:#a5b4fc;}
-  .mav-pill-cpd{color:#3fb950;border-color:#3fb950;}
-  .mav-pill-fce{color:#f59e0b;border-color:#f59e0b;}
-  .mav-pill-ars{color:#3fb950;border-color:#3fb950;}
-  .mav-pill-hd{color:#d4a017;border-color:#d4a017;}
-  .mav-pill-other{color:var(--text3);border-color:var(--border2);}
-  .mav-ven-row{display:flex;align-items:center;gap:10px;font-size:11px;font-family:var(--mono);margin-bottom:5px;}
-  .mav-ven-label{width:68px;color:var(--text3);flex-shrink:0;}
-  .mav-ven-bar-wrap{flex:1;background:var(--border);height:18px;position:relative;border-radius:2px;overflow:hidden;}
-  .mav-ven-bar{height:100%;background:#1E27F3;opacity:.75;transition:width .4s ease;}
-  .mav-ven-val{width:130px;text-align:right;color:var(--text);flex-shrink:0;}
+  .mav-kpi.highlight .mav-kpi-value{color:#1E27F3;}
+  .mav-kpi-value-xl{font-size:30px;}
+  .mav-kpi-usd{font-size:14px;font-weight:600;color:var(--text2);margin-top:6px;}
+  /* Colores de texto (sin pills) — Tipo */
+  .mav-t-pagare{color:var(--text2);}
+  .mav-t-cpd{color:var(--text);}
+  .mav-t-fce{color:#8b5cf6;font-weight:600;}
+  /* Colores de texto — Moneda */
+  .mav-c-ars{color:#1E27F3;font-weight:600;}
+  .mav-c-hard{color:#3fb950;font-weight:600;}
+  .mav-c-a3500{color:#d4a017;font-weight:600;}
+  .mav-c-other{color:var(--text3);font-weight:600;}
+  /* Nivel 2 — cards por moneda */
+  .mav-moncard-grid{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;}
+  .mav-moncard{background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:14px 16px;flex:1 1 0;min-width:200px;}
+  .mav-moncard-head{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;font-family:var(--mono);margin-bottom:8px;text-align:center;}
+  .mav-moncard-total{font-size:20px;font-weight:700;color:var(--text);font-family:var(--mono);line-height:1;text-align:center;}
+  .mav-moncard-usd{font-size:12px;color:var(--text3);font-family:var(--mono);text-align:center;margin-top:4px;}
+  .mav-moncard-metrics{margin-top:13px;display:grid;grid-template-columns:1fr 1fr;gap:9px 14px;}
+  .mav-metric{display:flex;flex-direction:column;gap:2px;}
+  .mav-metric-l{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);font-family:var(--mono);}
+  .mav-metric-v{font-size:15px;font-weight:700;color:var(--text);font-family:var(--mono);}
+  .mav-subs-title{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-family:var(--mono);margin-bottom:7px;}
+  .mav-moncard-meta{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:6px;text-align:center;}
+  .mav-moncard-subs{margin-top:11px;padding-top:9px;border-top:1px dashed var(--border2);display:flex;flex-direction:column;gap:4px;}
+  .mav-sub{display:flex;justify-content:space-between;gap:10px;font-size:12px;font-family:var(--mono);}
+  .mav-sub-t{color:var(--text2);}
+  .mav-sub-v{color:var(--text);font-weight:600;}
+  /* Vencimientos — leyenda + filas apiladas horizontales */
+  .mav-vleg{display:flex;gap:18px;margin-bottom:10px;font-size:10px;font-family:var(--mono);color:var(--text3);}
+  .mav-vleg span{display:flex;align-items:center;gap:6px;}
+  .mav-vleg i{width:11px;height:11px;border-radius:3px;display:inline-block;}
+  .mav-vleg i.mav-c-ars{background:#1E27F3;}
+  .mav-vleg i.mav-c-hard{background:#3fb950;}
+  .mav-vleg i.mav-c-a3500{background:#d4a017;}
+  .mav-vrow{display:flex;align-items:center;gap:12px;font-size:11px;font-family:var(--mono);padding:5px 0;}
+  .mav-vrow-mes{width:58px;color:var(--text3);flex-shrink:0;}
+  .mav-vrow-bar{flex:1;min-width:120px;background:var(--border);height:18px;border-radius:3px;overflow:hidden;display:flex;}
+  .mav-vbar-seg{height:100%;transition:width .4s ease;}
+  .mav-vbar-seg.mav-c-ars{background:#1E27F3;opacity:.85;}
+  .mav-vbar-seg.mav-c-hard{background:#3fb950;opacity:.85;}
+  .mav-vbar-seg.mav-c-a3500{background:#d4a017;opacity:.85;}
+  .mav-vbar-seg.mav-c-other{background:var(--text3);opacity:.6;}
+  .mav-vrow-desg{width:240px;flex-shrink:0;color:var(--text2);text-align:left;display:flex;flex-direction:column;gap:2px;}
+  .mav-desg-item{white-space:nowrap;}
+  .mav-desg-item b{font-weight:700;}
+  .mav-vrow-tot{width:190px;flex-shrink:0;text-align:right;display:flex;flex-direction:column;gap:2px;align-items:flex-end;}
+  .mav-tot-pesos{color:var(--text);font-weight:700;}
+  .mav-tot-usd{color:var(--text3);font-size:10px;}
+  .mav-vhdr{display:flex;align-items:flex-end;gap:12px;font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);font-family:var(--mono);padding:4px 0 8px;}
+  .mav-vhdr-bar{flex:1;min-width:120px;}
+  .mav-vhdr .mav-vrow-desg,.mav-vhdr .mav-vrow-tot{display:block;}
+  .mav-vskip{font-size:10px;color:var(--text3);font-family:var(--mono);text-align:center;padding:14px 0;margin:6px 0;border-top:1px dashed var(--border2);border-bottom:1px dashed var(--border2);letter-spacing:.05em;}
 /* ── ONs Comparador ── */
 #view-ons-cmp{display:none;flex-direction:row;flex:1;overflow:hidden;height:calc(100vh - 52px);}
 .onscmp-sidebar{width:230px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
@@ -24605,3 +25070,4 @@ Equipo: Research BullMarket`;
 
 </body>
 </html>
+
