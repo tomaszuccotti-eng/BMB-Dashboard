@@ -10777,6 +10777,7 @@ window.rfHmCloseCategory = rfHmCloseCategory;
             <tbody id="eq-hist-tbody"></tbody>
           </table>
         </div>
+        <div id="eq-hist-more" style="text-align:center;padding:10px;"></div>
       </div>
 
       <div style="text-align:center;padding:14px;font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.08em;">Precios via proxy API BYMA, lag de 2hs. Precio diferido.</div>
@@ -11151,6 +11152,7 @@ async function eqLoadTickerView(symbol) {
     const el=document.getElementById(id); if(el) el.textContent='…';
   });
   document.getElementById('eq-hist-tbody').innerHTML='';
+  {const m=document.getElementById('eq-hist-more'); if(m)m.innerHTML='';}
   document.getElementById('eq-fx-warning').textContent='';
   if(eqPriceChart){eqPriceChart.destroy();eqPriceChart=null;}
   if(eqVolChart){eqVolChart.destroy();eqVolChart=null;}
@@ -11353,11 +11355,13 @@ function eqBuildVolChart(data) {
   });
 }
 
-function eqBuildHistTable(data) {
+function eqBuildHistTable(data, limit) {
   const desc = [...data].reverse();
   const badge = document.getElementById('eq-t-badge');
   if(badge) badge.textContent = desc.length+' filas';
-  document.getElementById('eq-hist-tbody').innerHTML = desc.map(d=>{
+  const N=limit||20;
+  const shown=desc.slice(0,N);
+  document.getElementById('eq-hist-tbody').innerHTML = shown.map(d=>{
     const dc=d.dr==null?'':d.dr>=0?'pos':'neg';
     return `<tr>
       <td style="text-align:left;">${d.date}</td>
@@ -11366,7 +11370,16 @@ function eqBuildHistTable(data) {
       <td class="${dc}">${eqFmtPct(d.dr)}</td>
     </tr>`;
   }).join('');
+  const moreWrap=document.getElementById('eq-hist-more');
+  if(moreWrap){
+    if(desc.length>N){
+      moreWrap.innerHTML=`<button onclick="eqHistMore(${desc.length})" style="padding:6px 16px;font-size:10px;font-family:var(--mono);cursor:pointer;border:1px solid var(--border2);border-radius:6px;background:transparent;color:var(--text3);">Ver todas (${desc.length-N} filas restantes)</button>`;
+    } else {
+      moreWrap.innerHTML=`<span style="font-size:10px;font-family:var(--mono);color:var(--text3);">Mostrando las ${desc.length} filas</span>`;
+    }
+  }
 }
+window.eqHistMore=function(limit){ eqBuildHistTable(eqAllData, limit); };
 
 // ── Init when entering equity ──
 window.enterEquity = function(){
@@ -20383,6 +20396,7 @@ function renderCheques(cheques){
             <tbody id="ear-hist-tbody-${ticker}"></tbody>
           </table>
         </div>
+        <div id="ear-hist-more-${ticker}" style="text-align:center;padding:10px;"></div>
       </div>
       <div style="text-align:center;padding:10px;font-family:var(--mono);font-size:10px;color:var(--text3);">Precios via proxy API BYMA, lag de 2hs. Precio diferido.</div>`;
 
@@ -20540,7 +20554,7 @@ function renderCheques(cheques){
     _earPriceCharts[ticker].volChart=chart;
   }
 
-  function _earBuildHistTable(ticker){
+  function _earBuildHistTable(ticker, limit){
     const st=_earPriceState[ticker];
     const desc=[...st.allData].reverse();
     const badge=document.getElementById(`ear-hist-badge-${ticker}`);
@@ -20550,13 +20564,25 @@ function renderCheques(cheques){
     const fmtP=n=>n!=null?((n>=0?'+':'')+n.toFixed(2)+'%'):'—';
     const tbody=document.getElementById(`ear-hist-tbody-${ticker}`);
     if(!tbody)return;
-    tbody.innerHTML=desc.map(d=>`<tr>
+    const N=limit||20;
+    const shown=desc.slice(0,N);
+    tbody.innerHTML=shown.map(d=>`<tr>
       <td style="text-align:left;">${d.date}</td>
       <td>${fmt(d.o)}</td><td>${fmt(d.h)}</td><td>${fmt(d.l)}</td>
       <td>${fmt(d.c)}</td><td>${fmtV(d.v)}</td>
       <td class="${d.dr==null?'':d.dr>=0?'pos':'neg'}">${fmtP(d.dr)}</td>
     </tr>`).join('');
+    // Botón "Ver más" si hay filas ocultas
+    const moreWrap=document.getElementById(`ear-hist-more-${ticker}`);
+    if(moreWrap){
+      if(desc.length>N){
+        moreWrap.innerHTML=`<button onclick="_earHistMore('${ticker}',${desc.length})" style="padding:6px 16px;font-size:10px;font-family:var(--mono);cursor:pointer;border:1px solid var(--border2);border-radius:6px;background:transparent;color:var(--text3);">Ver todas (${desc.length-N} filas restantes)</button>`;
+      } else {
+        moreWrap.innerHTML=`<span style="font-size:10px;font-family:var(--mono);color:var(--text3);">Mostrando las ${desc.length} filas</span>`;
+      }
+    }
   }
+  window._earHistMore=function(ticker, limit){ _earBuildHistTable(ticker, limit); };
 
   window._earSetRange=function(ticker, days, btn){
     _earPriceState[ticker].range=days;
