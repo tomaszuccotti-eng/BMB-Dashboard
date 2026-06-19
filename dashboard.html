@@ -20030,11 +20030,32 @@ function deuStatus(msg, type){
 }
 
 // ── Main search ───────────────────────────────────────
+// Lock + cooldown para evitar consultas encimadas al BCRA
+let _deuBusy = false;
+let _deuLastSearch = 0;
+const DEU_COOLDOWN_MS = 4000;
+function _deuSetBtn(disabled){
+  const b = document.getElementById('deu-search-btn');
+  if(!b) return;
+  b.disabled = disabled;
+  b.style.opacity = disabled ? '.5' : '';
+  b.style.cursor  = disabled ? 'not-allowed' : 'pointer';
+}
 window.deuSearch = async function(){
   const raw = (document.getElementById('deu-cuit-input')?.value||'').replace(/[-\s]/g,'').trim();
   if(!/^\d{11}$/.test(raw)){
     deuStatus('CUIT inválido — debe tener 11 dígitos','err'); return;
   }
+  // Lock: no permitir una segunda consulta mientras hay una en curso
+  if(_deuBusy){ deuStatus('Esperá a que termine la consulta en curso…','load'); return; }
+  // Cooldown: pausa mínima entre consultas (le da aire al BCRA)
+  const _since = Date.now() - _deuLastSearch;
+  if(_since < DEU_COOLDOWN_MS){
+    deuStatus(`Esperá ${Math.ceil((DEU_COOLDOWN_MS - _since)/1000)}s antes de otra consulta`,'load');
+    return;
+  }
+  _deuBusy = true;
+  _deuSetBtn(true);
   document.getElementById('deu-autocomplete').style.display='none';
   document.getElementById('deu-welcome').style.display='none';
   document.getElementById('deu-results').style.display='none';
@@ -20087,6 +20108,10 @@ window.deuSearch = async function(){
   }catch(e){
     deuStatus(`Error inesperado: ${e.message}`,'err');
     console.error('[deuSearch]', e);
+  }finally{
+    _deuBusy = false;
+    _deuLastSearch = Date.now();
+    _deuSetBtn(false);
   }
 };
 
@@ -25603,4 +25628,3 @@ Equipo: Research BullMarket`;
 
 </body>
 </html>
-
