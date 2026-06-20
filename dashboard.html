@@ -11662,7 +11662,7 @@ const _eqRO = new ResizeObserver(entries => {
       <div id="mav-global-drop" class="mav-dropzone" onclick="document.getElementById('mav-global-input').click()">
         <div style="font-size:28px;margin-bottom:10px;opacity:.5;">📂</div>
         <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:4px;">Arrastrá el ZIP de CENDEU aquí</div>
-        <div style="font-size:11px;color:var(--text3);line-height:1.6;">Descargá el archivo desde CENDEU (MAV) — baja como <strong style="color:var(--text2);">.zip</strong> (cendeu-XXXXXXXXXX.zip)<br>o hacé click para seleccionarlo</div>
+        <div style="font-size:11px;color:var(--text3);line-height:1.6;">En CENDEU (MAV) descargá en formato <strong style="color:var(--text2);">CSV</strong> y arrastrá acá el <strong style="color:var(--text2);">.zip</strong> (cendeu-XXXXXXXXXX.zip)<br>o hacé click para seleccionarlo</div>
         <input type="file" id="mav-global-input" accept=".zip" style="display:none" onchange="mavHandleFile(this.files[0],null,'mav-global-results')">
       </div>
       <div id="mav-global-results" style="margin-top:24px;"></div>
@@ -22059,7 +22059,7 @@ function renderCheques(cheques){
       <div id="${dropId}" class="mav-dropzone" onclick="document.getElementById('${inputId}').click()">
         <div style="font-size:22px;margin-bottom:8px;opacity:.5;">📂</div>
         <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:3px;">Arrastrá el ZIP de CENDEU para ${ticker}</div>
-        <div style="font-size:11px;color:var(--text3);line-height:1.6;">Descargalo desde CENDEU (MAV) — baja como <strong style="color:var(--text2);">.zip</strong> · debe corresponder al CUIT ${cuit||'de esta empresa'}</div>
+        <div style="font-size:11px;color:var(--text3);line-height:1.6;">En CENDEU (MAV) descargá en formato <strong style="color:var(--text2);">CSV</strong> y arrastrá el <strong style="color:var(--text2);">.zip</strong> · debe corresponder al CUIT ${cuit||'de esta empresa'}</div>
         <input type="file" id="${inputId}" accept=".zip" style="display:none"
           onchange="document.getElementById('${dropId}').style.display='none';mavHandleFile(this.files[0],'${cuit||''}','${resultId}')">
       </div>
