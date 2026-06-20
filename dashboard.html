@@ -11662,7 +11662,7 @@ const _eqRO = new ResizeObserver(entries => {
       <div id="mav-global-drop" class="mav-dropzone" onclick="document.getElementById('mav-global-input').click()">
         <div style="font-size:28px;margin-bottom:10px;opacity:.5;">📂</div>
         <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:4px;">Arrastrá el ZIP de CENDEU aquí</div>
-        <div style="font-size:11px;color:var(--text3);">o hacé click para seleccionar · cendeu-XXXXXXXXXX.zip</div>
+        <div style="font-size:11px;color:var(--text3);line-height:1.6;">Descargá el archivo desde CENDEU (MAV) — baja como <strong style="color:var(--text2);">.zip</strong> (cendeu-XXXXXXXXXX.zip)<br>o hacé click para seleccionarlo</div>
         <input type="file" id="mav-global-input" accept=".zip" style="display:none" onchange="mavHandleFile(this.files[0],null,'mav-global-results')">
       </div>
       <div id="mav-global-results" style="margin-top:24px;"></div>
@@ -11781,14 +11781,14 @@ const _eqRO = new ResizeObserver(entries => {
 
   <!-- Modal: elegir tabs del reporte -->
   <div id="ear-report-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:300;align-items:center;justify-content:center;">
-    <div style="background:#0f1422;border:1px solid rgba(30,39,243,0.35);border-radius:16px;padding:28px;width:100%;max-width:460px;position:relative;">
-      <div id="ear-report-title" style="font-size:16px;font-weight:800;font-family:var(--display);color:#e8eaf6;margin-bottom:4px;">Generar reporte</div>
-      <div id="ear-report-company" style="font-size:11px;color:#7e87b8;font-family:var(--mono);margin-bottom:18px;">—</div>
-      <div id="ear-report-checks-label" style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#7e87b8;font-family:var(--mono);margin-bottom:10px;">Secciones a incluir</div>
+    <div style="background:var(--bg2);border:1px solid rgba(30,39,243,0.35);border-radius:16px;padding:28px;width:100%;max-width:460px;position:relative;">
+      <div id="ear-report-title" style="font-size:16px;font-weight:800;font-family:var(--display);color:var(--text);margin-bottom:4px;">Generar reporte</div>
+      <div id="ear-report-company" style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:18px;">—</div>
+      <div id="ear-report-checks-label" style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);margin-bottom:10px;">Secciones a incluir</div>
       <div id="ear-report-checks" style="display:flex;flex-direction:column;gap:2px;margin-bottom:6px;max-height:50vh;overflow-y:auto;"></div>
-      <div style="font-size:10px;color:#5a6291;font-family:var(--mono);line-height:1.5;margin:10px 0 18px;">Cada sección sale en una hoja separada. Se abre la vista de impresión: elegí <strong style="color:#9aa3d4;">Guardar como PDF</strong>.</div>
+      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);line-height:1.5;margin:10px 0 18px;">Cada sección sale en una hoja separada. Se abre la vista de impresión: elegí <strong style="color:var(--text2);">Guardar como PDF</strong>.</div>
       <div style="display:flex;gap:10px;">
-        <button onclick="earCloseReportDialog()" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(30,39,243,0.25);background:transparent;color:#7e87b8;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--mono);">Cancelar</button>
+        <button onclick="earCloseReportDialog()" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(30,39,243,0.25);background:transparent;color:var(--text3);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--mono);">Cancelar</button>
         <button onclick="earReportGenerate()" style="flex:2;padding:10px;border-radius:8px;border:none;background:#1E27F3;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">Generar →</button>
       </div>
     </div>
@@ -11924,7 +11924,7 @@ const _eqRO = new ResizeObserver(entries => {
     </div>
 
     <!-- Templates -->
-    <div class="bal-sb-sec" style="flex:1;">
+    <div class="bal-sb-sec">
       <div class="bal-sb-label">Templates</div>
       <div id="balTplDropdown" class="bal-tpl-dd">
         <div id="balTplCurrent" class="bal-tpl-current" onclick="balToggleTplDropdown()">
@@ -11940,7 +11940,6 @@ const _eqRO = new ResizeObserver(entries => {
           <button id="balUpdateBtn" onclick="balUpdateActiveTemplate()" class="bal-icobtn" data-tip="Actualizar template activo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
           <button id="balCfgBtn" onclick="balOpenConfigurator()" class="bal-icobtn" data-tip="Configurar templates"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
         </div>
-        <button onclick="secGenerateReport()" class="bal-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>Generar reporte</button>
         <!-- Login para habilitar edición de templates -->
         <div id="balLoginRow" style="margin-top:10px;display:flex;gap:6px;align-items:center;">
           <input id="balLoginInput" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')balTryLogin()"
@@ -11949,6 +11948,12 @@ const _eqRO = new ResizeObserver(entries => {
         </div>
         <div id="balLoginStatus" style="margin-top:6px;font-size:9px;font-family:var(--mono);color:var(--text3);line-height:1.4;"></div>
       </div>
+    </div>
+
+    <!-- Reporte -->
+    <div class="bal-sb-sec" style="flex:1;">
+      <div class="bal-sb-label">Reporte</div>
+      <button onclick="secGenerateReport()" class="bal-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>Generar reporte</button>
     </div>
 
   </aside>
@@ -22054,7 +22059,7 @@ function renderCheques(cheques){
       <div id="${dropId}" class="mav-dropzone" onclick="document.getElementById('${inputId}').click()">
         <div style="font-size:22px;margin-bottom:8px;opacity:.5;">📂</div>
         <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:3px;">Arrastrá el ZIP de CENDEU para ${ticker}</div>
-        <div style="font-size:11px;color:var(--text3);">El archivo debe corresponder al CUIT ${cuit||'de esta empresa'}</div>
+        <div style="font-size:11px;color:var(--text3);line-height:1.6;">Descargalo desde CENDEU (MAV) — baja como <strong style="color:var(--text2);">.zip</strong> · debe corresponder al CUIT ${cuit||'de esta empresa'}</div>
         <input type="file" id="${inputId}" accept=".zip" style="display:none"
           onchange="document.getElementById('${dropId}').style.display='none';mavHandleFile(this.files[0],'${cuit||''}','${resultId}')">
       </div>
