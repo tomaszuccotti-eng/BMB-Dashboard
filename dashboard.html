@@ -18929,6 +18929,221 @@ function renderEquity(){
   // Crea UN pdf landscape, llama los bloques tildados en orden, guarda.
   // Cada bloque es autocontenido; el orquestador no sabe qué hace por dentro.
   // Registry: id de sección -> async fn(pdf, ctx, isFirst) que dibuja el bloque.
+
+  // ── BLOQUE: RATIOS ────────────────────────────────────────────────────
+  // Misma estructura que Financials (grupos × fechas), datos de RAT_GROUPS.
+  // Fiel al tab del HTML: monocromo (el tab de ratios no colorea por celda).
+  function buildRatiosBlock(pdf, ctx, ecoHist, isFirst){
+    if(!isFirst){ pdf.addPage(); }
+    ctx.pageBg();
+    let y=ctx.drawHeader();
+    y=ctx.blockTitle('Ratios', y);
+    if(!ecoHist || !ecoHist.length){ ctx.note('Sin datos de Economatica para esta empresa.', y); return; }
+    const hist=[...ecoHist].sort((a,b)=>parseDate(b.fechaBal)-parseDate(a.fechaBal));
+    const cols=hist.map(p=>p.fechaBal.substring(0,10));
+    const cleanLabel=l=>l.replace(/^[^A-Za-zÁÉÍÓÚÑ]+/,'').trim();
+    RAT_GROUPS.forEach(grp=>{
+      const body=grp.keys.map(key=>{ const def=ECO_COLS.find(c=>c.key===key); if(!def)return null;
+        return [def.label, ...hist.map(p=>{const v=p[key]; return v!=null?fmtEco(key,v):'—';})]; }).filter(Boolean);
+      if(!body.length) return;
+      y=ctx.sub(cleanLabel(grp.label), y);
+      y=ctx.table(['Métrica',...cols], body, y);
+    });
+  }
+
+  // ── BLOQUE: SCORING (puntual de la empresa) ───────────────────────────
+  // Histórico de scoring de liquidez de la empresa, con coloreo semáforo
+  // en Score y en cada ratio (fiel al tab: usa scoreColor/ratioColor).
+  function buildScoringBlock(pdf, ctx, ticker, isFirst){
+    if(!isFirst){ pdf.addPage(); }
+    ctx.pageBg();
+    let y=ctx.drawHeader();
+    y=ctx.blockTitle('Scoring de Liquidez', y);
+    const hist=window.EXCEL_DATA.filter(r=>(r['Ticker']||'').trim().toUpperCase()===ticker)
+      .sort((a,b)=>parseDate(b['Fecha Balance'])-parseDate(a['Fecha Balance']));
+    if(!hist.length){ ctx.note('Sin scoring de liquidez cargado para esta empresa.', y); return; }
+    const hex2rgb=h=>{ if(!h)return null; const n=parseInt(h.replace('#',''),16); return [(n>>16)&255,(n>>8)&255,n&255]; };
+    const head=['Fecha','Score',...RATIOS.map(r=>r.short),'Origen'];
+    const cellColors={};
+    const body=hist.map((r,ri)=>{
+      const sc=parseFloat(r['Score']);
+      cellColors[`${ri},1`]=hex2rgb(scoreColor(r['Score']));
+      RATIOS.forEach((rt,k)=>{ const c=ratioColor(rt.key,r[rt.key]); if(c) cellColors[`${ri},${2+k}`]=hex2rgb(c); });
+      const isManual=(r['manual']||'').trim().toUpperCase()==='SI';
+      return [ (r['Fecha Balance']||'—').substring(0,10), isNaN(sc)?'—':sc.toFixed(1),
+        ...RATIOS.map(rt=>fmtR(r[rt.key])), isManual?'Manual':'Auto' ];
+    });
+    y=ctx.table(head, body, y, {cellColors, columnStyles:{1:{halign:'right',cellWidth:50}}});
+  }
+
+
+  // ── BLOQUE: DEUDA BANCARIA (BCRA Central de Deudores) ─────────────────
+  // Reutilizable ficha ↔ herramienta. Recibe datos ya resueltos:
+  //   data = {cuit, deudas, hist, cheques}  (de _bcraFetch o _deuLastReport)
+  // Replica el tab: resumen de riesgo, situación por entidad (coloreada),
+  // historial por período (heatmap como tabla) y cheques.
+  function buildDeudaBlock(pdf, ctx, data, isFirst){
+    if(!isFirst){ pdf.addPage(); }
+    ctx.pageBg();
+    let y=ctx.drawHeader();
+    y=ctx.blockTitle('Deuda Bancaria', y);
+    if(!data || !data.deudas){ ctx.note('Sin datos de BCRA para esta empresa.', y); return; }
+    const {cuit, deudas, hist, cheques}=data;
+    const RGB=ctx.RGB;
+    const hex2rgb=h=>{ if(!h)return null; const n=parseInt(h.replace('#',''),16); return [(n>>16)&255,(n>>8)&255,n&255]; };
+    // Color por situación (1 normal → 5 crítico)
+    const SIT_HEX={1:'#16a34a',2:'#ca8a04',3:'#ea580c',4:'#dc2626',5:'#b91c1c'};
+    const SIT_LBL={0:'Sin deuda',1:'Normal',2:'Riesgo Bajo',3:'Con Problemas',4:'Alto Riesgo',5:'Irrecuperable'};
+    const periodo=deudas?.periodos?.[0]?.periodo||'';
+    const periodLabel=periodo?`${periodo.slice(0,4)}/${periodo.slice(4,6)}`:'—';
+    const ents=(deudas?.periodos?.[0]?.entidades||[]).filter(e=>e.situacion>0).sort((a,b)=>b.situacion-a.situacion);
+    const sumMonto=ents.reduce((s,e)=>s+(e.monto||0),0);
+    const risk=window._deuCalcRisk?window._deuCalcRisk(deudas):{nivel:'—'};
+    const fmtMonto=v=>window._deuFmtMontoMiles?window._deuFmtMontoMiles(v):('$'+Math.round((v||0)/1000).toLocaleString('es-AR')+'M');
+
+    // Resumen
+    y=ctx.sub('Resumen', y);
+    y=ctx.table(['Dato','Valor'], [
+      ['CUIT', (typeof fmtCUIT==='function'&&cuit)?fmtCUIT(cuit):(cuit||'—')],
+      ['Último período', periodLabel],
+      ['Nivel de riesgo', String(risk.nivel||'—')],
+      ['Entidades activas', String(ents.length)],
+      ['Deuda total', fmtMonto(sumMonto)],
+    ], y, {columnStyles:{1:{halign:'left'}}});
+
+    // Situación por entidad (coloreada por situación)
+    if(ents.length){
+      const cellColors={};
+      const body=ents.map((e,ri)=>{
+        const pond=sumMonto>0?((e.monto||0)/sumMonto*100):0;
+        cellColors[`${ri},1`]=hex2rgb(SIT_HEX[e.situacion]);
+        return [ e.entidad, `${e.situacion} — ${SIT_LBL[e.situacion]||'—'}`, fmtMonto(e.monto),
+          pond.toFixed(1)+'%', (e.diasAtrasoPago||0)>0?e.diasAtrasoPago+'d':'—' ];
+      });
+      y=ctx.sub('Situación actual', y);
+      y=ctx.table(['Entidad','Situación','Monto','Pond.','Atraso'], body, y, {cellColors, columnStyles:{1:{halign:'left'}}});
+    }
+
+    // Historial por período (heatmap como tabla: entidad × períodos, celda = situación coloreada)
+    if(hist?.periodos?.length){
+      const periodos=[...hist.periodos].sort((a,b)=>String(b.periodo).localeCompare(String(a.periodo))).slice(0,24);
+      const pLabels=periodos.map(p=>`${String(p.periodo).slice(2,4)}/${String(p.periodo).slice(4,6)}`);
+      // Set de entidades presentes en el historial
+      const entNames=new Set();
+      periodos.forEach(p=>(p.entidades||[]).forEach(e=>entNames.add(e.entidad)));
+      const names=[...entNames];
+      if(names.length){
+        const cellColors={};
+        const body=names.map((nm,ri)=>{
+          const row=[nm];
+          periodos.forEach((p,ci)=>{
+            const e=(p.entidades||[]).find(x=>x.entidad===nm);
+            const sit=e?e.situacion:0;
+            row.push(sit>0?String(sit):'—');
+            if(sit>0) cellColors[`${ri},${ci+1}`]=hex2rgb(SIT_HEX[sit]);
+          });
+          return row;
+        });
+        y=ctx.sub('Historial de situación (24 meses)', y);
+        y=ctx.table(['Entidad',...pLabels], body, y, {cellColors});
+      }
+    }
+
+    // Cheques rechazados (si hay)
+    if(cheques?.causales?.length){
+      const all=[];
+      cheques.causales.forEach(ca=>ca.entidades.forEach(en=>en.detalle.forEach(d=>all.push({...d,causal:ca.causal,entidad:en.entidad}))));
+      if(all.length){
+        all.sort((a,b)=>(a.fechaPago?1:0)-(b.fechaPago?1:0));
+        const fmtM=v=>{if(!v&&v!==0)return'—';const n=parseFloat(String(v).replace(/\./g,'').replace(',','.'));if(isNaN(n))return v;if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';if(n>=1e6)return'$'+(n/1e6).toFixed(1)+'M';return'$'+Math.round(n).toLocaleString('es-AR');};
+        y=ctx.sub('Cheques rechazados', y);
+        y=ctx.table(['Causal','Banco','N° Cheque','Monto','F. Rechazo','Estado'],
+          all.map(c=>[c.causal||'—',c.entidad||'—',c.nroCheque||'—',fmtM(c.monto),c.fechaRechazo||'—',c.fechaPago?`Regularizado ${c.fechaPago}`:'Sin regularizar']),
+          y, {columnStyles:{1:{halign:'left'},2:{halign:'left'}}});
+      }
+    }
+  }
+
+
+  // ── BLOQUE: MAV (CENDEU) ──────────────────────────────────────────────
+  // Reutilizable ficha ↔ herramienta. Hoy la única fuente práctica es el DOM
+  // ya renderizado del tab/herramienta MAV. El acoplamiento al DOM queda
+  // contenido acá: recibe el contenedor donde está renderizado el análisis.
+  function buildMavBlock(pdf, ctx, mavCon, isFirst){
+    if(!isFirst){ pdf.addPage(); }
+    ctx.pageBg();
+    let y=ctx.drawHeader();
+    y=ctx.blockTitle('MAV · Central de Deuda', y);
+    if(!mavCon){ ctx.note('Sin archivo CENDEU cargado para MAV.', y); return; }
+    const tables=Array.from(mavCon.querySelectorAll('table'));
+    // Tabla de detalle = la de más columnas
+    let detTbl=null, maxC=0;
+    tables.forEach(tb=>{ const c=tb.querySelectorAll('thead th').length; if(c>maxC){maxC=c;detTbl=tb;} });
+    if(detTbl){
+      const head=Array.from(detTbl.querySelectorAll('thead th')).map(th=>th.textContent.trim());
+      const body=Array.from(detTbl.querySelectorAll('tbody tr')).map(tr=>Array.from(tr.querySelectorAll('td')).map(td=>td.textContent.trim()));
+      const foot=detTbl.querySelector('tfoot tr');
+      if(foot){
+        const cells=Array.from(foot.querySelectorAll('td'));
+        const lbl=cells[0]?cells[0].textContent.trim():'TOTAL EN PESOS';
+        const val=cells[cells.length-1]?cells[cells.length-1].textContent.trim():'';
+        body.push(head.map((_,i)=> i===0?lbl : (i===head.length-1?val:'')));
+      }
+      if(head.length&&body.length){ y=ctx.sub('Detalle de instrumentos', y); y=ctx.table(head, body, y, {columnStyles:{0:{halign:'left'}}}); }
+    }
+    // Vencimientos por mes
+    const venRows=Array.from(mavCon.querySelectorAll('.mav-vrow'));
+    if(venRows.length){
+      const vbody=venRows.map(r=>[
+        r.querySelector('.mav-vrow-mes')?.textContent.trim()||'—',
+        r.querySelector('.mav-vrow-desg')?.textContent.trim()||'—',
+        r.querySelector('.mav-vrow-tot')?.textContent.trim()||'—',
+      ]);
+      y=ctx.sub('Vencimientos por mes', y); y=ctx.table(['Mes','Desglose por moneda','Total'], vbody, y, {columnStyles:{1:{halign:'left'}}});
+    }
+    // Resumen por moneda
+    const monCards=Array.from(mavCon.querySelectorAll('.mav-moncard'));
+    if(monCards.length){
+      const mbody=monCards.map(c=>[
+        c.querySelector('.mav-moncard-head')?.textContent.trim()||'—',
+        c.querySelector('.mav-moncard-total')?.textContent.trim()||'—',
+        c.querySelector('.mav-moncard-meta')?.textContent.trim()||'',
+      ]);
+      y=ctx.sub('Resumen por moneda', y); y=ctx.table(['Moneda','Total','Detalle'], mbody, y, {columnStyles:{2:{halign:'left'}}});
+    }
+    if(!detTbl && !venRows.length && !monCards.length) ctx.note('Sin datos de MAV para mostrar.', y);
+  }
+
+  // ── BLOQUE: PRECIOS ───────────────────────────────────────────────────
+  // Datos crudos de _earPriceState[ticker].allData. Tabla de ruedas con
+  // variación diaria coloreada (verde sube / rojo baja), fiel al concepto del tab.
+  function buildPreciosBlock(pdf, ctx, ticker, isFirst){
+    if(!isFirst){ pdf.addPage(); }
+    ctx.pageBg();
+    let y=ctx.drawHeader();
+    y=ctx.blockTitle('Precios', y);
+    const st=(typeof _earPriceState!=='undefined')?_earPriceState[ticker]:null;
+    const all=st&&st.allData?st.allData:null;
+    if(!all || !all.length){ ctx.note('Sin histórico de precios disponible para esta empresa.', y); return; }
+    const RGB=ctx.RGB;
+    // Orden más reciente primero
+    const data=[...all].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+    // Variación día a día (sobre la serie cronológica)
+    const chron=[...all].sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+    const varByDate={};
+    for(let i=1;i<chron.length;i++){ const prev=chron[i-1].c, cur=chron[i].c; if(prev>0) varByDate[chron[i].date]=((cur-prev)/prev)*100; }
+    const fmtN=v=>v==null?'—':Number(v).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const fmtVol=v=>v==null?'—':Number(v).toLocaleString('es-AR');
+    const cellColors={};
+    const body=data.map((d,ri)=>{
+      const vr=varByDate[d.date];
+      if(vr!=null) cellColors[`${ri},2`]= vr>=0?RGB.green:RGB.red;
+      return [ d.date, fmtN(d.c), vr!=null?(vr>=0?'+':'')+vr.toFixed(2)+'%':'—', fmtVol(d.v) ];
+    });
+    y=ctx.sub(`Histórico de cotizaciones (${data.length} ruedas)`, y);
+    y=ctx.table(['Rueda','Cierre','Var. %','Volumen'], body, y, {cellColors});
+  }
+
   window.earBuildReportNew=async function(){
     const ticker=_currentExcelTicker; if(!ticker)return;
     const checked=Array.from(document.querySelectorAll('.ear-rep-chk:checked')).map(c=>c.value);
@@ -18946,26 +19161,51 @@ function renderEquity(){
 
       const ecoHist=window.ECO_DATA[ticker]||[];
 
+      // Para MAV/Precios: forzar render del tab si está vacío (leen del DOM / estado)
+      for(const id of ['mav','precios']){
+        if(checked.includes(id)){
+          const con=document.getElementById(`ficha-tab-content-${ticker}-${id}`);
+          if(con && con.innerHTML.trim()===''){ try{ _fichaShowTab(ticker, id); }catch(_){} }
+        }
+      }
+      // Esperar a que rendericen (precios fetchea histórico → más tiempo)
+      await new Promise(r=>setTimeout(r, checked.includes('precios')?1600:500));
+
+      // Deuda: resolver datos BCRA (mismo objeto que usa la herramienta)
+      let deudaData=null;
+      if(checked.includes('deudas')){
+        const cuit=(window.EXCEL_CUIT_MAP||{})[ticker];
+        if(cuit){
+          try{
+            const json=await Promise.race([_bcraFetch(cuit), new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),8000))]);
+            deudaData={ cuit,
+              deudas: json.deudas?.results||json.deudas||null,
+              hist: json.hist?.results||json.hist||null,
+              cheques: json.cheques?.results||json.cheques||null };
+          }catch(_){ deudaData={cuit, deudas:null}; }
+        }
+      }
+
       // Registry de bloques de la ficha. Cada entry: async (isFirst)=>void
       const REG={
-        financials: async(isFirst)=>buildFinancialsBlock(pdf, ctx, ecoHist, isFirst),
-        // ratios, deudas, mav, precios → se irán migrando aquí
+        financials: async(f)=>buildFinancialsBlock(pdf, ctx, ecoHist, f),
+        ratios:     async(f)=>buildRatiosBlock(pdf, ctx, ecoHist, f),
+        deudas:     async(f)=>buildDeudaBlock(pdf, ctx, deudaData, f),
+        mav:        async(f)=>buildMavBlock(pdf, ctx, document.getElementById(`ficha-tab-content-${ticker}-mav`), f),
+        precios:    async(f)=>buildPreciosBlock(pdf, ctx, ticker, f),
+        scoring:    async(f)=>buildScoringBlock(pdf, ctx, ticker, f),
       };
 
       // Orden canónico de las secciones (no el orden de tildado)
-      const ORDER=['financials','ratios','deudas','mav','precios'];
+      const ORDER=['financials','ratios','deudas','mav','precios','scoring'];
       const toRun=ORDER.filter(id=>checked.includes(id) && REG[id]);
-      // Secciones tildadas que todavía no tienen bloque nuevo → aviso, no rompen
-      const notReady=checked.filter(id=>!REG[id]);
-
-      if(!toRun.length){ alert('Las secciones elegidas todavía no están disponibles en el nuevo formato.'); if(genBtn){genBtn.textContent='Generar →';genBtn.disabled=false;} return; }
+      if(!toRun.length){ alert('Las secciones elegidas no están disponibles.'); if(genBtn){genBtn.textContent='Generar →';genBtn.disabled=false;} return; }
 
       let first=true;
       for(const id of toRun){ await REG[id](first); first=false; }
 
       _earPdfFooter(pdf, ctx.RGB);
       pdf.save(`${ticker}_reporte_${new Date().toISOString().slice(0,10)}.pdf`);
-      if(notReady.length){ console.warn('[reporte] secciones aún no migradas al nuevo formato:', notReady.join(', ')); }
     }catch(err){ alert('No se pudo generar el PDF: '+err.message); }
     finally{ if(genBtn){genBtn.textContent='Generar →';genBtn.disabled=false;} earCloseReportDialog(); }
   };
