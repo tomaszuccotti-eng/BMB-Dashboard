@@ -18871,8 +18871,9 @@ function renderEquity(){
     // autoTable repite el <thead> en cada hoja al partir (regla: no cortar sin encabezado).
     ctx.table=function(head, body, y, opts){
       opts=opts||{};
+      let firstPage=true;
       pdf.autoTable({
-        startY:y, margin:{left:M,right:M},
+        startY:y, margin:{left:M,right:M,top:M+22},
         head:[head], body, theme:'grid',
         styles:{font:'helvetica',fontSize:7.5,cellPadding:2.6,textColor:RGB.text2,lineColor:RGB.border,lineWidth:0.4,fillColor:RGB.card,overflow:'linebreak'},
         headStyles:{fillColor:RGB.head,textColor:RGB.text3,fontStyle:'bold',fontSize:7,halign:'right'},
@@ -18883,10 +18884,57 @@ function renderEquity(){
           if(d.column.index>0) d.cell.styles.halign='right';
           if(opts.cellColors){ const c=opts.cellColors[`${d.row.index},${d.column.index}`]; if(c){ d.cell.styles.textColor=c; d.cell.styles.fontStyle='bold'; } }
         },
-        tableLineColor:RGB.border, tableLineWidth:0.4,
-        didDrawPage:()=>{}
+        // Cada hoja que autoTable cree al partir la tabla: pintar fondo + mini-header.
+        // willDrawPage corre ANTES de dibujar la tabla, así el fondo queda detrás.
+        willDrawPage:dd=>{
+          if(firstPage){ firstPage=false; return; }  // la 1ª hoja ya tiene fondo+header
+          ctx.pageBg(); ctx.miniHeader();
+        },
+        tableLineColor:RGB.border, tableLineWidth:0.4
       });
       return pdf.lastAutoTable.finalY+12;
+    };
+    // Footer disclaimer en todas las hojas (se llama una vez al final, sobre el pdf ya completo)
+    // — definido fuera; acá agregamos los helpers de imagen al ctx —
+
+    // Rasteriza un canvas existente (Chart.js) → {data, ratio}
+    const imgBg = (typeof _isDark!=='undefined' && !_isDark) ? '#f7f8fc' : '#11151f';
+    ctx.canvasToImg=function(orig){
+      try{ if(!orig||!orig.width) return null;
+        const off=document.createElement('canvas'); off.width=orig.width; off.height=orig.height;
+        const cx=off.getContext('2d'); cx.fillStyle=imgBg; cx.fillRect(0,0,off.width,off.height); cx.drawImage(orig,0,0);
+        return {data:off.toDataURL('image/png'), ratio:orig.height/orig.width};
+      }catch(_){ return null; }
+    };
+    // Rasteriza un nodo DOM (hero, cards) → {data, ratio} vía html2canvas
+    ctx.domToImg=async function(el){
+      if(!el||typeof html2canvas==='undefined') return null;
+      try{
+        const clone=el.cloneNode(true);
+        clone.querySelectorAll('*').forEach(n=>{ const s=n.style;
+          if(s){ if(getComputedStyle(n).position==='sticky'||s.position==='sticky') s.position='static';
+                 s.overflow='visible'; s.overflowX='visible'; s.overflowY='visible'; } });
+        const holder=document.createElement('div');
+        holder.style.cssText='position:fixed;left:-10000px;top:0;background:'+imgBg+';padding:0;';
+        holder.appendChild(clone); document.body.appendChild(holder);
+        const render=html2canvas(clone,{backgroundColor:imgBg,scale:2,logging:false,useCORS:true,removeContainer:true,imageTimeout:3000})
+          .then(cv=>({data:cv.toDataURL('image/png'), ratio:cv.height/cv.width}));
+        const timeout=new Promise(res=>setTimeout(()=>res(null),5000));
+        const out=await Promise.race([render,timeout]);
+        try{ document.body.removeChild(holder); }catch(_){}
+        return out;
+      }catch(_){ return null; }
+    };
+    // Dibuja una imagen {data, ratio} a lo ancho útil, con caption opcional.
+    ctx.image=function(im, cap, y){
+      if(!im) return y;
+      const capH=cap?14:0;
+      let imgW=usableW, imgH=usableW*im.ratio;
+      const maxH=PH-M-(M+22)-capH-6;
+      if(imgH>maxH){ imgH=maxH; imgW=imgH/im.ratio; }
+      if(y+imgH+capH+6>PH-M){ y=ctx.newPage(); }
+      if(cap){ pdf.setFont('helvetica','bold'); pdf.setFontSize(8.5); pdf.setTextColor(...RGB.accent); pdf.text(String(cap).toUpperCase(),M,y+8); pdf.setDrawColor(...RGB.accent); pdf.setLineWidth(0.8); pdf.line(M,y+12,PW-M,y+12); y+=18; }
+      pdf.addImage(im.data,'PNG',M,y,imgW,imgH); return y+imgH+14;
     };
     return ctx;
   }
@@ -18982,7 +19030,7 @@ function renderEquity(){
   //   data = {cuit, deudas, hist, cheques}  (de _bcraFetch o _deuLastReport)
   // Replica el tab: resumen de riesgo, situación por entidad (coloreada),
   // historial por período (heatmap como tabla) y cheques.
-  function buildDeudaBlock(pdf, ctx, data, isFirst){
+  function buildDeudaBlock(pdf, ctx, data, isFirst, domCon){
     if(!isFirst){ pdf.addPage(); }
     ctx.pageBg();
     let y=ctx.drawHeader();
@@ -19010,6 +19058,12 @@ function renderEquity(){
       ['Entidades activas', String(ents.length)],
       ['Deuda total', fmtMonto(sumMonto)],
     ], y, {columnStyles:{1:{halign:'left'}}});
+
+    // Gráfico de exposición por banco (captura del canvas del tab, si está disponible)
+    if(domCon){
+      const chartCv=document.getElementById(`bcra-chart-${data.ticker||''}`)||domCon.querySelector('canvas');
+      if(chartCv){ const im=ctx.canvasToImg(chartCv); if(im){ y=ctx.image(im,'Exposición crediticia por banco',y); } }
+    }
 
     // Situación por entidad (coloreada por situación)
     if(ents.length){
@@ -19117,7 +19171,7 @@ function renderEquity(){
   // ── BLOQUE: PRECIOS ───────────────────────────────────────────────────
   // Datos crudos de _earPriceState[ticker].allData. Tabla de ruedas con
   // variación diaria coloreada (verde sube / rojo baja), fiel al concepto del tab.
-  function buildPreciosBlock(pdf, ctx, ticker, isFirst){
+  function buildPreciosBlock(pdf, ctx, ticker, isFirst, domCon){
     if(!isFirst){ pdf.addPage(); }
     ctx.pageBg();
     let y=ctx.drawHeader();
@@ -19126,9 +19180,14 @@ function renderEquity(){
     const all=st&&st.allData?st.allData:null;
     if(!all || !all.length){ ctx.note('Sin histórico de precios disponible para esta empresa.', y); return; }
     const RGB=ctx.RGB;
+    // Gráficos de precio y volumen (captura de los canvas del tab, si está disponible)
+    if(domCon){
+      const cvs=domCon.querySelectorAll('canvas');
+      if(cvs[0]){ const im=ctx.canvasToImg(cvs[0]); if(im) y=ctx.image(im,'Precio de cierre',y); }
+      if(cvs[1]){ const im=ctx.canvasToImg(cvs[1]); if(im) y=ctx.image(im,'Volumen diario',y); }
+    }
     // Orden más reciente primero
     const data=[...all].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
-    // Variación día a día (sobre la serie cronológica)
     const chron=[...all].sort((a,b)=>String(a.date).localeCompare(String(b.date)));
     const varByDate={};
     for(let i=1;i<chron.length;i++){ const prev=chron[i-1].c, cur=chron[i].c; if(prev>0) varByDate[chron[i].date]=((cur-prev)/prev)*100; }
@@ -19161,15 +19220,13 @@ function renderEquity(){
 
       const ecoHist=window.ECO_DATA[ticker]||[];
 
-      // Para MAV/Precios: forzar render del tab si está vacío (leen del DOM / estado)
-      for(const id of ['mav','precios']){
-        if(checked.includes(id)){
-          const con=document.getElementById(`ficha-tab-content-${ticker}-${id}`);
-          if(con && con.innerHTML.trim()===''){ try{ _fichaShowTab(ticker, id); }catch(_){} }
-        }
+      // Tabs que necesitan estar renderizados en el DOM (leen tablas/canvas de ahí):
+      // deudas (chart), mav (tablas/barras), precios (charts). Forzar su render.
+      const visualTabs=['deudas','mav','precios'].filter(id=>checked.includes(id));
+      for(const id of visualTabs){
+        const con=document.getElementById(`ficha-tab-content-${ticker}-${id}`);
+        if(con && con.innerHTML.trim()===''){ try{ _fichaShowTab(ticker, id); }catch(_){} }
       }
-      // Esperar a que rendericen (precios fetchea histórico → más tiempo)
-      await new Promise(r=>setTimeout(r, checked.includes('precios')?1600:500));
 
       // Deuda: resolver datos BCRA (mismo objeto que usa la herramienta)
       let deudaData=null;
@@ -19178,21 +19235,43 @@ function renderEquity(){
         if(cuit){
           try{
             const json=await Promise.race([_bcraFetch(cuit), new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),8000))]);
-            deudaData={ cuit,
+            deudaData={ ticker, cuit,
               deudas: json.deudas?.results||json.deudas||null,
               hist: json.hist?.results||json.hist||null,
               cheques: json.cheques?.results||json.cheques||null };
-          }catch(_){ deudaData={cuit, deudas:null}; }
+          }catch(_){ deudaData={ticker, cuit, deudas:null}; }
         }
       }
+
+      // Esperar a que los tabs visuales rendericen sus canvas. Polling hasta que
+      // los canvas esperados existan y tengan tamaño, o timeout.
+      if(visualTabs.length){
+        const needCanvas=[];
+        if(checked.includes('deudas')) needCanvas.push(`bcra-chart-${ticker}`);
+        const deadline=Date.now()+ (checked.includes('precios')?5000:3500);
+        await new Promise(resolve=>{
+          (function poll(){
+            const deudaOk = !checked.includes('deudas') || (()=>{ const c=document.getElementById(`bcra-chart-${ticker}`); return c&&c.width>0; })();
+            const preciosOk = !checked.includes('precios') || (()=>{ const con=document.getElementById(`ficha-tab-content-${ticker}-precios`); return con&&con.querySelector('canvas')&&con.querySelector('canvas').width>0; })();
+            if((deudaOk&&preciosOk) || Date.now()>deadline){ resolve(); return; }
+            setTimeout(poll, 250);
+          })();
+        });
+        // margen extra para que Chart.js termine de pintar la animación
+        await new Promise(r=>setTimeout(r, 400));
+      }
+
+      const deudaCon=document.getElementById(`ficha-tab-content-${ticker}-deudas`);
+      const mavCon=document.getElementById(`ficha-tab-content-${ticker}-mav`);
+      const preciosCon=document.getElementById(`ficha-tab-content-${ticker}-precios`);
 
       // Registry de bloques de la ficha. Cada entry: async (isFirst)=>void
       const REG={
         financials: async(f)=>buildFinancialsBlock(pdf, ctx, ecoHist, f),
         ratios:     async(f)=>buildRatiosBlock(pdf, ctx, ecoHist, f),
-        deudas:     async(f)=>buildDeudaBlock(pdf, ctx, deudaData, f),
-        mav:        async(f)=>buildMavBlock(pdf, ctx, document.getElementById(`ficha-tab-content-${ticker}-mav`), f),
-        precios:    async(f)=>buildPreciosBlock(pdf, ctx, ticker, f),
+        deudas:     async(f)=>buildDeudaBlock(pdf, ctx, deudaData, f, deudaCon),
+        mav:        async(f)=>buildMavBlock(pdf, ctx, mavCon, f),
+        precios:    async(f)=>buildPreciosBlock(pdf, ctx, ticker, f, preciosCon),
         scoring:    async(f)=>buildScoringBlock(pdf, ctx, ticker, f),
       };
 
