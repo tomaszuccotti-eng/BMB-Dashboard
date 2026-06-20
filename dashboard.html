@@ -18800,6 +18800,176 @@ function renderEquity(){
     const o=document.getElementById('ear-report-overlay'); if(o)o.style.display='none';
   };
 
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // INFRAESTRUCTURA PDF — reportes ARG (nueva arquitectura por bloques)
+  // Cada bloque es una función independiente buildXxxBlock(pdf, ctx).
+  // Comparten esta infraestructura vía ctx; ningún bloque depende de otro.
+  // Formato: landscape A4, tablas nativas autoTable, coloreo fiel al HTML.
+  // ═══════════════════════════════════════════════════════════════════════
+  function _earPdfPalette(){
+    const _dark=(typeof _isDark!=='undefined')?_isDark:true;
+    return _dark
+      ? {bg:[11,14,23],card:[17,21,31],card2:[22,27,40],head:[26,31,48],border:[34,42,61],text:[232,234,246],text2:[195,201,230],text3:[126,135,184],accent:[30,39,243],green:[63,185,80],red:[248,81,73],amber:[251,191,36],alt:[20,25,37]}
+      : {bg:[255,255,255],card:[247,248,252],card2:[238,240,247],head:[228,231,242],border:[210,214,235],text:[10,12,26],text2:[58,63,92],text3:[138,144,176],accent:[30,39,243],green:[13,158,110],red:[224,49,49],amber:[217,119,6],alt:[241,243,250]};
+  }
+
+  // Crea el contexto compartido que se pasa a cada bloque.
+  // header: {ticker, name, sector} para el encabezado de cada bloque.
+  function _earMakeCtx(pdf, header){
+    const RGB=_earPdfPalette();
+    const PW=pdf.internal.pageSize.getWidth(), PH=pdf.internal.pageSize.getHeight();
+    const M=36, usableW=PW-M*2;
+    const date=new Date().toLocaleDateString('es-AR',{year:'numeric',month:'long',day:'numeric'});
+    const ctx={ pdf, RGB, PW, PH, M, usableW, date, header:header||{} };
+
+    // Encabezado: banda fina arriba (simétrica al footer). Una línea compacta.
+    ctx.drawHeader=function(){
+      const h=ctx.header;
+      const yTop=M-8;
+      // Izquierda: TICKER · nombre · sector
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(10); pdf.setTextColor(...RGB.accent);
+      pdf.text(h.ticker||'',M,yTop+9);
+      let lx=M+pdf.getTextWidth(h.ticker||'')+8;
+      const tail=[h.name,h.sector].filter(Boolean).join('  ·  ');
+      if(tail){ pdf.setFont('helvetica','normal'); pdf.setFontSize(8); pdf.setTextColor(...RGB.text3); pdf.text(tail,lx,yTop+9); }
+      // Derecha: fecha · Research
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(7); pdf.setTextColor(...RGB.text3);
+      pdf.text(`${ctx.date}  ·  Research · Bull Market Brokers`,PW-M,yTop+9,{align:'right'});
+      // Línea divisoria fina
+      pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.5); pdf.line(M,yTop+15,PW-M,yTop+15);
+      return yTop+27;
+    };
+    // miniHeader = mismo encabezado fino (no hay diferencia: ya es compacto)
+    ctx.miniHeader=ctx.drawHeader;
+    ctx.pageBg=function(){ pdf.setFillColor(...RGB.bg); pdf.rect(0,0,PW,PH,'F'); };
+    // Nueva hoja dentro de un bloque ya iniciado (repone fondo + mini-header)
+    ctx.newPage=function(){ pdf.addPage(); ctx.pageBg(); ctx.miniHeader(); return M+22; };
+
+    // Título de bloque (franja accent). Se llama una vez al arrancar el bloque.
+    ctx.blockTitle=function(txt,y){
+      pdf.setFillColor(...RGB.card2); pdf.roundedRect(M,y,usableW,24,3,3,'F');
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(11); pdf.setTextColor(...RGB.accent);
+      pdf.text(String(txt).toUpperCase(),M+10,y+16);
+      return y+34;
+    };
+    // Subtítulo (grupo/título de tabla dentro de un bloque) — con línea accent fina
+    ctx.sub=function(txt,y){
+      if(y+44>PH-M){ y=ctx.newPage(); }
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(8.5); pdf.setTextColor(...RGB.accent);
+      pdf.text(String(txt).toUpperCase(),M,y+8);
+      pdf.setDrawColor(...RGB.accent); pdf.setLineWidth(0.8); pdf.line(M,y+12,PW-M,y+12);
+      return y+18;
+    };
+    ctx.note=function(txt,y){
+      if(y+24>PH-M){ y=ctx.newPage(); }
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(9); pdf.setTextColor(...RGB.text3);
+      pdf.text(String(txt),M,y+10);
+      return y+22;
+    };
+    // Tabla nativa. cellColors: opcional, mapa "row,col" -> [r,g,b] para coloreo.
+    // autoTable repite el <thead> en cada hoja al partir (regla: no cortar sin encabezado).
+    ctx.table=function(head, body, y, opts){
+      opts=opts||{};
+      pdf.autoTable({
+        startY:y, margin:{left:M,right:M},
+        head:[head], body, theme:'grid',
+        styles:{font:'helvetica',fontSize:7.5,cellPadding:2.6,textColor:RGB.text2,lineColor:RGB.border,lineWidth:0.4,fillColor:RGB.card,overflow:'linebreak'},
+        headStyles:{fillColor:RGB.head,textColor:RGB.text3,fontStyle:'bold',fontSize:7,halign:'right'},
+        bodyStyles:{fillColor:RGB.card}, alternateRowStyles:{fillColor:RGB.alt},
+        columnStyles:Object.assign({0:{halign:'left',textColor:RGB.text,fontStyle:'bold'}}, opts.columnStyles||{}),
+        didParseCell:d=>{
+          if(d.section==='head'){ if(d.column.index>0) d.cell.styles.halign='right'; return; }
+          if(d.column.index>0) d.cell.styles.halign='right';
+          if(opts.cellColors){ const c=opts.cellColors[`${d.row.index},${d.column.index}`]; if(c){ d.cell.styles.textColor=c; d.cell.styles.fontStyle='bold'; } }
+        },
+        tableLineColor:RGB.border, tableLineWidth:0.4,
+        didDrawPage:()=>{}
+      });
+      return pdf.lastAutoTable.finalY+12;
+    };
+    return ctx;
+  }
+
+  // Footer disclaimer en todas las hojas (se llama una vez al final, sobre el pdf ya completo)
+  function _earPdfFooter(pdf, RGB){
+    const PW=pdf.internal.pageSize.getWidth(), PH=pdf.internal.pageSize.getHeight(), M=36;
+    const txt='La información contenida es de carácter informativo y no representa una recomendación de inversión.';
+    const n=pdf.internal.getNumberOfPages();
+    for(let p=1;p<=n;p++){ pdf.setPage(p);
+      pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.5); pdf.line(M,PH-18,PW-M,PH-18);
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(6.5); pdf.setTextColor(...RGB.text3);
+      pdf.text(txt,PW/2,PH-10,{align:'center'});
+    }
+  }
+
+  // ── BLOQUE: FINANCIALS ────────────────────────────────────────────────
+  // Independiente. Datos: ecoHist (historial Economatica de la empresa).
+  // Una tabla por grupo (FIN_GROUPS), fiel al tab del HTML (monocromo).
+  // isFirst: si true usa la hoja actual; si false agrega hoja nueva (autocontenido).
+  function buildFinancialsBlock(pdf, ctx, ecoHist, isFirst){
+    if(!isFirst){ pdf.addPage(); }
+    ctx.pageBg();
+    let y=ctx.drawHeader();
+    y=ctx.blockTitle('Financials', y);
+    if(!ecoHist || !ecoHist.length){ ctx.note('Sin datos de Economatica para esta empresa.', y); return; }
+    const hist=[...ecoHist].sort((a,b)=>parseDate(b.fechaBal)-parseDate(a.fechaBal));
+    const cols=hist.map(p=>p.fechaBal.substring(0,10));
+    const cleanLabel=l=>l.replace(/^[^A-Za-zÁÉÍÓÚÑ]+/,'').trim();  // saca el emoji inicial
+    FIN_GROUPS.forEach(grp=>{
+      const body=grp.keys.map(key=>{ const def=ECO_COLS.find(c=>c.key===key); if(!def)return null;
+        return [def.label, ...hist.map(p=>{const v=p[key]; return v!=null?fmtEco(key,v):'—';})]; }).filter(Boolean);
+      if(!body.length) return;
+      y=ctx.sub(cleanLabel(grp.label), y);
+      y=ctx.table(['Métrica',...cols], body, y);
+    });
+  }
+
+  // ── ORQUESTADOR DE FICHA (nueva arquitectura) ─────────────────────────
+  // Crea UN pdf landscape, llama los bloques tildados en orden, guarda.
+  // Cada bloque es autocontenido; el orquestador no sabe qué hace por dentro.
+  // Registry: id de sección -> async fn(pdf, ctx, isFirst) que dibuja el bloque.
+  window.earBuildReportNew=async function(){
+    const ticker=_currentExcelTicker; if(!ticker)return;
+    const checked=Array.from(document.querySelectorAll('.ear-rep-chk:checked')).map(c=>c.value);
+    if(!checked.length){ alert('Elegí al menos una sección.'); return; }
+    if(!(window.jspdf&&window.jspdf.jsPDF)){ alert('Las librerías de PDF aún se están cargando. Probá de nuevo.'); return; }
+    const genBtn=document.querySelector('#ear-report-overlay button[onclick="earReportGenerate()"]');
+    if(genBtn){genBtn.textContent='Generando…';genBtn.disabled=true;}
+
+    try{
+      const { jsPDF }=window.jspdf;
+      const pdf=new jsPDF({orientation:'landscape',unit:'pt',format:'a4'});
+      const name=(_currentExcelEmpresa&&_currentExcelEmpresa!==ticker)?_currentExcelEmpresa:'';
+      const sector=(_currentExcelSector||'').replace(/_+/g,' ').trim();
+      const ctx=_earMakeCtx(pdf, {ticker, name, sector});
+
+      const ecoHist=window.ECO_DATA[ticker]||[];
+
+      // Registry de bloques de la ficha. Cada entry: async (isFirst)=>void
+      const REG={
+        financials: async(isFirst)=>buildFinancialsBlock(pdf, ctx, ecoHist, isFirst),
+        // ratios, deudas, mav, precios → se irán migrando aquí
+      };
+
+      // Orden canónico de las secciones (no el orden de tildado)
+      const ORDER=['financials','ratios','deudas','mav','precios'];
+      const toRun=ORDER.filter(id=>checked.includes(id) && REG[id]);
+      // Secciones tildadas que todavía no tienen bloque nuevo → aviso, no rompen
+      const notReady=checked.filter(id=>!REG[id]);
+
+      if(!toRun.length){ alert('Las secciones elegidas todavía no están disponibles en el nuevo formato.'); if(genBtn){genBtn.textContent='Generar →';genBtn.disabled=false;} return; }
+
+      let first=true;
+      for(const id of toRun){ await REG[id](first); first=false; }
+
+      _earPdfFooter(pdf, ctx.RGB);
+      pdf.save(`${ticker}_reporte_${new Date().toISOString().slice(0,10)}.pdf`);
+      if(notReady.length){ console.warn('[reporte] secciones aún no migradas al nuevo formato:', notReady.join(', ')); }
+    }catch(err){ alert('No se pudo generar el PDF: '+err.message); }
+    finally{ if(genBtn){genBtn.textContent='Generar →';genBtn.disabled=false;} earCloseReportDialog(); }
+  };
+
   window.earBuildReport=async function(){
     const ticker=_currentExcelTicker; if(!ticker)return;
     const checked=Array.from(document.querySelectorAll('.ear-rep-chk:checked')).map(c=>c.value);
@@ -19187,7 +19357,7 @@ function renderEquity(){
   // ─────────────────────────────────────────────────────────────
   window.earReportGenerate=function(){
     if(window._earReportMode==='sector'){ window.earBuildSectorReport(); }
-    else { window.earBuildReport(); }
+    else { window.earBuildReportNew(); }
   };
 
   // ─────────────────────────────────────────────────────────────
