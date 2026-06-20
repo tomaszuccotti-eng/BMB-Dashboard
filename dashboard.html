@@ -11528,15 +11528,9 @@ const _eqRO = new ResizeObserver(entries => {
     <!-- Herramientas -->
     <div class="bal-sb-sec">
       <div class="bal-sb-label">Herramientas</div>
-      <div id="earNavScoring" class="ear-navbtn" onclick="earShowView('sector')">
-        <span class="ear-navbtn-ico">📊</span>Scoring de Liquidez
-      </div>
-      <div id="earNavDeudores" class="ear-navbtn" onclick="earShowView('deudores')">
-        <span class="ear-navbtn-ico">🏛</span>Central de Deudores
-      </div>
-      <div id="earNavMav" class="ear-navbtn" onclick="earShowView('mav')">
-        <span class="ear-navbtn-ico">📈</span>MAV
-      </div>
+      <div id="earNavScoring" class="ear-navbtn" onclick="earShowView('sector')">Scoring de Liquidez</div>
+      <div id="earNavDeudores" class="ear-navbtn" onclick="earShowView('deudores')">Central de Deudores</div>
+      <div id="earNavMav" class="ear-navbtn" onclick="earShowView('mav')">MAV (CENDEU)</div>
     </div>
 
     <!-- Reporte -->
@@ -11654,7 +11648,16 @@ const _eqRO = new ResizeObserver(entries => {
   <!-- Tab: MAV CENDEU -->
   <div id="earTabMav" style="display:none;">
     <div style="max-width:1200px;margin:0 auto;padding:28px 28px 80px;width:100%;">
-      <div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);font-family:var(--mono);margin-bottom:6px;">MAV · Central de Deuda</div>
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px;">
+        <div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);font-family:var(--mono);">MAV · Central de Deuda</div>
+        <span style="flex:1;"></span>
+        <button onclick="window.open('https://mav-sa.com.ar/cendeu/','_blank')"
+          style="font-size:10px;padding:2px 8px;border:1px solid var(--border2);border-radius:4px;color:var(--text3);font-family:var(--mono);cursor:pointer;background:transparent;transition:all .15s;"
+          onmouseover="this.style.borderColor='#1E27F3';this.style.color='#a5b4fc'"
+          onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text3)'">
+          🔗 Ir a MAV →
+        </button>
+      </div>
       <div style="font-size:12px;color:var(--text3);font-family:var(--mono);margin-bottom:20px;">Instrumentos de deuda negociados en el mercado de capitales. Aceptá cualquier empresa.</div>
       <div id="mav-global-drop" class="mav-dropzone" onclick="document.getElementById('mav-global-input').click()">
         <div style="font-size:28px;margin-bottom:10px;opacity:.5;">📂</div>
@@ -11779,14 +11782,14 @@ const _eqRO = new ResizeObserver(entries => {
   <!-- Modal: elegir tabs del reporte -->
   <div id="ear-report-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:300;align-items:center;justify-content:center;">
     <div style="background:#0f1422;border:1px solid rgba(30,39,243,0.35);border-radius:16px;padding:28px;width:100%;max-width:460px;position:relative;">
-      <div style="font-size:16px;font-weight:800;font-family:var(--display);color:#e8eaf6;margin-bottom:4px;">Generar reporte</div>
+      <div id="ear-report-title" style="font-size:16px;font-weight:800;font-family:var(--display);color:#e8eaf6;margin-bottom:4px;">Generar reporte</div>
       <div id="ear-report-company" style="font-size:11px;color:#7e87b8;font-family:var(--mono);margin-bottom:18px;">—</div>
-      <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#7e87b8;font-family:var(--mono);margin-bottom:10px;">Secciones a incluir</div>
-      <div id="ear-report-checks" style="display:flex;flex-direction:column;gap:2px;margin-bottom:6px;"></div>
+      <div id="ear-report-checks-label" style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#7e87b8;font-family:var(--mono);margin-bottom:10px;">Secciones a incluir</div>
+      <div id="ear-report-checks" style="display:flex;flex-direction:column;gap:2px;margin-bottom:6px;max-height:50vh;overflow-y:auto;"></div>
       <div style="font-size:10px;color:#5a6291;font-family:var(--mono);line-height:1.5;margin:10px 0 18px;">Cada sección sale en una hoja separada. Se abre la vista de impresión: elegí <strong style="color:#9aa3d4;">Guardar como PDF</strong>.</div>
       <div style="display:flex;gap:10px;">
         <button onclick="earCloseReportDialog()" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(30,39,243,0.25);background:transparent;color:#7e87b8;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--mono);">Cancelar</button>
-        <button onclick="earBuildReport()" style="flex:2;padding:10px;border-radius:8px;border:none;background:#1E27F3;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">Generar →</button>
+        <button onclick="earReportGenerate()" style="flex:2;padding:10px;border-radius:8px;border:none;background:#1E27F3;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">Generar →</button>
       </div>
     </div>
   </div>
@@ -12282,6 +12285,8 @@ function enterExcel(){
   // Default to buscar tab
   if(typeof earShowTab==='function') earShowTab('buscar');
   document.getElementById('app-excel').style.flexDirection='column';
+  // Chips de acceso rápido: render inmediato (no dependen de datos)
+  if(typeof window._earBuildChips==='function') window._earBuildChips();
   if(!window.EXCEL_DATA_LOADED) loadExcelData();
 }
 function backToLanding(){
@@ -17773,6 +17778,7 @@ function renderEquity(){
   window.EXCEL_CUIT_MAP={};
   window.ECO_DATA={};   // { TICKER: [ {fechaBal, ...campos} ] } — acumulado por fecha
   window.ECO_LOADED=false;
+  window._earPendingTicker=null;
   Object.defineProperty(window,'_currentExcelTicker',{get(){return _currentExcelTicker;},set(v){_currentExcelTicker=v;}});
   let _currentExcelTicker=null;
   let _currentExcelEmpresa=null;
@@ -17970,12 +17976,18 @@ function renderEquity(){
       fetch(SHEET_URL_ECONOMATICA)
         .then(r=>r.text())
         .then(ecoText=>{
-          if(ecoText.trim().startsWith('<'))return;
-          window.ECO_DATA=parseEcoCSV(ecoText);
-          window.ECO_LOADED=true;
+          if(!ecoText.trim().startsWith('<')) window.ECO_DATA=parseEcoCSV(ecoText);
           console.log('[ECO] Tickers cargados:',Object.keys(window.ECO_DATA).length);
         })
-        .catch(e=>console.warn('[ECO]',e.message));
+        .catch(e=>console.warn('[ECO]',e.message))
+        .finally(()=>{
+          window.ECO_LOADED=true;
+          // Si hay una ficha pendiente (clickeada durante la carga), renderizarla ahora
+          if(window._earPendingTicker){
+            const t=window._earPendingTicker; window._earPendingTicker=null;
+            _earRenderCompany(t);
+          }
+        });
 
       window.EXCEL_DATA_LOADED=true;
       const dates=raw.map(r=>(r['fecha_carga']||'').trim()).filter(Boolean).sort();
@@ -18137,6 +18149,7 @@ function renderEquity(){
       `<span class="sec-chip" onclick="earSelectCompany('${t}')">${t}</span>`
     ).join('');
   }
+  window._earBuildChips=_earBuildChips;
 
   // ─────────────────────────────────────────────────────────────
   // RENDER FICHA EMPRESA
@@ -18146,6 +18159,15 @@ function renderEquity(){
     results.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:20px;color:var(--text3);font-family:var(--mono);font-size:11px;"><div class="spinner"></div>Cargando...</div>';
 
     _currentExcelTicker=ticker;
+
+    // ── Guard: si los datos aún no terminaron de cargar (window de carga inicial),
+    // dejar el ticker pendiente y re-renderizar cuando lleguen. Evita fichas a medias
+    // si el usuario clickea un chip/busca antes de que el fetch resuelva.
+    if(!window.EXCEL_DATA_LOADED || !window.ECO_LOADED){
+      window._earPendingTicker=ticker;
+      return;
+    }
+    window._earPendingTicker=null;
 
     // ── Qué datos tiene esta empresa ──
     const allForTicker=window.EXCEL_DATA.filter(r=>(r['Ticker']||'').trim().toUpperCase()===ticker);
@@ -18720,6 +18742,39 @@ function renderEquity(){
       window.deuBuildReport();
       return;
     }
+    // Contexto Scoring de Liquidez (herramienta): si el tab sectorial está visible →
+    // reporte sectorial. El menú intermedio permite elegir qué sectores incluir.
+    const secTab=document.getElementById('earTabSector');
+    if(secTab && secTab.style.display!=='none'){
+      if(!window.EXCEL_DATA_LOADED){ alert('Los datos de scoring aún se están cargando. Probá de nuevo en unos segundos.'); return; }
+      const latest=getLatestByTicker(window.EXCEL_DATA);
+      const sectorsMap={};
+      latest.forEach(r=>{const sec=(r['sector']||r['Sector']||'Sin sector').trim();(sectorsMap[sec]=sectorsMap[sec]||[]).push(r);});
+      const sectorNames=Object.keys(sectorsMap).sort();
+      if(!sectorNames.length){ alert('No hay datos sectoriales para incluir.'); return; }
+      window._earReportMode='sector';
+      const lblEl=document.getElementById('ear-report-company'); if(lblEl)lblEl.textContent='Scoring de Liquidez · '+sectorNames.length+' sectores';
+      const ttlEl=document.getElementById('ear-report-title'); if(ttlEl)ttlEl.textContent='Generar reporte';
+      const hdrEl=document.getElementById('ear-report-checks-label'); if(hdrEl)hdrEl.textContent='Sectores a incluir';
+      const box=document.getElementById('ear-report-checks');
+      if(box){
+        box.innerHTML=sectorNames.map(sec=>{
+          const cnt=sectorsMap[sec].length;
+          const label=sec.replace(/_+/g,' ').trim();
+          return `<label style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:7px;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);transition:all .12s;"
+            onmouseover="this.style.borderColor='#1E27F3'" onmouseout="this.style.borderColor='var(--border2)'">
+            <input type="checkbox" class="ear-rep-chk" value="${sec.replace(/"/g,'&quot;')}" checked style="width:15px;height:15px;accent-color:#1E27F3;cursor:pointer;">
+            <span style="font-size:12px;font-weight:700;color:var(--text2);font-family:var(--mono);flex:1;">${label}</span>
+            <span style="font-size:10px;color:var(--text3);font-family:var(--mono);">${cnt}</span>
+          </label>`;
+        }).join('');
+      }
+      document.getElementById('ear-report-overlay').style.display='flex';
+      return;
+    }
+    window._earReportMode='empresa';
+    const ttlEl=document.getElementById('ear-report-title'); if(ttlEl)ttlEl.textContent='Generar reporte';
+    const hdrEl=document.getElementById('ear-report-checks-label'); if(hdrEl)hdrEl.textContent='Secciones a incluir';
     const ticker=_currentExcelTicker;
     if(!ticker){ alert('Primero buscá y cargá una empresa.'); return; }
     const tabs=_earAvailableTabs(ticker);
@@ -18746,7 +18801,7 @@ function renderEquity(){
     if(!checked.length){ alert('Elegí al menos una sección.'); return; }
     if(!(window.jspdf&&window.jspdf.jsPDF)){ alert('Las librerías de PDF aún se están cargando. Probá de nuevo.'); return; }
     const labelOf=id=>(_earAvailableTabs(ticker).find(t=>t.id===id)||{}).label||id;
-    const genBtn=document.querySelector('#ear-report-overlay button[onclick="earBuildReport()"]');
+    const genBtn=document.querySelector('#ear-report-overlay button[onclick="earReportGenerate()"]');
     if(genBtn){genBtn.textContent='Generando…';genBtn.disabled=true;}
 
     const _restoreTab=document.querySelector(`#earTopTabs .ear-toptab.active`)?.id||'';
@@ -19118,6 +19173,135 @@ function renderEquity(){
     }
 
     try{ pdf.save(`${ticker}_reporte_${new Date().toISOString().slice(0,10)}.pdf`); }
+    catch(err){ alert('No se pudo generar el PDF: '+err.message); }
+    finally{ if(genBtn){genBtn.textContent='Generar →';genBtn.disabled=false;} earCloseReportDialog(); }
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // DISPATCHER del botón "Generar →" del overlay (empresa vs sectorial)
+  // ─────────────────────────────────────────────────────────────
+  window.earReportGenerate=function(){
+    if(window._earReportMode==='sector'){ window.earBuildSectorReport(); }
+    else { window.earBuildReport(); }
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // REPORTE SECTORIAL — Scoring de Liquidez
+  // Una hoja por sector tildado, con su tabla de scoring.
+  // Reusa el estilo (paleta + autoTable + header/footer BMB) del reporte de empresa.
+  // ─────────────────────────────────────────────────────────────
+  window.earBuildSectorReport=async function(){
+    const checked=Array.from(document.querySelectorAll('.ear-rep-chk:checked')).map(c=>c.value);
+    if(!checked.length){ alert('Elegí al menos un sector.'); return; }
+    if(!(window.jspdf&&window.jspdf.jsPDF)){ alert('Las librerías de PDF aún se están cargando. Probá de nuevo.'); return; }
+    const genBtn=document.querySelector('#ear-report-overlay button[onclick="earReportGenerate()"]');
+    if(genBtn){genBtn.textContent='Generando…';genBtn.disabled=true;}
+
+    // Agrupar empresas por sector (último balance por ticker)
+    const latest=getLatestByTicker(window.EXCEL_DATA);
+    const sectorsMap={};
+    latest.forEach(r=>{const sec=(r['sector']||r['Sector']||'Sin sector').trim();(sectorsMap[sec]=sectorsMap[sec]||[]).push(r);});
+
+    // Paleta según el tema activo (idéntica a la del reporte de empresa)
+    const _dark = (typeof _isDark!=='undefined')? _isDark : true;
+    const RGB = _dark
+      ? {bg:[11,14,23],card:[17,21,31],card2:[22,27,40],head:[26,31,48],border:[34,42,61],text:[232,234,246],text2:[195,201,230],text3:[126,135,184],accent:[30,39,243],green:[63,185,80],red:[248,81,73],amber:[251,191,36],alt:[20,25,37]}
+      : {bg:[255,255,255],card:[247,248,252],card2:[238,240,247],head:[228,231,242],border:[210,214,235],text:[10,12,26],text2:[58,63,92],text3:[138,144,176],accent:[30,39,243],green:[13,158,110],red:[224,49,49],amber:[217,119,6],alt:[241,243,250]};
+
+    const { jsPDF }=window.jspdf;
+    const pdf=new jsPDF({orientation:'landscape',unit:'pt',format:'a4'});
+    const PW=pdf.internal.pageSize.getWidth(), PH=pdf.internal.pageSize.getHeight();
+    const M=36, usableW=PW-M*2;
+    const date=new Date().toLocaleDateString('es-AR',{year:'numeric',month:'long',day:'numeric'});
+
+    function pageBg(){ pdf.setFillColor(...RGB.bg); pdf.rect(0,0,PW,PH,'F'); }
+    function drawHeader(){
+      let yy=M;
+      pdf.setFont('helvetica','bold'); pdf.setTextColor(...RGB.accent); pdf.setFontSize(22);
+      pdf.text('Scoring de Liquidez',M,yy+15);
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(8.5); pdf.setTextColor(...RGB.text3);
+      pdf.text('Análisis sectorial · BYMA',M,yy+30);
+      pdf.setFontSize(7.5);
+      pdf.text(`Reporte generado ${date}`,PW-M,yy+9,{align:'right'});
+      pdf.text('Research · Bull Market Brokers',PW-M,yy+19,{align:'right'});
+      pdf.setDrawColor(...RGB.accent); pdf.setLineWidth(2); pdf.line(M,yy+38,PW-M,yy+38);
+      return yy+52;
+    }
+
+    // Columnas: Ticker, Empresa, Score, Ult. Balance, + RATIOS
+    const head=['Ticker','Empresa','Score','Ult. Balance',...RATIOS.map(r=>r.short)];
+
+    // Convierte hex (#RRGGBB) a [r,g,b]
+    function hex2rgb(h){ const n=parseInt(h.replace('#',''),16); return [(n>>16)&255,(n>>8)&255,n&255]; }
+
+    pageBg();
+    let y=drawHeader();
+    let firstSector=true;
+
+    const sectorNames=checked.filter(s=>sectorsMap[s]&&sectorsMap[s].length).sort();
+
+    for(const sec of sectorNames){
+      const rows=[...sectorsMap[sec]].sort((a,b)=>(parseFloat(b['Score'])||-Infinity)-(parseFloat(a['Score'])||-Infinity));
+      const label=sec.replace(/_+/g,' ').trim();
+
+      // Cada sector arranca en hoja nueva (salvo el primero)
+      if(!firstSector){ pdf.addPage(); pageBg(); y=drawHeader(); }
+      firstSector=false;
+
+      // Título de sector
+      pdf.setFillColor(...RGB.card2); pdf.roundedRect(M,y,usableW,24,3,3,'F');
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(11); pdf.setTextColor(...RGB.accent);
+      pdf.text(`${label.toUpperCase()}  ·  ${rows.length} empresa${rows.length!==1?'s':''}`,M+10,y+16);
+      y+=34;
+
+      // Body + coloreo de celdas (score y ratios)
+      const cellColors={}; // "r,c" -> [rgb]
+      const body=rows.map((r,ri)=>{
+        const tk=(r['Ticker']||'').trim().toUpperCase();
+        const sc=parseFloat(r['Score']);
+        const fb=(r['Fecha Balance']||'').trim().substring(0,10)||'—';
+        // Color del score
+        cellColors[`${ri},2`]=hex2rgb(scoreColor(r['Score']));
+        // Color de cada ratio
+        RATIOS.forEach((rat,k)=>{ const c=ratioColor(rat.key,r[rat.key]); if(c) cellColors[`${ri},${4+k}`]=hex2rgb(c); });
+        return [ tk, r['Empresa']||'—', isNaN(sc)?'—':sc.toFixed(1), fb, ...RATIOS.map(rat=>fmtR(r[rat.key])) ];
+      });
+
+      pdf.autoTable({
+        startY:y, margin:{left:M,right:M},
+        head:[head], body, theme:'grid',
+        styles:{font:'helvetica',fontSize:7.5,cellPadding:3,textColor:RGB.text2,lineColor:RGB.border,lineWidth:0.4,fillColor:RGB.card},
+        headStyles:{fillColor:RGB.head,textColor:RGB.text3,fontStyle:'bold',fontSize:7,halign:'right'},
+        bodyStyles:{fillColor:RGB.card}, alternateRowStyles:{fillColor:RGB.alt},
+        columnStyles:{
+          0:{halign:'left',textColor:RGB.text,fontStyle:'bold',cellWidth:54},
+          1:{halign:'left',textColor:RGB.text},
+          2:{halign:'right',fontStyle:'bold',cellWidth:44},
+          3:{halign:'right',textColor:RGB.text3,cellWidth:74}
+        },
+        didParseCell:d=>{
+          if(d.section==='head'){ if(d.column.index>0) d.cell.styles.halign='right'; return; }
+          if(d.column.index>=2) d.cell.styles.halign='right';
+          const key=`${d.row.index},${d.column.index}`;
+          if(cellColors[key]){ d.cell.styles.textColor=cellColors[key]; d.cell.styles.fontStyle='bold'; }
+        },
+        tableLineColor:RGB.border, tableLineWidth:0.4,
+        didDrawPage:()=>{}
+      });
+      y=pdf.lastAutoTable.finalY+16;
+    }
+
+    // Footer en todas las hojas
+    const footerTxt='La información contenida es de carácter informativo y no representa una recomendación de inversión.';
+    const totalPages=pdf.internal.getNumberOfPages();
+    for(let p=1;p<=totalPages;p++){
+      pdf.setPage(p);
+      pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.5); pdf.line(M,PH-22,PW-M,PH-22);
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(6.5); pdf.setTextColor(...RGB.text3);
+      pdf.text(footerTxt,PW/2,PH-13,{align:'center'});
+    }
+
+    try{ pdf.save(`scoring_liquidez_${new Date().toISOString().slice(0,10)}.pdf`); }
     catch(err){ alert('No se pudo generar el PDF: '+err.message); }
     finally{ if(genBtn){genBtn.textContent='Generar →';genBtn.disabled=false;} earCloseReportDialog(); }
   };
