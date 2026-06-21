@@ -18853,9 +18853,11 @@ function renderEquity(){
       pdf.text(String(txt).toUpperCase(),M+10,y+16);
       return y+34;
     };
-    // Subtítulo (grupo/título de tabla dentro de un bloque) — con línea accent fina
-    ctx.sub=function(txt,y){
-      if(y+44>PH-M){ y=ctx.newPage(); }
+    // Subtítulo (grupo/título de tabla dentro de un bloque) — con línea accent fina.
+    // minFollow: alto mínimo del contenido que sigue; si no entra, salta junto al título.
+    ctx.sub=function(txt,y,minFollow){
+      const need=44 + (minFollow||40);
+      if(y+need>PH-M){ y=ctx.newPage(); }
       pdf.setFont('helvetica','bold'); pdf.setFontSize(8.5); pdf.setTextColor(...RGB.accent);
       pdf.text(String(txt).toUpperCase(),M,y+8);
       pdf.setDrawColor(...RGB.accent); pdf.setLineWidth(0.8); pdf.line(M,y+12,PW-M,y+12);
@@ -18873,31 +18875,147 @@ function renderEquity(){
       opts=opts||{};
       let firstPage=true;
       const heat=!!opts.heatmap;
+      const rowH=heat?10:13, headH=heat?22:18;
+      const bottom=PH-M;
+      const avail = bottom - y;
+      const fullPage = bottom - (M+22);
+      // El título va como PRIMERA FILA del thead (celda con colSpan = nº columnas). Así
+      // autoTable lo trata como parte del encabezado: lo mantiene pegado a la tabla y lo
+      // repite en cada página si la tabla se parte. Nunca queda huérfano (no hay que
+      // estimar alturas ni adivinar saltos de página).
+      const ncol=head.length;
+      const headRows=[];
+      if(opts.title){
+        headRows.push([{ content:String(opts.title).toUpperCase(),
+          colSpan:ncol,
+          styles:{ halign:'left', fillColor:RGB.bg, textColor:RGB.accent, fontStyle:'bold',
+                   fontSize:8.5, cellPadding:{top:6,bottom:5,left:0,right:0}, lineWidth:0 } }]);
+      }
+      headRows.push(head);
+      const titleH=opts.title?22:0;
+      const startedHigh = (y - (M+22)) < fullPage*0.2;
+      // Para tablas con título: si lo que queda de hoja es menos del 42% de una hoja útil,
+      // saltar a hoja nueva. Umbral conservador y fijo: garantiza que el título arranque
+      // siempre con un bloque generoso de filas debajo (nunca huérfano), sin depender de
+      // estimar la altura exacta del thead. Las tablas que entran arrancan donde están.
+      const estH = titleH + headH + body.length*rowH;
+      if(opts.noBreakLogic){
+        // el llamador (heatmapChunked) ya garantizó que entra; no tocar la paginación.
+      } else if(opts.title && !startedHigh){
+        const enoughRoom = avail >= fullPage*0.42;
+        const fitsHere = estH <= avail;     // entra completa en lo que queda → no hace falta saltar
+        if(!fitsHere && !enoughRoom){ y=ctx.newPage(); }
+      } else if(!opts.title && estH>avail && estH<=fullPage){
+        y=ctx.newPage();
+      }
       const colStyles=Object.assign({0:{halign:'left',textColor:RGB.text,fontStyle:'bold'}}, opts.columnStyles||{});
       if(heat){ for(let i=1;i<head.length;i++){ colStyles[i]=Object.assign({halign:'center',cellWidth:(usableW-150)/(head.length-1)}, colStyles[i]||{}); } colStyles[0]=Object.assign({halign:'left',cellWidth:150,textColor:RGB.text,fontStyle:'bold'}, colStyles[0]||{}); }
+      const titleRowOffset = opts.title?1:0;   // el thead tiene una fila extra (el título)
       pdf.autoTable({
         startY:y, margin:{left:M,right:M,top:M+22},
-        head:[head], body, theme:'grid',
+        head:headRows, body, theme:'grid',
         styles:{font:'helvetica',fontSize:heat?6.5:7.5,cellPadding:heat?1.4:2.6,textColor:RGB.text2,lineColor:RGB.border,lineWidth:0.4,fillColor:RGB.card,overflow:'linebreak'},
         headStyles:{fillColor:RGB.head,textColor:RGB.text3,fontStyle:'bold',fontSize:heat?6:7,halign:heat?'center':'right'},
         bodyStyles:{fillColor:RGB.card}, alternateRowStyles:{fillColor:heat?RGB.card:RGB.alt},
         columnStyles:colStyles,
         didParseCell:d=>{
-          if(d.section==='head'){ d.cell.styles.halign=(heat||d.column.index>0)?(heat?'center':'right'):'left'; if(heat&&d.column.index===0)d.cell.styles.halign='left'; return; }
+          if(d.section==='head'){
+            // Fila 0 del head = título (sólo si hay título): no tocar su estilo.
+            if(opts.title && d.row.index===0) return;
+            d.cell.styles.halign=(heat||d.column.index>0)?(heat?'center':'right'):'left'; if(heat&&d.column.index===0)d.cell.styles.halign='left'; return;
+          }
           if(!heat && d.column.index>0) d.cell.styles.halign='right';
           if(opts.cellColors){ const c=opts.cellColors[`${d.row.index},${d.column.index}`]; if(c){ d.cell.styles.textColor=c; d.cell.styles.fontStyle='bold'; } }
           if(opts.cellBg){ const b=opts.cellBg[`${d.row.index},${d.column.index}`]; if(b){ d.cell.styles.fillColor=b.bg; if(b.text) d.cell.styles.textColor=b.text; d.cell.styles.fontStyle='bold'; d.cell.styles.halign='center'; } }
         },
         willDrawPage:dd=>{
-          if(firstPage){ firstPage=false; return; }
-          ctx.pageBg(); ctx.miniHeader();
+          if(firstPage){ firstPage=false; } else { ctx.pageBg(); ctx.miniHeader(); }
+        },
+        didDrawCell:dd=>{
+          // Subrayar el título (fila 0 del head) con la línea accent fina del estilo.
+          if(opts.title && dd.section==='head' && dd.row.index===0 && dd.column.index===0){
+            pdf.setDrawColor(...RGB.accent); pdf.setLineWidth(0.8);
+            pdf.line(M, dd.cell.y+dd.cell.height-1, PW-M, dd.cell.y+dd.cell.height-1);
+          }
         },
         tableLineColor:RGB.border, tableLineWidth:0.4
       });
       return pdf.lastAutoTable.finalY+12;
     };
-    // Footer disclaimer en todas las hojas (se llama una vez al final, sobre el pdf ya completo)
-    // — definido fuera; acá agregamos los helpers de imagen al ctx —
+    // Heatmap paginado por chunks: parte las filas en grupos que entran completos en una
+    // página y dibuja cada grupo como una tabla autocontenida (título + encabezado + filas).
+    // Así el título NUNCA queda huérfano: viaja siempre con su grupo de filas, porque
+    // controlamos el corte nosotros en vez de dejárselo a autoTable.
+    //  rows: [{name, cells:[{sit}]}]   pLabels: encabezados de columna   HEAT: mapa situación→rgb
+    ctx.heatmapChunked=function(title, colLabels, rows, HEAT, y){
+      // Heatmap dibujado a mano (rectángulos), sin autoTable. Control total de paginación:
+      // calculamos cuántas filas entran por hoja y dibujamos celda por celda. El título va
+      // arriba de cada página y nunca se separa de sus filas.
+      const labelW=150;                      // ancho columna de nombres
+      const gridW=usableW-labelW;            // ancho de la grilla de meses
+      const ncol=colLabels.length;
+      const cellW=gridW/ncol;
+      const rowH=12;
+      const titleH=20, headH=16;
+      const top0=M+22;                       // y de inicio de contenido bajo el header fino
+      const bottom=PH-M;
+      const total=rows.length;
+      // filas por página (descontando título + encabezado de meses)
+      const rowsPerPage=Math.max(4, Math.floor((bottom-top0-titleH-headH)/rowH));
+      const nParts=Math.ceil(total/rowsPerPage);
+      let idx=0, partN=0;
+
+      const drawColHeader=(yy)=>{
+        // encabezado de meses (rotado sería ideal; acá horizontal compacto)
+        pdf.setFont('helvetica','bold'); pdf.setFontSize(5.5); pdf.setTextColor(...RGB.text3);
+        pdf.setFillColor(...RGB.head); pdf.rect(M, yy, usableW, headH, 'F');
+        pdf.text('Entidad', M+4, yy+headH-5);
+        for(let c=0;c<ncol;c++){
+          const cx=M+labelW+c*cellW;
+          pdf.text(String(colLabels[c]), cx+cellW/2, yy+headH-5, {align:'center'});
+        }
+        return yy+headH;
+      };
+
+      while(idx<total){
+        const chunk=rows.slice(idx, idx+rowsPerPage);
+        partN++;
+        const ttl = nParts>1 ? `${title}  (${partN}/${nParts})` : title;
+        const blockH = titleH + headH + chunk.length*rowH + 14;
+        let yy = ((y + blockH) > bottom) ? ctx.newPage() : y;
+        pdf.setFont('helvetica','bold'); pdf.setFontSize(8.5); pdf.setTextColor(...RGB.accent);
+        pdf.text(String(ttl).toUpperCase(), M, yy+8);
+        pdf.setDrawColor(...RGB.accent); pdf.setLineWidth(0.8); pdf.line(M, yy+12, PW-M, yy+12);
+        yy+=titleH;
+        // Encabezado de meses
+        yy=drawColHeader(yy);
+        // Filas
+        pdf.setFontSize(6); pdf.setTextColor(...RGB.text);
+        chunk.forEach((r,ri)=>{
+          const ry=yy+ri*rowH;
+          // fondo fila (nombre)
+          pdf.setFillColor(...RGB.card); pdf.rect(M, ry, labelW, rowH, 'F');
+          pdf.setFont('helvetica','bold'); pdf.setTextColor(...RGB.text);
+          const nm = r.name.length>34 ? r.name.slice(0,33)+'…' : r.name;
+          pdf.text(nm, M+4, ry+rowH-3.5);
+          // celdas de color
+          r.cells.forEach((c,ci)=>{
+            const cx=M+labelW+ci*cellW;
+            const col = c>0 ? (HEAT[c]||HEAT[5]) : RGB.alt;
+            pdf.setFillColor(...col); pdf.rect(cx, ry, cellW, rowH, 'F');
+          });
+          // líneas de grilla finas
+          pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.3);
+          pdf.line(M, ry+rowH, PW-M, ry+rowH);
+        });
+        // borde externo
+        pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.4);
+        pdf.rect(M, yy, usableW, chunk.length*rowH, 'S');
+        y=yy+chunk.length*rowH+12;
+        idx+=rowsPerPage;
+      }
+      return y;
+    };
 
     // Rasteriza un canvas existente (Chart.js) → {data, ratio}
     const imgBg = (typeof _isDark!=='undefined' && !_isDark) ? '#f7f8fc' : '#11151f';
@@ -18928,15 +19046,31 @@ function renderEquity(){
       }catch(_){ return null; }
     };
     // Dibuja una imagen {data, ratio} a lo ancho útil, con caption opcional.
+    // Reglas de paginación para elementos atómicos (hero, gráfico, heatmap-imagen):
+    //  - Nunca se parten.
+    //  - Si la hoja actual ya está "casi al tope" (poco espacio útil), saltar a hoja
+    //    nueva para no escalar a un tamaño ridículo.
+    //  - Si la hoja actual recién arranca (solo título/poco contenido), NO saltar:
+    //    escalar la imagen para que entre acá y no dejar la hoja vacía.
+    //  - Si aún escalada no entra, ocupar todo el alto disponible (de esta hoja o la nueva).
     ctx.image=function(im, cap, y){
       if(!im) return y;
-      const capH=cap?14:0;
+      const capH=cap?18:0;
+      const bottom=PH-M;
+      const topOfPage=M+22;                       // y donde arranca el contenido tras el header
+      const usedThisPage=y-topOfPage;             // cuánto contenido hay ya en esta hoja
+      let avail=bottom-y-capH-6;                  // alto disponible acá
+      const fullAvail=bottom-topOfPage-capH-6;    // alto disponible en hoja nueva
       let imgW=usableW, imgH=usableW*im.ratio;
-      const maxH=PH-M-(M+22)-capH-6;
-      if(imgH>maxH){ imgH=maxH; imgW=imgH/im.ratio; }
-      if(y+imgH+capH+6>PH-M){ y=ctx.newPage(); }
+      // Saltar sólo si: no entra acá Y la hoja ya tiene contenido real (no sólo el título).
+      // "contenido real" = usado > 15% de la hoja → evita saltar dejando hoja casi vacía.
+      if(imgH>avail && usedThisPage > fullAvail*0.15){ y=ctx.newPage(); avail=bottom-y-capH-6; }
+      // Escalar para entrar en el alto disponible (de esta hoja o la nueva), sin pasar el ancho.
+      if(imgH>avail){ imgH=avail; imgW=imgH/im.ratio; }
+      if(imgW>usableW){ imgW=usableW; imgH=usableW*im.ratio; }
       if(cap){ pdf.setFont('helvetica','bold'); pdf.setFontSize(8.5); pdf.setTextColor(...RGB.accent); pdf.text(String(cap).toUpperCase(),M,y+8); pdf.setDrawColor(...RGB.accent); pdf.setLineWidth(0.8); pdf.line(M,y+12,PW-M,y+12); y+=18; }
-      pdf.addImage(im.data,'PNG',M,y,imgW,imgH); return y+imgH+14;
+      const x=M+(usableW-imgW)/2;
+      pdf.addImage(im.data,'PNG',x,y,imgW,imgH); return y+imgH+14;
     };
     return ctx;
   }
@@ -19068,6 +19202,19 @@ function renderEquity(){
       ], y, {columnStyles:{1:{halign:'left'}}});
     }
 
+    // Cheques rechazados — orden del HTML: van justo después del hero
+    if(cheques?.causales?.length){
+      const all=[];
+      cheques.causales.forEach(ca=>ca.entidades.forEach(en=>en.detalle.forEach(d=>all.push({...d,causal:ca.causal,entidad:en.entidad}))));
+      if(all.length){
+        all.sort((a,b)=>(a.fechaPago?1:0)-(b.fechaPago?1:0));
+        const fmtM=v=>{if(!v&&v!==0)return'—';const n=parseFloat(String(v).replace(/\./g,'').replace(',','.'));if(isNaN(n))return v;if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';if(n>=1e6)return'$'+(n/1e6).toFixed(1)+'M';return'$'+Math.round(n).toLocaleString('es-AR');};
+        y=ctx.table(['Causal','Banco','N° Cheque','Monto','F. Rechazo','Estado'],
+          all.map(c=>[c.causal||'—',c.entidad||'—',c.nroCheque||'—',fmtM(c.monto),c.fechaRechazo||'—',c.fechaPago?`Regularizado ${c.fechaPago}`:'Sin regularizar']),
+          y, {title:'Cheques rechazados', columnStyles:{1:{halign:'left'},2:{halign:'left'}}});
+      }
+    }
+
     // Gráfico de exposición por banco (captura del canvas del tab, si está disponible)
     if(domCon){
       const chartCv=document.getElementById(`bcra-chart-${data.ticker||''}`)||domCon.querySelector('canvas');
@@ -19083,8 +19230,7 @@ function renderEquity(){
         return [ e.entidad, `${e.situacion} — ${SIT_LBL[e.situacion]||'—'}`, fmtMonto(e.monto),
           pond.toFixed(1)+'%', (e.diasAtrasoPago||0)>0?e.diasAtrasoPago+'d':'—' ];
       });
-      y=ctx.sub('Situación actual', y);
-      y=ctx.table(['Entidad','Situación','Monto','Pond.','Atraso'], body, y, {cellColors, columnStyles:{1:{halign:'left'}}});
+      y=ctx.table(['Entidad','Situación','Monto','Pond.','Atraso'], body, y, {title:'Situación actual', cellColors, columnStyles:{1:{halign:'left'}}});
     }
 
     // Historial por período (heatmap REAL: celda con fondo de color = situación, como el HTML)
@@ -19097,33 +19243,11 @@ function renderEquity(){
       periodos.forEach(p=>(p.entidades||[]).forEach(e=>entNames.add(e.entidad)));
       const names=[...entNames];
       if(names.length){
-        const cellBg={};
-        const body=names.map((nm,ri)=>{
-          const row=[nm];
-          periodos.forEach((p,ci)=>{
-            const e=(p.entidades||[]).find(x=>x.entidad===nm);
-            const sit=e?e.situacion:0;
-            row.push('');  // sin número: el color ES el dato (como el HTML)
-            if(sit>0) cellBg[`${ri},${ci+1}`]={bg:HEAT[sit]||HEAT[5]};
-          });
-          return row;
-        });
-        y=ctx.sub('Historial de situación (24 meses)', y);
-        y=ctx.table(['Entidad',...pLabels], body, y, {cellBg, heatmap:true});
-      }
-    }
-
-    // Cheques rechazados (si hay)
-    if(cheques?.causales?.length){
-      const all=[];
-      cheques.causales.forEach(ca=>ca.entidades.forEach(en=>en.detalle.forEach(d=>all.push({...d,causal:ca.causal,entidad:en.entidad}))));
-      if(all.length){
-        all.sort((a,b)=>(a.fechaPago?1:0)-(b.fechaPago?1:0));
-        const fmtM=v=>{if(!v&&v!==0)return'—';const n=parseFloat(String(v).replace(/\./g,'').replace(',','.'));if(isNaN(n))return v;if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';if(n>=1e6)return'$'+(n/1e6).toFixed(1)+'M';return'$'+Math.round(n).toLocaleString('es-AR');};
-        y=ctx.sub('Cheques rechazados', y);
-        y=ctx.table(['Causal','Banco','N° Cheque','Monto','F. Rechazo','Estado'],
-          all.map(c=>[c.causal||'—',c.entidad||'—',c.nroCheque||'—',fmtM(c.monto),c.fechaRechazo||'—',c.fechaPago?`Regularizado ${c.fechaPago}`:'Sin regularizar']),
-          y, {columnStyles:{1:{halign:'left'},2:{halign:'left'}}});
+        const rows=names.map(nm=>({
+          name:nm,
+          cells:periodos.map(p=>{ const e=(p.entidades||[]).find(x=>x.entidad===nm); return e?e.situacion:0; })
+        }));
+        y=ctx.heatmapChunked('Historial de situación (24 meses)', pLabels, rows, HEAT, y);
       }
     }
   }
