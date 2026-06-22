@@ -19262,8 +19262,6 @@ function renderEquity(){
   // datasets que _renderChartInline para que el resultado sea idéntico al de pantalla.
   async function _buildExposureChartImg(hist, ctx){
     if(!hist?.periodos?.length || typeof Chart==='undefined') return null;
-    const _dark=(typeof _isDark!=='undefined')?_isDark:true;
-    const imgBg=_dark?'#11151f':'#f7f8fc';
     const PALETTE=['#1E27F3','#3fb950','#d4a017','#f85149','#a5b4fc','#0d9e6e','#8b5cf6','#f59e0b','#22c55e','#ec4899','#06b6d4','#84cc16','#f97316','#6366f1','#14b8a6','#e11d48','#7c3aed','#0284c7','#ca8a04','#dc2626'];
     const allPeriodos=[...new Set(hist.periodos.map(p=>p.periodo))].sort();
     const entityTotals={};
@@ -19284,10 +19282,8 @@ function renderEquity(){
     const W=1400, H=720;
     const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
     const holder=document.createElement('div');
-    holder.style.cssText=`position:fixed;left:-10000px;top:0;width:${W}px;height:${H}px;background:${imgBg};`;
+    holder.style.cssText=`position:fixed;left:-10000px;top:0;width:${W}px;height:${H}px;`;
     holder.appendChild(cv); document.body.appendChild(holder);
-    // Fondo opaco (Chart.js no pinta el fondo del canvas).
-    const cx=cv.getContext('2d'); cx.fillStyle=imgBg; cx.fillRect(0,0,W,H);
     let chart=null;
     try{
       chart=new Chart(cv,{ type:'line', data:{labels,datasets},
@@ -19297,10 +19293,8 @@ function renderEquity(){
                    y:{stacked:true,ticks:{color:'#8b99c4',font:{size:12},callback:v=>'$'+v+'M'},grid:{color:'rgba(30,39,243,0.06)'}} } } });
       // Una vuelta de event loop para asegurar el paint (animation:false ya es síncrono).
       await new Promise(r=>setTimeout(r,60));
-      // Recomponer sobre fondo opaco para evitar transparencias en el PNG.
-      const out=document.createElement('canvas'); out.width=W; out.height=H;
-      const ox=out.getContext('2d'); ox.fillStyle=imgBg; ox.fillRect(0,0,W,H); ox.drawImage(cv,0,0);
-      return { data:out.toDataURL('image/png'), ratio:H/W };
+      // Fondo TRANSPARENTE: en el PDF se ve el fondo de la hoja (sin recuadro).
+      return { data:cv.toDataURL('image/png'), ratio:H/W };
     }catch(_){ return null; }
     finally{ try{chart&&chart.destroy();}catch(_){} try{document.body.removeChild(holder);}catch(_){} }
   }
@@ -19625,19 +19619,18 @@ function renderEquity(){
   }
 
   // Regenera el gráfico de PRECIO (línea + área) en canvas offscreen → {data, ratio}.
+  // Fondo TRANSPARENTE: al insertarlo en el PDF se ve el fondo de la hoja (sin recuadro).
   async function _buildPriceChartImg(dates, closes, ccy){
     if(typeof Chart==='undefined' || !dates || !dates.length) return null;
-    const _dark=(typeof _isDark!=='undefined')?_isDark:true;
-    const imgBg=_dark?'#11151f':'#f7f8fc';
     const valid=closes.filter(v=>v!=null);
     const isUp=valid.length>1?valid[valid.length-1]>=valid[0]:true;
     const color=isUp?'#3fb950':'#f85149';
     const W=1400, H=560;
     const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
     const holder=document.createElement('div');
-    holder.style.cssText=`position:fixed;left:-10000px;top:0;width:${W}px;height:${H}px;background:${imgBg};`;
+    holder.style.cssText=`position:fixed;left:-10000px;top:0;width:${W}px;height:${H}px;`;
     holder.appendChild(cv); document.body.appendChild(holder);
-    const cx=cv.getContext('2d'); cx.fillStyle=imgBg; cx.fillRect(0,0,W,H);
+    const cx=cv.getContext('2d');
     const grad=cx.createLinearGradient(0,0,0,H);
     grad.addColorStop(0,isUp?'rgba(63,185,80,.16)':'rgba(248,81,73,.16)');
     grad.addColorStop(1,'rgba(0,0,0,0)');
@@ -19651,9 +19644,7 @@ function renderEquity(){
           scales:{ x:{ticks:{color:'#8b99c4',font:{size:12},maxTicksLimit:9,maxRotation:0},grid:{color:'rgba(30,39,243,0.06)'}},
                    y:{ticks:{color:'#8b99c4',font:{size:12},callback:v=>tickPfx+Number(v).toLocaleString('es-AR')},grid:{color:'rgba(30,39,243,0.06)'}} } } });
       await new Promise(r=>setTimeout(r,60));
-      const out=document.createElement('canvas'); out.width=W; out.height=H;
-      const ox=out.getContext('2d'); ox.fillStyle=imgBg; ox.fillRect(0,0,W,H); ox.drawImage(cv,0,0);
-      return { data:out.toDataURL('image/png'), ratio:H/W };
+      return { data:cv.toDataURL('image/png'), ratio:H/W };
     }catch(_){ return null; }
     finally{ try{chart&&chart.destroy();}catch(_){} try{document.body.removeChild(holder);}catch(_){} }
   }
@@ -19661,14 +19652,11 @@ function renderEquity(){
   // Regenera el gráfico de VOLUMEN (barras coloreadas por signo) → {data, ratio}.
   async function _buildVolChartImg(slice){
     if(typeof Chart==='undefined' || !slice || !slice.length) return null;
-    const _dark=(typeof _isDark!=='undefined')?_isDark:true;
-    const imgBg=_dark?'#11151f':'#f7f8fc';
     const W=1400, H=320;
     const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
     const holder=document.createElement('div');
-    holder.style.cssText=`position:fixed;left:-10000px;top:0;width:${W}px;height:${H}px;background:${imgBg};`;
+    holder.style.cssText=`position:fixed;left:-10000px;top:0;width:${W}px;height:${H}px;`;
     holder.appendChild(cv); document.body.appendChild(holder);
-    const cx=cv.getContext('2d'); cx.fillStyle=imgBg; cx.fillRect(0,0,W,H);
     let chart=null;
     try{
       chart=new Chart(cv,{ type:'bar',
@@ -19680,9 +19668,7 @@ function renderEquity(){
           scales:{ x:{grid:{display:false},ticks:{color:'#8b99c4',font:{size:11},maxTicksLimit:9,maxRotation:0}},
                    y:{grid:{color:'rgba(30,39,243,0.06)'},ticks:{color:'#8b99c4',font:{size:11},callback:v=>v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':Math.round(v)+''}} } } });
       await new Promise(r=>setTimeout(r,60));
-      const out=document.createElement('canvas'); out.width=W; out.height=H;
-      const ox=out.getContext('2d'); ox.fillStyle=imgBg; ox.fillRect(0,0,W,H); ox.drawImage(cv,0,0);
-      return { data:out.toDataURL('image/png'), ratio:H/W };
+      return { data:cv.toDataURL('image/png'), ratio:H/W };
     }catch(_){ return null; }
     finally{ try{chart&&chart.destroy();}catch(_){} try{document.body.removeChild(holder);}catch(_){} }
   }
