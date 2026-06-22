@@ -19508,38 +19508,158 @@ function renderEquity(){
   window._earPdfFooter=_earPdfFooter;
 
   // ── BLOQUE: PRECIOS ───────────────────────────────────────────────────
-  // Datos crudos de _earPriceState[ticker].allData. Tabla de ruedas con
-  // variación diaria coloreada (verde sube / rojo baja), fiel al concepto del tab.
-  function buildPreciosBlock(pdf, ctx, ticker, isFirst, domCon){
+  // Hoja 1: título (TICKER), 5 cards (respetando rango+moneda activos), gráfico de
+  //         precio y de volumen — regenerados desde datos en canvas offscreen.
+  // Hoja 2+: tabla de cotizaciones histórica (nativa autoTable), las filas que entren.
+  // Respeta la configuración del tab: _earPriceState[ticker].range y .ccy.
+  async function buildPreciosBlock(pdf, ctx, ticker, isFirst, domCon){
+    const RGB=ctx.RGB;
+    const st=(window._earPriceState||{})[ticker]||(typeof _earPriceState!=='undefined'?_earPriceState[ticker]:null);
+    if(!st || !st.allData || !st.allData.length){
+      if(!isFirst){ pdf.addPage(); }
+      ctx.pageBg(); let y=ctx.drawHeader(); y=ctx.blockTitle('Precios', y);
+      ctx.note('Sin histórico de precios disponible para esta empresa.', y); return;
+    }
+
+    const range=st.range, ccy=st.ccy||'ARS';
+    const _rangeLbl={30:'1M',90:'3M',180:'6M',365:'1A',730:'2A',1095:'3A',1825:'5A'}[range]||'TODO';
+    // Slice por rango + serie convertida a la moneda activa (misma lógica que la UI)
+    const slice = (typeof window._earGetSlice==='function') ? window._earGetSlice(ticker) : st.allData;
+    const conv  = (typeof window._earGetConverted==='function') ? window._earGetConverted(ticker)
+                  : {dates:slice.map(d=>d.date), closes:slice.map(d=>d.c), ccy:'ARS'};
+    const dates=conv.dates, closes=conv.closes;
+
+    // ── HOJA 1 ────────────────────────────────────────────────────────────
     if(!isFirst){ pdf.addPage(); }
     ctx.pageBg();
     let y=ctx.drawHeader();
-    y=ctx.blockTitle('Precios', y);
-    const st=(typeof _earPriceState!=='undefined')?_earPriceState[ticker]:null;
-    const all=st&&st.allData?st.allData:null;
-    if(!all || !all.length){ ctx.note('Sin histórico de precios disponible para esta empresa.', y); return; }
-    const RGB=ctx.RGB;
-    // Gráficos de precio y volumen (captura de los canvas del tab, si está disponible)
-    if(domCon){
-      const cvs=domCon.querySelectorAll('canvas');
-      if(cvs[0]){ const im=ctx.canvasToImg(cvs[0]); if(im) y=ctx.image(im,'Precio de cierre',y); }
-      if(cvs[1]){ const im=ctx.canvasToImg(cvs[1]); if(im) y=ctx.image(im,'Volumen diario',y); }
-    }
-    // Orden más reciente primero
-    const data=[...all].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
-    const chron=[...all].sort((a,b)=>String(a.date).localeCompare(String(b.date)));
-    const varByDate={};
-    for(let i=1;i<chron.length;i++){ const prev=chron[i-1].c, cur=chron[i].c; if(prev>0) varByDate[chron[i].date]=((cur-prev)/prev)*100; }
+    // Título grande = TICKER (no razón social), como pidió el módulo de precios.
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(20); pdf.setTextColor(...RGB.accent);
+    pdf.text(ticker, ctx.M, y+8);
+    pdf.setFont('helvetica','normal'); pdf.setFontSize(8.5); pdf.setTextColor(...RGB.text3);
+    pdf.text(`Precios · ${_rangeLbl} · ${ccy}`, ctx.M+pdf.getTextWidth(ticker)+12, y+8);
+    pdf.setDrawColor(...RGB.accent); pdf.setLineWidth(0.8); pdf.line(ctx.M, y+14, ctx.PW-ctx.M, y+14);
+    y+=26;
+
+    // ── 5 cards (mismos cálculos que el tab) ──
     const fmtN=v=>v==null?'—':Number(v).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
-    const fmtVol=v=>v==null?'—':Number(v).toLocaleString('es-AR');
-    const cellColors={};
-    const body=data.map((d,ri)=>{
-      const vr=varByDate[d.date];
-      if(vr!=null) cellColors[`${ri},2`]= vr>=0?RGB.green:RGB.red;
-      return [ d.date, fmtN(d.c), vr!=null?(vr>=0?'+':'')+vr.toFixed(2)+'%':'—', fmtVol(d.v) ];
+    const fmtVol=n=>n==null?'—':(n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(0)+'K':Math.round(n).toString());
+    const valid=closes.filter(v=>v!=null);
+    const lastRow=st.allData[st.allData.length-1];
+    // Último cierre (en la moneda activa: último válido de la serie convertida del slice)
+    const lastClose = valid.length?valid[valid.length-1]:(lastRow?lastRow.c:null);
+    // Var % día (de la última rueda; dato crudo, no depende de moneda)
+    const varDia = lastRow&&lastRow.dr!=null?lastRow.dr:null;
+    // Var % período (primer vs último válido en la moneda/rango actuales)
+    const v0=valid.length?valid[0]:null, v1=valid.length?valid[valid.length-1]:null;
+    const varPer = (v0!=null&&v1!=null&&v0!==0)?((v1/v0-1)*100):null;
+    // Volumen diario (última rueda) + promedio del período (en unidades)
+    const volDia = lastRow?lastRow.v:null;
+    const volsSlice = slice.map(d=>d.v).filter(v=>v!=null);
+    const volProm = volsSlice.length?volsSlice.reduce((a,b)=>a+b,0)/volsSlice.length:null;
+    const pctTxt=p=>p==null?'—':(p>=0?'+':'')+p.toFixed(2)+'%';
+    const cards=[
+      {lbl:'Último cierre', val:fmtN(lastClose), col:RGB.text2},
+      {lbl:'Var % día', val:pctTxt(varDia), col:varDia==null?RGB.text2:(varDia>=0?RGB.green:RGB.red)},
+      {lbl:`Var % ${_rangeLbl} · ${ccy}`, val:pctTxt(varPer), col:varPer==null?RGB.text2:(varPer>=0?RGB.green:RGB.red)},
+      {lbl:'Vol. nominal diario', val:fmtVol(volDia), col:RGB.text2},
+      {lbl:`Vol. nominal prom. ${_rangeLbl}`, val:fmtVol(volProm), col:RGB.text2},
+    ];
+    const n=cards.length, gap=8, cardW=(ctx.usableW-gap*(n-1))/n, cardH=44;
+    cards.forEach((c,i)=>{
+      const cx=ctx.M+i*(cardW+gap);
+      pdf.setFillColor(...RGB.card2); pdf.roundedRect(cx, y, cardW, cardH, 3, 3, 'F');
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(6); pdf.setTextColor(...RGB.text3);
+      // Etiqueta (puede ser larga → recortar al ancho)
+      const lbl=c.lbl.toUpperCase();
+      pdf.text(lbl, cx+8, y+13, {maxWidth:cardW-16});
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(15); pdf.setTextColor(...c.col);
+      pdf.text(String(c.val), cx+8, y+34);
     });
-    y=ctx.sub(`Histórico de cotizaciones (${data.length} ruedas)`, y);
-    y=ctx.table(['Rueda','Cierre','Var. %','Volumen'], body, y, {cellColors});
+    y+=cardH+16;
+
+    // ── Gráfico de precio (regenerado offscreen, área tipo el tab) ──
+    let priceImg=null, volImg=null;
+    try{ priceImg=await _buildPriceChartImg(dates, closes, ccy); }catch(_){}
+    try{ volImg=await _buildVolChartImg(slice); }catch(_){}
+    if(priceImg){ y=ctx.image(priceImg, 'Precio de cierre', y); }
+    if(volImg){ y=ctx.image(volImg, 'Volumen diario', y); }
+
+    // ── HOJA 2+: tabla histórica nativa (slice del rango, más reciente primero) ──
+    const rowsDesc=[...slice].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+    const fmtP=n2=>n2==null?'—':((n2>=0?'+':'')+n2.toFixed(2)+'%');
+    const cellColors={};
+    const body=rowsDesc.map((d,ri)=>{
+      if(d.dr!=null) cellColors[`${ri},6`]= d.dr>=0?RGB.green:RGB.red;
+      return [ d.date, fmtN(d.o), fmtN(d.h), fmtN(d.l), fmtN(d.c), fmtVol(d.v), fmtP(d.dr) ];
+    });
+    pdf.addPage(); ctx.pageBg(); let y2=ctx.drawHeader();
+    y2=ctx.blockTitle(`${ticker} · Precios`, y2);
+    ctx.table(['Fecha','Apertura','Máximo','Mínimo','Cierre','Volumen','Retorno %'], body, y2,
+      {title:`Histórico de cotizaciones · ${_rangeLbl} (${rowsDesc.length} ruedas)`, cellColors});
+  }
+
+  // Regenera el gráfico de PRECIO (línea + área) en canvas offscreen → {data, ratio}.
+  async function _buildPriceChartImg(dates, closes, ccy){
+    if(typeof Chart==='undefined' || !dates || !dates.length) return null;
+    const _dark=(typeof _isDark!=='undefined')?_isDark:true;
+    const imgBg=_dark?'#11151f':'#f7f8fc';
+    const valid=closes.filter(v=>v!=null);
+    const isUp=valid.length>1?valid[valid.length-1]>=valid[0]:true;
+    const color=isUp?'#3fb950':'#f85149';
+    const W=1400, H=560;
+    const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+    const holder=document.createElement('div');
+    holder.style.cssText=`position:fixed;left:-10000px;top:0;width:${W}px;height:${H}px;background:${imgBg};`;
+    holder.appendChild(cv); document.body.appendChild(holder);
+    const cx=cv.getContext('2d'); cx.fillStyle=imgBg; cx.fillRect(0,0,W,H);
+    const grad=cx.createLinearGradient(0,0,0,H);
+    grad.addColorStop(0,isUp?'rgba(63,185,80,.16)':'rgba(248,81,73,.16)');
+    grad.addColorStop(1,'rgba(0,0,0,0)');
+    const tickPfx=ccy==='ARS'?'$':'U$D ';
+    let chart=null;
+    try{
+      chart=new Chart(cv,{ type:'line',
+        data:{labels:dates,datasets:[{data:closes,borderColor:color,borderWidth:2,backgroundColor:grad,fill:true,tension:.3,pointRadius:0,spanGaps:false}]},
+        options:{ responsive:false, animation:false, maintainAspectRatio:false, devicePixelRatio:1,
+          plugins:{legend:{display:false}},
+          scales:{ x:{ticks:{color:'#8b99c4',font:{size:12},maxTicksLimit:9,maxRotation:0},grid:{color:'rgba(30,39,243,0.06)'}},
+                   y:{ticks:{color:'#8b99c4',font:{size:12},callback:v=>tickPfx+Number(v).toLocaleString('es-AR')},grid:{color:'rgba(30,39,243,0.06)'}} } } });
+      await new Promise(r=>setTimeout(r,60));
+      const out=document.createElement('canvas'); out.width=W; out.height=H;
+      const ox=out.getContext('2d'); ox.fillStyle=imgBg; ox.fillRect(0,0,W,H); ox.drawImage(cv,0,0);
+      return { data:out.toDataURL('image/png'), ratio:H/W };
+    }catch(_){ return null; }
+    finally{ try{chart&&chart.destroy();}catch(_){} try{document.body.removeChild(holder);}catch(_){} }
+  }
+
+  // Regenera el gráfico de VOLUMEN (barras coloreadas por signo) → {data, ratio}.
+  async function _buildVolChartImg(slice){
+    if(typeof Chart==='undefined' || !slice || !slice.length) return null;
+    const _dark=(typeof _isDark!=='undefined')?_isDark:true;
+    const imgBg=_dark?'#11151f':'#f7f8fc';
+    const W=1400, H=320;
+    const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+    const holder=document.createElement('div');
+    holder.style.cssText=`position:fixed;left:-10000px;top:0;width:${W}px;height:${H}px;background:${imgBg};`;
+    holder.appendChild(cv); document.body.appendChild(holder);
+    const cx=cv.getContext('2d'); cx.fillStyle=imgBg; cx.fillRect(0,0,W,H);
+    let chart=null;
+    try{
+      chart=new Chart(cv,{ type:'bar',
+        data:{labels:slice.map(d=>d.date),datasets:[{ data:slice.map(d=>d.v),
+          backgroundColor:slice.map(d=>d.dr==null?'rgba(74,82,128,.5)':d.dr>=0?'rgba(63,185,80,.5)':'rgba(248,81,73,.5)'),
+          borderWidth:0 }]},
+        options:{ responsive:false, animation:false, maintainAspectRatio:false, devicePixelRatio:1,
+          plugins:{legend:{display:false}},
+          scales:{ x:{grid:{display:false},ticks:{color:'#8b99c4',font:{size:11},maxTicksLimit:9,maxRotation:0}},
+                   y:{grid:{color:'rgba(30,39,243,0.06)'},ticks:{color:'#8b99c4',font:{size:11},callback:v=>v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':Math.round(v)+''}} } } });
+      await new Promise(r=>setTimeout(r,60));
+      const out=document.createElement('canvas'); out.width=W; out.height=H;
+      const ox=out.getContext('2d'); ox.fillStyle=imgBg; ox.fillRect(0,0,W,H); ox.drawImage(cv,0,0);
+      return { data:out.toDataURL('image/png'), ratio:H/W };
+    }catch(_){ return null; }
+    finally{ try{chart&&chart.destroy();}catch(_){} try{document.body.removeChild(holder);}catch(_){} }
   }
 
   window.earBuildReportNew=async function(){
@@ -19560,8 +19680,8 @@ function renderEquity(){
       const ecoHist=window.ECO_DATA[ticker]||[];
 
       // Tabs que necesitan estar renderizados en el DOM (leen tablas/canvas de ahí):
-      // deudas (chart), mav (tablas/barras), precios (charts). Forzar su render.
-      const visualTabs=['deudas','mav','precios'].filter(id=>checked.includes(id));
+      // deudas (chart) y mav (tablas/barras). Precios ya NO: se regenera desde datos.
+      const visualTabs=['deudas','mav'].filter(id=>checked.includes(id));
       for(const id of visualTabs){
         const con=document.getElementById(`ficha-tab-content-${ticker}-${id}`);
         if(con && con.innerHTML.trim()===''){ try{ _fichaShowTab(ticker, id); }catch(_){} }
@@ -19582,17 +19702,26 @@ function renderEquity(){
         }
       }
 
+      // Precios: asegurar que el histórico esté cargado en _earPriceState. El bloque
+      // regenera los gráficos desde estos datos (no captura el canvas del tab), así que
+      // sólo necesitamos los datos, no el render del tab.
+      if(checked.includes('precios') && typeof window._loadPreciosData==='function'){
+        const hasData=(window._earPriceState||{})[ticker]?.allData?.length;
+        if(!hasData){
+          try{ await Promise.race([window._loadPreciosData(ticker), new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),8000))]); }catch(_){}
+        }
+      }
+
       // Esperar a que los tabs visuales rendericen sus canvas. Polling hasta que
       // los canvas esperados existan y tengan tamaño, o timeout.
       if(visualTabs.length){
         const needCanvas=[];
         if(checked.includes('deudas')) needCanvas.push(`bcra-chart-${ticker}`);
-        const deadline=Date.now()+ (checked.includes('precios')?5000:3500);
+        const deadline=Date.now()+ 3500;
         await new Promise(resolve=>{
           (function poll(){
             const deudaOk = !checked.includes('deudas') || (()=>{ const c=document.getElementById(`bcra-chart-${ticker}`); return c&&c.width>0; })();
-            const preciosOk = !checked.includes('precios') || (()=>{ const con=document.getElementById(`ficha-tab-content-${ticker}-precios`); return con&&con.querySelector('canvas')&&con.querySelector('canvas').width>0; })();
-            if((deudaOk&&preciosOk) || Date.now()>deadline){ resolve(); return; }
+            if(deudaOk || Date.now()>deadline){ resolve(); return; }
             setTimeout(poll, 250);
           })();
         });
@@ -21871,6 +22000,13 @@ function renderCheques(cheques){
       ccy:st.ccy
     };
   }
+
+  // Exponer para el generador de reportes PDF (vive en otro IIFE). Permite reusar la
+  // misma lógica de slice por rango + conversión de moneda que la UI del tab.
+  window._earPriceState   = _earPriceState;
+  window._earGetSlice     = (ticker)=>_earGetSlice(ticker);
+  window._earGetConverted = (ticker)=>_earGetConverted(ticker);
+  window._loadPreciosData = (ticker)=>_loadPreciosData(ticker);
 
   function _earRefreshPrecios(ticker){
     const {dates,closes,ccy}=_earGetConverted(ticker);
