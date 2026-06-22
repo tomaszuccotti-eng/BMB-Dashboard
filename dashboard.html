@@ -19179,13 +19179,45 @@ function renderEquity(){
   // Independiente. Datos: ecoHist (historial Economatica de la empresa).
   // Una tabla por grupo (FIN_GROUPS), fiel al tab del HTML (monocromo).
   // isFirst: si true usa la hoja actual; si false agrega hoja nueva (autocontenido).
-  function buildFinancialsBlock(pdf, ctx, ecoHist, isFirst){
+  // Dibuja la fila de cards de KPI (los que el usuario tiene activos en _kpiActive),
+  // con valores del período más reciente (ecoLatest). Mismo criterio que la barra del
+  // tab ARG: etiqueta + valor (sin variación YoY). Devuelve la nueva y. Hace wrap a
+  // varias filas si hay muchos KPIs. Si no hay KPIs activos o datos, no dibuja nada.
+  function _buildKpiCards(pdf, ctx, ecoLatest, y){
+    if(!ecoLatest) return y;
+    const RGB=ctx.RGB, M=ctx.M, usableW=ctx.usableW;
+    const defs=ECO_COLS.filter(c=>_kpiActive.includes(c.key));
+    if(!defs.length) return y;
+    const perRow=5, gap=8, cardH=42, rowGap=8;
+    const rows=[];
+    for(let i=0;i<defs.length;i+=perRow) rows.push(defs.slice(i,i+perRow));
+    rows.forEach(rowDefs=>{
+      const n=rowDefs.length;
+      const cardW=(usableW-gap*(perRow-1))/perRow;   // ancho fijo según perRow (alineado en grilla)
+      rowDefs.forEach((def,i)=>{
+        const cx=M+i*(cardW+gap);
+        const v=ecoLatest[def.key];
+        const disp=v!=null?fmtEco(def.key,v):'—';
+        pdf.setFillColor(...RGB.card2); pdf.roundedRect(cx, y, cardW, cardH, 3, 3, 'F');
+        pdf.setFont('helvetica','normal'); pdf.setFontSize(5.8); pdf.setTextColor(...RGB.text3);
+        pdf.text(def.label.toUpperCase(), cx+8, y+13, {maxWidth:cardW-16});
+        pdf.setFont('helvetica','bold'); pdf.setFontSize(13); pdf.setTextColor(...RGB.text2);
+        pdf.text(String(disp), cx+8, y+33, {maxWidth:cardW-16});
+      });
+      y+=cardH+rowGap;
+    });
+    return y+6;
+  }
+
+  function buildFinancialsBlock(pdf, ctx, ecoHist, isFirst, showKpi){
     if(!isFirst){ pdf.addPage(); }
     ctx.pageBg();
     let y=ctx.drawHeader();
     y=ctx.blockTitle('Financials', y);
     if(!ecoHist || !ecoHist.length){ ctx.note('Sin datos de Economatica para esta empresa.', y); return; }
     const hist=[...ecoHist].sort((a,b)=>parseDate(b.fechaBal)-parseDate(a.fechaBal));
+    // KPIs (antes de las tablas) — valores del período más reciente
+    if(showKpi){ y=_buildKpiCards(pdf, ctx, hist[0], y); }
     const cols=hist.map(p=>p.fechaBal.substring(0,10));
     const cleanLabel=l=>l.replace(/^[^A-Za-zÁÉÍÓÚÑ]+/,'').trim();  // saca el emoji inicial
     FIN_GROUPS.forEach(grp=>{
@@ -19205,13 +19237,15 @@ function renderEquity(){
   // ── BLOQUE: RATIOS ────────────────────────────────────────────────────
   // Misma estructura que Financials (grupos × fechas), datos de RAT_GROUPS.
   // Fiel al tab del HTML: monocromo (el tab de ratios no colorea por celda).
-  function buildRatiosBlock(pdf, ctx, ecoHist, isFirst){
+  function buildRatiosBlock(pdf, ctx, ecoHist, isFirst, showKpi){
     if(!isFirst){ pdf.addPage(); }
     ctx.pageBg();
     let y=ctx.drawHeader();
     y=ctx.blockTitle('Ratios', y);
     if(!ecoHist || !ecoHist.length){ ctx.note('Sin datos de Economatica para esta empresa.', y); return; }
     const hist=[...ecoHist].sort((a,b)=>parseDate(b.fechaBal)-parseDate(a.fechaBal));
+    // KPIs (antes de las tablas) — sólo si no se mostraron ya en Financials
+    if(showKpi){ y=_buildKpiCards(pdf, ctx, hist[0], y); }
     const cols=hist.map(p=>p.fechaBal.substring(0,10));
     const cleanLabel=l=>l.replace(/^[^A-Za-zÁÉÍÓÚÑ]+/,'').trim();
     RAT_GROUPS.forEach(grp=>{
@@ -19799,10 +19833,15 @@ function renderEquity(){
       const mavCon=document.getElementById(`ficha-tab-content-${ticker}-mav`);
       const preciosCon=document.getElementById(`ficha-tab-content-${ticker}-precios`);
 
+      // ¿Dónde van los cards de KPI? Si financials está tildado → en financials. Si sólo
+      // ratios está tildado → en ratios. Si ambos → sólo en financials (evita duplicar).
+      const kpiInFin = checked.includes('financials');
+      const kpiInRat = checked.includes('ratios') && !checked.includes('financials');
+
       // Registry de bloques de la ficha. Cada entry: async (isFirst)=>void
       const REG={
-        financials: async(f)=>buildFinancialsBlock(pdf, ctx, ecoHist, f),
-        ratios:     async(f)=>buildRatiosBlock(pdf, ctx, ecoHist, f),
+        financials: async(f)=>buildFinancialsBlock(pdf, ctx, ecoHist, f, kpiInFin),
+        ratios:     async(f)=>buildRatiosBlock(pdf, ctx, ecoHist, f, kpiInRat),
         deudas:     async(f)=>buildDeudaBlock(pdf, ctx, deudaData, f, deudaCon),
         mav:        async(f)=>buildMavBlock(pdf, ctx, mavCon, f),
         precios:    async(f)=>buildPreciosBlock(pdf, ctx, ticker, f, preciosCon),
