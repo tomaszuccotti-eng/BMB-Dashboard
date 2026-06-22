@@ -20359,12 +20359,52 @@ function renderEquity(){
         kpiHtml=kc.innerHTML;
       }
 
+      // Saca controles de edición/interacción del clon (no del DOM real).
+      // El snapshot debe mostrar solo datos, sin botones que no harían nada.
+      function _earStripControls(node, id){
+        const rm=sel=>node.querySelectorAll(sel).forEach(el=>el.remove());
+        if(id==='financials'){
+          // Control "Orden columnas": remover el contenedor ctrlDiv completo.
+          const b=node.querySelector('[onclick*="_setColOrder"]');
+          if(b){
+            const btnBox=b.parentElement;          // div con los 2 botones
+            const ctrlDiv=btnBox?btnBox.parentElement:null; // ctrlDiv (span + btnBox)
+            (ctrlDiv||btnBox||b).remove();
+          }
+        }
+        if(id==='deudas'){
+          // Botón ↻ recargar worker BCRA
+          rm('[onclick*="_bcraRefreshInline"]');
+        }
+        if(id==='precios'){
+          rm(`#ear-range-btns-${ticker}`);          // rangos 1M/3M/.../TODO
+          rm('[onclick*="_earSetCcy"]');             // botones de moneda ARS/MEP/CCL
+          rm(`#ear-hist-more-${ticker}`);            // "Ver todas"
+          rm('[onclick*="_earHistMore"]');           // por si el botón vive fuera del contenedor
+          // Separadores verticales que quedaban entre rangos y moneda
+          node.querySelectorAll('div').forEach(d=>{
+            const s=d.getAttribute('style')||'';
+            if(/width:\s*1px/.test(s) && /background:\s*var\(--border2\)/.test(s)) d.remove();
+          });
+        }
+        if(id==='scoring'){
+          rm('[onclick*="openExcelManual"]');        // botón "+ Manual"
+          // Dropdown selector de sector → lo quitamos, la tabla queda congelada
+          node.querySelectorAll('[onchange*="_renderFichaSector"]').forEach(sel=>{
+            // sacar el wrapper label+select para no dejar el rótulo "Sector" huérfano
+            const wrap=sel.closest('div');
+            (wrap||sel).remove();
+          });
+        }
+      }
+
       // ── Clonar el contenido de cada sección tildada ──
       const sections=[];
       for(const id of toRun){
         const con=document.getElementById(`ficha-tab-content-${ticker}-${id}`);
         if(!con || con.innerHTML.trim()===''){ continue; }
         const cloned=_earCanvasesToImg(con);
+        _earStripControls(cloned, id);
         sections.push({ id, label:LABELS[id]||id, html:cloned.innerHTML });
       }
       if(!sections.length){ alert('Las secciones elegidas no tienen contenido para exportar.'); return; }
@@ -20408,6 +20448,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:13
 .rep-tab:hover{color:var(--text2);}
 .rep-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
 .rep-tabc img{max-width:100%;height:auto;}
+/* Scrollbar azul de marca (tabla histórica de precios y cualquier overflow) */
+*::-webkit-scrollbar{width:8px;height:8px;}
+*::-webkit-scrollbar-track{background:transparent;}
+*::-webkit-scrollbar-thumb{background:rgba(30,39,243,0.45);border-radius:4px;}
+*::-webkit-scrollbar-thumb:hover{background:rgba(30,39,243,0.7);}
+*{scrollbar-color:rgba(30,39,243,0.45) transparent;scrollbar-width:thin;}
 .rep-footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--border);font-size:10px;color:var(--text3);font-family:var(--mono);text-align:center;line-height:1.6;}
 @media print{
   .rep-tabs{display:none;}
