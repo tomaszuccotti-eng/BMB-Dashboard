@@ -12089,10 +12089,10 @@ const _eqRO = new ResizeObserver(entries => {
       <div id="sec-report-company" style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:18px;">—</div>
       <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);margin-bottom:10px;">Secciones a incluir</div>
       <div id="sec-report-checks" style="display:flex;flex-direction:column;gap:2px;margin-bottom:6px;"></div>
-      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);line-height:1.5;margin:10px 0 18px;">Elegí el formato: <strong style="color:var(--text2);">HTML</strong> genera un archivo navegable con pestañas; <strong style="color:var(--text2);">PDF</strong> aún en desarrollo.</div>
+      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);line-height:1.5;margin:10px 0 18px;">Elegí el formato: <strong style="color:var(--text2);">HTML</strong> genera un archivo navegable con pestañas; <strong style="color:var(--text2);">PDF</strong> genera un documento imprimible.</div>
       <div style="display:flex;gap:10px;">
         <button onclick="secReportGenerateHtml()" style="flex:1;padding:13px;border-radius:8px;border:1.5px solid #1E27F3;background:transparent;color:#1E27F3;font-size:16px;font-weight:800;cursor:pointer;font-family:var(--mono);transition:all .12s;" onmouseover="this.style.background='rgba(30,39,243,0.10)'" onmouseout="this.style.background='transparent'">HTML</button>
-        <button disabled title="Próximamente" style="flex:1;padding:13px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;color:var(--text3);font-size:16px;font-weight:800;cursor:not-allowed;font-family:var(--mono);opacity:.55;">PDF</button>
+        <button onclick="secReportGeneratePdf()" style="flex:1;padding:13px;border-radius:8px;border:1.5px solid #1E27F3;background:transparent;color:#1E27F3;font-size:16px;font-weight:800;cursor:pointer;font-family:var(--mono);transition:all .12s;" onmouseover="this.style.background='rgba(30,39,243,0.10)'" onmouseout="this.style.background='transparent'">PDF</button>
       </div>
     </div>
   </div>
@@ -16444,6 +16444,283 @@ function repShow(id,btn){
     }
   };
 
+  // ═══════════════════════════════════════════════════════════════
+  // REPORTE PDF (USA) — tablas autoTable nativas + gráficos como foto.
+  // Reusa la infra de PDF de ARG (window._earMakeCtx / _earPdfFooter),
+  // que ya respeta modo claro/oscuro vía _earPdfPalette(_isDark).
+  // Cada sección (Financials/Ratios/Comparar) arranca en hoja nueva.
+  // ═══════════════════════════════════════════════════════════════
+
+  // Convierte un color CSS (de una celda) a [r,g,b] si es verde/rojo/amarillo/azul
+  // de variación; devuelve null para colores de texto neutro (no colorear).
+  function _secColorToRGB(css){
+    if(!css) return null;
+    const c=css.trim().toLowerCase();
+    // hex conocidos usados en el dashboard
+    const MAP={
+      '#16a34a':[22,163,74], '#3fb950':[63,185,80], '#0d9e6e':[13,158,110],   // verdes
+      '#dc2626':[220,38,38], '#f85149':[248,81,73], '#e03131':[224,49,49],     // rojos
+      '#d4a017':[212,160,23],'#d97706':[217,119,6],                            // amarillos/ambar
+      '#a5b4fc':[165,180,252]                                                  // azul claro (neutro-ish)
+    };
+    if(MAP[c]) return MAP[c];
+    // rgb()/rgba()
+    const m=c.match(/rgba?\(([^)]+)\)/);
+    if(m){ const p=m[1].split(',').map(x=>parseFloat(x)); if(p.length>=3) return [p[0],p[1],p[2]]; }
+    // #rrggbb genérico
+    const h=c.match(/^#([0-9a-f]{6})$/);
+    if(h){ const n=parseInt(h[1],16); return [(n>>16)&255,(n>>8)&255,n&255]; }
+    return null;
+  }
+  // ¿Es un color que debemos preservar como coloreado de variación? (verde/rojo/ambar)
+  function _secIsVarColor(rgb){
+    if(!rgb) return false;
+    const [r,g,b]=rgb;
+    // azul claro neutro → no
+    if(r>140 && g>150 && b>230) return false;
+    // verdes, rojos, ambar tienen un canal dominante claro
+    return true;
+  }
+
+  // Parsea un <table> del DOM a {head, body, cellColors} para ctx.table.
+  // opts.dropCols: set de índices de columna a excluir (0-based, post-render).
+  function _secDomTableToAT(tableEl, opts){
+    opts=opts||{};
+    const drop=opts.dropCols||new Set();
+    const keep=idx=>!drop.has(idx);
+    // HEAD: última fila del thead (la de columnas reales)
+    const theadRows=tableEl.querySelectorAll('thead tr');
+    const headRow=theadRows[theadRows.length-1];
+    let head=[];
+    if(headRow){
+      head=Array.from(headRow.querySelectorAll('th,td'))
+        .map(th=>th.textContent.replace(/\s+/g,' ').trim())
+        .filter((_,i)=>keep(i));
+    }
+    // BODY
+    const body=[]; const cellColors={};
+    const trs=tableEl.querySelectorAll('tbody tr');
+    let r=0;
+    trs.forEach(tr=>{
+      const tds=Array.from(tr.querySelectorAll('td,th'));
+      if(!tds.length) return;
+      const row=[]; let cIdx=0;
+      tds.forEach((td,i)=>{
+        if(!keep(i)) return;
+        const txt=td.textContent.replace(/\s+/g,' ').trim();
+        row.push(txt);
+        // color de variación: leer color inline del td (o de un <span> interno)
+        let col=td.style.color;
+        const span=td.querySelector('span[style*="color"]');
+        if(span && span.style.color) col=span.style.color;
+        const rgb=_secColorToRGB(col);
+        if(rgb && _secIsVarColor(rgb) && cIdx>0){ cellColors[`${r},${cIdx}`]=rgb; }
+        cIdx++;
+      });
+      if(row.length){ body.push(row); r++; }
+    });
+    return { head, body, cellColors };
+  }
+
+  // KPIs estilo ARG (cards roundedRect, grilla 5/fila). Usa _kpiActive de USA.
+  function _secKpiCardsPdf(pdf, ctx, y){
+    const RGB=ctx.RGB, M=ctx.M, usableW=ctx.usableW, PH=ctx.PH;
+    const defs=_kpiActive.slice();
+    if(!defs.length) return y;
+    const perRow=5, gap=8, cardH=46, rowGap=8;
+    const rows=[];
+    for(let i=0;i<defs.length;i+=perRow) rows.push(defs.slice(i,i+perRow));
+    rows.forEach(rowDefs=>{
+      if(y+cardH>PH-M){ y=ctx.newPage(); }
+      const cardW=(usableW-gap*(perRow-1))/perRow;
+      rowDefs.forEach((kid,i)=>{
+        const cx=M+i*(cardW+gap);
+        const m=_kpiMeta(kid);
+        const v=_kpiValue(kid);
+        const disp=_kpiFmtVal(m.fmt,v);
+        pdf.setFillColor(...RGB.card2); pdf.roundedRect(cx, y, cardW, cardH, 3, 3, 'F');
+        pdf.setFont('helvetica','normal'); pdf.setFontSize(5.8); pdf.setTextColor(...RGB.text3);
+        pdf.text(String(m.label).toUpperCase(), cx+8, y+13, {maxWidth:cardW-16});
+        pdf.setFont('helvetica','bold'); pdf.setFontSize(13); pdf.setTextColor(...RGB.text2);
+        pdf.text(String(disp), cx+8, y+30, {maxWidth:cardW-16});
+        // variación coloreada
+        const vv=_kpiVariation(kid);
+        if(vv && !vv.nm){
+          let s='', col=RGB.text3;
+          if(vv.mode==='pp'){ s=(vv.diff>=0?'+':'')+vv.diff.toFixed(1)+'pp'; col=vv.diff>=0?RGB.green:RGB.red; }
+          else if(vv.mode==='abs'){ s=(vv.diff>=0?'+':'')+vv.diff.toFixed(2)+'x'; col=vv.diff>=0?RGB.green:RGB.red; }
+          else if(vv.pct!=null){ s=(vv.pct>=0?'+':'')+vv.pct.toFixed(1)+'%'; col=vv.pct>=0?RGB.green:RGB.red; }
+          if(s){ pdf.setFont('helvetica','bold'); pdf.setFontSize(7); pdf.setTextColor(...col); pdf.text(s, cx+8, y+41); }
+        }
+      });
+      y+=cardH+rowGap;
+    });
+    return y+4;
+  }
+
+  // Captura un canvas (chart vivo) a imagen para el PDF, respetando fondo del tema.
+  function _secChartToImg(ctx, canvas){
+    if(!canvas || !canvas.width) return null;
+    const RGB=ctx.RGB;
+    const off=document.createElement('canvas');
+    off.width=canvas.width; off.height=canvas.height;
+    const c2=off.getContext('2d');
+    // fondo del tema (card) para que el PNG no salga transparente/negro
+    c2.fillStyle=`rgb(${RGB.card[0]},${RGB.card[1]},${RGB.card[2]})`;
+    c2.fillRect(0,0,off.width,off.height);
+    c2.drawImage(canvas,0,0);
+    return { data:off.toDataURL('image/png'), ratio:canvas.height/canvas.width };
+  }
+
+  // Dibuja una imagen de chart centrada, saltando de hoja si no entra.
+  function _secDrawChart(ctx, im, title, y){
+    const pdf=ctx.pdf, RGB=ctx.RGB, M=ctx.M, PW=ctx.PW, PH=ctx.PH, usableW=ctx.usableW;
+    const bottom=PH-M;
+    // título de la card
+    if(title){ y=ctx.sub(title, y, 120); }
+    let imgW=usableW, imgH=usableW*im.ratio;
+    const maxH=bottom-y;
+    if(imgH>maxH){
+      // si no entra en lo que queda, probar hoja nueva
+      if(maxH < (PH-(M+22))*0.5){ y=ctx.newPage(); }
+      const avail=bottom-y;
+      if(imgH>avail){ imgH=avail; imgW=imgH/im.ratio; }
+    }
+    const x=M+(usableW-imgW)/2;
+    pdf.addImage(im.data,'PNG',x,y,imgW,imgH);
+    return y+imgH+14;
+  }
+
+  window.secReportGeneratePdf=async function(){
+    if(!_lastFacts || !_lastTicker){ alert('Primero buscá y cargá una empresa.'); return; }
+    if(typeof window._earMakeCtx!=='function'){ alert('La infraestructura de PDF no está disponible.'); return; }
+    if(!(window.jspdf && window.jspdf.jsPDF)){ alert('Las librerías de PDF aún se están cargando. Probá de nuevo.'); return; }
+    const checked=Array.from(document.querySelectorAll('.sec-rep-chk:checked')).map(c=>c.value);
+    if(!checked.length){ alert('Elegí al menos una sección.'); return; }
+
+    const btn=document.querySelector('#sec-report-overlay button[onclick="secReportGeneratePdf()"]');
+    const _orig=btn?btn.textContent:'';
+    if(btn){ btn.textContent='Generando…'; btn.disabled=true; }
+
+    try{
+      const ticker=_lastTicker;
+      const name=$('secCompanyName')?.textContent||ticker;
+      const meta=$('secCompanyMeta')?.textContent||'';
+      const _restoreTab=document.querySelector('#secTopTabs .sec-tab.active')?.id||'';
+
+      // Forzar render lazy de Comparar si está tildado y vacío
+      if(checked.includes('cmp') && !$('secCompare').innerHTML.trim()){
+        try{ renderCompare(); }catch(_){}
+        await new Promise(r=>setTimeout(r,250));
+      }
+      await new Promise(r=>setTimeout(r,300));
+
+      const { jsPDF }=window.jspdf;
+      const pdf=new jsPDF({orientation:'landscape',unit:'pt',format:'a4'});
+      const ctx=window._earMakeCtx(pdf, { ticker, name, sector:meta });
+
+      // KPIs van en la primera sección presente entre financials/ratios.
+      const kpiInFin = checked.includes('fin');
+      const kpiInRat = checked.includes('rat') && !checked.includes('fin');
+
+      // Orden canónico
+      const ORDER=['fin','rat','cmp'];
+      const toRun=ORDER.filter(id=>checked.includes(id));
+      let first=true;
+
+      for(const id of toRun){
+        // Cada sección arranca en hoja nueva (salvo la primera, que usa la inicial)
+        if(first){ ctx.pageBg(); var y=ctx.drawHeader(); first=false; }
+        else { y=ctx.newPage(); }
+
+        if(id==='fin'){
+          y=ctx.blockTitle('Financials', y);
+          if(kpiInFin){ y=_secKpiCardsPdf(pdf, ctx, y); }
+          // Orden de bloques: charts + tablas mezclados por order (igual que pantalla/HTML)
+          _chartDefs.forEach(_ensureSeries);
+          const blocks=[
+            ..._chartDefs.map(c=>({kind:'chart', order:c.order??0, def:c})),
+            ..._secTableDefs.map(d=>({kind:'table', order:d.order??0, def:d})),
+          ].sort((a,b)=>a.order-b.order);
+          for(const b of blocks){
+            if(b.kind==='chart'){
+              const cv=document.getElementById(`dashCanvas_${b.def.id}`);
+              const im=_secChartToImg(ctx, cv);
+              if(im){
+                const c=b.def;
+                const autoT = c.series.length===1 ? _chartMetaFor(c.series[0].metric).label
+                             : c.series.map(s=>_chartMetaFor(s.metric).label).join(' · ');
+                const ctitle=((c.title&&c.title.trim())?c.title:autoT)+' · '+(c.period==='quarterly'?'TRIM':'ANUAL');
+                y=_secDrawChart(ctx, im, ctitle, y);
+              }
+            } else {
+              // generar el HTML forReport de la tabla, parsear, dibujar autoTable
+              const html=_renderOneTable(b.def, true);
+              if(html && html.trim()){
+                const tmp=document.createElement('div'); tmp.innerHTML=html;
+                const tableEl=tmp.querySelector('table');
+                if(tableEl){
+                  const {head,body,cellColors}=_secDomTableToAT(tableEl);
+                  if(body.length){
+                    y=ctx.table(head, body, y, { title:b.def.title, cellColors });
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        else if(id==='rat'){
+          y=ctx.blockTitle('Ratios', y);
+          if(kpiInRat){ y=_secKpiCardsPdf(pdf, ctx, y); }
+          const src=$('secRatios');
+          if(src){
+            // cada tabla de ratios está dentro de un card con su título arriba
+            const cards=src.querySelectorAll(':scope > div');
+            cards.forEach(card=>{
+              const tableEl=card.querySelector('table');
+              if(!tableEl) return;
+              // título: primer div de texto del card (antes de la tabla)
+              const titleEl=card.querySelector('div');
+              let title=titleEl?titleEl.textContent.replace(/\s+/g,' ').trim():'';
+              title=title.replace(/(TRIMESTRAL|ANUAL)\s*$/,'').trim();
+              const {head,body,cellColors}=_secDomTableToAT(tableEl);
+              if(body.length){ y=ctx.table(head, body, y, { title, cellColors }); }
+            });
+          }
+        }
+
+        else if(id==='cmp'){
+          y=ctx.blockTitle('Comparar', y);
+          const src=$('secCompare');
+          const tableEl=src?src.querySelector('table'):null;
+          if(tableEl){
+            // detectar columna "Quitar" (última) para excluirla
+            const ths=tableEl.querySelectorAll('thead tr:last-child th');
+            const drop=new Set();
+            ths.forEach((th,i)=>{ if(/quitar/i.test(th.textContent)) drop.add(i); });
+            const {head,body,cellColors}=_secDomTableToAT(tableEl, {dropCols:drop});
+            if(body.length){
+              y=ctx.table(head, body, y, { title:'Comparativa de empresas', cellColors, centerAll:false });
+            }
+          } else {
+            ctx.note('Sin empresas para comparar.', y);
+          }
+        }
+      }
+
+      // Restaurar tab activa
+      if(_restoreTab){ const m=_restoreTab.match(/secTab(\w+)Btn/); if(m){ try{ secShowTab(m[1].toLowerCase()); }catch(_){} } }
+
+      window._earPdfFooter(pdf, ctx.RGB);
+      pdf.save(`${ticker}_reporte_${new Date().toISOString().slice(0,10)}.pdf`);
+    }catch(err){
+      alert('No se pudo generar el PDF: '+(err&&err.message?err.message:err));
+    }finally{
+      if(btn){ btn.textContent=_orig||'PDF'; btn.disabled=false; }
+      secCloseReportDialog();
+    }
+  };
   window.secGenerateReport = function(){
     const ticker = _lastTicker||'—';
     const name   = $('secCompanyName')?.textContent||ticker;
