@@ -19276,25 +19276,38 @@ function renderEquity(){
 
 
   // ── BLOQUE: MAV (CENDEU) ──────────────────────────────────────────────
-  // Reutilizable ficha ↔ herramienta. Hoy la única fuente práctica es el DOM
-  // ya renderizado del tab/herramienta MAV. El acoplamiento al DOM queda
-  // contenido acá: recibe el contenedor donde está renderizado el análisis.
-  function buildMavBlock(pdf, ctx, mavCon, isFirst){
+  // Reutilizable ficha ↔ herramienta. Fuente: DOM ya renderizado del tab MAV.
+  // Estructura nueva (espejo del tab): heros capturados (hero/moncards/venc) +
+  // tabla de detalle NATIVA (autoTable, con paginación y título no-huérfano).
+  async function buildMavBlock(pdf, ctx, mavCon, isFirst){
     if(!isFirst){ pdf.addPage(); }
     ctx.pageBg();
     let y=ctx.drawHeader();
     y=ctx.blockTitle('MAV · Central de Deuda', y);
     if(!mavCon){ ctx.note('Sin archivo CENDEU cargado para MAV.', y); return; }
     // Caso "cargado sin deuda": existe [data-mav-wrap] pero sin tablas ni filas.
-    // El tab muestra el cartel "Sin deuda en el MAV"; lo replicamos en el PDF.
     const mavWrap=mavCon.querySelector('[data-mav-wrap]');
     const hasContent=mavCon.querySelector('table, .mav-vrow, .mav-moncard');
     if(mavWrap && !hasContent){
       y=ctx.note('Esta empresa no registra deuda en el MAV (Central de Deudores).', y);
       return;
     }
+
+    // 1 ── HERO: info + KPIs + cotizaciones (captura del DOM, reescala a la hoja)
+    const heroEl=mavCon.querySelector('.mav-rep-hero');
+    if(heroEl){ const im=await ctx.domToImg(heroEl); if(im) y=ctx.image(im, null, y); }
+
+    // 2 ── RESUMEN POR MONEDA: cards idénticas al HTML (captura, con su título)
+    const monEl=mavCon.querySelector('.mav-rep-moncards');
+    if(monEl){ const im=await ctx.domToImg(monEl); if(im) y=ctx.image(im, null, y); }
+
+    // 3 ── VENCIMIENTOS POR MES: barras apiladas de colores (captura).
+    // Captura el bloque completo (ya trae su propio título estilado) → sin caption.
+    const vencEl=mavCon.querySelector('.mav-rep-venc');
+    if(vencEl){ const im=await ctx.domToImg(vencEl); if(im) y=ctx.image(im, null, y); }
+
+    // 4 ── DETALLE DE INSTRUMENTOS: tabla NATIVA (no foto)
     const tables=Array.from(mavCon.querySelectorAll('table'));
-    // Tabla de detalle = la de más columnas
     let detTbl=null, maxC=0;
     tables.forEach(tb=>{ const c=tb.querySelectorAll('thead th').length; if(c>maxC){maxC=c;detTbl=tb;} });
     if(detTbl){
@@ -19307,29 +19320,11 @@ function renderEquity(){
         const val=cells[cells.length-1]?cells[cells.length-1].textContent.trim():'';
         body.push(head.map((_,i)=> i===0?lbl : (i===head.length-1?val:'')));
       }
-      if(head.length&&body.length){ y=ctx.sub('Detalle de instrumentos', y); y=ctx.table(head, body, y, {columnStyles:{0:{halign:'left'}}}); }
+      // title va como primera fila del thead → no queda huérfano y se repite al partir
+      if(head.length&&body.length){ y=ctx.table(head, body, y, {title:'Detalle de instrumentos', columnStyles:{0:{halign:'left'}}}); }
     }
-    // Vencimientos por mes
-    const venRows=Array.from(mavCon.querySelectorAll('.mav-vrow'));
-    if(venRows.length){
-      const vbody=venRows.map(r=>[
-        r.querySelector('.mav-vrow-mes')?.textContent.trim()||'—',
-        r.querySelector('.mav-vrow-desg')?.textContent.trim()||'—',
-        r.querySelector('.mav-vrow-tot')?.textContent.trim()||'—',
-      ]);
-      y=ctx.sub('Vencimientos por mes', y); y=ctx.table(['Mes','Desglose por moneda','Total'], vbody, y, {columnStyles:{1:{halign:'left'}}});
-    }
-    // Resumen por moneda
-    const monCards=Array.from(mavCon.querySelectorAll('.mav-moncard'));
-    if(monCards.length){
-      const mbody=monCards.map(c=>[
-        c.querySelector('.mav-moncard-head')?.textContent.trim()||'—',
-        c.querySelector('.mav-moncard-total')?.textContent.trim()||'—',
-        c.querySelector('.mav-moncard-meta')?.textContent.trim()||'',
-      ]);
-      y=ctx.sub('Resumen por moneda', y); y=ctx.table(['Moneda','Total','Detalle'], mbody, y, {columnStyles:{2:{halign:'left'}}});
-    }
-    if(!detTbl && !venRows.length && !monCards.length) ctx.note('Sin datos de MAV para mostrar.', y);
+
+    if(!heroEl && !monEl && !vencEl && !detTbl) ctx.note('Sin datos de MAV para mostrar.', y);
   }
 
   // ── BLOQUE: PRECIOS ───────────────────────────────────────────────────
@@ -22412,13 +22407,20 @@ function renderCheques(cheques){
     // ════════════════════════════════════════════════
     // ENSAMBLE: Info → KPIs → Vencimientos → Tabla
     // ════════════════════════════════════════════════
+    // Los wrappers .mav-rep-* agrupan secciones para que el generador de PDF las
+    // capture como heros atómicos (html2canvas). Sin estilo propio → no alteran el
+    // layout del tab (los hijos conservan sus márgenes y el flujo de bloque).
     container.innerHTML=`<div data-mav-wrap="1" data-mav-razon="${(razonSocial||'').replace(/"/g,'&quot;')}" data-mav-cuit="${cuitFmt}" data-mav-informe="${informe.str||''}">
-      ${infoBar}
-      <div class="mav-kpi-grid">${n1}</div>
-      ${cotBar}
-      ${monCards?`<div class="mav-section-title">Resumen por moneda</div><div class="mav-moncard-grid">${monCards}</div>`:''}
-      <div class="mav-section-title">Vencimientos por mes</div>
-      ${venBlock}
+      <div class="mav-rep-hero">
+        ${infoBar}
+        <div class="mav-kpi-grid">${n1}</div>
+        ${cotBar}
+      </div>
+      ${monCards?`<div class="mav-rep-moncards"><div class="mav-section-title">Resumen por moneda</div><div class="mav-moncard-grid">${monCards}</div></div>`:''}
+      <div class="mav-rep-venc">
+        <div class="mav-section-title">Vencimientos por mes</div>
+        ${venBlock}
+      </div>
       <div class="mav-section-title">Detalle de instrumentos</div>
       ${detTable}
     </div>`;
