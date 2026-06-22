@@ -1700,9 +1700,9 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 #app-rf .sb-scroll::-webkit-scrollbar-thumb{background:rgba(30,39,243,0.45);border-radius:3px;}
 #app-rf .sb-msg{padding:20px 8px;font-family:var(--mono);font-size:10px;color:var(--text3);text-align:center;}
 #app-rf .sb-foot{flex-shrink:0;padding:10px 12px;border-top:1px solid var(--border);background:var(--bg2);}
-#app-rf .sb-foot button{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:9px 12px;border-radius:7px;border:1px solid var(--accent);background:var(--accent-light);color:var(--accent2);font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.04em;cursor:pointer;transition:all .14s;}
-#app-rf .sb-foot button:hover{background:var(--accent);color:#fff;}
-#app-rf .sb-foot button svg{flex-shrink:0;}
+#app-rf .sb-foot button{width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-family:var(--mono);font-size:10px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;}
+#app-rf .sb-foot button:hover{border-color:#1E27F3;color:var(--text);background:var(--accent-light);}
+#app-rf .sb-foot button svg{flex-shrink:0;vertical-align:-2px;}
 
 /* Categoría */
 #app-rf .cat-wrap{margin-bottom:2px;}
@@ -4341,12 +4341,12 @@ window.lcSort=function(key){
 
 /* ══════════════════════════════════════════════════════════
    GENERAR REPORTE — Renta Fija (PDF)
-   Hoja 1 por categoría: título + curva (alto completo).
-   Hoja 2+: tabla (autoTable repite encabezados al partir).
+   Hoja 1 por categoría: torito + título + curva (alto completo).
+   Hoja 2+: tabla (autoTable; repite encabezados al partir).
 ══════════════════════════════════════════════════════════ */
 
 // Detecta tema oscuro leyendo el color de fondo aplicado (sin depender de _isDark,
-// que vive en otro scope). Si el canal de luminancia es bajo → oscuro.
+// que vive en otro scope). Si la luminancia es baja → oscuro.
 function rfReportIsDark(){
   try{
     const bg=getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
@@ -4356,12 +4356,41 @@ function rfReportIsDark(){
   return true;
 }
 
+// Toma el <img> del torito (botón Inicio de RF) y lo convierte a PNG dataURL,
+// porque jsPDF no soporta WEBP. Se cachea entre llamadas. Devuelve null si falla.
+let _rfToritoPng=null;
+async function rfGetToritoPng(){
+  if(_rfToritoPng!==null) return _rfToritoPng||null;
+  try{
+    const img=document.querySelector('#app-rf .tb-home img');
+    if(!img || !img.src){ _rfToritoPng=''; return null; }
+    const load=new Promise((res,rej)=>{
+      if(img.complete && img.naturalWidth>0) return res(img);
+      const tmp=new Image(); tmp.crossOrigin='anonymous';
+      tmp.onload=()=>res(tmp); tmp.onerror=rej; tmp.src=img.src;
+    });
+    const ready=await load;
+    const w=ready.naturalWidth||64, h=ready.naturalHeight||64;
+    const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+    cv.getContext('2d').drawImage(ready,0,0,w,h);
+    _rfToritoPng={ data:cv.toDataURL('image/png'), w, h };
+    return _rfToritoPng;
+  }catch(_){ _rfToritoPng=''; return null; }
+}
+
 // ¿La categoría tiene curva? (mismo criterio que renderCurva)
 function rfCatTieneCurva(tipo){
   return TIPOS_CALCULADORA.has(tipo)||TIPOS_BONCER.has(tipo)||
     tipo==='soberano'||tipo==='dolarlinked'||tipo==='bopreal'||
     tipo==='fixed_rate'||tipo==='tamar'||tipo==='dual_tamar'||tipo==='duales';
 }
+
+// ¿Una fila es dual? (pata fija de un dual)
+function rfRowEsDual(r){ return r && (r.tipo==='dual_boncap'||r.tipo==='dual_tamar'||r.tipo==='dual_boncer'); }
+
+// Categorías en las que, por defecto, excluimos los duales (se ven en su propia
+// categoría "Duales"/"TAMARs"). Coincide con el botón DUALES de la UI.
+const RF_CATS_SIN_DUALES = new Set(['boncap','boncer','tamar']);
 
 // Devuelve [{tipo,label,count}] de categorías con instrumentos vigentes, en orden canónico.
 function rfReportableCats(){
@@ -4372,6 +4401,8 @@ function rfReportableCats(){
     let rows;
     try{ rows = tipo==='duales' ? cruzarDual(_precios,liq) : cruzar(tipo,_precios,liq); }
     catch(_){ rows=[]; }
+    // Para categorías sin-duales, no contamos las patas duales
+    if(rows && RF_CATS_SIN_DUALES.has(tipo)) rows=rows.filter(r=>!rfRowEsDual(r));
     if(rows && rows.length){
       out.push({tipo, label:CAT_LABELS[tipo]||tipo, count:rows.length});
     }
@@ -4418,88 +4449,135 @@ window.rfReportSyncAll=function(){
 // Rasteriza la curva de una categoría a PNG (alta resolución) usando un canvas
 // off-screen y un Chart efímero. No toca el chart en pantalla.
 // opts.excluded: Set de labels a excluir (solo para la categoría activa).
+// opts.showDuales: si false, oculta puntos duales.
+// opts.patas: si true (categoría duales), grafica patas TAMAR/Fija separadas.
 async function rfBuildCurveImage(tipo, rows, opts){
   opts=opts||{};
   if(!rfCatTieneCurva(tipo)) return null;
   const excluded = opts.excluded || new Set();
   const showDuales = opts.showDuales!==false;
+  const patas = !!opts.patas && tipo==='duales';
   const axY = opts.axY || 'tna';
   const axX = opts.axX || 'md';
   const isXDias = axX==='dias';
   const catLabel = CAT_LABELS[tipo]||tipo;
+  const dark=rfReportIsDark();
+  const gridC=dark?'rgba(120,135,184,0.22)':'rgba(58,63,92,0.18)';
+  const axisC=dark?'#c3c9e6':'#3a3f5c';     // color de la línea de eje (marcado)
+  const tickC=dark?'#a5b4fc':'#3a3f5c';
+  const titleC=dark?'#c7ccf0':'#23263c';
+  const legendC=dark?'#e8eaf6':'#10121a';
 
-  // Construir puntos válidos (mismo criterio que renderCurva)
-  const valid=rows.filter(r=>r.calc&&!isNaN(lcGetAxisVal(r,axX))&&lcGetAxisVal(r,axX)>0&&!isNaN(lcGetAxisVal(r,axY)));
-  const rawPts=valid.map(r=>({x:lcGetAxisVal(r,axX),y:lcGetAxisVal(r,axY),label:r.ticker,tipo:r.tipo}));
-  const allPts=rawPts.map((p)=>{
-    const dupes=rawPts.filter(q=>Math.abs(q.x-p.x)<0.001&&Math.abs(q.y-p.y)<0.05);
-    if(dupes.length>1){const idx=dupes.indexOf(p);const offset=(idx-(dupes.length-1)/2)*0.08;return{...p,y:p.y+offset};}
-    return p;
-  });
-  const ap=allPts.filter(p=>!excluded.has(p.label)&&(showDuales||(p.tipo!=='dual_boncap'&&p.tipo!=='dual_tamar'&&p.tipo!=='dual_boncer')));
-  if(!ap.length) return null;
-
-  const isSobLeyAR=t=>t.toUpperCase().startsWith('A');
   const datasets=[];
-  if(tipo==='soberano'){
-    const ptsAR=ap.filter(p=>isSobLeyAR(p.label));
-    const ptsNY=ap.filter(p=>!isSobLeyAR(p.label));
-    const trAR=makeTrendDs(ptsAR,'#1E27F3'); if(trAR){trAR.label='_trend_ar';datasets.push(trAR);}
-    const trNY=makeTrendDs(ptsNY,'#22c55e'); if(trNY){trNY.label='_trend_ny';datasets.push(trNY);}
-    datasets.push({label:'Ley AR',data:ptsAR,backgroundColor:'#1E27F3',borderColor:'#1E27F3',pointRadius:6,showLine:false,order:2});
-    datasets.push({label:'Ley NY',data:ptsNY,backgroundColor:'#22c55e',borderColor:'#22c55e',pointRadius:6,showLine:false,order:2});
+
+  if(patas){
+    // Patas separadas para duales (mismo criterio que renderCurva _showPatas)
+    const ptsTamar=rows.filter(r=>r.calcTamar&&!isNaN(r.calcTamar.tna)&&r.calcTamar.md>0)
+      .map(r=>({x:lcGetAxisVal({calc:r.calcTamar},axX),y:lcGetAxisVal({calc:r.calcTamar},axY),label:r.ticker+' (T)'}))
+      .filter(p=>isFinite(p.x)&&isFinite(p.y)&&p.x>0);
+    const ptsFija=rows.filter(r=>r.calcFija&&!isNaN(r.calcFija.tna)&&r.calcFija.md>0)
+      .map(r=>({x:lcGetAxisVal({calc:r.calcFija},axX),y:lcGetAxisVal({calc:r.calcFija},axY),label:r.ticker+' (F)'}))
+      .filter(p=>isFinite(p.x)&&isFinite(p.y)&&p.x>0);
+    if(!ptsTamar.length && !ptsFija.length) return null;
+    const trT=makeTrendDs(ptsTamar,'#1E27F3'); if(trT){trT.label='_trend_t';datasets.push(trT);}
+    const trF=makeTrendDs(ptsFija,'#0d9e6e',true); if(trF){trF.label='_trend_f';datasets.push(trF);}
+    datasets.push({label:'Pata TAMAR',data:ptsTamar,backgroundColor:'#1E27F3',borderColor:'#1E27F3',pointRadius:6,showLine:false,order:2});
+    datasets.push({label:'Pata BONCAP/CER',data:ptsFija,backgroundColor:'#0d9e6e',borderColor:'#0d9e6e',pointRadius:6,showLine:false,order:2});
+    var allForRange=[...ptsTamar,...ptsFija];
   } else {
-    const tr=makeTrendDs(ap,'#1E27F3'); if(tr) datasets.push(tr);
-    const colors=ap.map(p=>(p.tipo==='dual_tamar'||p.tipo==='dual_boncap'||p.tipo==='dual_boncer')?'rgba(245,166,35,0.9)':'#1E27F3');
-    datasets.push({label:catLabel,data:ap,backgroundColor:colors,borderColor:colors,pointRadius:6,showLine:false,order:2});
+    // Construir puntos válidos (mismo criterio que renderCurva)
+    const valid=rows.filter(r=>r.calc&&!isNaN(lcGetAxisVal(r,axX))&&lcGetAxisVal(r,axX)>0&&!isNaN(lcGetAxisVal(r,axY)));
+    const rawPts=valid.map(r=>({x:lcGetAxisVal(r,axX),y:lcGetAxisVal(r,axY),label:r.ticker,tipo:r.tipo}));
+    const allPts=rawPts.map((p)=>{
+      const dupes=rawPts.filter(q=>Math.abs(q.x-p.x)<0.001&&Math.abs(q.y-p.y)<0.05);
+      if(dupes.length>1){const idx=dupes.indexOf(p);const offset=(idx-(dupes.length-1)/2)*0.08;return{...p,y:p.y+offset};}
+      return p;
+    });
+    const ap=allPts.filter(p=>!excluded.has(p.label)&&(showDuales||!(p.tipo==='dual_boncap'||p.tipo==='dual_tamar'||p.tipo==='dual_boncer')));
+    if(!ap.length) return null;
+
+    const isSobLeyAR=t=>t.toUpperCase().startsWith('A');
+    if(tipo==='soberano'){
+      const ptsAR=ap.filter(p=>isSobLeyAR(p.label));
+      const ptsNY=ap.filter(p=>!isSobLeyAR(p.label));
+      const trAR=makeTrendDs(ptsAR,'#1E27F3'); if(trAR){trAR.label='_trend_ar';datasets.push(trAR);}
+      const trNY=makeTrendDs(ptsNY,'#22c55e'); if(trNY){trNY.label='_trend_ny';datasets.push(trNY);}
+      datasets.push({label:'Ley AR',data:ptsAR,backgroundColor:'#1E27F3',borderColor:'#1E27F3',pointRadius:6,showLine:false,order:2});
+      datasets.push({label:'Ley NY',data:ptsNY,backgroundColor:'#22c55e',borderColor:'#22c55e',pointRadius:6,showLine:false,order:2});
+    } else {
+      const tr=makeTrendDs(ap,'#1E27F3'); if(tr) datasets.push(tr);
+      const hasDual=ap.some(p=>p.tipo==='dual_tamar'||p.tipo==='dual_boncap'||p.tipo==='dual_boncer');
+      const colors=ap.map(p=>(p.tipo==='dual_tamar'||p.tipo==='dual_boncap'||p.tipo==='dual_boncer')?'rgba(245,166,35,0.95)':'#1E27F3');
+      datasets.push({label:catLabel,data:ap,backgroundColor:colors,borderColor:colors,pointRadius:6,showLine:false,order:2});
+      if(hasDual){ // dataset fantasma solo para que aparezca el dual en la leyenda
+        datasets.push({label:'Dual',data:[],backgroundColor:'rgba(245,166,35,0.95)',borderColor:'rgba(245,166,35,0.95)',pointRadius:6,showLine:false,order:2});
+      }
+    }
+    var allForRange=ap;
   }
 
+  if(!allForRange.length) return null;
   // Rango (mismo cálculo que getRange de renderCurva)
-  const fn=polyFit2(ap.filter(p=>isFinite(p.x)&&isFinite(p.y)));
-  const xs=ap.map(p=>p.x),ys=ap.map(p=>p.y);
+  const fnPts=allForRange.filter(p=>isFinite(p.x)&&isFinite(p.y));
+  const fn=polyFit2(fnPts);
+  const xs=allForRange.map(p=>p.x),ys=allForRange.map(p=>p.y);
   const xMin=Math.min(...xs),xMax=Math.max(...xs);
   const tYs=[]; if(fn){for(let i=0;i<=40;i++){const tx=xMin+(xMax-xMin)*i/40;const ty=fn(tx);if(isFinite(ty))tYs.push(ty);}}
   const allYs=[...ys,...tYs],yPad=(Math.max(...allYs)-Math.min(...allYs))*0.18||1,xPad=(xMax-xMin)*0.12||0.02;
   const range={xMin:xMin-xPad,xMax:xMax+xPad,yMin:Math.min(...allYs)-yPad,yMax:Math.max(...allYs)+yPad};
+
+  // ¿Mostrar leyenda? Sí cuando hay más de una serie con sentido.
+  const realSeries=datasets.filter(d=>typeof d.label==='string' && !d.label.startsWith('_'));
+  const showLegend = patas || tipo==='soberano' || realSeries.length>1;
 
   // Canvas off-screen de alta resolución
   const cv=document.createElement('canvas');
   cv.width=1600; cv.height=900;
   cv.style.position='fixed'; cv.style.left='-9999px'; cv.style.top='0';
   document.body.appendChild(cv);
-  const dark=rfReportIsDark();
-  const gridC=dark?'rgba(30,39,243,0.12)':'rgba(30,39,243,0.10)';
-  const tickC=dark?'#7e87b8':'#8a90b0';
-  const titleC=dark?'#a5b4fc':'#3a3f5c';
 
   const chart=new Chart(cv,{
     type:'scatter',
     data:{datasets},
     options:{
       responsive:false, animation:false, devicePixelRatio:2,
-      plugins:{ legend:{display:tipo==='soberano',labels:{color:tickC,font:{size:18,family:"'DM Mono',monospace"},filter:i=>i.text&&!i.text.startsWith('_')}}, tooltip:{enabled:false} },
+      layout:{padding:{top:showLegend?6:14,right:24,bottom:8,left:8}},
+      plugins:{
+        legend:{ display:showLegend, position:'top',
+          labels:{ color:legendC, boxWidth:14, boxHeight:14, padding:18,
+            font:{size:20,family:"'DM Mono',monospace",weight:'700'},
+            filter:i=>i.text && !i.text.startsWith('_'),
+            usePointStyle:true, pointStyle:'rectRounded' } },
+        tooltip:{enabled:false}
+      },
       scales:{
-        x:{min:range.xMin,max:range.xMax,grid:{color:gridC},
-          ticks:{color:tickC,font:{family:"'DM Mono',monospace",size:16},callback:v=>isXDias?Math.round(v)+'d':v.toFixed(2)},
-          title:{display:true,text:lcAxisLabel(axX),color:titleC,font:{size:18}}},
-        y:{min:range.yMin,max:range.yMax,grid:{color:gridC},
-          ticks:{color:tickC,font:{family:"'DM Mono',monospace",size:16},callback:v=>v.toFixed(1)+'%'},
-          title:{display:true,text:lcAxisLabel(axY)+' (%)',color:titleC,font:{size:18}}}
+        x:{ min:range.xMin, max:range.xMax,
+          grid:{ color:gridC, lineWidth:1 },
+          border:{ display:true, color:axisC, width:2 },
+          ticks:{ color:tickC, font:{family:"'DM Mono',monospace",size:17}, padding:8,
+            callback:v=>isXDias?Math.round(v)+'d':v.toFixed(2) },
+          title:{ display:true, text:lcAxisLabel(axX), color:titleC, font:{size:20,weight:'700'}, padding:{top:6} } },
+        y:{ min:range.yMin, max:range.yMax,
+          grid:{ color:gridC, lineWidth:1 },
+          border:{ display:true, color:axisC, width:2 },
+          ticks:{ color:tickC, font:{family:"'DM Mono',monospace",size:17}, padding:8,
+            callback:v=>v.toFixed(1)+'%' },
+          title:{ display:true, text:lcAxisLabel(axY)+' (%)', color:titleC, font:{size:20,weight:'700'}, padding:{bottom:6} } }
       }
     },
     plugins:[{id:'rf-rep-lbl',afterDatasetsDraw(c){
-      const ctx=c.ctx; ctx.save(); ctx.font="600 15px 'DM Mono',monospace"; ctx.fillStyle=tickC;
+      const ctx=c.ctx; ctx.save(); ctx.font="700 16px 'DM Mono',monospace"; ctx.fillStyle=tickC;
       c.data.datasets.forEach((ds,di)=>{
         if(typeof ds.label==='string'&&ds.label.startsWith('_trend')) return;
         const meta=c.getDatasetMeta(di);
-        ds.data.forEach((pt,pi)=>{ const el=meta.data[pi]; if(!el||!pt.label) return; ctx.fillText(displayName(pt.label), el.x+9, el.y-8); });
+        ds.data.forEach((pt,pi)=>{ const el=meta.data[pi]; if(!el||!pt.label) return; ctx.fillText(displayName(pt.label), el.x+9, el.y-9); });
       });
       ctx.restore();
     }}]
   });
 
   // Esperar a que pinte
-  await new Promise(r=>setTimeout(r,120));
+  await new Promise(r=>setTimeout(r,140));
   let img=null;
   try{ img=cv.toDataURL('image/png'); }catch(_){}
   try{ chart.destroy(); }catch(_){}
@@ -4523,10 +4601,11 @@ window.rfReportGenerate=async function(){
     const M=36;
     const dark=rfReportIsDark();
     const RGB = dark
-      ? {bg:[11,14,23],card:[17,21,31],head:[26,31,48],border:[34,42,61],text:[232,234,246],text2:[195,201,230],text3:[126,135,184],accent:[30,39,243],alt:[20,25,37]}
-      : {bg:[255,255,255],card:[247,248,252],head:[228,231,242],border:[210,214,235],text:[10,12,26],text2:[58,63,92],text3:[138,144,176],accent:[30,39,243],alt:[241,243,250]};
+      ? {bg:[11,14,23],card:[17,21,31],head:[26,31,48],border:[34,42,61],text:[232,234,246],text2:[195,201,230],text3:[126,135,184],accent:[30,39,243],alt:[20,25,37],tickerBg:[18,22,46],green:[63,185,80],red:[248,81,73]}
+      : {bg:[255,255,255],card:[247,248,252],head:[228,231,242],border:[210,214,235],text:[10,12,26],text2:[58,63,92],text3:[138,144,176],accent:[30,39,243],alt:[241,243,250],tickerBg:[232,235,250],green:[13,158,110],red:[224,49,49]};
     const fechaTxt=new Date().toLocaleDateString('es-AR',{year:'numeric',month:'long',day:'numeric'});
     const liq=document.getElementById('lc-fecha-liq')?.value||defaultLiq();
+    const torito=await rfGetToritoPng();
 
     const pageBg=()=>{ pdf.setFillColor(...RGB.bg); pdf.rect(0,0,PW,PH,'F'); };
     const footer=()=>{
@@ -4543,33 +4622,44 @@ window.rfReportGenerate=async function(){
     for(const tipo of cats){
       // Calcular filas. Si es la categoría activa, reutilizar _rows (respeta su estado).
       let rows, curveOpts;
+      const esDualesCat = (tipo==='duales');
       if(tipo===_catActiva && _rows && _rows.length){
-        rows=_rows;
-        curveOpts={excluded:_excluded, showDuales:_showDuales, axY:_chartAxisY, axX:_chartAxisX};
+        rows=_rows.slice();
+        curveOpts={excluded:_excluded, showDuales:_showDuales, axY:_chartAxisY, axX:_chartAxisX, patas:esDualesCat&&_showPatas};
+        // Si la categoría activa es una de las "sin duales" y el usuario tiene duales ocultos,
+        // reflejarlo también en la tabla.
+        if(RF_CATS_SIN_DUALES.has(tipo) && !_showDuales) rows=rows.filter(r=>!rfRowEsDual(r));
       } else {
-        if(tipo==='tamar'||tipo==='duales'){ try{ await calcularTamarProms(); }catch(_){} }
-        rows = tipo==='duales' ? cruzarDual(_precios,liq) : cruzar(tipo,_precios,liq);
-        curveOpts={excluded:new Set(), showDuales:true, axY:'tna', axX:'md'};
+        if(tipo==='tamar'||esDualesCat){ try{ await calcularTamarProms(); }catch(_){} }
+        rows = esDualesCat ? cruzarDual(_precios,liq) : cruzar(tipo,_precios,liq);
+        // Reglas pedidas: boncer/boncap/tamar SIN duales; duales CON patas.
+        if(RF_CATS_SIN_DUALES.has(tipo)) rows=rows.filter(r=>!rfRowEsDual(r));
+        curveOpts={excluded:new Set(), showDuales:!RF_CATS_SIN_DUALES.has(tipo), axY:'tna', axX:'md', patas:esDualesCat};
       }
       if(!rows||!rows.length) continue;
 
       const catLabel=CAT_LABELS[tipo]||tipo;
 
-      // ── HOJA 1: título + curva (alto completo) ──
+      // ── HOJA 1: torito + título + curva (alto completo) ──
       if(!firstPage) pdf.addPage();
       firstPage=false;
       pageBg();
-      // Título
+      // Torito a la izquierda del título
+      let titleX=M;
+      if(torito && torito.data){
+        const logoH=26, logoW=logoH*(torito.w/torito.h);
+        try{ pdf.addImage(torito.data,'PNG',M,M-14,logoW,logoH,undefined,'FAST'); }catch(_){}
+        titleX=M+logoW+12;
+      }
       pdf.setFont('helvetica','bold'); pdf.setFontSize(20); pdf.setTextColor(...RGB.accent);
-      pdf.text(`Renta Fija — ${catLabel}`, M, M+10);
+      pdf.text(`Renta Fija — ${catLabel}`, titleX, M+10);
       pdf.setFont('helvetica','normal'); pdf.setFontSize(9); pdf.setTextColor(...RGB.text3);
-      pdf.text(`${rows.length} instrumentos · ${fechaTxt} · liq. ${fmtDateShort(liq)}`, M, M+26);
+      pdf.text(`${rows.length} instrumentos · ${fechaTxt} · liq. ${fmtDateShort(liq)}`, titleX, M+26);
       pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.5); pdf.line(M,M+34,PW-M,M+34);
 
       const curveImg=await rfBuildCurveImage(tipo, rows, curveOpts);
       const topY=M+46, bottomY=PH-30;
       if(curveImg){
-        // Encajar 1600×900 (16:9) en el área disponible, centrado, ocupando todo el alto posible.
         const availW=PW-M*2, availH=bottomY-topY;
         const ratio=900/1600;
         let w=availW, h=w*ratio;
@@ -4584,56 +4674,91 @@ window.rfReportGenerate=async function(){
 
       // ── HOJA 2+: tabla ──
       const cols=getCols(tipo);
-      const isDualRow=r=>r.tipo==='dual_boncap'||r.tipo==='dual_tamar'||r.tipo==='dual_boncer';
-      const sortKey = tipo==='duales' ? 'tna_tamar' : 'tna';
-      const sortCol = cols.find(c=>c.key===sortKey) || cols.find(c=>c.key==='tna');
+      const sortKey = esDualesCat ? 'tna_tamar' : 'tna';
+      const sortCol = cols.find(c=>c.key===sortKey) || cols.find(c=>c.key==='tna') || cols.find(c=>c.colorTNA);
       const sorted=[...rows].sort((a,b)=>{
         if(!sortCol) return 0;
         const va=sortCol.sort(a), vb=sortCol.sort(b);
         if(typeof va==='string') return va.localeCompare(vb);
-        return (isNaN(vb)?-Infinity:vb)-(isNaN(va)?-Infinity:va); // desc por TNA
+        return (isNaN(vb)?-Infinity:vb)-(isNaN(va)?-Infinity:va); // desc
       });
 
       const head=[cols.map(c=>c.label)];
-      const stripHtml=s=>String(s).replace(/<[^>]*>/g,'').replace(/&amp;/g,'&').replace(/&nbsp;/g,' ').trim();
+      const stripHtml=s=>String(s).replace(/<[^>]*>/g,'').replace(/&amp;/g,'&').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
       const body=sorted.map(r=>cols.map(c=>stripHtml(c.fmt(r))));
 
-      // Índice de columna TNA y rango para heatmap (excluye duales si no se muestran)
-      const tnaIdx=cols.findIndex(c=>c.colorTNA);
-      let tnaMin=null,tnaMax=null;
-      if(tnaIdx>=0){
-        const vals=sorted.map(r=>{const c=cols[tnaIdx];const v=c.sort(r);return (v===-Infinity||isNaN(v))?null:v;}).filter(v=>v!==null);
-        if(vals.length>=2){ tnaMin=Math.min(...vals); tnaMax=Math.max(...vals); }
+      // Índices de columnas con formato de color
+      const tnaIdx=cols.findIndex(c=>c.colorTNA);          // heatmap TNA
+      const activaIdx=cols.findIndex(c=>c.colorActiva);    // duales: parte activa
+      const varIdx=cols.findIndex(c=>c.key==='var');       // verde/rojo por signo
+
+      // Rango para heatmap (sobre la columna coloreada principal)
+      const heatIdx = tnaIdx>=0 ? tnaIdx : activaIdx;
+      let heatMin=null,heatMax=null;
+      if(heatIdx>=0){
+        const vals=sorted.map(r=>{const v=cols[heatIdx].sort(r);return (v===-Infinity||v===Infinity||isNaN(v))?null:v;}).filter(v=>v!==null);
+        if(vals.length>=2){ heatMin=Math.min(...vals); heatMax=Math.max(...vals); }
       }
       const heatColor=(v)=>{
-        if(tnaMin===null||v===null||isNaN(v)) return null;
-        const range=(tnaMax-tnaMin)||1; const t=(v-tnaMin)/range;
+        if(heatMin===null||v===null||isNaN(v)) return null;
+        const range=(heatMax-heatMin)||1; const t=Math.max(0,Math.min(1,(v-heatMin)/range));
         let r,g,b;
         if(t<0.5){const u=t*2;r=Math.round(224+(217-224)*u);g=Math.round(49+(119-49)*u);b=Math.round(49+(6-49)*u);}
         else{const u=(t-0.5)*2;r=Math.round(217+(13-217)*u);g=Math.round(119+(158-119)*u);b=Math.round(6+(110-6)*u);}
         return [r,g,b];
       };
 
+      // ── Escalado dinámico: que la tabla entre, si es posible, en UNA hoja ──
       pdf.addPage(); pageBg();
+      // Torito + título de tabla
+      let t2x=M;
+      if(torito && torito.data){
+        const lh=20, lw=lh*(torito.w/torito.h);
+        try{ pdf.addImage(torito.data,'PNG',M,M-10,lw,lh,undefined,'FAST'); }catch(_){}
+        t2x=M+lw+10;
+      }
       pdf.setFont('helvetica','bold'); pdf.setFontSize(13); pdf.setTextColor(...RGB.accent);
-      pdf.text(`${catLabel} · Tabla`, M, M+6);
+      pdf.text(`${catLabel} · Tabla`, t2x, M+6);
+
+      const startY=M+18;
+      const avail=PH-30-startY;            // alto disponible para la tabla en 1 hoja
+      const n=body.length;
+      // Buscar el cellPadding (alto de fila) más grande que aún entre en una hoja.
+      // headH ≈ headerPad*2 + fontH ; rowH ≈ pad*2 + fontH
+      const fs=7, fontH=fs*1.15;
+      let pad=6;                            // padding deseado (filas altas)
+      const fits=(p)=>{ const rowH=p*2+fontH; const headH=Math.max(rowH,18); return headH + rowH*n <= avail; };
+      if(!fits(pad)){
+        // reducir padding hasta 1.5pt; si aun así no entra, se partirá en varias hojas
+        for(let p=6; p>=1.5; p-=0.5){ if(fits(p)){ pad=p; break; } pad=p; }
+      }
+      const cellPad=Math.max(1.5,pad);
 
       pdf.autoTable({
         head, body,
-        startY:M+16,
+        startY,
         margin:{left:M,right:M,bottom:30},
         theme:'grid',
-        styles:{font:'helvetica',fontSize:7,cellPadding:3,textColor:RGB.text2,lineColor:RGB.border,lineWidth:0.3,fillColor:RGB.card,overflow:'linebreak'},
-        headStyles:{fillColor:RGB.head,textColor:RGB.accent,fontStyle:'bold',fontSize:7,halign:'center',lineColor:RGB.border,lineWidth:0.3},
+        styles:{font:'helvetica',fontSize:fs,cellPadding:cellPad,textColor:RGB.text2,lineColor:RGB.border,lineWidth:0.3,fillColor:RGB.card,overflow:'linebreak',valign:'middle'},
+        headStyles:{fillColor:RGB.head,textColor:RGB.accent,fontStyle:'bold',fontSize:fs,halign:'center',valign:'middle',lineColor:RGB.border,lineWidth:0.3,cellPadding:Math.max(cellPad,4)},
         alternateRowStyles:{fillColor:RGB.alt},
-        columnStyles:{0:{halign:'left',fontStyle:'bold',textColor:RGB.text}},
+        columnStyles:{0:{halign:'left',fontStyle:'bold',textColor:RGB.text,fillColor:RGB.tickerBg}},
         bodyStyles:{halign:'center'},
         didParseCell:(d)=>{
-          if(d.section==='body' && tnaIdx>=0 && d.column.index===tnaIdx){
-            const r=sorted[d.row.index];
-            const v=cols[tnaIdx].sort(r);
-            const col=heatColor((v===-Infinity||isNaN(v))?null:v);
+          if(d.section!=='body') return;
+          const r=sorted[d.row.index];
+          const ci=d.column.index;
+          // Ticker (col 0): ya tiene fillColor + bold por columnStyles
+          // Heatmap TNA o parte activa
+          if(ci===heatIdx && heatIdx>=0){
+            const v=cols[heatIdx].sort(r);
+            const col=heatColor((v===-Infinity||v===Infinity||isNaN(v))?null:v);
             if(col){ d.cell.styles.textColor=col; d.cell.styles.fontStyle='bold'; }
+          }
+          // Variación: verde si >=0, rojo si <0
+          if(ci===varIdx && varIdx>=0){
+            const v=r.variacion;
+            if(v!=null && !isNaN(v)){ d.cell.styles.textColor = v>=0?RGB.green:RGB.red; d.cell.styles.fontStyle='bold'; }
           }
         },
         didDrawPage:()=>{ footer(); }
@@ -4649,6 +4774,7 @@ window.rfReportGenerate=async function(){
     rfCloseReportDialog();
   }
 };
+
 window.lcRecalcAll=function(){
   const fi=document.getElementById('lc-fecha-liq');
   const liq=fi?fi.value:defaultLiq();
