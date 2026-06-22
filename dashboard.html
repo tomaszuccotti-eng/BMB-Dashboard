@@ -18732,12 +18732,26 @@ function renderEquity(){
   }
 
   window.earOpenReportDialog=function(){
-    // Contexto MAV (acceso por herramienta): si el tab MAV está visible, el reporte es solo de MAV
+    // Contexto MAV (acceso por herramienta): si el tab MAV está visible, el reporte es solo de MAV.
+    // Muestra el menú intermedio con una única sección (MAV) tildada, consistente con el resto.
     const mavTab=document.getElementById('earTabMav');
     if(mavTab && mavTab.style.display!=='none'){
       const wrap=document.querySelector('#mav-global-results [data-mav-wrap]');
       if(!wrap){ alert('Primero cargá un archivo CENDEU en MAV.'); return; }
-      window.mavGlobalReport();
+      window._earReportMode='mav-standalone';
+      const razon=wrap.getAttribute('data-mav-razon')||'MAV';
+      const ttlEl=document.getElementById('ear-report-title'); if(ttlEl)ttlEl.textContent='Generar reporte';
+      const hdrEl=document.getElementById('ear-report-checks-label'); if(hdrEl)hdrEl.textContent='Secciones a incluir';
+      const lblEl=document.getElementById('ear-report-company'); if(lblEl)lblEl.textContent=razon;
+      const box=document.getElementById('ear-report-checks');
+      if(box){
+        box.innerHTML=`<label style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:7px;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);transition:all .12s;"
+          onmouseover="this.style.borderColor='#1E27F3'" onmouseout="this.style.borderColor='var(--border2)'">
+          <input type="checkbox" class="ear-rep-chk" value="mav" checked style="width:15px;height:15px;accent-color:#1E27F3;cursor:pointer;">
+          <span style="font-size:12px;font-weight:700;color:var(--text2);font-family:var(--mono);">MAV</span>
+        </label>`;
+      }
+      document.getElementById('ear-report-overlay').style.display='flex';
       return;
     }
     // Contexto Central de Deudores (herramienta): si el tab deudores est\u00E1 visible \u2192 reporte solo de deudores
@@ -19331,21 +19345,35 @@ function renderEquity(){
     if(detTbl){
       const head=Array.from(detTbl.querySelectorAll('thead th')).map(th=>th.textContent.trim());
       const body=Array.from(detTbl.querySelectorAll('tbody tr')).map(tr=>Array.from(tr.querySelectorAll('td')).map(td=>td.textContent.trim()));
-      const foot=detTbl.querySelector('tfoot tr');
-      if(foot){
-        const cells=Array.from(foot.querySelectorAll('td'));
-        const lbl=cells[0]?cells[0].textContent.trim():'TOTAL EN PESOS';
-        const val=cells[cells.length-1]?cells[cells.length-1].textContent.trim():'';
-        body.push(head.map((_,i)=> i===0?lbl : (i===head.length-1?val:'')));
-      }
+      const ncol=head.length;
+      const RGB=ctx.RGB;
+      const cellBg={};
+      // Todas las filas del tfoot (Total en pesos + Equivalente en USD). Cada una
+      // tiene una celda etiqueta (colspan) + una celda valor → mapear a [label,…,val].
+      const footRows=Array.from(detTbl.querySelectorAll('tfoot tr'));
+      footRows.forEach(tr=>{
+        const cells=Array.from(tr.querySelectorAll('td'));
+        if(!cells.length) return;
+        const lbl=cells[0].textContent.trim();
+        const val=cells.length>1?cells[cells.length-1].textContent.trim():'';
+        const ri=body.length; // índice de esta fila en el body
+        body.push(head.map((_,i)=> i===0?lbl : (i===ncol-1?val:'')));
+        // Remarcar toda la fila: fondo destacado + texto accent en bold
+        for(let c=0;c<ncol;c++){ cellBg[`${ri},${c}`]={bg:RGB.head, text:(c===0||c===ncol-1)?RGB.accent:RGB.text2}; }
+      });
       // Hoja propia para la tabla. title como primera fila del thead → no huérfano,
       // se repite al partir entre hojas.
       let yt=ctx.newPage();
-      if(head.length&&body.length){ ctx.table(head, body, yt, {title:'Detalle de instrumentos', columnStyles:{0:{halign:'left'}}}); }
+      if(head.length&&body.length){ ctx.table(head, body, yt, {title:'Detalle de instrumentos', columnStyles:{0:{halign:'left'}}, cellBg}); }
     }
 
     if(!heroEl && !monEl && !vencEl && !detTbl) ctx.note('Sin datos de MAV para mostrar.', y);
   }
+
+  // Exponer infra de reportes para reuso desde otros IIFEs (ej: mavGlobalReport standalone)
+  window._earMakeCtx=_earMakeCtx;
+  window.buildMavBlock=buildMavBlock;
+  window._earPdfFooter=_earPdfFooter;
 
   // ── BLOQUE: PRECIOS ───────────────────────────────────────────────────
   // Datos crudos de _earPriceState[ticker].allData. Tabla de ruedas con
@@ -19855,6 +19883,7 @@ function renderEquity(){
   // ─────────────────────────────────────────────────────────────
   window.earReportGenerate=function(){
     if(window._earReportMode==='sector'){ window.earBuildSectorReport(); }
+    else if(window._earReportMode==='mav-standalone'){ window.mavGlobalReport(); }
     else { window.earBuildReportNew(); }
   };
 
@@ -22472,152 +22501,32 @@ function renderCheques(cheques){
 
   // ── Reporte PDF del MAV global (acceso por herramienta) ──────────
   window.mavGlobalReport = async function(){
-    const wrap=document.querySelector('#mav-global-results [data-mav-wrap]');
+    const con=document.getElementById('mav-global-results');
+    const wrap=con?con.querySelector('[data-mav-wrap]'):null;
     if(!wrap){ alert('Primero cargá un archivo CENDEU.'); return; }
     if(!(window.jspdf&&window.jspdf.jsPDF)){ alert('Las librerías de PDF aún se están cargando. Probá de nuevo.'); return; }
     const razon=wrap.getAttribute('data-mav-razon')||'MAV';
     const cuit=wrap.getAttribute('data-mav-cuit')||'';
-    const informe=wrap.getAttribute('data-mav-informe')||'';
-    const btn=document.querySelector('button[onclick="earOpenReportDialog()"]');
-    const btnHTML=btn?btn.innerHTML:'';
-    if(btn){ btn.textContent='Generando…'; btn.disabled=true; }
+    const genBtn=document.querySelector('#ear-report-overlay button[onclick="earReportGenerate()"]')
+              || document.querySelector('button[onclick="earOpenReportDialog()"]');
+    const btnHTML=genBtn?genBtn.innerHTML:'';
+    if(genBtn){ genBtn.textContent='Generando…'; genBtn.disabled=true; }
 
     try{
-      // Paleta según tema
-      const _dark=(typeof _isDark!=='undefined')?_isDark:true;
-      const RGB=_dark
-        ? {bg:[11,14,23],card:[17,21,31],card2:[22,27,40],head:[26,31,48],border:[34,42,61],text:[232,234,246],text2:[195,201,230],text3:[126,135,184],accent:[30,39,243],alt:[20,25,37]}
-        : {bg:[255,255,255],card:[247,248,252],card2:[238,240,247],head:[228,231,242],border:[210,214,235],text:[10,12,26],text2:[58,63,92],text3:[138,144,176],accent:[30,39,243],alt:[241,243,250]};
-
-      // Armar items desde el DOM ya renderizado
-      const items=[];
-      const T={ sub:t=>items.push({type:'sub',text:t}),
-                note:t=>items.push({type:'note',text:t}),
-                table:(head,body)=>{ if(body&&body.length) items.push({type:'table',head,body}); } };
-
-      // 1) Resumen por moneda (cards Nivel 2)
-      const monCards=Array.from(wrap.querySelectorAll('.mav-moncard'));
-      if(monCards.length){
-        const body=monCards.map(c=>{
-          const lbl=c.querySelector('.mav-moncard-head')?.textContent.trim()||'—';
-          const tot=c.querySelector('.mav-moncard-total')?.textContent.trim()||'—';
-          const metrics=Array.from(c.querySelectorAll('.mav-metric')).map(m=>m.querySelector('.mav-metric-v')?.textContent.trim()||'');
-          // metrics: [nInstr, prom, plazo, %]
-          return [lbl, tot, metrics[0]||'', metrics[1]||'', metrics[2]||'', metrics[3]||''];
-        });
-        T.sub('Resumen por moneda');
-        T.table(['Moneda','Total','N° instr.','Monto prom.','Plazo prom.','% total'], body);
-      }
-
-      // 2) Vencimientos por mes
-      const venRows=Array.from(wrap.querySelectorAll('.mav-vrow'));
-      if(venRows.length){
-        const vbody=venRows.map(r=>{
-          const mes=r.querySelector('.mav-vrow-mes')?.textContent.trim()||'—';
-          const desg=Array.from(r.querySelectorAll('.mav-desg-item')).map(x=>x.textContent.trim().replace(/\s+/g,' ')).join('  ')||'—';
-          const tp=r.querySelector('.mav-tot-pesos')?.textContent.trim()||'';
-          const tu=r.querySelector('.mav-tot-usd')?.textContent.trim()||'';
-          return [mes, desg, tp, tu];
-        });
-        T.sub('Vencimientos por mes');
-        T.table(['Mes','Desagregado (moneda original)','Total (pesos)','≈ USD'], vbody);
-      }
-
-      // 3) Detalle de instrumentos (tabla con más columnas)
-      let detTbl=null, maxC=0;
-      wrap.querySelectorAll('table').forEach(tb=>{ const c=tb.querySelectorAll('thead th').length; if(c>maxC){maxC=c;detTbl=tb;} });
-      if(detTbl){
-        const head=Array.from(detTbl.querySelectorAll('thead th')).map(th=>th.textContent.trim());
-        const dbody=Array.from(detTbl.querySelectorAll('tbody tr')).map(tr=>Array.from(tr.querySelectorAll('td')).map(td=>td.textContent.trim()));
-        const foot=detTbl.querySelector('tfoot');
-        T.sub('Detalle de instrumentos');
-        T.table(head, dbody);
-        if(foot){
-          const ftrs=Array.from(foot.querySelectorAll('tr')).map(tr=>{
-            const c=Array.from(tr.querySelectorAll('td'));
-            return (c[0]?.textContent.trim()||'')+': '+(c[c.length-1]?.textContent.trim()||'');
-          });
-          ftrs.forEach(t=>T.note(t));
-        }
-      }
-
-      // ── Render PDF ──
       const { jsPDF }=window.jspdf;
-      const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
-      const PW=pdf.internal.pageSize.getWidth(), PH=pdf.internal.pageSize.getHeight();
-      const M=36, usableW=PW-M*2;
-      const date=new Date().toLocaleDateString('es-AR',{year:'numeric',month:'long',day:'numeric'});
-      function pageBg(){ pdf.setFillColor(...RGB.bg); pdf.rect(0,0,PW,PH,'F'); }
-      function drawHeader(){
-        let yy=M;
-        pdf.setFont('helvetica','bold'); pdf.setTextColor(...RGB.accent); pdf.setFontSize(18); pdf.text(razon,M,yy+14,{maxWidth:usableW-180});
-        let hy=yy+30;
-        pdf.setFont('helvetica','normal'); pdf.setFontSize(8.5); pdf.setTextColor(...RGB.text3);
-        if(cuit){ pdf.text('CUIT '+cuit,M,hy); hy+=11; }
-        pdf.setFontSize(7.5);
-        pdf.text('MAV · Central de Deuda',PW-M,yy+9,{align:'right'});
-        if(informe) pdf.text('Informe: '+informe,PW-M,yy+19,{align:'right'});
-        pdf.text('Research · Bull Market Brokers',PW-M,yy+29,{align:'right'});
-        pdf.setDrawColor(...RGB.accent); pdf.setLineWidth(2); pdf.line(M,hy+3,PW-M,hy+3);
-        return hy+18;
-      }
-      function miniHeader(){
-        pdf.setFont('helvetica','bold'); pdf.setFontSize(10); pdf.setTextColor(...RGB.accent); pdf.text(razon,M,M+4,{maxWidth:usableW-120});
-        pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.5); pdf.line(M,M+10,PW-M,M+10);
-      }
-      function newPage(){ pdf.addPage(); pageBg(); miniHeader(); return M+22; }
-
-      pageBg();
-      let y=drawHeader();
-
-      for(const it of items){
-        if(it.type==='sub'){
-          if(y+48>PH-M){ y=newPage(); }
-          pdf.setFont('helvetica','bold'); pdf.setFontSize(9); pdf.setTextColor(...RGB.accent);
-          pdf.text(it.text.toUpperCase(),M,y+9); y+=16;
-        }
-        else if(it.type==='note'){
-          if(y+20>PH-M){ y=newPage(); }
-          pdf.setFont('helvetica','normal'); pdf.setFontSize(8); pdf.setTextColor(...RGB.text3);
-          pdf.text(it.text,M,y+9); y+=16;
-        }
-        else if(it.type==='table'){
-          const rowH=13, headH=15;
-          const drawTable=(rows,sy)=>{ pdf.autoTable({ startY:sy, margin:{left:M,right:M},
-            head:[it.head], body:rows, theme:'grid',
-            styles:{font:'helvetica',fontSize:7,cellPadding:2.4,textColor:RGB.text2,lineColor:RGB.border,lineWidth:0.4,fillColor:RGB.card},
-            headStyles:{fillColor:RGB.head,textColor:RGB.text3,fontStyle:'bold',fontSize:6.5,halign:'center'},
-            bodyStyles:{fillColor:RGB.card}, alternateRowStyles:{fillColor:RGB.alt},
-            didParseCell:d=>{ d.cell.styles.halign='center'; },
-            tableLineColor:RGB.border, tableLineWidth:0.4, pageBreak:'avoid' });
-            return pdf.lastAutoTable.finalY; };
-          const fullPageRows=Math.floor(((PH-M)-(M+22)-headH)/rowH);
-          const tableTotalH=headH+it.body.length*rowH;
-          if(it.body.length<=fullPageRows && y+tableTotalH>PH-M){ y=newPage(); }
-          let rows=it.body.slice();
-          while(rows.length){
-            const avail=(PH-M)-y; let n=Math.max(1,Math.floor((avail-headH)/rowH));
-            if(n>=rows.length){ y=drawTable(rows,y)+10; rows=[]; }
-            else{ drawTable(rows.slice(0,n),y); rows=rows.slice(n); y=newPage(); }
-          }
-        }
-      }
-
-      // Footer
-      const footerTxt='La información contenida es de carácter informativo y no representa una recomendación de inversión.';
-      const totalPages=pdf.internal.getNumberOfPages();
-      for(let p=1;p<=totalPages;p++){
-        pdf.setPage(p);
-        pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.5); pdf.line(M,PH-22,PW-M,PH-22);
-        pdf.setFont('helvetica','normal'); pdf.setFontSize(6.5); pdf.setTextColor(...RGB.text3);
-        pdf.text(footerTxt,PW/2,PH-13,{align:'center'});
-      }
+      const pdf=new jsPDF({orientation:'landscape',unit:'pt',format:'a4'});
+      // Header: ticker = razón social, sin sector. Reusa toda la infra de la ficha.
+      const ctx=window._earMakeCtx(pdf, {ticker:razon, name:'', sector:cuit?('CUIT '+cuit):''});
+      // buildMavBlock lee del contenedor (heros .mav-rep-* + tabla de detalle)
+      await window.buildMavBlock(pdf, ctx, con, true);
+      window._earPdfFooter(pdf, ctx.RGB);
       const safeName=(razon||'MAV').replace(/[^\w\s-]/g,'').trim().replace(/\s+/g,'_')||'MAV';
       pdf.save(`${safeName}_MAV_${new Date().toISOString().slice(0,10)}.pdf`);
     }catch(err){
       alert('No se pudo generar el PDF: '+err.message);
     }finally{
-      if(btn){ btn.innerHTML=btnHTML||'Generar reporte'; btn.disabled=false; }
+      if(genBtn){ genBtn.innerHTML=btnHTML||'Generar reporte'; genBtn.disabled=false; }
+      if(typeof earCloseReportDialog==='function') earCloseReportDialog();
     }
   };
 
