@@ -19235,7 +19235,7 @@ function renderEquity(){
 
     // Historial por período (heatmap REAL: celda con fondo de color = situación, como el HTML)
     if(hist?.periodos?.length){
-      const periodos=[...hist.periodos].sort((a,b)=>String(b.periodo).localeCompare(String(a.periodo))).slice(0,24);
+      const periodos=[...hist.periodos].sort((a,b)=>String(b.periodo).localeCompare(String(a.periodo))).slice(0,24).reverse();
       const pLabels=periodos.map(p=>`${String(p.periodo).slice(4,6)}/${String(p.periodo).slice(2,4)}`);
       // Colores de fondo del heatmap (mismos que el tab HTML)
       const HEAT={1:[20,83,45],2:[113,63,18],3:[124,45,18],4:[127,29,29],5:[69,10,10]};
