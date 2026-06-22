@@ -11782,14 +11782,15 @@ const _eqRO = new ResizeObserver(entries => {
   <!-- Modal: elegir tabs del reporte -->
   <div id="ear-report-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:300;align-items:center;justify-content:center;">
     <div style="background:var(--bg2);border:1px solid rgba(30,39,243,0.35);border-radius:16px;padding:28px;width:100%;max-width:460px;position:relative;">
-      <div id="ear-report-title" style="font-size:16px;font-weight:800;font-family:var(--display);color:var(--text);margin-bottom:4px;">Generar reporte</div>
+      <button onclick="earCloseReportDialog()" title="Cerrar" style="position:absolute;top:14px;right:14px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:none;border-radius:6px;background:transparent;color:var(--text3);font-size:18px;line-height:1;cursor:pointer;font-family:var(--mono);" onmouseover="this.style.background='var(--bg3)';this.style.color='var(--text)'" onmouseout="this.style.background='transparent';this.style.color='var(--text3)'">✕</button>
+      <div id="ear-report-title" style="font-size:16px;font-weight:800;font-family:var(--display);color:var(--text);margin-bottom:4px;padding-right:34px;">Generar reporte</div>
       <div id="ear-report-company" style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:18px;">—</div>
       <div id="ear-report-checks-label" style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);margin-bottom:10px;">Secciones a incluir</div>
       <div id="ear-report-checks" style="display:flex;flex-direction:column;gap:2px;margin-bottom:6px;max-height:50vh;overflow-y:auto;"></div>
-      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);line-height:1.5;margin:10px 0 18px;">Cada sección sale en una hoja separada. Se abre la vista de impresión: elegí <strong style="color:var(--text2);">Guardar como PDF</strong>.</div>
+      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);line-height:1.5;margin:10px 0 18px;">Elegí el formato: <strong style="color:var(--text2);">HTML</strong> genera un archivo navegable con pestañas; <strong style="color:var(--text2);">PDF</strong> genera un documento imprimible.</div>
       <div style="display:flex;gap:10px;">
-        <button onclick="earCloseReportDialog()" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(30,39,243,0.25);background:transparent;color:var(--text3);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--mono);">Cancelar</button>
-        <button onclick="earReportGenerate()" style="flex:2;padding:10px;border-radius:8px;border:none;background:#1E27F3;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);">Generar →</button>
+        <button onclick="earReportGenerateHtml()" style="flex:1;padding:13px;border-radius:8px;border:1.5px solid #1E27F3;background:transparent;color:#1E27F3;font-size:16px;font-weight:800;cursor:pointer;font-family:var(--mono);transition:all .12s;" onmouseover="this.style.background='rgba(30,39,243,0.10)'" onmouseout="this.style.background='transparent'">HTML</button>
+        <button onclick="earReportGenerate()" style="flex:1;padding:13px;border-radius:8px;border:1.5px solid #1E27F3;background:transparent;color:#1E27F3;font-size:16px;font-weight:800;cursor:pointer;font-family:var(--mono);transition:all .12s;" onmouseover="this.style.background='rgba(30,39,243,0.10)'" onmouseout="this.style.background='transparent'">PDF</button>
       </div>
     </div>
   </div>
@@ -19853,7 +19854,7 @@ function renderEquity(){
       // Orden canónico de las secciones (no el orden de tildado)
       const ORDER=['financials','ratios','deudas','mav','precios','scoring'];
       const toRun=ORDER.filter(id=>checked.includes(id) && REG[id]);
-      if(!toRun.length){ alert('Las secciones elegidas no están disponibles.'); if(genBtn){genBtn.textContent='Generar →';genBtn.disabled=false;} return; }
+      if(!toRun.length){ alert('Las secciones elegidas no están disponibles.'); if(genBtn){genBtn.textContent='PDF';genBtn.disabled=false;} return; }
 
       let first=true;
       for(const id of toRun){ await REG[id](first); first=false; }
@@ -19861,7 +19862,7 @@ function renderEquity(){
       _earPdfFooter(pdf, ctx.RGB);
       pdf.save(`${ticker}_reporte_${new Date().toISOString().slice(0,10)}.pdf`);
     }catch(err){ alert('No se pudo generar el PDF: '+err.message); }
-    finally{ if(genBtn){genBtn.textContent='Generar →';genBtn.disabled=false;} earCloseReportDialog(); }
+    finally{ if(genBtn){genBtn.textContent='PDF';genBtn.disabled=false;} earCloseReportDialog(); }
   };
 
   window.earBuildReport=async function(){
@@ -20243,11 +20244,216 @@ function renderEquity(){
 
     try{ pdf.save(`${ticker}_reporte_${new Date().toISOString().slice(0,10)}.pdf`); }
     catch(err){ alert('No se pudo generar el PDF: '+err.message); }
-    finally{ if(genBtn){genBtn.textContent='Generar →';genBtn.disabled=false;} earCloseReportDialog(); }
+    finally{ if(genBtn){genBtn.textContent='PDF';genBtn.disabled=false;} earCloseReportDialog(); }
   };
 
   // ─────────────────────────────────────────────────────────────
-  // DISPATCHER del botón "Generar →" del overlay (empresa vs sectorial)
+  // REPORTE HTML (ficha de empresa) — snapshot autocontenido con pestañas
+  // Clona el DOM ya renderizado de cada sección tildada (tablas HTML reales),
+  // rasteriza los <canvas> a PNG embebido, y empaqueta todo con el tema actual.
+  // No vuelve a buscar datos: la info queda congelada dentro del archivo.
+  // ─────────────────────────────────────────────────────────────
+
+  // Captura las variables CSS del tema actual para embeberlas en el reporte.
+  function _earCaptureThemeVars(){
+    const cs=getComputedStyle(document.documentElement);
+    const keys=['--bg','--bg2','--bg3','--bg4','--border','--border2',
+      '--text','--text2','--text3','--accent','--accent2','--accent3',
+      '--accent-light','--accent-mid','--green','--red','--yellow'];
+    return keys.map(k=>`  ${k}:${(cs.getPropertyValue(k)||'').trim()};`).join('\n');
+  }
+
+  // Clona un nodo y reemplaza cada <canvas> por un <img> PNG (a tamaño nativo).
+  function _earCanvasesToImg(srcNode){
+    const clone=srcNode.cloneNode(true);
+    const srcCanvases=srcNode.querySelectorAll('canvas');
+    const cloneCanvases=clone.querySelectorAll('canvas');
+    cloneCanvases.forEach((cc,i)=>{
+      const orig=srcCanvases[i];
+      const img=document.createElement('img');
+      try{
+        if(orig && orig.width>0 && orig.height>0){
+          img.src=orig.toDataURL('image/png');
+        }
+      }catch(_){}
+      // Que el <img> ocupe el mismo espacio visual que el canvas en pantalla.
+      const rect=orig?orig.getBoundingClientRect():null;
+      img.style.cssText='display:block;width:100%;height:auto;max-width:100%;';
+      if(rect && rect.width>0){ img.style.maxWidth=Math.round(rect.width)+'px'; }
+      cc.parentNode.replaceChild(img, cc);
+    });
+    return clone;
+  }
+
+  window.earReportGenerateHtml=async function(){
+    // Solo modo empresa por ahora (los standalone tienen otra estructura).
+    if(window._earReportMode && window._earReportMode!=='empresa'){
+      alert('El reporte HTML está disponible para la ficha de empresa. Para esta sección usá PDF.');
+      return;
+    }
+    const ticker=_currentExcelTicker;
+    if(!ticker){ alert('Primero buscá y cargá una empresa.'); return; }
+
+    const checked=Array.from(document.querySelectorAll('.ear-rep-chk:checked')).map(c=>c.value);
+    if(!checked.length){ alert('Elegí al menos una sección.'); return; }
+
+    const htmlBtn=document.querySelector('#ear-report-overlay button[onclick="earReportGenerateHtml()"]');
+    const _origLbl=htmlBtn?htmlBtn.textContent:'';
+    if(htmlBtn){ htmlBtn.textContent='Generando…'; htmlBtn.disabled=true; }
+
+    try{
+      // Recordar la tab activa para restaurarla al final.
+      const _restoreTab=document.querySelector(`#earTopTabs .ear-toptab.active`)?.id||'';
+
+      // ── Pre-render lazy: forzar render de secciones tildadas vacías ──
+      for(const id of checked){
+        const con=document.getElementById(`ficha-tab-content-${ticker}-${id}`);
+        if(con && con.innerHTML.trim()===''){ try{ _fichaShowTab(ticker, id); }catch(_){} }
+      }
+
+      // Precios es async (fetch histórico). Asegurar datos cargados.
+      if(checked.includes('precios') && typeof window._loadPreciosData==='function'){
+        const hasData=(window._earPriceState||{})[ticker]?.allData?.length;
+        if(!hasData){
+          try{ await Promise.race([window._loadPreciosData(ticker), new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),8000))]); }catch(_){}
+        }
+      }
+
+      // ── Esperar a que los canvas esperados existan y tengan tamaño ──
+      const needCanvas=[];
+      if(checked.includes('deudas'))  needCanvas.push(`bcra-chart-${ticker}`);
+      if(checked.includes('precios')){ needCanvas.push(`ear-price-chart-${ticker}`,`ear-vol-chart-${ticker}`); }
+      if(needCanvas.length){
+        const deadline=Date.now()+4000;
+        await new Promise(resolve=>{
+          (function poll(){
+            const ok=needCanvas.every(cid=>{ const c=document.getElementById(cid); return c && c.width>0; });
+            if(ok || Date.now()>deadline){ resolve(); return; }
+            setTimeout(poll, 250);
+          })();
+        });
+        // margen para que Chart.js termine de pintar la animación
+        await new Promise(r=>setTimeout(r, 450));
+      }
+
+      // ── Metadata del header ──
+      const name=(_currentExcelEmpresa&&_currentExcelEmpresa!==ticker)?_currentExcelEmpresa:'';
+      const sector=(_currentExcelSector||'').replace(/_+/g,' ').trim();
+      const cuit=(window.EXCEL_CUIT_MAP||{})[ticker]||'';
+      const cuitFmt=cuit?String(cuit).replace(/^(\d{2})(\d{8})(\d)$/,'$1-$2-$3'):'';
+      const date=new Date().toLocaleDateString('es-AR',{year:'numeric',month:'long',day:'numeric'});
+
+      // ── Labels canónicos y orden ──
+      const ORDER=['financials','ratios','deudas','mav','precios','scoring'];
+      const LABELS={financials:'Financials',ratios:'Ratios',deudas:'Deuda bancaria',mav:'MAV',precios:'Precios',scoring:'Scoring'};
+      const toRun=ORDER.filter(id=>checked.includes(id));
+
+      // ── KPI bar: clonar (con canvas→img por si tuviera) ──
+      let kpiHtml='';
+      const kpiSrc=document.getElementById(`ear-kpi-bar-${ticker}`);
+      if(kpiSrc && kpiSrc.innerHTML.trim()){
+        const kc=_earCanvasesToImg(kpiSrc);
+        // sacar el botón ⚙ KPIs y el panel de config (no aplican en el snapshot)
+        kc.querySelectorAll('button').forEach(b=>b.remove());
+        kc.querySelectorAll('[id^="kpi-panel-"]').forEach(p=>p.remove());
+        kpiHtml=kc.innerHTML;
+      }
+
+      // ── Clonar el contenido de cada sección tildada ──
+      const sections=[];
+      for(const id of toRun){
+        const con=document.getElementById(`ficha-tab-content-${ticker}-${id}`);
+        if(!con || con.innerHTML.trim()===''){ continue; }
+        const cloned=_earCanvasesToImg(con);
+        sections.push({ id, label:LABELS[id]||id, html:cloned.innerHTML });
+      }
+      if(!sections.length){ alert('Las secciones elegidas no tienen contenido para exportar.'); return; }
+
+      // ── Restaurar tab activa original ──
+      if(_restoreTab){ const m=_restoreTab.match(/ficha-tab-btn-.+-(\w+)$/); if(m){ try{ _fichaShowTab(ticker, m[1]); }catch(_){} } }
+
+      // ── Armar HTML ──
+      const themeVars=_earCaptureThemeVars();
+      const tabsBtns=sections.map((s,i)=>
+        `<button class="rep-tab${i===0?' active':''}" data-tab="${s.id}" onclick="repShow('${s.id}',this)">${s.label}</button>`
+      ).join('');
+      const tabsContent=sections.map((s,i)=>
+        `<div class="rep-tabc" id="repc-${s.id}" style="display:${i===0?'block':'none'};">${s.html}</div>`
+      ).join('');
+
+      const coLine=[cuitFmt?`CUIT ${cuitFmt}`:'',sector].filter(Boolean).join(' · ');
+
+      const reportHtml=`<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${ticker} — Reporte · ${date}</title>
+<style>
+:root{
+${themeVars}
+  --mono:'DM Mono',ui-monospace,monospace;
+  --sans:'DM Sans',system-ui,sans-serif;
+  --display:'Syne',var(--sans);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:13px;-webkit-font-smoothing:antialiased;}
+.rep-page{max-width:1180px;margin:0 auto;padding:32px 28px 60px;}
+.rep-header{border-bottom:3px solid var(--accent);padding-bottom:18px;margin-bottom:0;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;}
+.rep-ticker{font-size:34px;font-weight:800;font-family:var(--display);color:var(--accent);letter-spacing:.02em;line-height:1;}
+.rep-name{font-size:17px;font-weight:600;color:var(--text);margin-top:7px;}
+.rep-meta{font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:5px;}
+.rep-date{font-size:10px;color:var(--text3);font-family:var(--mono);text-align:right;line-height:1.6;}
+.rep-kpi{margin-bottom:6px;}
+.rep-tabs{display:flex;gap:2px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin:22px 0 22px;}
+.rep-tab{padding:0 16px;height:46px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border:none;border-bottom:2px solid transparent;color:var(--text3);background:transparent;transition:all .15s;white-space:nowrap;}
+.rep-tab:hover{color:var(--text2);}
+.rep-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.rep-tabc img{max-width:100%;height:auto;}
+.rep-footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--border);font-size:10px;color:var(--text3);font-family:var(--mono);text-align:center;line-height:1.6;}
+@media print{
+  .rep-tabs{display:none;}
+  .rep-tabc{display:block !important;page-break-before:always;}
+  .rep-tabc:first-of-type{page-break-before:auto;}
+}
+</style></head>
+<body><div class="rep-page">
+  <div class="rep-header">
+    <div>
+      <div class="rep-ticker">${ticker}</div>
+      ${name?`<div class="rep-name">${name}</div>`:''}
+      ${coLine?`<div class="rep-meta">${coLine}</div>`:''}
+    </div>
+    <div class="rep-date">Reporte generado<br>${date}<br>Bull Market Brokers · Research</div>
+  </div>
+  ${kpiHtml?`<div class="rep-kpi">${kpiHtml}</div>`:''}
+  <div class="rep-tabs">${tabsBtns}</div>
+  ${tabsContent}
+  <div class="rep-footer">Dashboard BMB · Snapshot del ${date} · No constituye asesoramiento de inversión</div>
+</div>
+<script>
+function repShow(id,btn){
+  document.querySelectorAll('.rep-tabc').forEach(function(d){d.style.display='none';});
+  var t=document.getElementById('repc-'+id); if(t)t.style.display='block';
+  document.querySelectorAll('.rep-tab').forEach(function(b){b.classList.remove('active');});
+  if(btn)btn.classList.add('active');
+}
+<\/script>
+</body></html>`;
+
+      const blob=new Blob([reportHtml],{type:'text/html'});
+      const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+      a.download=`${ticker}_reporte_${new Date().toISOString().slice(0,10)}.html`;
+      a.click();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+    }catch(err){
+      alert('No se pudo generar el HTML: '+(err&&err.message?err.message:err));
+    }finally{
+      if(htmlBtn){ htmlBtn.textContent=_origLbl||'HTML'; htmlBtn.disabled=false; }
+      earCloseReportDialog();
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // DISPATCHER del botón "PDF" del overlay (empresa vs sectorial)
   // ─────────────────────────────────────────────────────────────
   window.earReportGenerate=function(){
     if(window._earReportMode==='sector'){ window.earBuildSectorReport(); }
@@ -20389,7 +20595,7 @@ function renderEquity(){
 
     try{ pdf.save(`scoring_liquidez_${new Date().toISOString().slice(0,10)}.pdf`); }
     catch(err){ alert('No se pudo generar el PDF: '+err.message); }
-    finally{ if(genBtn){genBtn.textContent='Generar →';genBtn.disabled=false;} earCloseReportDialog(); }
+    finally{ if(genBtn){genBtn.textContent='PDF';genBtn.disabled=false;} earCloseReportDialog(); }
   };
   // Refresh disparado desde el card BCRA del header: repinta badge + panel si está montado
   window._bcraCardRefresh=function(ticker,cuit){
