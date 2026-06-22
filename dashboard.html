@@ -19053,6 +19053,9 @@ function renderEquity(){
       if(!el||typeof html2canvas==='undefined') return null;
       try{
         const clone=el.cloneNode(true);
+        // Ocultar elementos marcados para no aparecer en el PDF (ej: botón "Cargar otro").
+        if(clone.classList&&clone.classList.contains('mav-rep-hide')) clone.style.display='none';
+        clone.querySelectorAll('.mav-rep-hide').forEach(n=>{ n.style.display='none'; });
         clone.querySelectorAll('*').forEach(n=>{ const s=n.style;
           if(s){ if(getComputedStyle(n).position==='sticky'||s.position==='sticky') s.position='static';
                  s.overflow='visible'; s.overflowX='visible'; s.overflowY='visible'; } });
@@ -19293,20 +19296,35 @@ function renderEquity(){
       return;
     }
 
-    // 1 ── HERO: info + KPIs + cotizaciones (captura del DOM, reescala a la hoja)
+    // Coloca un hero capturado lo más grande posible (sin deformar) en el espacio
+    // disponible de la hoja, centrado horizontal y verticalmente. Pensado para que
+    // cada hero ocupe su propia hoja: aprovecha todo el alto disponible.
+    const PW=ctx.PW, PH=ctx.PH, M=ctx.M, usableW=ctx.usableW;
+    const placeHeroFull=(im, y)=>{
+      const bottom=PH-M;
+      const availH=bottom-y-6;
+      // Escalar al menor factor entre ancho útil y alto disponible (sin deformar)
+      let imgW=usableW, imgH=usableW*im.ratio;
+      if(imgH>availH){ imgH=availH; imgW=imgH/im.ratio; }
+      if(imgW>usableW){ imgW=usableW; imgH=usableW*im.ratio; }
+      const x=M+(usableW-imgW)/2;          // centrado horizontal
+      pdf.addImage(im.data,'PNG',x,y,imgW,imgH); // anclado arriba: llena hacia abajo
+      return bottom;
+    };
+
+    // 1 ── HERO: info + KPIs + cotizaciones (hoja actual, amoldado al alto)
     const heroEl=mavCon.querySelector('.mav-rep-hero');
-    if(heroEl){ const im=await ctx.domToImg(heroEl); if(im) y=ctx.image(im, null, y); }
+    if(heroEl){ const im=await ctx.domToImg(heroEl); if(im) y=placeHeroFull(im, y); }
 
-    // 2 ── RESUMEN POR MONEDA: cards idénticas al HTML (captura, con su título)
+    // 2 ── RESUMEN POR MONEDA: cards idénticas al HTML (hoja propia)
     const monEl=mavCon.querySelector('.mav-rep-moncards');
-    if(monEl){ const im=await ctx.domToImg(monEl); if(im) y=ctx.image(im, null, y); }
+    if(monEl){ const im=await ctx.domToImg(monEl); if(im){ let yy=ctx.newPage(); placeHeroFull(im, yy); } }
 
-    // 3 ── VENCIMIENTOS POR MES: barras apiladas de colores (captura).
-    // Captura el bloque completo (ya trae su propio título estilado) → sin caption.
+    // 3 ── VENCIMIENTOS POR MES: barras apiladas de colores (hoja propia).
     const vencEl=mavCon.querySelector('.mav-rep-venc');
-    if(vencEl){ const im=await ctx.domToImg(vencEl); if(im) y=ctx.image(im, null, y); }
+    if(vencEl){ const im=await ctx.domToImg(vencEl); if(im){ let yy=ctx.newPage(); placeHeroFull(im, yy); } }
 
-    // 4 ── DETALLE DE INSTRUMENTOS: tabla NATIVA (no foto)
+    // 4 ── DETALLE DE INSTRUMENTOS: tabla NATIVA (hoja propia, no foto)
     const tables=Array.from(mavCon.querySelectorAll('table'));
     let detTbl=null, maxC=0;
     tables.forEach(tb=>{ const c=tb.querySelectorAll('thead th').length; if(c>maxC){maxC=c;detTbl=tb;} });
@@ -19320,8 +19338,10 @@ function renderEquity(){
         const val=cells[cells.length-1]?cells[cells.length-1].textContent.trim():'';
         body.push(head.map((_,i)=> i===0?lbl : (i===head.length-1?val:'')));
       }
-      // title va como primera fila del thead → no queda huérfano y se repite al partir
-      if(head.length&&body.length){ y=ctx.table(head, body, y, {title:'Detalle de instrumentos', columnStyles:{0:{halign:'left'}}}); }
+      // Hoja propia para la tabla. title como primera fila del thead → no huérfano,
+      // se repite al partir entre hojas.
+      let yt=ctx.newPage();
+      if(head.length&&body.length){ ctx.table(head, body, yt, {title:'Detalle de instrumentos', columnStyles:{0:{halign:'left'}}}); }
     }
 
     if(!heroEl && !monEl && !vencEl && !detTbl) ctx.note('Sin datos de MAV para mostrar.', y);
@@ -22196,7 +22216,7 @@ function renderCheques(cheques){
           </div>
           <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
             ${informe.str?`<div style="font-size:11px;color:var(--text3);font-family:var(--mono);">Informe: ${informe.str}</div>`:''}
-            <button onclick="mavReset(this,'${targetId||''}')"
+            <button onclick="mavReset(this,'${targetId||''}')" class="mav-rep-hide"
               style="padding:4px 12px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid var(--border2);border-radius:5px;background:transparent;color:var(--text3);font-family:var(--mono);">↩ Cargar otro</button>
           </div>
         </div>
