@@ -11954,7 +11954,7 @@ const _eqRO = new ResizeObserver(entries => {
     <!-- Reporte -->
     <div class="bal-sb-sec" style="flex:1;">
       <div class="bal-sb-label">Reporte</div>
-      <button onclick="secGenerateReport()" class="bal-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>Generar reporte</button>
+      <button onclick="secOpenReportDialog()" class="bal-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>Generar reporte</button>
     </div>
 
   </aside>
@@ -12080,6 +12080,23 @@ const _eqRO = new ResizeObserver(entries => {
       </div>
 
     </div><!-- /secResults -->
+
+  <!-- Modal: elegir secciones del reporte (USA) -->
+  <div id="sec-report-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:300;align-items:center;justify-content:center;">
+    <div style="background:var(--bg2);border:1px solid rgba(30,39,243,0.35);border-radius:16px;padding:28px;width:100%;max-width:460px;position:relative;">
+      <button onclick="secCloseReportDialog()" title="Cerrar" style="position:absolute;top:14px;right:14px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:none;border-radius:6px;background:transparent;color:var(--text3);font-size:18px;line-height:1;cursor:pointer;font-family:var(--mono);" onmouseover="this.style.background='var(--bg3)';this.style.color='var(--text)'" onmouseout="this.style.background='transparent';this.style.color='var(--text3)'">✕</button>
+      <div style="font-size:16px;font-weight:800;font-family:var(--display);color:var(--text);margin-bottom:4px;padding-right:34px;">Generar reporte</div>
+      <div id="sec-report-company" style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:18px;">—</div>
+      <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);margin-bottom:10px;">Secciones a incluir</div>
+      <div id="sec-report-checks" style="display:flex;flex-direction:column;gap:2px;margin-bottom:6px;"></div>
+      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);line-height:1.5;margin:10px 0 18px;">Elegí el formato: <strong style="color:var(--text2);">HTML</strong> genera un archivo navegable con pestañas; <strong style="color:var(--text2);">PDF</strong> aún en desarrollo.</div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="secReportGenerateHtml()" style="flex:1;padding:13px;border-radius:8px;border:1.5px solid #1E27F3;background:transparent;color:#1E27F3;font-size:16px;font-weight:800;cursor:pointer;font-family:var(--mono);transition:all .12s;" onmouseover="this.style.background='rgba(30,39,243,0.10)'" onmouseout="this.style.background='transparent'">HTML</button>
+        <button disabled title="Próximamente" style="flex:1;padding:13px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;color:var(--text3);font-size:16px;font-weight:800;cursor:not-allowed;font-family:var(--mono);opacity:.55;">PDF</button>
+      </div>
+    </div>
+  </div>
+
 
 <style>
 .sec-chip{font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;font-family:var(--mono);transition:all .15s;text-align:center;}
@@ -16209,6 +16226,216 @@ function openDetail(especie){
             chartBg:'#ffffff', rowAlt:'#fafafa'};
   }
   let _reportPal = null; // seteado al generar
+
+  // ═══════════════════════════════════════════════════════════════
+  // REPORTE HTML (USA) — snapshot autocontenido con pestañas
+  // Clona el DOM de las tabs tildadas (Financials/Ratios/Comparar),
+  // rasteriza canvas a PNG, saca controles, embebe el tema actual.
+  // Shell propio (desacoplado del módulo ARG).
+  // ═══════════════════════════════════════════════════════════════
+  const _SEC_REPORT_TABS=[
+    {id:'fin', tab:'secTabFin', label:'Financials'},
+    {id:'rat', tab:'secTabRat', label:'Ratios'},
+    {id:'cmp', tab:'secTabCmp', label:'Comparar'},
+  ];
+
+  window.secOpenReportDialog=function(){
+    if(!_lastFacts || !_lastTicker){ alert('Primero buscá y cargá una empresa.'); return; }
+    const name=$('secCompanyName')?.textContent||_lastTicker;
+    const co=name&&name!==_lastTicker?`${_lastTicker} · ${name}`:_lastTicker;
+    const lblEl=$('sec-report-company'); if(lblEl)lblEl.textContent=co;
+    const box=$('sec-report-checks');
+    if(box){
+      box.innerHTML=_SEC_REPORT_TABS.map(t=>`
+        <label style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:7px;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);transition:all .12s;"
+          onmouseover="this.style.borderColor='#1E27F3'" onmouseout="this.style.borderColor='var(--border2)'">
+          <input type="checkbox" class="sec-rep-chk" value="${t.id}" checked style="width:15px;height:15px;accent-color:#1E27F3;cursor:pointer;">
+          <span style="font-size:12px;font-weight:700;color:var(--text2);font-family:var(--mono);">${t.label}</span>
+        </label>`).join('');
+    }
+    $('sec-report-overlay').style.display='flex';
+  };
+  window.secCloseReportDialog=function(){
+    const o=$('sec-report-overlay'); if(o)o.style.display='none';
+  };
+
+  // Captura las variables CSS del tema actual.
+  function _secCaptureThemeVars(){
+    const cs=getComputedStyle(document.documentElement);
+    const keys=['--bg','--bg2','--bg3','--bg4','--border','--border2',
+      '--text','--text2','--text3','--accent','--accent2','--accent3',
+      '--accent-light','--accent-mid','--green','--red','--yellow'];
+    return keys.map(k=>`  ${k}:${(cs.getPropertyValue(k)||'').trim()};`).join('\n');
+  }
+
+  // Clona un nodo reemplazando cada <canvas> por <img> PNG (tamaño nativo).
+  function _secCanvasesToImg(srcNode){
+    const clone=srcNode.cloneNode(true);
+    const srcC=srcNode.querySelectorAll('canvas');
+    const clC=clone.querySelectorAll('canvas');
+    clC.forEach((cc,i)=>{
+      const orig=srcC[i];
+      const img=document.createElement('img');
+      try{ if(orig && orig.width>0 && orig.height>0) img.src=orig.toDataURL('image/png'); }catch(_){}
+      const rect=orig?orig.getBoundingClientRect():null;
+      img.style.cssText='display:block;width:100%;height:auto;max-width:100%;';
+      if(rect && rect.width>0) img.style.maxWidth=Math.round(rect.width)+'px';
+      cc.parentNode.replaceChild(img, cc);
+    });
+    return clone;
+  }
+
+  // Saca controles de edición del clon: botones, modales, inputs, selects.
+  // En USA los datos viven en <div>/<table>, nunca en <button>, así que es seguro.
+  function _secStripControls(node){
+    node.querySelectorAll('button').forEach(b=>b.remove());
+    node.querySelectorAll('[id$="Modal"]').forEach(m=>m.remove());
+    node.querySelectorAll('input,select,textarea').forEach(el=>el.remove());
+    // Toolbars que quedan vacías (solo tenían botones): las colapsamos si quedaron sin texto.
+    node.querySelectorAll('div').forEach(d=>{
+      if(!d.children.length && !d.textContent.trim() && !d.querySelector('img')) d.remove();
+    });
+  }
+
+  function _secBuildReportShell(opt){
+    const { ticker, name, sections, filename } = opt;
+    const date=new Date().toLocaleDateString('es-AR',{year:'numeric',month:'long',day:'numeric'});
+    const themeVars=_secCaptureThemeVars();
+    const meta=$('secCompanyMeta')?.textContent||'';
+    const multi=sections.length>1;
+    const tabsBtns=sections.map((s,i)=>
+      `<button class="rep-tab${i===0?' active':''}" onclick="repShow('${s.id}',this)">${s.label}</button>`
+    ).join('');
+    const tabsContent=sections.map((s,i)=>
+      `<div class="rep-tabc" id="repc-${s.id}" style="display:${i===0?'block':'none'};">${s.html}</div>`
+    ).join('');
+
+    const reportHtml=`<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${ticker} — Reporte · ${date}</title>
+<style>
+:root{
+${themeVars}
+  --mono:'DM Mono',ui-monospace,monospace;
+  --sans:'DM Sans',system-ui,sans-serif;
+  --display:'Syne',var(--sans);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:13px;-webkit-font-smoothing:antialiased;}
+.rep-page{max-width:1180px;margin:0 auto;padding:32px 28px 60px;}
+.rep-header{border-bottom:3px solid var(--accent);padding-bottom:18px;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;}
+.rep-ticker{font-size:34px;font-weight:800;font-family:var(--display);color:var(--accent);letter-spacing:.02em;line-height:1;}
+.rep-name{font-size:17px;font-weight:600;color:var(--text);margin-top:7px;}
+.rep-meta{font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:5px;}
+.rep-date{font-size:10px;color:var(--text3);font-family:var(--mono);text-align:right;line-height:1.6;}
+.rep-kpi{margin-bottom:6px;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.rep-tabs{display:${multi?'flex':'none'};gap:2px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin:22px 0 22px;}
+.rep-tab{padding:0 16px;height:46px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border:none;border-bottom:2px solid transparent;color:var(--text3);background:transparent;transition:all .15s;white-space:nowrap;}
+.rep-tab:hover{color:var(--text2);}
+.rep-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.rep-tabc{margin-top:${multi?'0':'22px'};}
+.rep-tabc img{max-width:100%;height:auto;}
+*::-webkit-scrollbar{width:8px;height:8px;}
+*::-webkit-scrollbar-track{background:transparent;}
+*::-webkit-scrollbar-thumb{background:rgba(30,39,243,0.45);border-radius:4px;}
+*::-webkit-scrollbar-thumb:hover{background:rgba(30,39,243,0.7);}
+*{scrollbar-color:rgba(30,39,243,0.45) transparent;scrollbar-width:thin;}
+.rep-footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--border);font-size:10px;color:var(--text3);font-family:var(--mono);text-align:center;line-height:1.6;}
+@media print{
+  .rep-tabs{display:none;}
+  .rep-tabc{display:block !important;page-break-before:always;}
+  .rep-tabc:first-of-type{page-break-before:auto;}
+}
+</style></head>
+<body><div class="rep-page">
+  <div class="rep-header">
+    <div>
+      <div class="rep-ticker">${ticker}</div>
+      ${name&&name!==ticker?`<div class="rep-name">${name}</div>`:''}
+      ${meta?`<div class="rep-meta">${meta}</div>`:''}
+    </div>
+    <div class="rep-date">Reporte generado<br>${date}<br>Bull Market Brokers · Research</div>
+  </div>
+  ${opt.kpiHtml?`<div class="rep-kpi">${opt.kpiHtml}</div>`:''}
+  <div class="rep-tabs">${tabsBtns}</div>
+  ${tabsContent}
+  <div class="rep-footer">Dashboard BMB · SEC EDGAR · Snapshot del ${date} · No constituye asesoramiento de inversión</div>
+</div>
+<script>
+function repShow(id,btn){
+  document.querySelectorAll('.rep-tabc').forEach(function(d){d.style.display='none';});
+  var t=document.getElementById('repc-'+id); if(t)t.style.display='block';
+  document.querySelectorAll('.rep-tab').forEach(function(b){b.classList.remove('active');});
+  if(btn)btn.classList.add('active');
+}
+<\/script>
+</body></html>`;
+
+    const blob=new Blob([reportHtml],{type:'text/html'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download=filename; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+  }
+
+  window.secReportGenerateHtml=async function(){
+    if(!_lastFacts || !_lastTicker){ alert('Primero buscá y cargá una empresa.'); return; }
+    const checked=Array.from(document.querySelectorAll('.sec-rep-chk:checked')).map(c=>c.value);
+    if(!checked.length){ alert('Elegí al menos una sección.'); return; }
+
+    const htmlBtn=document.querySelector('#sec-report-overlay button[onclick="secReportGenerateHtml()"]');
+    const _orig=htmlBtn?htmlBtn.textContent:'';
+    if(htmlBtn){ htmlBtn.textContent='Generando…'; htmlBtn.disabled=true; }
+
+    try{
+      const ticker=_lastTicker;
+      const name=$('secCompanyName')?.textContent||ticker;
+      const _restoreTab=document.querySelector('#secTopTabs .sec-tab.active')?.id||'';
+
+      // Comparar es lazy: forzar render si está tildado y vacío.
+      if(checked.includes('cmp') && !$('secCompare').innerHTML.trim()){
+        try{ renderCompare(); }catch(_){}
+        await new Promise(r=>setTimeout(r,250));
+      }
+      // margen para que los charts de Chart.js estén pintados
+      await new Promise(r=>setTimeout(r,350));
+
+      // KPI bar (clonado, sin el botón ✎ KPIs)
+      let kpiHtml='';
+      const kpiSrc=$('secKpiBar');
+      if(kpiSrc && kpiSrc.innerHTML.trim()){
+        const kc=_secCanvasesToImg(kpiSrc);
+        kc.querySelectorAll('button').forEach(b=>b.remove());
+        kpiHtml=kc.innerHTML;
+      }
+
+      // Clonar cada tab tildada en el orden canónico fin → rat → cmp
+      const sections=[];
+      for(const t of _SEC_REPORT_TABS){
+        if(!checked.includes(t.id)) continue;
+        const src=$(t.tab);
+        if(!src || !src.innerHTML.trim()) continue;
+        const cloned=_secCanvasesToImg(src);
+        _secStripControls(cloned);
+        if(!cloned.innerHTML.trim()) continue;
+        sections.push({ id:t.id, label:t.label, html:cloned.innerHTML });
+      }
+      if(!sections.length){ alert('Las secciones elegidas no tienen contenido para exportar.'); return; }
+
+      // Restaurar tab activa
+      if(_restoreTab){ const m=_restoreTab.match(/secTab(\w+)Btn/); if(m){ try{ secShowTab(m[1].toLowerCase()); }catch(_){} } }
+
+      _secBuildReportShell({
+        ticker, name, kpiHtml, sections,
+        filename:`${ticker}_reporte_${new Date().toISOString().slice(0,10)}.html`
+      });
+    }catch(err){
+      alert('No se pudo generar el HTML: '+(err&&err.message?err.message:err));
+    }finally{
+      if(htmlBtn){ htmlBtn.textContent=_orig||'HTML'; htmlBtn.disabled=false; }
+      secCloseReportDialog();
+    }
+  };
 
   window.secGenerateReport = function(){
     const ticker = _lastTicker||'—';
