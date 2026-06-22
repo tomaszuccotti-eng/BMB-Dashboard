@@ -19351,11 +19351,14 @@ function renderEquity(){
       // Todas las filas del tfoot (Total en pesos + Equivalente en USD). Cada una
       // tiene una celda etiqueta (colspan) + una celda valor → mapear a [label,…,val].
       const footRows=Array.from(detTbl.querySelectorAll('tfoot tr'));
+      // La fuente helvetica de jsPDF no soporta '≈' (sale como basura "H y fuerza
+      // linebreak por carácter). Lo quitamos (la etiqueta ya dice "Equivalente en USD").
+      const cleanPdf=s=>String(s||'').replace(/≈/g,'').replace(/\s+/g,' ').trim();
       footRows.forEach(tr=>{
         const cells=Array.from(tr.querySelectorAll('td'));
         if(!cells.length) return;
-        const lbl=cells[0].textContent.trim();
-        const val=cells.length>1?cells[cells.length-1].textContent.trim():'';
+        const lbl=cleanPdf(cells[0].textContent);
+        const val=cells.length>1?cleanPdf(cells[cells.length-1].textContent):'';
         const ri=body.length; // índice de esta fila en el body
         body.push(head.map((_,i)=> i===0?lbl : (i===ncol-1?val:'')));
         // Remarcar toda la fila: fondo destacado + texto accent en bold
