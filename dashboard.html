@@ -19533,27 +19533,23 @@ function renderEquity(){
     if(!isFirst){ pdf.addPage(); }
     ctx.pageBg();
     let y=ctx.drawHeader();
-    // Título grande = TICKER (no razón social), como pidió el módulo de precios.
-    pdf.setFont('helvetica','bold'); pdf.setFontSize(20); pdf.setTextColor(...RGB.accent);
-    pdf.text(ticker, ctx.M, y+8);
-    pdf.setFont('helvetica','normal'); pdf.setFontSize(8.5); pdf.setTextColor(...RGB.text3);
-    pdf.text(`Precios · ${_rangeLbl} · ${ccy}`, ctx.M+pdf.getTextWidth(ticker)+12, y+8);
-    pdf.setDrawColor(...RGB.accent); pdf.setLineWidth(0.8); pdf.line(ctx.M, y+14, ctx.PW-ctx.M, y+14);
-    y+=26;
+    // Título grande = TICKER (no razón social). Subtítulo en su PROPIA línea (sin solape).
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(19); pdf.setTextColor(...RGB.accent);
+    pdf.text(ticker, ctx.M, y+10);
+    pdf.setFont('helvetica','normal'); pdf.setFontSize(8); pdf.setTextColor(...RGB.text3);
+    pdf.text(`Precios · ${_rangeLbl} · ${ccy}`, ctx.M, y+22);
+    pdf.setDrawColor(...RGB.accent); pdf.setLineWidth(0.8); pdf.line(ctx.M, y+27, ctx.PW-ctx.M, y+27);
+    y+=37;
 
     // ── 5 cards (mismos cálculos que el tab) ──
     const fmtN=v=>v==null?'—':Number(v).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
     const fmtVol=n=>n==null?'—':(n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(0)+'K':Math.round(n).toString());
     const valid=closes.filter(v=>v!=null);
     const lastRow=st.allData[st.allData.length-1];
-    // Último cierre (en la moneda activa: último válido de la serie convertida del slice)
     const lastClose = valid.length?valid[valid.length-1]:(lastRow?lastRow.c:null);
-    // Var % día (de la última rueda; dato crudo, no depende de moneda)
     const varDia = lastRow&&lastRow.dr!=null?lastRow.dr:null;
-    // Var % período (primer vs último válido en la moneda/rango actuales)
     const v0=valid.length?valid[0]:null, v1=valid.length?valid[valid.length-1]:null;
     const varPer = (v0!=null&&v1!=null&&v0!==0)?((v1/v0-1)*100):null;
-    // Volumen diario (última rueda) + promedio del período (en unidades)
     const volDia = lastRow?lastRow.v:null;
     const volsSlice = slice.map(d=>d.v).filter(v=>v!=null);
     const volProm = volsSlice.length?volsSlice.reduce((a,b)=>a+b,0)/volsSlice.length:null;
@@ -19565,38 +19561,67 @@ function renderEquity(){
       {lbl:'Vol. nominal diario', val:fmtVol(volDia), col:RGB.text2},
       {lbl:`Vol. nominal prom. ${_rangeLbl}`, val:fmtVol(volProm), col:RGB.text2},
     ];
-    const n=cards.length, gap=8, cardW=(ctx.usableW-gap*(n-1))/n, cardH=44;
+    const ncards=cards.length, gap=8, cardW=(ctx.usableW-gap*(ncards-1))/ncards, cardH=42;
     cards.forEach((c,i)=>{
       const cx=ctx.M+i*(cardW+gap);
       pdf.setFillColor(...RGB.card2); pdf.roundedRect(cx, y, cardW, cardH, 3, 3, 'F');
-      pdf.setFont('helvetica','normal'); pdf.setFontSize(6); pdf.setTextColor(...RGB.text3);
-      // Etiqueta (puede ser larga → recortar al ancho)
-      const lbl=c.lbl.toUpperCase();
-      pdf.text(lbl, cx+8, y+13, {maxWidth:cardW-16});
-      pdf.setFont('helvetica','bold'); pdf.setFontSize(15); pdf.setTextColor(...c.col);
-      pdf.text(String(c.val), cx+8, y+34);
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(5.8); pdf.setTextColor(...RGB.text3);
+      pdf.text(c.lbl.toUpperCase(), cx+8, y+13, {maxWidth:cardW-16});
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(14); pdf.setTextColor(...c.col);
+      pdf.text(String(c.val), cx+8, y+33);
     });
-    y+=cardH+16;
+    y+=cardH+14;
 
-    // ── Gráfico de precio (regenerado offscreen, área tipo el tab) ──
+    // ── Gráficos precio + volumen: deben entrar AMBOS en la hoja 1 junto a los cards.
+    // Repartimos el alto restante de la página entre los dos (precio más alto que volumen).
     let priceImg=null, volImg=null;
     try{ priceImg=await _buildPriceChartImg(dates, closes, ccy); }catch(_){}
     try{ volImg=await _buildVolChartImg(slice); }catch(_){}
-    if(priceImg){ y=ctx.image(priceImg, 'Precio de cierre', y); }
-    if(volImg){ y=ctx.image(volImg, 'Volumen diario', y); }
+    const bottom=ctx.PH-ctx.M;
+    const capH=18;                                   // alto del caption de cada gráfico
+    const avail=bottom-y - capH*2 - 12;              // alto libre para las dos imágenes
+    // Reparto 62/38 entre precio y volumen; respetando aspect ratio, sin exceder el ancho.
+    const drawChart=(im, cap, hMax, yy)=>{
+      if(!im) return yy;
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(8.5); pdf.setTextColor(...RGB.accent);
+      pdf.text(String(cap).toUpperCase(), ctx.M, yy+8);
+      pdf.setDrawColor(...RGB.accent); pdf.setLineWidth(0.8); pdf.line(ctx.M, yy+12, ctx.PW-ctx.M, yy+12);
+      yy+=capH;
+      let w=ctx.usableW, h=w*im.ratio;
+      if(h>hMax){ h=hMax; w=h/im.ratio; }
+      const x=ctx.M+(ctx.usableW-w)/2;
+      pdf.addImage(im.data,'PNG',x,yy,w,h);
+      return yy+h+8;
+    };
+    if(priceImg && volImg){
+      y=drawChart(priceImg, 'Histórico de precios', avail*0.62, y);
+      y=drawChart(volImg, 'Volumen histórico', avail*0.38, y);
+    } else if(priceImg){
+      y=drawChart(priceImg, 'Histórico de precios', avail, y);
+    } else if(volImg){
+      y=drawChart(volImg, 'Volumen histórico', avail, y);
+    }
 
-    // ── HOJA 2+: tabla histórica nativa (slice del rango, más reciente primero) ──
+    // ── HOJA 2 (única): tabla histórica nativa. SOLO las filas más recientes que entren
+    // en UNA hoja (no paginar a decenas de hojas). Recortamos el body al cupo de la página.
     const rowsDesc=[...slice].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+    pdf.addPage(); ctx.pageBg(); let y2=ctx.drawHeader();
+    y2=ctx.blockTitle(`${ticker} · Precios`, y2);
+    // Cupo de filas: alto útil restante / alto de fila (~13pt), descontando título+thead.
+    const rowH=13, headBlock=22 /*título*/ + 18 /*thead*/ + 8;
+    const fitRows=Math.max(1, Math.floor((bottom - y2 - headBlock)/rowH) - 1);
+    const shown=rowsDesc.slice(0, fitRows);
     const fmtP=n2=>n2==null?'—':((n2>=0?'+':'')+n2.toFixed(2)+'%');
     const cellColors={};
-    const body=rowsDesc.map((d,ri)=>{
+    const body=shown.map((d,ri)=>{
       if(d.dr!=null) cellColors[`${ri},6`]= d.dr>=0?RGB.green:RGB.red;
       return [ d.date, fmtN(d.o), fmtN(d.h), fmtN(d.l), fmtN(d.c), fmtVol(d.v), fmtP(d.dr) ];
     });
-    pdf.addPage(); ctx.pageBg(); let y2=ctx.drawHeader();
-    y2=ctx.blockTitle(`${ticker} · Precios`, y2);
+    const titleTxt = shown.length<rowsDesc.length
+      ? `Histórico de cotizaciones · ${_rangeLbl} (últimas ${shown.length} de ${rowsDesc.length} ruedas)`
+      : `Histórico de cotizaciones · ${_rangeLbl} (${rowsDesc.length} ruedas)`;
     ctx.table(['Fecha','Apertura','Máximo','Mínimo','Cierre','Volumen','Retorno %'], body, y2,
-      {title:`Histórico de cotizaciones · ${_rangeLbl} (${rowsDesc.length} ruedas)`, cellColors});
+      {title:titleTxt, cellColors, noBreakLogic:true});
   }
 
   // Regenera el gráfico de PRECIO (línea + área) en canvas offscreen → {data, ratio}.
