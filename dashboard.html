@@ -19255,6 +19255,56 @@ function renderEquity(){
   // que el reporte standalone (Central de Deudores) y el de empresa compartan este
   // mismo builder pese a usar IDs distintos en el DOM.
   //   { hero, chart, heatmap }  → cada uno string selector o función ()=>Element
+
+  // Regenera el gráfico de "Exposición crediticia por banco" desde los datos crudos
+  // (hist), en un canvas OFFSCREEN propio. Devuelve {data, ratio} listo para el PDF.
+  // No depende del canvas del tab (que puede estar oculto/destruido). Misma lógica de
+  // datasets que _renderChartInline para que el resultado sea idéntico al de pantalla.
+  async function _buildExposureChartImg(hist, ctx){
+    if(!hist?.periodos?.length || typeof Chart==='undefined') return null;
+    const _dark=(typeof _isDark!=='undefined')?_isDark:true;
+    const imgBg=_dark?'#11151f':'#f7f8fc';
+    const PALETTE=['#1E27F3','#3fb950','#d4a017','#f85149','#a5b4fc','#0d9e6e','#8b5cf6','#f59e0b','#22c55e','#ec4899','#06b6d4','#84cc16','#f97316','#6366f1','#14b8a6','#e11d48','#7c3aed','#0284c7','#ca8a04','#dc2626'];
+    const allPeriodos=[...new Set(hist.periodos.map(p=>p.periodo))].sort();
+    const entityTotals={};
+    hist.periodos.forEach(p=>{ (p.entidades||[]).forEach(e=>{
+      if(e.situacion===0||!e.monto)return;
+      if(!entityTotals[e.entidad])entityTotals[e.entidad]={};
+      entityTotals[e.entidad][p.periodo]=(entityTotals[e.entidad][p.periodo]||0)+e.monto;
+    }); });
+    const sorted=Object.entries(entityTotals)
+      .map(([name,d])=>({name,total:Object.values(d).reduce((s,v)=>s+v,0),data:d}))
+      .sort((a,b)=>b.total-a.total).slice(0,15);
+    if(!sorted.length) return null;
+    const labels=allPeriodos.map(p=>`${p.slice(0,4)}/${p.slice(4,6)}`);
+    const datasets=sorted.map((ent,i)=>{ const color=PALETTE[i%PALETTE.length];
+      return { label:ent.name, data:allPeriodos.map(p=>+((ent.data[p]||0)/1e6).toFixed(2)),
+        backgroundColor:color+'99', borderColor:color, borderWidth:1.5, fill:true, tension:0.3, pointRadius:0 }; });
+    // Canvas offscreen de alta resolución (nitidez en el PDF). 16:9 apaisado.
+    const W=1400, H=720;
+    const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+    const holder=document.createElement('div');
+    holder.style.cssText=`position:fixed;left:-10000px;top:0;width:${W}px;height:${H}px;background:${imgBg};`;
+    holder.appendChild(cv); document.body.appendChild(holder);
+    // Fondo opaco (Chart.js no pinta el fondo del canvas).
+    const cx=cv.getContext('2d'); cx.fillStyle=imgBg; cx.fillRect(0,0,W,H);
+    let chart=null;
+    try{
+      chart=new Chart(cv,{ type:'line', data:{labels,datasets},
+        options:{ responsive:false, animation:false, maintainAspectRatio:false, devicePixelRatio:1,
+          plugins:{ legend:{display:true,position:'bottom',labels:{color:'#8b99c4',font:{size:13,family:'DM Mono'},boxWidth:12,padding:14}} },
+          scales:{ x:{ticks:{color:'#8b99c4',font:{size:12},maxRotation:45},grid:{color:'rgba(30,39,243,0.06)'}},
+                   y:{stacked:true,ticks:{color:'#8b99c4',font:{size:12},callback:v=>'$'+v+'M'},grid:{color:'rgba(30,39,243,0.06)'}} } } });
+      // Una vuelta de event loop para asegurar el paint (animation:false ya es síncrono).
+      await new Promise(r=>setTimeout(r,60));
+      // Recomponer sobre fondo opaco para evitar transparencias en el PNG.
+      const out=document.createElement('canvas'); out.width=W; out.height=H;
+      const ox=out.getContext('2d'); ox.fillStyle=imgBg; ox.fillRect(0,0,W,H); ox.drawImage(cv,0,0);
+      return { data:out.toDataURL('image/png'), ratio:H/W };
+    }catch(_){ return null; }
+    finally{ try{chart&&chart.destroy();}catch(_){} try{document.body.removeChild(holder);}catch(_){} }
+  }
+
   async function buildDeudaBlock(pdf, ctx, data, isFirst, domCon, domSel){
     domSel=domSel||{};
     const _pick=(sel, root)=>{
@@ -19321,14 +19371,20 @@ function renderEquity(){
       }
     }
 
-    // ── Ítem 3: GRÁFICO de exposición por banco (captura del canvas) ──
-    const chartCv=_pick(domSel.chart, domCon) ||
-      document.getElementById(`bcra-chart-${data.ticker||''}`) ||
-      (domCon ? domCon.querySelector('canvas') : null);
-    if(chartCv){
-      const im=ctx.canvasToImg(chartCv);
-      if(im){ let y=beginItem(); ctx.imageFull(im,'Exposición crediticia por banco',y); }
+  // ── Ítem 3: GRÁFICO de exposición por banco ──
+  // Estrategia robusta: regenerar el gráfico desde los DATOS (data.hist) en un canvas
+  // offscreen propio. Así no dependemos del canvas del tab, que puede estar oculto
+  // (display:none colapsa el render de Chart.js) o haber sido destruido. Si por algún
+  // motivo no se puede regenerar, caemos al canvas del DOM como antes.
+    let chartImg=null;
+    try{ chartImg=await _buildExposureChartImg(data.hist, ctx); }catch(_){ chartImg=null; }
+    if(!chartImg){
+      const chartCv=_pick(domSel.chart, domCon) ||
+        document.getElementById(`bcra-chart-${data.ticker||''}`) ||
+        (domCon ? domCon.querySelector('canvas') : null);
+      if(chartCv){ chartImg=ctx.canvasToImg(chartCv); }
     }
+    if(chartImg){ let y=beginItem(); ctx.imageFull(chartImg,'Exposición crediticia por banco',y); }
 
     // ── Ítem 4: SITUACIÓN actual (tabla coloreada por situación) ──
     if(ents.length){
