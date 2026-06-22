@@ -19255,17 +19255,22 @@ function renderEquity(){
     // ── (2) Comparativa sectorial ──
     // Empresas del mismo sector que la empresa actual (último balance por ticker),
     // ordenadas por score desc. La empresa actual se resalta (fondo + texto accent).
-    const sector=(typeof _currentExcelSector!=='undefined'?_currentExcelSector:'')||'';
-    if(sector && typeof getLatestByTicker==='function'){
+    // IMPORTANTE: el sector se toma de la PROPIA fila de scoring de la empresa (mismo
+    // dataset que se filtra), no de _currentExcelSector — que puede venir de Economatica
+    // con otro formato y dejar empresas afuera. Fallback a _currentExcelSector.
+    let sector='';
+    if(typeof getLatestByTicker==='function'){
       const latest=getLatestByTicker(window.EXCEL_DATA);
-      let peers=latest.filter(r=>((r['sector']||r['Sector']||'').trim())===sector.trim());
+      const own=latest.find(r=>(r['Ticker']||'').trim().toUpperCase()===ticker);
+      sector=(own?.['sector']||own?.['Sector']||'').trim();
+      if(!sector) sector=((typeof _currentExcelSector!=='undefined'?_currentExcelSector:'')||'').trim();
+      let peers=latest.filter(r=>((r['sector']||r['Sector']||'').trim())===sector);
       // Si la empresa actual no figura en el sector, inyectarla para comparar.
       if(!peers.some(r=>(r['Ticker']||'').trim().toUpperCase()===ticker)){
-        const own=latest.find(r=>(r['Ticker']||'').trim().toUpperCase()===ticker);
         if(own) peers=[...peers, own];
       }
       peers.sort((a,b)=>(parseFloat(b['Score'])||-Infinity)-(parseFloat(a['Score'])||-Infinity));
-      if(peers.length){
+      if(sector && peers.length){
         const headC=['Ticker','Empresa','Score','Ult. Balance',...RATIOS.map(r=>r.short)];
         const cellColorsC={};
         const cellBgC={};
@@ -19275,7 +19280,7 @@ function renderEquity(){
           const fb=(r['Fecha Balance']||'').trim().substring(0,10)||'—';
           cellColorsC[`${ri},2`]=hex2rgb(scoreColor(r['Score']));
           RATIOS.forEach((rat,k)=>{ const c=ratioColor(rat.key,r[rat.key]); if(c) cellColorsC[`${ri},${4+k}`]=hex2rgb(c); });
-          // Resaltar la fila de la empresa actual: fondo accent suave en Ticker y Empresa.
+          // Resaltar la fila de la empresa actual: fondo accent en Ticker y Empresa.
           if(tk===ticker){
             cellBgC[`${ri},0`]={bg:RGB.accent, text:[255,255,255]};
             cellBgC[`${ri},1`]={bg:RGB.accent, text:[255,255,255]};
