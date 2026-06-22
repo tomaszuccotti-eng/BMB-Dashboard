@@ -18754,11 +18754,27 @@ function renderEquity(){
       document.getElementById('ear-report-overlay').style.display='flex';
       return;
     }
-    // Contexto Central de Deudores (herramienta): si el tab deudores est\u00E1 visible \u2192 reporte solo de deudores
+    // Contexto Central de Deudores (herramienta): si el tab deudores est\u00E1 visible \u2192
+    // menú intermedio con una única sección (Central de Deudores) tildada, consistente
+    // con MAV. Aunque sea un solo click, mantenemos el flujo del diálogo.
     const deuTab=document.getElementById('earTabDeudores');
     if(deuTab && deuTab.style.display!=='none'){
       if(!window._deuLastReport || !window._deuLastReport.deudas){ alert('Primero consult\u00E1 un CUIT en Central de Deudores.'); return; }
-      window.deuBuildReport();
+      window._earReportMode='deudores';
+      const d=window._deuLastReport.deudas;
+      const razon=(d?.denominacion && d.denominacion!=='\u2014') ? d.denominacion : ('CUIT '+(window._deuLastReport.cuit||''));
+      const ttlEl=document.getElementById('ear-report-title'); if(ttlEl)ttlEl.textContent='Generar reporte';
+      const hdrEl=document.getElementById('ear-report-checks-label'); if(hdrEl)hdrEl.textContent='Secciones a incluir';
+      const lblEl=document.getElementById('ear-report-company'); if(lblEl)lblEl.textContent=razon;
+      const box=document.getElementById('ear-report-checks');
+      if(box){
+        box.innerHTML=`<label style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:7px;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);transition:all .12s;"
+          onmouseover="this.style.borderColor='#1E27F3'" onmouseout="this.style.borderColor='var(--border2)'">
+          <input type="checkbox" class="ear-rep-chk" value="deudas" checked style="width:15px;height:15px;accent-color:#1E27F3;cursor:pointer;">
+          <span style="font-size:12px;font-weight:700;color:var(--text2);font-family:var(--mono);">Central de Deudores</span>
+        </label>`;
+      }
+      document.getElementById('ear-report-overlay').style.display='flex';
       return;
     }
     // Contexto Scoring de Liquidez (herramienta): si el tab sectorial está visible →
@@ -19111,6 +19127,36 @@ function renderEquity(){
       const x=M+(usableW-imgW)/2;
       pdf.addImage(im.data,'PNG',x,y,imgW,imgH); return y+imgH+14;
     };
+    // imageFull: dibuja una imagen ocupando el MÁXIMO espacio disponible de la hoja
+    // (desde y hasta el fondo de la página útil) sin romper la relación de aspecto.
+    // Centra horizontal y verticalmente en el área disponible. Pensada para ítems que
+    // viven solos en su propia hoja (hero, gráfico). El caption va sobre la imagen.
+    ctx.imageFull=function(im, cap, y){
+      if(!im) return y;
+      const bottom=PH-M;
+      if(cap){
+        pdf.setFont('helvetica','bold'); pdf.setFontSize(8.5); pdf.setTextColor(...RGB.accent);
+        pdf.text(String(cap).toUpperCase(),M,y+8);
+        pdf.setDrawColor(...RGB.accent); pdf.setLineWidth(0.8); pdf.line(M,y+12,PW-M,y+12);
+        y+=22;
+      }
+      const availH=bottom-y;            // alto disponible para la imagen
+      const availW=usableW;             // ancho disponible
+      // Escalar a "contain": la dimensión que primero topa fija la escala.
+      let imgW=availW, imgH=availW*im.ratio;
+      if(imgH>availH){ imgH=availH; imgW=imgH/im.ratio; }
+      const x=M+(availW-imgW)/2;        // centrado horizontal
+      const yy=y+(availH-imgH)/2;       // centrado vertical en el área restante
+      pdf.addImage(im.data,'PNG',x,yy,imgW,imgH);
+      return bottom;
+    };
+    // startItemPage: arranca un ítem en su propia hoja. Si la hoja actual ya tiene
+    // contenido (más allá del header), abre una hoja nueva; si está "fresca" (recién
+    // creada con sólo el header), la reutiliza. Devuelve la y de inicio de contenido.
+    ctx.startItemPage=function(y, isFirst){
+      if(isFirst){ ctx.pageBg(); return ctx.drawHeader(); }
+      return ctx.newPage();
+    };
     return ctx;
   }
 
@@ -19205,12 +19251,22 @@ function renderEquity(){
   //   data = {cuit, deudas, hist, cheques}  (de _bcraFetch o _deuLastReport)
   // Replica el tab: resumen de riesgo, situación por entidad (coloreada),
   // historial por período (heatmap como tabla) y cheques.
-  async function buildDeudaBlock(pdf, ctx, data, isFirst, domCon){
-    if(!isFirst){ pdf.addPage(); }
-    ctx.pageBg();
-    let y=ctx.drawHeader();
-    y=ctx.blockTitle('Deuda Bancaria', y);
-    if(!data || !data.deudas){ ctx.note('Sin datos de BCRA para esta empresa.', y); return; }
+  // domSel: selectores DOM opcionales para localizar hero/gráfico/heatmap. Permite
+  // que el reporte standalone (Central de Deudores) y el de empresa compartan este
+  // mismo builder pese a usar IDs distintos en el DOM.
+  //   { hero, chart, heatmap }  → cada uno string selector o función ()=>Element
+  async function buildDeudaBlock(pdf, ctx, data, isFirst, domCon, domSel){
+    domSel=domSel||{};
+    const _pick=(sel, root)=>{
+      if(!sel) return null;
+      if(typeof sel==='function'){ try{ return sel(); }catch(_){ return null; } }
+      return (root||document).querySelector(sel);
+    };
+    if(!data || !data.deudas){
+      if(!isFirst){ pdf.addPage(); }
+      ctx.pageBg(); let y=ctx.drawHeader(); y=ctx.blockTitle('Deuda Bancaria', y);
+      ctx.note('Sin datos de BCRA para esta empresa.', y); return;
+    }
     const {cuit, deudas, hist, cheques}=data;
     const RGB=ctx.RGB;
     const hex2rgb=h=>{ if(!h)return null; const n=parseInt(h.replace('#',''),16); return [(n>>16)&255,(n>>8)&255,n&255]; };
@@ -19224,15 +19280,25 @@ function renderEquity(){
     const risk=window._deuCalcRisk?window._deuCalcRisk(deudas):{nivel:'—'};
     const fmtMonto=v=>window._deuFmtMontoMiles?window._deuFmtMontoMiles(v):('$'+Math.round((v||0)/1000).toLocaleString('es-AR')+'M');
 
-    // Hero de riesgo: captura del HTML (estética idéntica al tab). Fallback a tabla.
+    // Cada ítem vive en su PROPIA hoja, a la máxima altura posible (imágenes escaladas
+    // a "contain" sin deformar). Orden: hero → cheques → gráfico exposición → situación
+    // → heatmap. El primer ítem que efectivamente se dibuja reutiliza la hoja inicial.
+    let firstPlaced=isFirst;
+    const beginItem=()=>{ const y=ctx.startItemPage(0, firstPlaced); firstPlaced=false; return y; };
+
+    // ── Ítem 1: HERO de riesgo (captura del HTML, estética idéntica al tab) ──
+    // Fallback a tabla "Resumen" si no se puede capturar.
     let heroDone=false;
-    if(domCon){
-      const heroEl=domCon.querySelector('[id^="bcra-inline-"]')?.firstElementChild || domCon.querySelector('[id^="bcra-inline-"]');
-      if(heroEl){ const im=await ctx.domToImg(heroEl); if(im){ y=ctx.image(im, null, y); heroDone=true; } }
+    const heroEl=_pick(domSel.hero, domCon) ||
+      (domCon ? (domCon.querySelector('[id^="bcra-inline-"]')?.firstElementChild || domCon.querySelector('[id^="bcra-inline-"]')) : null);
+    if(heroEl){
+      const im=await ctx.domToImg(heroEl);
+      if(im){ let y=beginItem(); ctx.imageFull(im, null, y); heroDone=true; }
     }
     if(!heroDone){
+      let y=beginItem();
       y=ctx.sub('Resumen', y);
-      y=ctx.table(['Dato','Valor'], [
+      ctx.table(['Dato','Valor'], [
         ['CUIT', (typeof fmtCUIT==='function'&&cuit)?fmtCUIT(cuit):(cuit||'—')],
         ['Último período', periodLabel],
         ['Nivel de riesgo', String(risk.nivel||'—')],
@@ -19241,26 +19307,30 @@ function renderEquity(){
       ], y, {columnStyles:{1:{halign:'left'}}});
     }
 
-    // Cheques rechazados — orden del HTML: van justo después del hero
+    // ── Ítem 2: CHEQUES rechazados (sólo si hay) ──
     if(cheques?.causales?.length){
       const all=[];
       cheques.causales.forEach(ca=>ca.entidades.forEach(en=>en.detalle.forEach(d=>all.push({...d,causal:ca.causal,entidad:en.entidad}))));
       if(all.length){
         all.sort((a,b)=>(a.fechaPago?1:0)-(b.fechaPago?1:0));
         const fmtM=v=>{if(!v&&v!==0)return'—';const n=parseFloat(String(v).replace(/\./g,'').replace(',','.'));if(isNaN(n))return v;if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';if(n>=1e6)return'$'+(n/1e6).toFixed(1)+'M';return'$'+Math.round(n).toLocaleString('es-AR');};
-        y=ctx.table(['Causal','Banco','N° Cheque','Monto','F. Rechazo','Estado'],
+        let y=beginItem();
+        ctx.table(['Causal','Banco','N° Cheque','Monto','F. Rechazo','Estado'],
           all.map(c=>[c.causal||'—',c.entidad||'—',c.nroCheque||'—',fmtM(c.monto),c.fechaRechazo||'—',c.fechaPago?`Regularizado ${c.fechaPago}`:'Sin regularizar']),
           y, {title:'Cheques rechazados', columnStyles:{1:{halign:'left'},2:{halign:'left'}}});
       }
     }
 
-    // Gráfico de exposición por banco (captura del canvas del tab, si está disponible)
-    if(domCon){
-      const chartCv=document.getElementById(`bcra-chart-${data.ticker||''}`)||domCon.querySelector('canvas');
-      if(chartCv){ const im=ctx.canvasToImg(chartCv); if(im){ y=ctx.image(im,'Exposición crediticia por banco',y); } }
+    // ── Ítem 3: GRÁFICO de exposición por banco (captura del canvas) ──
+    const chartCv=_pick(domSel.chart, domCon) ||
+      document.getElementById(`bcra-chart-${data.ticker||''}`) ||
+      (domCon ? domCon.querySelector('canvas') : null);
+    if(chartCv){
+      const im=ctx.canvasToImg(chartCv);
+      if(im){ let y=beginItem(); ctx.imageFull(im,'Exposición crediticia por banco',y); }
     }
 
-    // Situación por entidad (coloreada por situación)
+    // ── Ítem 4: SITUACIÓN actual (tabla coloreada por situación) ──
     if(ents.length){
       const cellColors={};
       const body=ents.map((e,ri)=>{
@@ -19269,10 +19339,11 @@ function renderEquity(){
         return [ e.entidad, `${e.situacion} — ${SIT_LBL[e.situacion]||'—'}`, fmtMonto(e.monto),
           pond.toFixed(1)+'%', (e.diasAtrasoPago||0)>0?e.diasAtrasoPago+'d':'—' ];
       });
-      y=ctx.table(['Entidad','Situación','Monto','Pond.','Atraso'], body, y, {title:'Situación actual', cellColors, columnStyles:{1:{halign:'left'}}});
+      let y=beginItem();
+      ctx.table(['Entidad','Situación','Monto','Pond.','Atraso'], body, y, {title:'Situación actual', cellColors, columnStyles:{1:{halign:'left'}}});
     }
 
-    // Historial por período (heatmap REAL: celda con fondo de color = situación, como el HTML)
+    // ── Ítem 5: HEATMAP histórico (24 meses, dibujo nativo paginado) ──
     if(hist?.periodos?.length){
       const periodos=[...hist.periodos].sort((a,b)=>String(b.periodo).localeCompare(String(a.periodo))).slice(0,24).reverse();
       const pLabels=periodos.map(p=>`${String(p.periodo).slice(4,6)}/${String(p.periodo).slice(2,4)}`);
@@ -19286,7 +19357,8 @@ function renderEquity(){
           name:nm,
           cells:periodos.map(p=>{ const e=(p.entidades||[]).find(x=>x.entidad===nm); return e?e.situacion:0; })
         }));
-        y=ctx.heatmapChunked('Historial de situación (24 meses)', pLabels, rows, HEAT, y);
+        let y=beginItem();
+        ctx.heatmapChunked('Historial de situación (24 meses)', pLabels, rows, HEAT, y);
       }
     }
   }
@@ -19376,6 +19448,7 @@ function renderEquity(){
   // Exponer infra de reportes para reuso desde otros IIFEs (ej: mavGlobalReport standalone)
   window._earMakeCtx=_earMakeCtx;
   window.buildMavBlock=buildMavBlock;
+  window.buildDeudaBlock=buildDeudaBlock;
   window._earPdfFooter=_earPdfFooter;
 
   // ── BLOQUE: PRECIOS ───────────────────────────────────────────────────
@@ -19887,6 +19960,7 @@ function renderEquity(){
   window.earReportGenerate=function(){
     if(window._earReportMode==='sector'){ window.earBuildSectorReport(); }
     else if(window._earReportMode==='mav-standalone'){ window.mavGlobalReport(); }
+    else if(window._earReportMode==='deudores'){ window.earCloseReportDialog(); window.deuBuildReport(); }
     else { window.earBuildReportNew(); }
   };
 
@@ -21104,11 +21178,12 @@ window.deuBuildReport = async function(){
   const data = window._deuLastReport;
   if(!data || !data.deudas){ alert('Primero consult\u00E1 un CUIT en Central de Deudores.'); return; }
   if(!(window.jspdf && window.jspdf.jsPDF)){ alert('Las librer\u00EDas de PDF a\u00FAn se est\u00E1n cargando. Prob\u00E1 de nuevo.'); return; }
+  if(typeof window._earMakeCtx!=='function' || typeof window.buildDeudaBlock!=='function'){
+    alert('La infraestructura de reportes a\u00FAn se est\u00E1 cargando. Prob\u00E1 de nuevo.'); return;
+  }
 
-  const {cuit, deudas, hist, cheques} = data;
+  const {cuit, deudas} = data;
   const razon = (deudas?.denominacion && deudas.denominacion!=='\u2014') ? deudas.denominacion : ('CUIT '+(cuit||''));
-  const periodo = deudas?.periodos?.[0]?.periodo || '';
-  const periodLabel = periodo ? `${periodo.slice(0,4)}/${periodo.slice(4,6)}` : '\u2014';
   const cuitFmt = (typeof fmtCUIT==='function' && cuit) ? fmtCUIT(cuit) : (cuit||'');
 
   const btn=document.querySelector('button[onclick="earOpenReportDialog()"]');
@@ -21116,156 +21191,22 @@ window.deuBuildReport = async function(){
   if(btn){ btn.textContent='Generando\u2026'; btn.disabled=true; }
 
   try{
-    const _dark=(typeof _isDark!=='undefined')?_isDark:true;
-    const RGB=_dark
-      ? {bg:[11,14,23],card:[17,21,31],card2:[22,27,40],head:[26,31,48],border:[34,42,61],text:[232,234,246],text2:[195,201,230],text3:[126,135,184],accent:[30,39,243],green:[63,185,80],red:[248,81,73],amber:[251,191,36],alt:[20,25,37]}
-      : {bg:[255,255,255],card:[247,248,252],card2:[238,240,247],head:[228,231,242],border:[210,214,235],text:[10,12,26],text2:[58,63,92],text3:[138,144,176],accent:[30,39,243],green:[13,158,110],red:[224,49,49],amber:[217,119,6],alt:[241,243,250]};
-    const imgBg = _dark ? '#11151f' : '#f7f8fc';
-
-    function canvasToImg(orig){
-      try{ if(!orig||!orig.width) return null;
-        const off=document.createElement('canvas'); off.width=orig.width; off.height=orig.height;
-        const cx=off.getContext('2d'); cx.fillStyle=imgBg; cx.fillRect(0,0,off.width,off.height); cx.drawImage(orig,0,0);
-        return {data:off.toDataURL('image/png'), ratio:orig.height/orig.width};
-      }catch(_){ return null; }
-    }
-    async function domToImg(el){
-      if(!el||typeof html2canvas==='undefined') return null;
-      try{
-        const clone=el.cloneNode(true);
-        clone.querySelectorAll('*').forEach(n=>{ const st=n.style; if(st){ if(getComputedStyle(n).position==='sticky'||st.position==='sticky') st.position='static'; st.overflow='visible'; st.overflowX='visible'; st.overflowY='visible'; } });
-        clone.querySelectorAll('table').forEach(tb=>{ tb.style.tableLayout='auto'; tb.style.width='auto'; tb.querySelectorAll('colgroup').forEach(cg=>cg.remove()); tb.querySelectorAll('th,td').forEach(c=>{ c.style.whiteSpace='nowrap'; c.style.minWidth=''; c.style.maxWidth=''; }); tb.querySelectorAll('tr').forEach(tr=>{ const f=tr.firstElementChild; if(f){ f.style.minWidth='150px'; f.style.width='150px'; f.style.maxWidth='none'; f.style.paddingRight='10px'; } }); });
-        const holder=document.createElement('div'); holder.style.cssText='position:fixed;left:-10000px;top:0;background:'+imgBg+';width:auto;white-space:nowrap;padding:0;'; holder.appendChild(clone); document.body.appendChild(holder);
-        const render=html2canvas(clone,{backgroundColor:imgBg,scale:1.5,logging:false,useCORS:true,removeContainer:true,imageTimeout:3000}).then(cv=>({data:cv.toDataURL('image/png'), ratio:cv.height/cv.width}));
-        const timeout=new Promise(res=>setTimeout(()=>res(null),5000));
-        const out=await Promise.race([render,timeout]);
-        try{ document.body.removeChild(holder); }catch(_){}
-        return out;
-      }catch(_){ return null; }
-    }
-
-    const items=[];
-    const T={ sub:t=>items.push({type:'sub',text:t}),
-              note:t=>items.push({type:'note',text:t}),
-              table:(head,body)=>{ if(body&&body.length) items.push({type:'table',head,body}); },
-              image:(im,cap)=>{ if(im) items.push({type:'image',img:im,cap}); },
-              pageNew:()=>items.push({type:'pageNew'}) };
-
-    const risk = window._deuCalcRisk ? window._deuCalcRisk(deudas) : {nivel:'\u2014'};
-    const ents = (deudas?.periodos?.[0]?.entidades||[]).filter(e=>e.situacion>0).sort((a,b)=>b.situacion-a.situacion);
-    const montoTotalMiles = ents.reduce((s,e)=>s+(e.monto||0),0);
-    const fmtMonto = v => window._deuFmtMontoMiles ? window._deuFmtMontoMiles(v) : ('$'+Math.round((v||0)/1000).toLocaleString('es-AR')+'M');
-    const fmtTotal = '$'+Math.round(montoTotalMiles*1000).toLocaleString('es-AR');
-
-    T.note('Nivel de riesgo: '+(risk.nivel||'\u2014'));
-    T.note('Deuda total sistema: '+fmtTotal);
-    T.note('Entidades informantes: '+ents.length);
-
-    let chSummary={has:false,total:0,sinReg:0,reg:0,_all:[]};
-    if(cheques?.causales?.length){
-      const all=[]; cheques.causales.forEach(ca=>ca.entidades.forEach(en=>en.detalle.forEach(d=>all.push({...d,causal:ca.causal,entidad:en.entidad}))));
-      chSummary={has:true,total:all.length,sinReg:all.filter(c=>!c.fechaPago).length,reg:all.filter(c=>c.fechaPago).length,_all:all};
-    }
-    T.note(chSummary.has ? `Cheques rechazados: ${chSummary.total} (sin regularizar: ${chSummary.sinReg})` : (cheques!=null ? 'Cheques rechazados: 0' : 'Cheques: sin informaci\u00F3n'));
-
-    const SIT={1:'Normal',2:'Riesgo Bajo',3:'Con Problemas',4:'Alto Riesgo',5:'Irrecuperable'};
-    if(ents.length){
-      const _sum=ents.reduce((s,e)=>s+(e.monto||0),0);
-      T.sub('Situaci\u00F3n actual \u2014 \u00DAltimo per\u00EDodo informado');
-      T.table(['Entidad','Situaci\u00F3n','Monto','Pond.','Atraso'],
-        ents.map(e=>[e.entidad, `${e.situacion} \u2014 ${SIT[e.situacion]||'\u2014'}`, fmtMonto(e.monto), (_sum>0?((e.monto||0)/_sum*100).toFixed(1):'0.0')+'%', (e.diasAtrasoPago||0)>0?e.diasAtrasoPago+'d':'\u2014']));
-    }
-
-    const chartImg=canvasToImg(document.getElementById('deu-chart'));
-    const heatEl=document.getElementById('deu-heatmap');
-    const heatImg=heatEl?await domToImg(heatEl):null;
-    if(chartImg || heatImg){
-      T.pageNew();
-      if(chartImg) T.image(chartImg,'Exposici\u00F3n crediticia \u2014 Deuda total por banco');
-      if(heatImg) T.image(heatImg,'Historial crediticio \u2014 24 meses');
-    }
-
-    if(chSummary.has){
-      const fmtM=v=>{if(!v&&v!==0)return'\u2014';const n=parseFloat(String(v).replace(/\./g,'').replace(',','.'));if(isNaN(n))return v;if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';if(n>=1e6)return'$'+(n/1e6).toFixed(1)+'M';return'$'+Math.round(n).toLocaleString('es-AR');};
-      chSummary._all.sort((a,b)=>(a.fechaPago?1:0)-(b.fechaPago?1:0));
-      T.pageNew(); T.sub('Cheques rechazados \u2014 detalle');
-      T.table(['Causal','Banco','N\u00B0 Cheque','Monto','F. Rechazo','Estado'],
-        chSummary._all.map(c=>[c.causal||'\u2014',c.entidad||'\u2014',c.nroCheque||'\u2014',fmtM(c.monto),c.fechaRechazo||'\u2014',c.fechaPago?`Regularizado ${c.fechaPago}`:'Sin regularizar']));
-    }
-
     const { jsPDF }=window.jspdf;
-    const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
-    const PW=pdf.internal.pageSize.getWidth(), PH=pdf.internal.pageSize.getHeight();
-    const M=36, usableW=PW-M*2;
-    function pageBg(){ pdf.setFillColor(...RGB.bg); pdf.rect(0,0,PW,PH,'F'); }
-    function drawHeader(){
-      let yy=M;
-      pdf.setFont('helvetica','bold'); pdf.setTextColor(...RGB.accent); pdf.setFontSize(18); pdf.text(razon,M,yy+14,{maxWidth:usableW-180});
-      let hy=yy+30;
-      pdf.setFont('helvetica','normal'); pdf.setFontSize(8.5); pdf.setTextColor(...RGB.text3);
-      if(cuitFmt){ pdf.text('CUIT '+cuitFmt,M,hy); hy+=11; }
-      pdf.text('\u00DAltimo per\u00EDodo: '+periodLabel,M,hy); hy+=11;
-      pdf.setFontSize(7.5);
-      pdf.text('Central de Deudores \u00B7 BCRA',PW-M,yy+9,{align:'right'});
-      pdf.text('Research \u00B7 Bull Market Brokers',PW-M,yy+19,{align:'right'});
-      pdf.setDrawColor(...RGB.accent); pdf.setLineWidth(2); pdf.line(M,hy+3,PW-M,hy+3);
-      return hy+18;
-    }
-    function miniHeader(){
-      pdf.setFont('helvetica','bold'); pdf.setFontSize(10); pdf.setTextColor(...RGB.accent); pdf.text(razon,M,M+4,{maxWidth:usableW-120});
-      pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.5); pdf.line(M,M+10,PW-M,M+10);
-    }
-    function newPage(){ pdf.addPage(); pageBg(); miniHeader(); return M+22; }
+    // Mismo formato que el reporte por empresa: landscape A4, ctx compartido.
+    const pdf=new jsPDF({orientation:'landscape',unit:'pt',format:'a4'});
+    // Header: ticker vacío (es por CUIT, no por empresa cotizante); razón social como
+    // nombre y el CUIT formateado como "sector" para que aparezca en la cinta superior.
+    const ctx=window._earMakeCtx(pdf, { ticker:'', name:razon, sector: cuitFmt?('CUIT '+cuitFmt):'' });
 
-    pageBg();
-    let y=drawHeader();
+    // Reusa EXACTAMENTE el builder del reporte por empresa. Le pasamos los selectores
+    // del DOM standalone (deu-hero / deu-chart) para que capture hero y gráfico; el
+    // heatmap se dibuja nativo dentro del builder (no necesita DOM).
+    await window.buildDeudaBlock(pdf, ctx, data, true, document, {
+      hero:   '#deu-hero',
+      chart:  '#deu-chart'
+    });
 
-    for(const it of items){
-      if(it.type==='pageNew'){ y=newPage(); }
-      else if(it.type==='sub'){
-        if(y+48>PH-M){ y=newPage(); }
-        pdf.setFont('helvetica','bold'); pdf.setFontSize(9); pdf.setTextColor(...RGB.accent);
-        pdf.text(it.text.toUpperCase(),M,y+9); y+=16;
-      }
-      else if(it.type==='note'){
-        if(y+20>PH-M){ y=newPage(); }
-        pdf.setFont('helvetica','normal'); pdf.setFontSize(8); pdf.setTextColor(...RGB.text3);
-        pdf.text(it.text,M,y+9); y+=14;
-      }
-      else if(it.type==='image'){
-        const im=it.img; const iw=usableW; const ih=usableW*im.ratio;
-        if(y+ih+(it.cap?14:0)>PH-M){ y=newPage(); }
-        if(it.cap){ pdf.setFont('helvetica','bold'); pdf.setFontSize(8); pdf.setTextColor(...RGB.accent); pdf.text(it.cap.toUpperCase(),M,y+8); y+=12; }
-        try{ pdf.addImage(im.data,'PNG',M,y,iw,ih); }catch(_){}
-        y+=ih+12;
-      }
-      else if(it.type==='table'){
-        const rowH=13, headH=15;
-        const drawTable=(rows,sy)=>{ pdf.autoTable({ startY:sy, margin:{left:M,right:M},
-          head:[it.head], body:rows, theme:'grid',
-          styles:{font:'helvetica',fontSize:7,cellPadding:2.4,textColor:RGB.text2,lineColor:RGB.border,lineWidth:0.4,fillColor:RGB.card},
-          headStyles:{fillColor:RGB.head,textColor:RGB.text3,fontStyle:'bold',fontSize:6.5,halign:'center'},
-          bodyStyles:{fillColor:RGB.card}, alternateRowStyles:{fillColor:RGB.alt},
-          didParseCell:d=>{ d.cell.styles.halign='center'; },
-          tableLineColor:RGB.border, tableLineWidth:0.4, pageBreak:'avoid' });
-          return pdf.lastAutoTable.finalY; };
-        let rows=it.body.slice();
-        while(rows.length){
-          const avail=(PH-M)-y; let n=Math.max(1,Math.floor((avail-headH)/rowH));
-          if(n>=rows.length){ y=drawTable(rows,y)+10; rows=[]; }
-          else{ drawTable(rows.slice(0,n),y); rows=rows.slice(n); y=newPage(); }
-        }
-      }
-    }
-
-    const footerTxt='La informaci\u00F3n contenida es de car\u00E1cter informativo y no representa una recomendaci\u00F3n de inversi\u00F3n.';
-    const totalPages=pdf.internal.getNumberOfPages();
-    for(let p=1;p<=totalPages;p++){
-      pdf.setPage(p);
-      pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.5); pdf.line(M,PH-22,PW-M,PH-22);
-      pdf.setFont('helvetica','normal'); pdf.setFontSize(6.5); pdf.setTextColor(...RGB.text3);
-      pdf.text(footerTxt,PW/2,PH-13,{align:'center'});
-    }
+    window._earPdfFooter(pdf, ctx.RGB);
     const safeName=(razon||'Deudores').replace(/[^\w\s-]/g,'').trim().replace(/\s+/g,'_')||'Deudores';
     pdf.save(`${safeName}_CentralDeudores_${new Date().toISOString().slice(0,10)}.pdf`);
   }catch(err){
