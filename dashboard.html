@@ -16522,54 +16522,113 @@ function repShow(id,btn){
     return { head, body, cellColors };
   }
 
-  // KPIs estilo ARG (cards roundedRect, grilla 5/fila). Usa _kpiActive de USA.
+  // Limpia emojis y caracteres no soportados por helvetica del título (jsPDF
+  // renderiza basura tipo "Ø=ÜÊ" con emojis). Deja letras/números/puntuación básica.
+  function _secCleanTitle(t){
+    if(!t) return '';
+    return String(t)
+      .replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{200D}]/gu,'')
+      .replace(/\s+/g,' ').trim();
+  }
+
+  // KPIs estilo ARG (cards roundedRect). Todos en UNA fila, texto centrado.
   function _secKpiCardsPdf(pdf, ctx, y){
     const RGB=ctx.RGB, M=ctx.M, usableW=ctx.usableW, PH=ctx.PH;
     const defs=_kpiActive.slice();
     if(!defs.length) return y;
-    const perRow=5, gap=8, cardH=46, rowGap=8;
-    const rows=[];
-    for(let i=0;i<defs.length;i+=perRow) rows.push(defs.slice(i,i+perRow));
-    rows.forEach(rowDefs=>{
-      if(y+cardH>PH-M){ y=ctx.newPage(); }
-      const cardW=(usableW-gap*(perRow-1))/perRow;
-      rowDefs.forEach((kid,i)=>{
-        const cx=M+i*(cardW+gap);
-        const m=_kpiMeta(kid);
-        const v=_kpiValue(kid);
-        const disp=_kpiFmtVal(m.fmt,v);
-        pdf.setFillColor(...RGB.card2); pdf.roundedRect(cx, y, cardW, cardH, 3, 3, 'F');
-        pdf.setFont('helvetica','normal'); pdf.setFontSize(5.8); pdf.setTextColor(...RGB.text3);
-        pdf.text(String(m.label).toUpperCase(), cx+8, y+13, {maxWidth:cardW-16});
-        pdf.setFont('helvetica','bold'); pdf.setFontSize(13); pdf.setTextColor(...RGB.text2);
-        pdf.text(String(disp), cx+8, y+30, {maxWidth:cardW-16});
-        // variación coloreada
-        const vv=_kpiVariation(kid);
-        if(vv && !vv.nm){
-          let s='', col=RGB.text3;
-          if(vv.mode==='pp'){ s=(vv.diff>=0?'+':'')+vv.diff.toFixed(1)+'pp'; col=vv.diff>=0?RGB.green:RGB.red; }
-          else if(vv.mode==='abs'){ s=(vv.diff>=0?'+':'')+vv.diff.toFixed(2)+'x'; col=vv.diff>=0?RGB.green:RGB.red; }
-          else if(vv.pct!=null){ s=(vv.pct>=0?'+':'')+vv.pct.toFixed(1)+'%'; col=vv.pct>=0?RGB.green:RGB.red; }
-          if(s){ pdf.setFont('helvetica','bold'); pdf.setFontSize(7); pdf.setTextColor(...col); pdf.text(s, cx+8, y+41); }
-        }
-      });
-      y+=cardH+rowGap;
+    const n=defs.length;
+    const gap=8, cardH=50;
+    if(y+cardH>PH-M){ y=ctx.newPage(); }
+    const cardW=(usableW-gap*(n-1))/n;   // todos en una fila
+    defs.forEach((kid,i)=>{
+      const cx=M+i*(cardW+gap);
+      const cc=cx+cardW/2;               // centro de la card
+      const m=_kpiMeta(kid);
+      const v=_kpiValue(kid);
+      const disp=_kpiFmtVal(m.fmt,v);
+      pdf.setFillColor(...RGB.card2); pdf.roundedRect(cx, y, cardW, cardH, 3, 3, 'F');
+      // label centrado
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(5.6); pdf.setTextColor(...RGB.text3);
+      pdf.text(String(m.label).toUpperCase(), cc, y+13, {align:'center', maxWidth:cardW-10});
+      // valor centrado (tamaño según ancho disponible)
+      const valFs = cardW<70 ? 11 : 13;
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(valFs); pdf.setTextColor(...RGB.text2);
+      pdf.text(String(disp), cc, y+30, {align:'center', maxWidth:cardW-8});
+      // variación coloreada, centrada debajo
+      const vv=_kpiVariation(kid);
+      if(vv && !vv.nm){
+        let s='', col=RGB.text3;
+        if(vv.mode==='pp'){ s=(vv.diff>=0?'+':'')+vv.diff.toFixed(1)+'pp'; col=vv.diff>=0?RGB.green:RGB.red; }
+        else if(vv.mode==='abs'){ s=(vv.diff>=0?'+':'')+vv.diff.toFixed(2)+'x'; col=vv.diff>=0?RGB.green:RGB.red; }
+        else if(vv.pct!=null){ s=(vv.pct>=0?'+':'')+vv.pct.toFixed(1)+'%'; col=vv.pct>=0?RGB.green:RGB.red; }
+        if(s){ pdf.setFont('helvetica','bold'); pdf.setFontSize(7); pdf.setTextColor(...col); pdf.text(s, cc, y+43, {align:'center'}); }
+      }
     });
-    return y+4;
+    return y+cardH+10;
   }
 
-  // Captura un canvas (chart vivo) a imagen para el PDF, respetando fondo del tema.
-  function _secChartToImg(ctx, canvas){
-    if(!canvas || !canvas.width) return null;
+  // Captura un chart a imagen de ALTA RESOLUCIÓN para el PDF.
+  // Reusa la config de la instancia Chart.js viva (_chartInstances[cid]) y la
+  // re-renderiza en un canvas offscreen grande, sin tocar el chart de pantalla.
+  function _secChartToImg(ctx, cid){
+    const live=_chartInstances[cid];
+    const onCanvas=document.getElementById(`dashCanvas_${cid}`);
     const RGB=ctx.RGB;
+    // dimensiones objetivo: alto fijo lindo, ancho según aspecto del canvas en pantalla
+    const srcW=(onCanvas&&onCanvas.clientWidth)||900;
+    const srcH=(onCanvas&&onCanvas.clientHeight)||320;
+    const ratio=srcH/srcW;
+    const SCALE=2.6;                       // factor de supersampling
+    const W=Math.round(srcW*SCALE), H=Math.round(srcH*SCALE);
+
+    if(!live || !window.Chart){
+      // fallback: capturar el canvas de pantalla tal cual
+      if(!onCanvas || !onCanvas.width) return null;
+      const off=document.createElement('canvas'); off.width=onCanvas.width; off.height=onCanvas.height;
+      const c2=off.getContext('2d');
+      c2.fillStyle=`rgb(${RGB.card[0]},${RGB.card[1]},${RGB.card[2]})`; c2.fillRect(0,0,off.width,off.height);
+      c2.drawImage(onCanvas,0,0);
+      return { data:off.toDataURL('image/png'), ratio:onCanvas.height/onCanvas.width };
+    }
+
+    // canvas offscreen grande
     const off=document.createElement('canvas');
-    off.width=canvas.width; off.height=canvas.height;
-    const c2=off.getContext('2d');
-    // fondo del tema (card) para que el PNG no salga transparente/negro
-    c2.fillStyle=`rgb(${RGB.card[0]},${RGB.card[1]},${RGB.card[2]})`;
-    c2.fillRect(0,0,off.width,off.height);
-    c2.drawImage(canvas,0,0);
-    return { data:off.toDataURL('image/png'), ratio:canvas.height/canvas.width };
+    off.width=W; off.height=H;
+    off.style.width=W+'px'; off.style.height=H+'px';
+    // fondo del tema
+    const bg=off.getContext('2d');
+    bg.fillStyle=`rgb(${RGB.card[0]},${RGB.card[1]},${RGB.card[2]})`; bg.fillRect(0,0,W,H);
+
+    // clonar config con animación desactivada y a escala alta
+    const cfg=live.config;
+    const cloneCfg={
+      type:cfg.type,
+      data:cfg.data,
+      options:Object.assign({}, cfg.options, {
+        responsive:false, maintainAspectRatio:false, animation:false,
+        devicePixelRatio:1,
+      })
+    };
+    let tmp=null, img=null;
+    try{
+      tmp=new window.Chart(off, cloneCfg);
+      tmp.resize(W,H);
+      tmp.render();
+      img=off.toDataURL('image/png');
+    }catch(_){
+      // fallback al canvas de pantalla
+      if(onCanvas && onCanvas.width){
+        const o2=document.createElement('canvas'); o2.width=onCanvas.width; o2.height=onCanvas.height;
+        const c2=o2.getContext('2d');
+        c2.fillStyle=`rgb(${RGB.card[0]},${RGB.card[1]},${RGB.card[2]})`; c2.fillRect(0,0,o2.width,o2.height);
+        c2.drawImage(onCanvas,0,0);
+        img=o2.toDataURL('image/png');
+      }
+    }finally{
+      if(tmp){ try{ tmp.destroy(); }catch(_){} }
+    }
+    if(!img) return null;
+    return { data:img, ratio };
   }
 
   // Dibuja una imagen de chart centrada, saltando de hoja si no entra.
@@ -16644,13 +16703,12 @@ function repShow(id,btn){
           ].sort((a,b)=>a.order-b.order);
           for(const b of blocks){
             if(b.kind==='chart'){
-              const cv=document.getElementById(`dashCanvas_${b.def.id}`);
-              const im=_secChartToImg(ctx, cv);
+              const im=_secChartToImg(ctx, b.def.id);
               if(im){
                 const c=b.def;
                 const autoT = c.series.length===1 ? _chartMetaFor(c.series[0].metric).label
                              : c.series.map(s=>_chartMetaFor(s.metric).label).join(' · ');
-                const ctitle=((c.title&&c.title.trim())?c.title:autoT)+' · '+(c.period==='quarterly'?'TRIM':'ANUAL');
+                const ctitle=_secCleanTitle(((c.title&&c.title.trim())?c.title:autoT))+' · '+(c.period==='quarterly'?'TRIM':'ANUAL');
                 y=_secDrawChart(ctx, im, ctitle, y);
               }
             } else {
@@ -16662,7 +16720,7 @@ function repShow(id,btn){
                 if(tableEl){
                   const {head,body,cellColors}=_secDomTableToAT(tableEl);
                   if(body.length){
-                    y=ctx.table(head, body, y, { title:b.def.title, cellColors });
+                    y=ctx.table(head, body, y, { title:_secCleanTitle(b.def.title), cellColors });
                   }
                 }
               }
@@ -16685,7 +16743,7 @@ function repShow(id,btn){
               let title=titleEl?titleEl.textContent.replace(/\s+/g,' ').trim():'';
               title=title.replace(/(TRIMESTRAL|ANUAL)\s*$/,'').trim();
               const {head,body,cellColors}=_secDomTableToAT(tableEl);
-              if(body.length){ y=ctx.table(head, body, y, { title, cellColors }); }
+              if(body.length){ y=ctx.table(head, body, y, { title:_secCleanTitle(title), cellColors }); }
             });
           }
         }
