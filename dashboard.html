@@ -20285,14 +20285,99 @@ function renderEquity(){
     return clone;
   }
 
+  // Arma el HTML autocontenido (header + tabs + contenido) y dispara la descarga.
+  // sections: [{id, label, html}]  ·  metaLine: string bajo el nombre
+  function _earBuildReportShell(opt){
+    const { titleTicker, headerTicker, name, metaLine, kpiHtml, sections, filename } = opt;
+    const date=new Date().toLocaleDateString('es-AR',{year:'numeric',month:'long',day:'numeric'});
+    const themeVars=_earCaptureThemeVars();
+    const multi=sections.length>1;
+    const tabsBtns=sections.map((s,i)=>
+      `<button class="rep-tab${i===0?' active':''}" data-tab="${s.id}" onclick="repShow('${s.id}',this)">${s.label}</button>`
+    ).join('');
+    const tabsContent=sections.map((s,i)=>
+      `<div class="rep-tabc" id="repc-${s.id}" style="display:${i===0?'block':'none'};">${s.html}</div>`
+    ).join('');
+
+    const reportHtml=`<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${titleTicker} — Reporte · ${date}</title>
+<style>
+:root{
+${themeVars}
+  --mono:'DM Mono',ui-monospace,monospace;
+  --sans:'DM Sans',system-ui,sans-serif;
+  --display:'Syne',var(--sans);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:13px;-webkit-font-smoothing:antialiased;}
+.rep-page{max-width:1180px;margin:0 auto;padding:32px 28px 60px;}
+.rep-header{border-bottom:3px solid var(--accent);padding-bottom:18px;margin-bottom:0;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;}
+.rep-ticker{font-size:34px;font-weight:800;font-family:var(--display);color:var(--accent);letter-spacing:.02em;line-height:1;}
+.rep-name{font-size:17px;font-weight:600;color:var(--text);margin-top:7px;}
+.rep-meta{font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:5px;}
+.rep-date{font-size:10px;color:var(--text3);font-family:var(--mono);text-align:right;line-height:1.6;}
+.rep-kpi{margin-bottom:6px;}
+.rep-tabs{display:${multi?'flex':'none'};gap:2px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin:22px 0 22px;}
+.rep-tab{padding:0 16px;height:46px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border:none;border-bottom:2px solid transparent;color:var(--text3);background:transparent;transition:all .15s;white-space:nowrap;}
+.rep-tab:hover{color:var(--text2);}
+.rep-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.rep-tabc{margin-top:${multi?'0':'22px'};}
+.rep-tabc img{max-width:100%;height:auto;}
+/* Tablas de datos (histórico de precios, etc.) — alineación correcta */
+.rep-tabc .data-table{width:100%;border-collapse:collapse;}
+.rep-tabc .data-table th{padding:8px 12px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);background:var(--bg2);border-bottom:1px solid var(--border);white-space:nowrap;font-family:var(--mono);}
+.rep-tabc .data-table th:first-child{text-align:left;}
+.rep-tabc .data-table td{padding:8px 12px;text-align:right;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;color:var(--text);white-space:nowrap;}
+.rep-tabc .data-table td:first-child{text-align:left;font-weight:600;color:var(--accent);}
+.rep-tabc .data-table tr:last-child td{border-bottom:none;}
+/* Scrollbar azul de marca */
+*::-webkit-scrollbar{width:8px;height:8px;}
+*::-webkit-scrollbar-track{background:transparent;}
+*::-webkit-scrollbar-thumb{background:rgba(30,39,243,0.45);border-radius:4px;}
+*::-webkit-scrollbar-thumb:hover{background:rgba(30,39,243,0.7);}
+*{scrollbar-color:rgba(30,39,243,0.45) transparent;scrollbar-width:thin;}
+.rep-footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--border);font-size:10px;color:var(--text3);font-family:var(--mono);text-align:center;line-height:1.6;}
+@media print{
+  .rep-tabs{display:none;}
+  .rep-tabc{display:block !important;page-break-before:always;}
+  .rep-tabc:first-of-type{page-break-before:auto;}
+}
+</style></head>
+<body><div class="rep-page">
+  <div class="rep-header">
+    <div>
+      <div class="rep-ticker">${headerTicker}</div>
+      ${name?`<div class="rep-name">${name}</div>`:''}
+      ${metaLine?`<div class="rep-meta">${metaLine}</div>`:''}
+    </div>
+    <div class="rep-date">Reporte generado<br>${date}<br>Bull Market Brokers · Research</div>
+  </div>
+  ${kpiHtml?`<div class="rep-kpi">${kpiHtml}</div>`:''}
+  <div class="rep-tabs">${tabsBtns}</div>
+  ${tabsContent}
+  <div class="rep-footer">Dashboard BMB · Snapshot del ${date} · No constituye asesoramiento de inversión</div>
+</div>
+<script>
+function repShow(id,btn){
+  document.querySelectorAll('.rep-tabc').forEach(function(d){d.style.display='none';});
+  var t=document.getElementById('repc-'+id); if(t)t.style.display='block';
+  document.querySelectorAll('.rep-tab').forEach(function(b){b.classList.remove('active');});
+  if(btn)btn.classList.add('active');
+}
+<\/script>
+</body></html>`;
+
+    const blob=new Blob([reportHtml],{type:'text/html'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download=filename;
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+  }
+
   window.earReportGenerateHtml=async function(){
-    // Solo modo empresa por ahora (los standalone tienen otra estructura).
-    if(window._earReportMode && window._earReportMode!=='empresa'){
-      alert('El reporte HTML está disponible para la ficha de empresa. Para esta sección usá PDF.');
-      return;
-    }
-    const ticker=_currentExcelTicker;
-    if(!ticker){ alert('Primero buscá y cargá una empresa.'); return; }
+    const mode=window._earReportMode||'empresa';
 
     const checked=Array.from(document.querySelectorAll('.ear-rep-chk:checked')).map(c=>c.value);
     if(!checked.length){ alert('Elegí al menos una sección.'); return; }
@@ -20302,6 +20387,23 @@ function renderEquity(){
     if(htmlBtn){ htmlBtn.textContent='Generando…'; htmlBtn.disabled=true; }
 
     try{
+      if(mode==='mav-standalone'){ await _earHtmlMav(); }
+      else if(mode==='deudores'){ await _earHtmlDeudores(); }
+      else if(mode==='sector'){ await _earHtmlSector(checked); }
+      else { await _earHtmlEmpresa(checked); }
+    }catch(err){
+      alert('No se pudo generar el HTML: '+(err&&err.message?err.message:err));
+    }finally{
+      if(htmlBtn){ htmlBtn.textContent=_origLbl||'HTML'; htmlBtn.disabled=false; }
+      earCloseReportDialog();
+    }
+  };
+
+  // ── MODO EMPRESA: ficha con tabs por sección ──
+  async function _earHtmlEmpresa(checked){
+    const ticker=_currentExcelTicker;
+    if(!ticker){ alert('Primero buscá y cargá una empresa.'); return; }
+    {
       // Recordar la tab activa para restaurarla al final.
       const _restoreTab=document.querySelector(`#earTopTabs .ear-toptab.active`)?.id||'';
 
@@ -20412,91 +20514,77 @@ function renderEquity(){
       // ── Restaurar tab activa original ──
       if(_restoreTab){ const m=_restoreTab.match(/ficha-tab-btn-.+-(\w+)$/); if(m){ try{ _fichaShowTab(ticker, m[1]); }catch(_){} } }
 
-      // ── Armar HTML ──
-      const themeVars=_earCaptureThemeVars();
-      const tabsBtns=sections.map((s,i)=>
-        `<button class="rep-tab${i===0?' active':''}" data-tab="${s.id}" onclick="repShow('${s.id}',this)">${s.label}</button>`
-      ).join('');
-      const tabsContent=sections.map((s,i)=>
-        `<div class="rep-tabc" id="repc-${s.id}" style="display:${i===0?'block':'none'};">${s.html}</div>`
-      ).join('');
-
       const coLine=[cuitFmt?`CUIT ${cuitFmt}`:'',sector].filter(Boolean).join(' · ');
-
-      const reportHtml=`<!DOCTYPE html>
-<html lang="es"><head><meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${ticker} — Reporte · ${date}</title>
-<style>
-:root{
-${themeVars}
-  --mono:'DM Mono',ui-monospace,monospace;
-  --sans:'DM Sans',system-ui,sans-serif;
-  --display:'Syne',var(--sans);
-}
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:13px;-webkit-font-smoothing:antialiased;}
-.rep-page{max-width:1180px;margin:0 auto;padding:32px 28px 60px;}
-.rep-header{border-bottom:3px solid var(--accent);padding-bottom:18px;margin-bottom:0;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;}
-.rep-ticker{font-size:34px;font-weight:800;font-family:var(--display);color:var(--accent);letter-spacing:.02em;line-height:1;}
-.rep-name{font-size:17px;font-weight:600;color:var(--text);margin-top:7px;}
-.rep-meta{font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:5px;}
-.rep-date{font-size:10px;color:var(--text3);font-family:var(--mono);text-align:right;line-height:1.6;}
-.rep-kpi{margin-bottom:6px;}
-.rep-tabs{display:flex;gap:2px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin:22px 0 22px;}
-.rep-tab{padding:0 16px;height:46px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border:none;border-bottom:2px solid transparent;color:var(--text3);background:transparent;transition:all .15s;white-space:nowrap;}
-.rep-tab:hover{color:var(--text2);}
-.rep-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
-.rep-tabc img{max-width:100%;height:auto;}
-/* Scrollbar azul de marca (tabla histórica de precios y cualquier overflow) */
-*::-webkit-scrollbar{width:8px;height:8px;}
-*::-webkit-scrollbar-track{background:transparent;}
-*::-webkit-scrollbar-thumb{background:rgba(30,39,243,0.45);border-radius:4px;}
-*::-webkit-scrollbar-thumb:hover{background:rgba(30,39,243,0.7);}
-*{scrollbar-color:rgba(30,39,243,0.45) transparent;scrollbar-width:thin;}
-.rep-footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--border);font-size:10px;color:var(--text3);font-family:var(--mono);text-align:center;line-height:1.6;}
-@media print{
-  .rep-tabs{display:none;}
-  .rep-tabc{display:block !important;page-break-before:always;}
-  .rep-tabc:first-of-type{page-break-before:auto;}
-}
-</style></head>
-<body><div class="rep-page">
-  <div class="rep-header">
-    <div>
-      <div class="rep-ticker">${ticker}</div>
-      ${name?`<div class="rep-name">${name}</div>`:''}
-      ${coLine?`<div class="rep-meta">${coLine}</div>`:''}
-    </div>
-    <div class="rep-date">Reporte generado<br>${date}<br>Bull Market Brokers · Research</div>
-  </div>
-  ${kpiHtml?`<div class="rep-kpi">${kpiHtml}</div>`:''}
-  <div class="rep-tabs">${tabsBtns}</div>
-  ${tabsContent}
-  <div class="rep-footer">Dashboard BMB · Snapshot del ${date} · No constituye asesoramiento de inversión</div>
-</div>
-<script>
-function repShow(id,btn){
-  document.querySelectorAll('.rep-tabc').forEach(function(d){d.style.display='none';});
-  var t=document.getElementById('repc-'+id); if(t)t.style.display='block';
-  document.querySelectorAll('.rep-tab').forEach(function(b){b.classList.remove('active');});
-  if(btn)btn.classList.add('active');
-}
-<\/script>
-</body></html>`;
-
-      const blob=new Blob([reportHtml],{type:'text/html'});
-      const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-      a.download=`${ticker}_reporte_${new Date().toISOString().slice(0,10)}.html`;
-      a.click();
-      setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
-    }catch(err){
-      alert('No se pudo generar el HTML: '+(err&&err.message?err.message:err));
-    }finally{
-      if(htmlBtn){ htmlBtn.textContent=_origLbl||'HTML'; htmlBtn.disabled=false; }
-      earCloseReportDialog();
+      _earBuildReportShell({
+        titleTicker: ticker, headerTicker: ticker, name, metaLine: coLine,
+        kpiHtml, sections,
+        filename: `${ticker}_reporte_${new Date().toISOString().slice(0,10)}.html`
+      });
     }
-  };
+  }
+
+  // ── MODO MAV (standalone): clona #mav-global-results, una sola vista ──
+  async function _earHtmlMav(){
+    const src=document.getElementById('mav-global-results');
+    const wrap=src && src.querySelector('[data-mav-wrap]');
+    if(!wrap){ alert('Primero cargá un archivo CENDEU en MAV.'); return; }
+    await new Promise(r=>setTimeout(r,350)); // margen para canvas
+    const cloned=_earCanvasesToImg(src);
+    // sacar dropzone y controles si los hubiera dentro del resultado
+    cloned.querySelectorAll('.mav-dropzone,[onclick*="mavHandleFile"],input[type="file"]').forEach(el=>el.remove());
+    const razon=wrap.getAttribute('data-mav-razon')||'MAV';
+    _earBuildReportShell({
+      titleTicker:'MAV', headerTicker:'MAV', name:razon, metaLine:'Central de Deuda · MAV',
+      kpiHtml:'', sections:[{id:'mav',label:'MAV',html:cloned.innerHTML}],
+      filename:`MAV_${(razon||'reporte').replace(/[^a-zA-Z0-9]+/g,'_').slice(0,40)}_${new Date().toISOString().slice(0,10)}.html`
+    });
+  }
+
+  // ── MODO DEUDORES (standalone): clona #deu-results, una sola vista ──
+  async function _earHtmlDeudores(){
+    const src=document.getElementById('deu-results');
+    if(!src || src.style.display==='none' || !src.innerHTML.trim()){ alert('Primero consultá un CUIT en Central de Deudores.'); return; }
+    await new Promise(r=>setTimeout(r,350));
+    const cloned=_earCanvasesToImg(src);
+    const d=(window._deuLastReport&&window._deuLastReport.deudas)||{};
+    const razon=(d.denominacion && d.denominacion!=='—')?d.denominacion:('CUIT '+((window._deuLastReport||{}).cuit||''));
+    const cuit=(window._deuLastReport||{}).cuit||'';
+    const cuitFmt=cuit?String(cuit).replace(/^(\d{2})(\d{8})(\d)$/,'$1-$2-$3'):'';
+    _earBuildReportShell({
+      titleTicker:'Central de Deudores', headerTicker:razon, name:'',
+      metaLine:[cuitFmt?`CUIT ${cuitFmt}`:'','Central de Deudores · BCRA'].filter(Boolean).join(' · '),
+      kpiHtml:'', sections:[{id:'deudas',label:'Central de Deudores',html:cloned.innerHTML}],
+      filename:`Deudores_${(razon||'reporte').replace(/[^a-zA-Z0-9]+/g,'_').slice(0,40)}_${new Date().toISOString().slice(0,10)}.html`
+    });
+  }
+
+  // ── MODO SECTOR (standalone): una tab por sector tildado ──
+  async function _earHtmlSector(checked){
+    if(!window.EXCEL_DATA_LOADED){ alert('Los datos de scoring aún se están cargando.'); return; }
+    const latest=getLatestByTicker(window.EXCEL_DATA);
+    const bySector={};
+    latest.forEach(r=>{const sec=(r['sector']||r['Sector']||'Sin sector').trim();(bySector[sec]=bySector[sec]||[]).push(r);});
+    const sections=[];
+    let idx=0;
+    checked.forEach(sec=>{
+      const rows=bySector[sec];
+      if(!rows || !rows.length) return;
+      const card=buildSectorCard(sec,rows,`rep-sector-${idx}`,'');
+      // buildSectorCard trae su propio header con el nombre del sector → lo sacamos,
+      // el nombre ya va como label de la tab.
+      if(card.firstChild) card.removeChild(card.firstChild);
+      const label=sec.replace(/_+/g,' ').trim();
+      sections.push({id:`sec${idx}`,label,html:card.innerHTML});
+      idx++;
+    });
+    if(!sections.length){ alert('Los sectores elegidos no tienen datos.'); return; }
+    _earBuildReportShell({
+      titleTicker:'Scoring de Liquidez', headerTicker:'Scoring de Liquidez', name:'',
+      metaLine:`Comparativa Sectorial · ${sections.length} sector${sections.length!==1?'es':''}`,
+      kpiHtml:'', sections,
+      filename:`Scoring_sectorial_${new Date().toISOString().slice(0,10)}.html`
+    });
+  }
 
   // ─────────────────────────────────────────────────────────────
   // DISPATCHER del botón "PDF" del overlay (empresa vs sectorial)
