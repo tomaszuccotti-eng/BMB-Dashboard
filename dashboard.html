@@ -4371,9 +4371,39 @@ async function rfGetToritoPng(){
     });
     const ready=await load;
     const w=ready.naturalWidth||64, h=ready.naturalHeight||64;
+    // Dibujar sobre canvas transparente (sin relleno) para no introducir fondo blanco.
     const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
-    cv.getContext('2d').drawImage(ready,0,0,w,h);
-    _rfToritoPng={ data:cv.toDataURL('image/png'), w, h };
+    const cx=cv.getContext('2d');
+    cx.clearRect(0,0,w,h);
+    cx.drawImage(ready,0,0,w,h);
+    // Recortar (trim) márgenes uniformes: detecta el bounding box del contenido real
+    // tratando como "vacío" tanto los píxeles transparentes como los casi-blancos.
+    let x0=w,y0=h,x1=0,y1=0, found=false;
+    try{
+      const d=cx.getImageData(0,0,w,h).data;
+      for(let y=0;y<h;y++){
+        for(let x=0;x<w;x++){
+          const i=(y*w+x)*4;
+          const a=d[i+3], r=d[i], g=d[i+1], b=d[i+2];
+          const blanco=(r>240&&g>240&&b>240);
+          if(a>24 && !blanco){
+            found=true;
+            if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y;
+          }
+        }
+      }
+    }catch(_){ found=false; }
+    let outCv=cv, ow=w, oh=h;
+    if(found && x1>x0 && y1>y0){
+      const pad=2;
+      x0=Math.max(0,x0-pad); y0=Math.max(0,y0-pad);
+      x1=Math.min(w-1,x1+pad); y1=Math.min(h-1,y1+pad);
+      ow=x1-x0+1; oh=y1-y0+1;
+      const cc=document.createElement('canvas'); cc.width=ow; cc.height=oh;
+      cc.getContext('2d').drawImage(cv, x0,y0,ow,oh, 0,0,ow,oh);
+      outCv=cc;
+    }
+    _rfToritoPng={ data:outCv.toDataURL('image/png'), w:ow, h:oh };
     return _rfToritoPng;
   }catch(_){ _rfToritoPng=''; return null; }
 }
@@ -4388,11 +4418,18 @@ function rfCatTieneCurva(tipo){
 // ¿Una fila es dual? (pata fija de un dual)
 function rfRowEsDual(r){ return r && (r.tipo==='dual_boncap'||r.tipo==='dual_tamar'||r.tipo==='dual_boncer'); }
 
+// ¿La fila tiene precio válido? (los sin precio no se muestran en el reporte)
+function rfRowTienePrecio(r){
+  if(!r) return false;
+  const p=r.precio;
+  return p!=null && !isNaN(p) && p>0;
+}
+
 // Categorías en las que, por defecto, excluimos los duales (se ven en su propia
 // categoría "Duales"/"TAMARs"). Coincide con el botón DUALES de la UI.
 const RF_CATS_SIN_DUALES = new Set(['boncap','boncer','tamar']);
 
-// Devuelve [{tipo,label,count}] de categorías con instrumentos vigentes, en orden canónico.
+// Devuelve [{tipo,label,count}] de categorías con instrumentos vigentes y con precio.
 function rfReportableCats(){
   if(!_bundle) return [];
   const liq=defaultLiq();
@@ -4401,8 +4438,10 @@ function rfReportableCats(){
     let rows;
     try{ rows = tipo==='duales' ? cruzarDual(_precios,liq) : cruzar(tipo,_precios,liq); }
     catch(_){ rows=[]; }
-    // Para categorías sin-duales, no contamos las patas duales
-    if(rows && RF_CATS_SIN_DUALES.has(tipo)) rows=rows.filter(r=>!rfRowEsDual(r));
+    if(rows){
+      rows=rows.filter(rfRowTienePrecio);                       // sin precio → fuera
+      if(RF_CATS_SIN_DUALES.has(tipo)) rows=rows.filter(r=>!rfRowEsDual(r));
+    }
     if(rows && rows.length){
       out.push({tipo, label:CAT_LABELS[tipo]||tipo, count:rows.length});
     }
@@ -4541,9 +4580,9 @@ async function rfBuildCurveImage(tipo, rows, opts){
     data:{datasets},
     options:{
       responsive:false, animation:false, devicePixelRatio:2,
-      layout:{padding:{top:showLegend?6:14,right:24,bottom:8,left:8}},
+      layout:{padding:{top:14,right:28,bottom:showLegend?6:8,left:8}},
       plugins:{
-        legend:{ display:showLegend, position:'top',
+        legend:{ display:showLegend, position:'bottom',
           labels:{ color:legendC, boxWidth:14, boxHeight:14, padding:18,
             font:{size:20,family:"'DM Mono',monospace",weight:'700'},
             filter:i=>i.text && !i.text.startsWith('_'),
@@ -4566,12 +4605,53 @@ async function rfBuildCurveImage(tipo, rows, opts){
       }
     },
     plugins:[{id:'rf-rep-lbl',afterDatasetsDraw(c){
-      const ctx=c.ctx; ctx.save(); ctx.font="700 16px 'DM Mono',monospace"; ctx.fillStyle=tickC;
+      const ctx=c.ctx;
+      const FS=15;
+      ctx.save();
+      ctx.font="700 "+FS+"px 'DM Mono',monospace";
+      // Recolectar todos los puntos a etiquetar
+      const items=[];
       c.data.datasets.forEach((ds,di)=>{
-        if(typeof ds.label==='string'&&ds.label.startsWith('_trend')) return;
+        if(typeof ds.label==='string'&&ds.label.startsWith('_')) return;
         const meta=c.getDatasetMeta(di);
-        ds.data.forEach((pt,pi)=>{ const el=meta.data[pi]; if(!el||!pt.label) return; ctx.fillText(displayName(pt.label), el.x+9, el.y-9); });
+        ds.data.forEach((pt,pi)=>{
+          const el=meta.data[pi]; if(!el||!pt.label) return;
+          items.push({x:el.x, y:el.y, txt:displayName(pt.label)});
+        });
       });
+      const area=c.chartArea;
+      const placed=[]; // rects ya ocupados {x0,y0,x1,y1}
+      const overlaps=(a,b)=> !(a.x1<b.x0 || a.x0>b.x1 || a.y1<b.y0 || a.y0>b.y1);
+      const h=FS+2;
+      // Candidatos de posición relativos al punto (dx,dy,align)
+      const offs=[
+        [8,-9,'left'],[8,9,'left'],[-8,-9,'right'],[-8,9,'right'],
+        [0,-13,'center'],[0,16,'center'],[12,0,'left'],[-12,0,'right']
+      ];
+      items.forEach(it=>{
+        const w=ctx.measureText(it.txt).width;
+        let best=null;
+        for(const [dx,dy,al] of offs){
+          let lx=it.x+dx, ly=it.y+dy;
+          let x0 = al==='left' ? lx : al==='right' ? lx-w : lx-w/2;
+          let rect={x0, y0:ly-h, x1:x0+w, y1:ly};
+          // dentro del área de dibujo
+          if(rect.x0<area.left-2||rect.x1>area.right+2||rect.y0<area.top-2||rect.y1>area.bottom+2) continue;
+          // no chocar con etiquetas previas
+          if(placed.some(p=>overlaps(rect,p))) continue;
+          best={lx,ly,al,rect}; break;
+        }
+        if(!best){ // fallback: arriba-derecha aunque se solape un poco
+          const lx=it.x+8, ly=it.y-9;
+          best={lx,ly,al:'left',rect:{x0:lx,y0:ly-h,x1:lx+w,y1:ly}};
+        }
+        placed.push(best.rect);
+        ctx.textAlign=best.al;
+        ctx.fillStyle='rgba(0,0,0,0.0)'; // sin halo: dibujamos texto directo
+        ctx.fillStyle=tickC;
+        ctx.fillText(it.txt, best.lx, best.ly);
+      });
+      ctx.textAlign='left';
       ctx.restore();
     }}]
   });
@@ -4603,16 +4683,47 @@ window.rfReportGenerate=async function(){
     const RGB = dark
       ? {bg:[11,14,23],card:[17,21,31],head:[26,31,48],border:[34,42,61],text:[232,234,246],text2:[195,201,230],text3:[126,135,184],accent:[30,39,243],alt:[20,25,37],tickerBg:[18,22,46],green:[63,185,80],red:[248,81,73]}
       : {bg:[255,255,255],card:[247,248,252],head:[228,231,242],border:[210,214,235],text:[10,12,26],text2:[58,63,92],text3:[138,144,176],accent:[30,39,243],alt:[241,243,250],tickerBg:[232,235,250],green:[13,158,110],red:[224,49,49]};
-    const fechaTxt=new Date().toLocaleDateString('es-AR',{year:'numeric',month:'long',day:'numeric'});
+    const fechaInforme=new Date().toLocaleDateString('es-AR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+    const fechaCorta=new Date().toLocaleDateString('es-AR',{year:'numeric',month:'long',day:'numeric'});
+    const cap=s=>s? s.charAt(0).toUpperCase()+s.slice(1) : s;
     const liq=document.getElementById('lc-fecha-liq')?.value||defaultLiq();
+    // Fecha de liquidación DD/MM/AAAA
+    const liqDMY=(()=>{ const m=String(liq).match(/^(\d{4})-(\d{2})-(\d{2})/); return m? `${m[3]}/${m[2]}/${m[1]}` : fmtDateShort(liq); })();
+    // CER (T-offset) y TC para los subtítulos donde corresponda
+    let cerVal=null;
+    try{ if(typeof getCerForDate==='function' && typeof restarHabiles==='function') cerVal=getCerForDate(restarHabiles(liq,_cerOffset)); }catch(_){}
+    const tcVal=(window._tcManualVal!=null?window._tcManualVal:_tcUsd);
+    const fmtMiles=(n,dec)=>{ try{ return Number(n).toLocaleString('es-AR',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }catch(_){ return String(n); } };
     const torito=await rfGetToritoPng();
 
     const pageBg=()=>{ pdf.setFillColor(...RGB.bg); pdf.rect(0,0,PW,PH,'F'); };
+    // Encabezado superior derecho: "fecha · Research · Bull Market Brokers" (como en Empresas ARG)
+    const topHeader=()=>{
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(7); pdf.setTextColor(...RGB.text3);
+      pdf.text(`${fechaCorta}  ·  Research · Bull Market Brokers`, PW-M, M-18, {align:'right'});
+    };
+    // Pie de página: disclaimer CENTRADO; fecha de informe a la derecha (sin liq.)
     const footer=()=>{
       pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.5); pdf.line(M,PH-22,PW-M,PH-22);
       pdf.setFont('helvetica','normal'); pdf.setFontSize(7); pdf.setTextColor(...RGB.text3);
-      pdf.text('Research · Bull Market Brokers · No constituye asesoramiento de inversión',M,PH-12);
-      pdf.text(`${fechaTxt} · liq. ${fmtDateShort(liq)}`,PW-M,PH-12,{align:'right'});
+      pdf.text('Research · Bull Market Brokers · No constituye asesoramiento de inversión', PW/2, PH-12, {align:'center'});
+      pdf.text(`${fechaCorta}`, PW-M, PH-12, {align:'right'});
+    };
+
+    // Dibuja el subtítulo (2 renglones) bajo el título. Devuelve nada.
+    // Línea 1: Fecha Informe · N° Instrumentos · Fecha de Liquidación
+    // Línea 2 (condicional): CER y/o Tipo de Cambio
+    const drawSubtitle=(tipo, nInstr, x, yBase)=>{
+      const mostrarCer = TIPOS_BONCER.has(tipo) || tipo==='duales';
+      const mostrarTc  = tipo==='dolarlinked';
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(9); pdf.setTextColor(...RGB.text3);
+      const l1=`Fecha Informe: ${cap(fechaInforme)}    ·    N° Instrumentos: ${nInstr}    ·    Fecha de Liquidación: ${liqDMY}`;
+      pdf.text(l1, x, yBase);
+      const extra=[];
+      if(mostrarCer && cerVal!=null) extra.push(`CER: ${fmtMiles(cerVal,4)}`);
+      if(mostrarTc && tcVal!=null) extra.push(`Tipo de Cambio: $${fmtMiles(tcVal,2)}`);
+      if(extra.length){ pdf.text(extra.join('    ·    '), x, yBase+12); return 2; }
+      return 1;
     };
 
     // Orden canónico de categorías
@@ -4626,8 +4737,6 @@ window.rfReportGenerate=async function(){
       if(tipo===_catActiva && _rows && _rows.length){
         rows=_rows.slice();
         curveOpts={excluded:_excluded, showDuales:_showDuales, axY:_chartAxisY, axX:_chartAxisX, patas:esDualesCat&&_showPatas};
-        // Si la categoría activa es una de las "sin duales" y el usuario tiene duales ocultos,
-        // reflejarlo también en la tabla.
         if(RF_CATS_SIN_DUALES.has(tipo) && !_showDuales) rows=rows.filter(r=>!rfRowEsDual(r));
       } else {
         if(tipo==='tamar'||esDualesCat){ try{ await calcularTamarProms(); }catch(_){} }
@@ -4636,6 +4745,8 @@ window.rfReportGenerate=async function(){
         if(RF_CATS_SIN_DUALES.has(tipo)) rows=rows.filter(r=>!rfRowEsDual(r));
         curveOpts={excluded:new Set(), showDuales:!RF_CATS_SIN_DUALES.has(tipo), axY:'tna', axX:'md', patas:esDualesCat};
       }
+      // Excluir instrumentos sin precio (no se muestran en el reporte)
+      rows=rows.filter(rfRowTienePrecio);
       if(!rows||!rows.length) continue;
 
       const catLabel=CAT_LABELS[tipo]||tipo;
@@ -4644,21 +4755,26 @@ window.rfReportGenerate=async function(){
       if(!firstPage) pdf.addPage();
       firstPage=false;
       pageBg();
-      // Torito a la izquierda del título
+      topHeader();
+      // Torito a la izquierda del título — más grande y centrado verticalmente con el bloque de texto.
+      const titleBaseY=M+12;        // baseline del título
+      const subY=M+30;              // primer renglón de subtítulo
       let titleX=M;
       if(torito && torito.data){
-        const logoH=26, logoW=logoH*(torito.w/torito.h);
-        try{ pdf.addImage(torito.data,'PNG',M,M-14,logoW,logoH,undefined,'FAST'); }catch(_){}
-        titleX=M+logoW+12;
+        const logoH=40, logoW=logoH*(torito.w/torito.h);
+        // centro vertical del bloque título+subtítulo ≈ entre titleBaseY y subY
+        const blockTop=M-6, logoY=blockTop;
+        try{ pdf.addImage(torito.data,'PNG',M,logoY,logoW,logoH,undefined,'FAST'); }catch(_){}
+        titleX=M+logoW+14;
       }
       pdf.setFont('helvetica','bold'); pdf.setFontSize(20); pdf.setTextColor(...RGB.accent);
-      pdf.text(`Renta Fija — ${catLabel}`, titleX, M+10);
-      pdf.setFont('helvetica','normal'); pdf.setFontSize(9); pdf.setTextColor(...RGB.text3);
-      pdf.text(`${rows.length} instrumentos · ${fechaTxt} · liq. ${fmtDateShort(liq)}`, titleX, M+26);
-      pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.5); pdf.line(M,M+34,PW-M,M+34);
+      pdf.text(`Renta Fija — ${catLabel}`, titleX, titleBaseY);
+      const subLines=drawSubtitle(tipo, rows.length, titleX, subY);
+      const dividerY = subLines===2 ? M+48 : M+38;
+      pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.5); pdf.line(M,dividerY,PW-M,dividerY);
 
       const curveImg=await rfBuildCurveImage(tipo, rows, curveOpts);
-      const topY=M+46, bottomY=PH-30;
+      const topY=dividerY+12, bottomY=PH-30;
       if(curveImg){
         const availW=PW-M*2, availH=bottomY-topY;
         const ratio=900/1600;
@@ -4687,8 +4803,11 @@ window.rfReportGenerate=async function(){
       const stripHtml=s=>String(s).replace(/<[^>]*>/g,'').replace(/&amp;/g,'&').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
       const body=sorted.map(r=>cols.map(c=>stripHtml(c.fmt(r))));
 
-      // Índices de columnas con formato de color
-      const tnaIdx=cols.findIndex(c=>c.colorTNA);          // heatmap TNA
+      // Índices de columnas con formato de color.
+      // La columna TNA se reconoce por la flag colorTNA O por key 'tna' (lecap/boncap
+      // no llevan la flag pero igual se colorean en pantalla).
+      let tnaIdx=cols.findIndex(c=>c.colorTNA);
+      if(tnaIdx<0) tnaIdx=cols.findIndex(c=>c.key==='tna');
       const activaIdx=cols.findIndex(c=>c.colorActiva);    // duales: parte activa
       const varIdx=cols.findIndex(c=>c.key==='var');       // verde/rojo por signo
 
@@ -4710,15 +4829,16 @@ window.rfReportGenerate=async function(){
 
       // ── Escalado dinámico: que la tabla entre, si es posible, en UNA hoja ──
       pdf.addPage(); pageBg();
-      // Torito + título de tabla
+      topHeader();
+      // Torito + título de tabla (mismo estilo que la hoja de gráfico)
       let t2x=M;
       if(torito && torito.data){
-        const lh=20, lw=lh*(torito.w/torito.h);
-        try{ pdf.addImage(torito.data,'PNG',M,M-10,lw,lh,undefined,'FAST'); }catch(_){}
-        t2x=M+lw+10;
+        const lh=30, lw=lh*(torito.w/torito.h);
+        try{ pdf.addImage(torito.data,'PNG',M,M-12,lw,lh,undefined,'FAST'); }catch(_){}
+        t2x=M+lw+12;
       }
-      pdf.setFont('helvetica','bold'); pdf.setFontSize(13); pdf.setTextColor(...RGB.accent);
-      pdf.text(`${catLabel} · Tabla`, t2x, M+6);
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(14); pdf.setTextColor(...RGB.accent);
+      pdf.text(`${catLabel} · Tabla`, t2x, M+8);
 
       const startY=M+18;
       const avail=PH-30-startY;            // alto disponible para la tabla en 1 hoja
