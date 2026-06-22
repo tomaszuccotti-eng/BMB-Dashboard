@@ -20285,10 +20285,30 @@ function renderEquity(){
     return clone;
   }
 
+  // Extrae del CSS del dashboard las reglas cuyos selectores contienen alguno
+  // de los prefijos dados (ej '.mav-'), para embeberlas en el reporte autocontenido.
+  // Evita hardcodear: si el CSS del módulo cambia, el reporte lo hereda solo.
+  function _earExtractCssRules(prefixes){
+    if(!prefixes || !prefixes.length) return '';
+    const out=[];
+    for(const sheet of Array.from(document.styleSheets||[])){
+      let rules;
+      try{ rules=sheet.cssRules; }catch(_){ continue; } // hojas cross-origin: saltar
+      if(!rules) continue;
+      for(const rule of Array.from(rules)){
+        const sel=rule.selectorText;
+        if(sel && prefixes.some(p=>sel.indexOf(p)!==-1)){
+          out.push(rule.cssText);
+        }
+      }
+    }
+    return out.join('\n');
+  }
+
   // Arma el HTML autocontenido (header + tabs + contenido) y dispara la descarga.
   // sections: [{id, label, html}]  ·  metaLine: string bajo el nombre
   function _earBuildReportShell(opt){
-    const { titleTicker, headerTicker, name, metaLine, kpiHtml, sections, filename } = opt;
+    const { titleTicker, headerTicker, name, metaLine, kpiHtml, sections, filename, extraCss } = opt;
     const date=new Date().toLocaleDateString('es-AR',{year:'numeric',month:'long',day:'numeric'});
     const themeVars=_earCaptureThemeVars();
     const multi=sections.length>1;
@@ -20344,6 +20364,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:13
   .rep-tabc{display:block !important;page-break-before:always;}
   .rep-tabc:first-of-type{page-break-before:auto;}
 }
+${extraCss||''}
 </style></head>
 <body><div class="rep-page">
   <div class="rep-header">
@@ -20530,12 +20551,13 @@ function repShow(id,btn){
     if(!wrap){ alert('Primero cargá un archivo CENDEU en MAV.'); return; }
     await new Promise(r=>setTimeout(r,350)); // margen para canvas
     const cloned=_earCanvasesToImg(src);
-    // sacar dropzone y controles si los hubiera dentro del resultado
-    cloned.querySelectorAll('.mav-dropzone,[onclick*="mavHandleFile"],input[type="file"]').forEach(el=>el.remove());
+    // sacar dropzone, inputs y controles (botón "Cargar otro", marcados rep-hide)
+    cloned.querySelectorAll('.mav-dropzone,[onclick*="mavHandleFile"],input[type="file"],[onclick*="mavReset"],.mav-rep-hide').forEach(el=>el.remove());
     const razon=wrap.getAttribute('data-mav-razon')||'MAV';
     _earBuildReportShell({
       titleTicker:'MAV', headerTicker:'MAV', name:razon, metaLine:'Central de Deuda · MAV',
       kpiHtml:'', sections:[{id:'mav',label:'MAV',html:cloned.innerHTML}],
+      extraCss:_earExtractCssRules(['.mav-']),
       filename:`MAV_${(razon||'reporte').replace(/[^a-zA-Z0-9]+/g,'_').slice(0,40)}_${new Date().toISOString().slice(0,10)}.html`
     });
   }
