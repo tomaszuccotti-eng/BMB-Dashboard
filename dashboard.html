@@ -18960,23 +18960,26 @@ function renderEquity(){
       } else if(!opts.title && estH>avail && estH<=fullPage){
         y=ctx.newPage();
       }
-      const colStyles=Object.assign({0:{halign:'left',textColor:RGB.text,fontStyle:'bold'}}, opts.columnStyles||{});
+      const center=!!opts.centerAll;
+      const colStyles=Object.assign({0:{halign:center?'center':'left',textColor:RGB.text,fontStyle:'bold'}}, opts.columnStyles||{});
       if(heat){ for(let i=1;i<head.length;i++){ colStyles[i]=Object.assign({halign:'center',cellWidth:(usableW-150)/(head.length-1)}, colStyles[i]||{}); } colStyles[0]=Object.assign({halign:'left',cellWidth:150,textColor:RGB.text,fontStyle:'bold'}, colStyles[0]||{}); }
       const titleRowOffset = opts.title?1:0;   // el thead tiene una fila extra (el título)
       pdf.autoTable({
         startY:y, margin:{left:M,right:M,top:M+22},
         head:headRows, body, theme:'grid',
         styles:{font:'helvetica',fontSize:heat?6.5:7.5,cellPadding:heat?1.4:2.6,textColor:RGB.text2,lineColor:RGB.border,lineWidth:0.4,fillColor:RGB.card,overflow:'linebreak'},
-        headStyles:{fillColor:RGB.head,textColor:RGB.text3,fontStyle:'bold',fontSize:heat?6:7,halign:heat?'center':'right'},
+        headStyles:{fillColor:RGB.head,textColor:RGB.text3,fontStyle:'bold',fontSize:heat?6:7,halign:(heat||center)?'center':'right'},
         bodyStyles:{fillColor:RGB.card}, alternateRowStyles:{fillColor:heat?RGB.card:RGB.alt},
         columnStyles:colStyles,
         didParseCell:d=>{
           if(d.section==='head'){
             // Fila 0 del head = título (sólo si hay título): no tocar su estilo.
             if(opts.title && d.row.index===0) return;
+            if(center){ d.cell.styles.halign='center'; return; }
             d.cell.styles.halign=(heat||d.column.index>0)?(heat?'center':'right'):'left'; if(heat&&d.column.index===0)d.cell.styles.halign='left'; return;
           }
-          if(!heat && d.column.index>0) d.cell.styles.halign='right';
+          if(center){ d.cell.styles.halign='center'; }
+          else if(!heat && d.column.index>0) d.cell.styles.halign='right';
           if(opts.cellColors){ const c=opts.cellColors[`${d.row.index},${d.column.index}`]; if(c){ d.cell.styles.textColor=c; d.cell.styles.fontStyle='bold'; } }
           if(opts.cellBg){ const b=opts.cellBg[`${d.row.index},${d.column.index}`]; if(b){ d.cell.styles.fillColor=b.bg; if(b.text) d.cell.styles.textColor=b.text; d.cell.styles.fontStyle='bold'; d.cell.styles.halign='center'; } }
         },
@@ -19249,23 +19252,23 @@ function renderEquity(){
         return [ (r['Fecha Balance']||'—').substring(0,10), isNaN(sc)?'—':sc.toFixed(1),
           ...RATIOS.map(rt=>fmtR(r[rt.key])), isManual?'Manual':'Auto' ];
       });
-      y=ctx.table(headH, bodyH, y, {title:'Histórico', cellColors:cellColorsH, columnStyles:{1:{halign:'right',cellWidth:50}}});
+      y=ctx.table(headH, bodyH, y, {title:'Histórico', cellColors:cellColorsH, centerAll:true, columnStyles:{1:{cellWidth:50}}});
     }
 
     // ── (2) Comparativa sectorial ──
-    // Empresas del mismo sector que la empresa actual (último balance por ticker),
-    // ordenadas por score desc. La empresa actual se resalta (fondo + texto accent).
-    // IMPORTANTE: el sector se toma de la PROPIA fila de scoring de la empresa (mismo
-    // dataset que se filtra), no de _currentExcelSector — que puede venir de Economatica
-    // con otro formato y dejar empresas afuera. Fallback a _currentExcelSector.
+    // El sector se toma del SELECTOR del tab (lo que el usuario eligió en el HTML), para
+    // respetar la comparación contra otro sector. Si el selector no está montado, se
+    // deriva de la fila de scoring de la empresa, y como último recurso _currentExcelSector.
     let sector='';
     if(typeof getLatestByTicker==='function'){
       const latest=getLatestByTicker(window.EXCEL_DATA);
       const own=latest.find(r=>(r['Ticker']||'').trim().toUpperCase()===ticker);
-      sector=(own?.['sector']||own?.['Sector']||'').trim();
+      const selEl=document.getElementById(`ficha-sector-sel-${ticker}`);
+      sector=(selEl && selEl.value ? selEl.value : '').trim();
+      if(!sector) sector=(own?.['sector']||own?.['Sector']||'').trim();
       if(!sector) sector=((typeof _currentExcelSector!=='undefined'?_currentExcelSector:'')||'').trim();
       let peers=latest.filter(r=>((r['sector']||r['Sector']||'').trim())===sector);
-      // Si la empresa actual no figura en el sector, inyectarla para comparar.
+      // Si la empresa actual no figura en el sector elegido, inyectarla para comparar.
       if(!peers.some(r=>(r['Ticker']||'').trim().toUpperCase()===ticker)){
         if(own) peers=[...peers, own];
       }
@@ -19290,8 +19293,8 @@ function renderEquity(){
         const secLabel=sector.replace(/_+/g,' ').trim();
         y=ctx.table(headC, body, y, {
           title:`Comparativa sectorial · ${secLabel} (${peers.length} empresa${peers.length!==1?'s':''})`,
-          cellColors:cellColorsC, cellBg:cellBgC,
-          columnStyles:{0:{halign:'left',cellWidth:50},1:{halign:'left'},2:{halign:'right',cellWidth:42},3:{halign:'right',cellWidth:70}}
+          cellColors:cellColorsC, cellBg:cellBgC, centerAll:true,
+          columnStyles:{0:{cellWidth:50},2:{cellWidth:42},3:{cellWidth:70}}
         });
       }
     }
@@ -20302,22 +20305,22 @@ function renderEquity(){
         startY:y, margin:{left:M,right:M,top:M+22},
         head:[titleRow, head], body, theme:'grid',
         styles:{font:'helvetica',fontSize:7.5,cellPadding:3,textColor:RGB.text2,lineColor:RGB.border,lineWidth:0.4,fillColor:RGB.card},
-        headStyles:{fillColor:RGB.head,textColor:RGB.text3,fontStyle:'bold',fontSize:7,halign:'right'},
+        headStyles:{fillColor:RGB.head,textColor:RGB.text3,fontStyle:'bold',fontSize:7,halign:'center'},
         bodyStyles:{fillColor:RGB.card}, alternateRowStyles:{fillColor:RGB.alt},
         columnStyles:{
-          0:{halign:'left',textColor:RGB.text,fontStyle:'bold',cellWidth:54},
-          1:{halign:'left',textColor:RGB.text},
-          2:{halign:'right',fontStyle:'bold',cellWidth:44},
-          3:{halign:'right',textColor:RGB.text3,cellWidth:74}
+          0:{textColor:RGB.text,fontStyle:'bold',cellWidth:54},
+          1:{textColor:RGB.text},
+          2:{fontStyle:'bold',cellWidth:44},
+          3:{textColor:RGB.text3,cellWidth:74}
         },
         didParseCell:d=>{
           if(d.section==='head'){
             // Fila 0 del head = título del sector: no tocar su estilo.
             if(d.row.index===0) return;
-            if(d.column.index>0) d.cell.styles.halign='right';
+            d.cell.styles.halign='center';
             return;
           }
-          if(d.column.index>=2) d.cell.styles.halign='right';
+          d.cell.styles.halign='center';
           const key=`${d.row.index},${d.column.index}`;
           if(cellColors[key]){ d.cell.styles.textColor=cellColors[key]; d.cell.styles.fontStyle='bold'; }
         },
