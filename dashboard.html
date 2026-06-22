@@ -16635,16 +16635,23 @@ function repShow(id,btn){
   function _secDrawChart(ctx, im, title, y){
     const pdf=ctx.pdf, RGB=ctx.RGB, M=ctx.M, PW=ctx.PW, PH=ctx.PH, usableW=ctx.usableW;
     const bottom=PH-M;
-    // título de la card
-    if(title){ y=ctx.sub(title, y, 120); }
+    const fullPage=bottom-(M+22);
+    const titleH = title?18:0;
+    // Alto natural del gráfico al ancho completo.
     let imgW=usableW, imgH=usableW*im.ratio;
-    const maxH=bottom-y;
-    if(imgH>maxH){
-      // si no entra en lo que queda, probar hoja nueva
-      if(maxH < (PH-(M+22))*0.5){ y=ctx.newPage(); }
-      const avail=bottom-y;
-      if(imgH>avail){ imgH=avail; imgW=imgH/im.ratio; }
+    // Decidir el salto de página ANTES de dibujar el título (evita título huérfano).
+    // Necesitamos que entren juntos título + un mínimo razonable de gráfico.
+    const need = titleH + Math.min(imgH, fullPage-titleH);
+    const avail = bottom - y;
+    if(need > avail){
+      // ¿Entra completo (título+gráfico) en una hoja nueva? Si sí, saltamos.
+      if(titleH + imgH <= fullPage || avail < fullPage*0.5){ y=ctx.newPage(); }
     }
+    // Ahora sí: título pegado al gráfico, en la misma hoja.
+    if(title){ y=ctx.sub(title, y, Math.min(imgH, 120)); }
+    // Reescalar si aún no entra en lo que queda de la hoja.
+    const maxH=bottom-y;
+    if(imgH>maxH){ imgH=maxH; imgW=imgH/im.ratio; }
     const x=M+(usableW-imgW)/2;
     pdf.addImage(im.data,'PNG',x,y,imgW,imgH);
     return y+imgH+14;
