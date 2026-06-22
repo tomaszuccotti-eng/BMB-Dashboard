@@ -18787,15 +18787,37 @@ function renderEquity(){
     const lblEl=document.getElementById('ear-report-company'); if(lblEl)lblEl.textContent=co;
     const box=document.getElementById('ear-report-checks');
     if(box){
-      box.innerHTML=tabs.map(t=>`
-        <label style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:7px;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);transition:all .12s;"
+      box.innerHTML=tabs.map(t=>{
+        // ¿Sección deshabilitada por falta de datos? (hoy solo MAV: requiere ZIP cargado)
+        const off=_earTabDisabled(ticker,t.id);
+        if(off){
+          return `<label title="${off.replace(/"/g,'&quot;')}"
+            style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:7px;cursor:not-allowed;border:1px solid var(--border2);background:var(--bg3);opacity:.5;">
+            <input type="checkbox" class="ear-rep-chk" value="${t.id}" disabled style="width:15px;height:15px;cursor:not-allowed;">
+            <span style="font-size:12px;font-weight:700;color:var(--text3);font-family:var(--mono);">${t.label}</span>
+          </label>`;
+        }
+        return `<label style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:7px;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);transition:all .12s;"
           onmouseover="this.style.borderColor='#1E27F3'" onmouseout="this.style.borderColor='var(--border2)'">
           <input type="checkbox" class="ear-rep-chk" value="${t.id}" checked style="width:15px;height:15px;accent-color:#1E27F3;cursor:pointer;">
           <span style="font-size:12px;font-weight:700;color:var(--text2);font-family:var(--mono);">${t.label}</span>
-        </label>`).join('');
+        </label>`;
+      }).join('');
     }
     document.getElementById('ear-report-overlay').style.display='flex';
   };
+
+  // Devuelve string (motivo/tooltip) si la sección debe ir deshabilitada en el
+  // diálogo de reporte, o '' si está disponible. Hoy solo aplica a MAV: requiere
+  // que el ZIP de CENDEU ya esté cargado (existe [data-mav-wrap] en su tab).
+  function _earTabDisabled(ticker, id){
+    if(id==='mav'){
+      const con=document.getElementById(`ficha-tab-content-${ticker}-mav`);
+      const loaded=con && con.querySelector('[data-mav-wrap]');
+      if(!loaded) return 'Primero cargá el archivo .ZIP de CENDEU en la pestaña MAV';
+    }
+    return '';
+  }
   window.earCloseReportDialog=function(){
     const o=document.getElementById('ear-report-overlay'); if(o)o.style.display='none';
   };
@@ -19263,6 +19285,14 @@ function renderEquity(){
     let y=ctx.drawHeader();
     y=ctx.blockTitle('MAV · Central de Deuda', y);
     if(!mavCon){ ctx.note('Sin archivo CENDEU cargado para MAV.', y); return; }
+    // Caso "cargado sin deuda": existe [data-mav-wrap] pero sin tablas ni filas.
+    // El tab muestra el cartel "Sin deuda en el MAV"; lo replicamos en el PDF.
+    const mavWrap=mavCon.querySelector('[data-mav-wrap]');
+    const hasContent=mavCon.querySelector('table, .mav-vrow, .mav-moncard');
+    if(mavWrap && !hasContent){
+      y=ctx.note('Esta empresa no registra deuda en el MAV (Central de Deudores).', y);
+      return;
+    }
     const tables=Array.from(mavCon.querySelectorAll('table'));
     // Tabla de detalle = la de más columnas
     let detTbl=null, maxC=0;
