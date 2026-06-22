@@ -20536,9 +20536,13 @@ function repShow(id,btn){
       if(_restoreTab){ const m=_restoreTab.match(/ficha-tab-btn-.+-(\w+)$/); if(m){ try{ _fichaShowTab(ticker, m[1]); }catch(_){} } }
 
       const coLine=[cuitFmt?`CUIT ${cuitFmt}`:'',sector].filter(Boolean).join(' · ');
+      // Si alguna sección usa clases CSS (MAV), embeberlas en el reporte.
+      const _empPrefixes=[];
+      if(checked.includes('mav')) _empPrefixes.push('.mav-');
       _earBuildReportShell({
         titleTicker: ticker, headerTicker: ticker, name, metaLine: coLine,
         kpiHtml, sections,
+        extraCss: _earExtractCssRules(_empPrefixes),
         filename: `${ticker}_reporte_${new Date().toISOString().slice(0,10)}.html`
       });
     }
