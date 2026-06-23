@@ -5059,16 +5059,16 @@ window.rfReportGenerate=async function(){
     // Dibuja el subtítulo bajo el título. SIN fecha de informe (vive arriba derecha).
     // Línea 1: N° Instrumentos · Fecha de Liquidación
     // Línea 2 (condicional): CER y/o Tipo de Cambio
+    // Subtítulo en UNA sola línea: Fecha de Liquidación · CER/TC (si aplica) · N° Instrumentos
     const drawSubtitle=(tipo, nInstr, x, yBase)=>{
       const mostrarCer = TIPOS_BONCER.has(tipo) || tipo==='duales';
       const mostrarTc  = tipo==='dolarlinked';
       pdf.setFont('helvetica','normal'); pdf.setFontSize(9); pdf.setTextColor(...RGB.text3);
-      const l1=`Fecha de Liquidación: ${liqDMY}    ·    N° Instrumentos: ${nInstr}`;
-      pdf.text(l1, x, yBase);
-      const extra=[];
-      if(mostrarCer && cerVal!=null) extra.push(`CER: ${fmtMiles(cerVal,4)}`);
-      if(mostrarTc && tcVal!=null) extra.push(`Tipo de Cambio: $${fmtMiles(tcVal,2)}`);
-      if(extra.length){ pdf.text(extra.join('    ·    '), x, yBase+12); return 2; }
+      const parts=[`Fecha de Liquidación: ${liqDMY}`];
+      if(mostrarCer && cerVal!=null) parts.push(`CER: ${fmtMiles(cerVal,4)}`);
+      if(mostrarTc && tcVal!=null) parts.push(`Tipo de Cambio: $${fmtMiles(tcVal,2)}`);
+      parts.push(`N° Instrumentos: ${nInstr}`);
+      pdf.text(parts.join('    ·    '), x, yBase);
       return 1;
     };
 
@@ -5084,10 +5084,10 @@ window.rfReportGenerate=async function(){
         titleX=M+logoW+14;
       }
       pdf.setFont('helvetica','bold'); pdf.setFontSize(20); pdf.setTextColor(...RGB.accent);
-      const tit = sufijo ? `Renta Fija — ${catLabel} · ${sufijo}` : `Renta Fija — ${catLabel}`;
+      const tit = sufijo ? `Renta Fija | ${catLabel} · ${sufijo}` : `Renta Fija | ${catLabel}`;
       pdf.text(tit, titleX, titleBaseY);
-      const subLines=drawSubtitle(tipo, nInstr, titleX, subY);
-      const dividerY = subLines===2 ? M+48 : M+38;
+      drawSubtitle(tipo, nInstr, titleX, subY);
+      const dividerY = M+38;
       pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.5); pdf.line(M,dividerY,PW-M,dividerY);
       return dividerY;
     };
@@ -5126,7 +5126,7 @@ window.rfReportGenerate=async function(){
         titleX=M+logoW+14;
       }
       pdf.setFont('helvetica','bold'); pdf.setFontSize(20); pdf.setTextColor(...RGB.accent);
-      pdf.text('Renta Fija — Títulos Públicos', titleX, M+12);
+      pdf.text('Renta Fija | Títulos Públicos', titleX, M+12);
       pdf.setFont('helvetica','normal'); pdf.setFontSize(9); pdf.setTextColor(...RGB.text3);
       pdf.text(`Heatmap global · Fecha de Liquidación: ${liqDMY}`, titleX, M+30);
       const dividerY=M+38;
@@ -5268,7 +5268,7 @@ window.rfReportGenerate=async function(){
         styles:{font:'helvetica',fontSize:fs,cellPadding:cellPad,textColor:RGB.text2,lineColor:RGB.border,lineWidth:0.3,fillColor:RGB.card,overflow:'linebreak',valign:'middle'},
         headStyles:{fillColor:RGB.head,textColor:RGB.accent,fontStyle:'bold',fontSize:fs,halign:'center',valign:'middle',lineColor:RGB.border,lineWidth:0.3,cellPadding:Math.max(cellPad,4)},
         alternateRowStyles:{fillColor:RGB.alt},
-        columnStyles:{0:{halign:'left',fontStyle:'bold',textColor:RGB.text,fillColor:RGB.tickerBg}},
+        columnStyles:{0:{halign:'center',fontStyle:'bold',textColor:RGB.text,fillColor:RGB.tickerBg}},
         bodyStyles:{halign:'center'},
         didParseCell:(d)=>{
           if(d.section!=='body') return;
