@@ -2685,22 +2685,94 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 
   <!-- Modal intermedio: Generar reporte RF -->
   <div id="rf-report-overlay" onclick="if(event.target===this)rfCloseReportDialog()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:300;align-items:center;justify-content:center;">
-    <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;width:440px;max-width:92vw;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,0.7);overflow:hidden;">
+    <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;width:720px;max-width:94vw;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,0.7);overflow:hidden;">
       <div style="padding:18px 20px 14px;border-bottom:1px solid var(--border);position:relative;">
         <div style="font-size:16px;font-weight:800;font-family:var(--display);color:var(--text);margin-bottom:4px;padding-right:34px;">Generar reporte</div>
-        <div style="font-size:11px;font-family:var(--mono);color:var(--text3);">Renta Fija · elegí las categorías a incluir</div>
+        <div style="font-size:11px;font-family:var(--mono);color:var(--text3);">Renta Fija · configurá parámetros y elegí las categorías a incluir</div>
         <button onclick="rfCloseReportDialog()" style="position:absolute;top:14px;right:14px;width:26px;height:26px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;" onmouseover="this.style.background='var(--red)';this.style.color='#fff';this.style.borderColor='var(--red)';" onmouseout="this.style.background='transparent';this.style.color='var(--text3)';this.style.borderColor='var(--border2)';">✕</button>
       </div>
-      <div style="padding:14px 20px 6px;">
-        <label style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:7px;cursor:pointer;border:1px solid var(--accent);background:var(--accent-light);margin-bottom:10px;">
-          <input type="checkbox" id="rf-rep-all" onchange="rfReportToggleAll(this.checked)" style="width:15px;height:15px;accent-color:#1E27F3;cursor:pointer;">
-          <span style="font-size:12px;font-weight:700;color:var(--accent2);font-family:var(--mono);letter-spacing:.04em;">TODAS</span>
-        </label>
+
+      <!-- Cuerpo: dos columnas -->
+      <div style="display:flex;gap:0;flex:1;overflow:hidden;min-height:0;">
+
+        <!-- COLUMNA IZQUIERDA: parámetros (arriba) + contenido (abajo) -->
+        <div style="flex:1;display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden;min-width:0;">
+
+          <!-- Fila arriba: parámetros -->
+          <div style="padding:16px 20px;border-bottom:1px solid var(--border);overflow-y:auto;">
+            <div style="font-size:10px;font-weight:700;font-family:var(--mono);color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px;">Parámetros</div>
+
+            <!-- Fecha liquidación -->
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:11px;">
+              <label style="font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);width:74px;flex-shrink:0;">Fecha liq.</label>
+              <input type="date" class="lc-fecha-inp" id="rep-fecha-liq" onchange="rfRepLiqChanged()" style="background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:11px;font-family:var(--mono);padding:4px 7px;outline:none;box-sizing:border-box;">
+            </div>
+
+            <!-- CER (solo si hay boncer/duales) -->
+            <div id="rep-cer-wrap" style="display:none;align-items:center;gap:8px;margin-bottom:11px;position:relative;">
+              <label style="font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);width:74px;flex-shrink:0;">CER</label>
+              <span id="rep-cer-chip" onclick="rfRepCerToggle(event)" title="Click para cambiar offset de días hábiles"
+                style="display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:5px;border:1px solid var(--border2);background:var(--bg);cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--text3);transition:border-color .15s;box-sizing:border-box;">
+                <span id="rep-cer-offset-label" style="font-size:9px;color:var(--text3);">T−10</span>
+                <span id="rep-cer-valor-display" style="font-weight:500;color:var(--text);">—</span>
+                <svg width="8" height="8" viewBox="0 0 10 10" fill="none" style="color:var(--text3);flex-shrink:0;"><path d="M2 3l3 4 3-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              </span>
+            </div>
+
+            <!-- TC (solo si hay dolarlinked) -->
+            <div id="rep-tc-wrap" style="display:none;align-items:center;gap:8px;margin-bottom:11px;">
+              <label style="font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);width:74px;flex-shrink:0;">TC A3500</label>
+              <input type="text" id="rep-tc-inp" placeholder="—" onkeydown="if(event.key==='Enter')rfRepTcChanged()" onblur="rfRepTcChanged()" style="width:100px;background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:11px;font-family:var(--mono);padding:4px 7px;outline:none;box-sizing:border-box;">
+            </div>
+
+            <!-- Ejes de la curva -->
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:11px;">
+              <label style="font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);width:74px;flex-shrink:0;">Eje Y</label>
+              <select id="rep-axis-y" onchange="rfRepAxisChanged()" style="flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:11px;font-family:var(--mono);padding:4px 7px;outline:none;box-sizing:border-box;cursor:pointer;"></select>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <label style="font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);width:74px;flex-shrink:0;">Eje X</label>
+              <select id="rep-axis-x" onchange="rfRepAxisChanged()" style="flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:11px;font-family:var(--mono);padding:4px 7px;outline:none;box-sizing:border-box;cursor:pointer;"></select>
+            </div>
+          </div>
+
+          <!-- Fila abajo: contenido a incluir -->
+          <div style="padding:16px 20px;">
+            <div style="font-size:10px;font-weight:700;font-family:var(--mono);color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px;">Contenido del reporte</div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <label style="display:flex;align-items:center;gap:10px;padding:8px 11px;border-radius:7px;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);">
+                <input type="checkbox" id="rep-content-curva" checked onchange="rfRepContentChanged()" style="width:15px;height:15px;accent-color:#1E27F3;cursor:pointer;">
+                <span style="font-size:12px;font-weight:700;color:var(--text2);font-family:var(--mono);">Curva</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:10px;padding:8px 11px;border-radius:7px;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);">
+                <input type="checkbox" id="rep-content-tabla" checked onchange="rfRepContentChanged()" style="width:15px;height:15px;accent-color:#1E27F3;cursor:pointer;">
+                <span style="font-size:12px;font-weight:700;color:var(--text2);font-family:var(--mono);">Tabla</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:10px;padding:8px 11px;border-radius:7px;cursor:not-allowed;border:1px solid var(--border2);background:var(--bg3);opacity:.45;">
+                <input type="checkbox" id="rep-content-heatmap" disabled style="width:15px;height:15px;accent-color:#1E27F3;cursor:not-allowed;">
+                <span style="font-size:12px;font-weight:700;color:var(--text3);font-family:var(--mono);">Heatmap</span>
+                <span style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-left:auto;">próximamente</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- COLUMNA DERECHA: instrumentos -->
+        <div style="width:280px;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden;">
+          <div style="padding:16px 20px 10px;">
+            <div style="font-size:10px;font-weight:700;font-family:var(--mono);color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px;">Instrumentos</div>
+            <label style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:7px;cursor:pointer;border:1px solid var(--accent);background:var(--accent-light);">
+              <input type="checkbox" id="rf-rep-all" onchange="rfReportToggleAll(this.checked)" style="width:15px;height:15px;accent-color:#1E27F3;cursor:pointer;">
+              <span style="font-size:12px;font-weight:700;color:var(--accent2);font-family:var(--mono);letter-spacing:.04em;">TODAS</span>
+            </label>
+          </div>
+          <div id="rf-report-checks" style="padding:0 20px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:7px;flex:1;"></div>
+        </div>
       </div>
-      <div id="rf-report-checks" style="padding:0 20px 12px;overflow-y:auto;display:flex;flex-direction:column;gap:7px;"></div>
+
       <div style="padding:14px 20px 18px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">
         <button onclick="rfCloseReportDialog()" style="padding:8px 18px;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;" onmouseover="this.style.borderColor='var(--text3)'" onmouseout="this.style.borderColor='var(--border2)'">Cancelar</button>
-        <button onclick="rfReportGenerate()" style="padding:8px 22px;border-radius:7px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;">PDF</button>
+        <button id="rep-gen-btn" onclick="rfReportGenerate()" style="padding:8px 22px;border-radius:7px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;">PDF</button>
       </div>
     </div>
   </div>
@@ -4459,22 +4531,32 @@ window.rfOpenReportDialog=function(){
       const checked = (c.tipo===_catActiva) ? 'checked' : '';
       return `<label style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:7px;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);transition:all .12s;"
         onmouseover="this.style.borderColor='#1E27F3'" onmouseout="this.style.borderColor='var(--border2)'">
-        <input type="checkbox" class="rf-rep-chk" value="${c.tipo}" ${checked} onchange="rfReportSyncAll()" style="width:15px;height:15px;accent-color:#1E27F3;cursor:pointer;">
+        <input type="checkbox" class="rf-rep-chk" value="${c.tipo}" ${checked} onchange="rfRepInstrumentsChanged()" style="width:15px;height:15px;accent-color:#1E27F3;cursor:pointer;">
         <span style="font-size:12px;font-weight:700;color:var(--text2);font-family:var(--mono);flex:1;">${c.label}</span>
         <span style="font-size:10px;color:var(--text3);font-family:var(--mono);">${c.count}</span>
       </label>`;
     }).join('');
   }
+  // Inicializar parámetros con el estado actual de pantalla (Índice).
+  const liqAct=document.getElementById('lc-fecha-liq')?.value||defaultLiq();
+  const liqInp=document.getElementById('rep-fecha-liq');
+  if(liqInp) liqInp.value=liqAct;
+  rfRepUpdateCerChip();
+  rfRepUpdateTcInput();
+  rfRepBuildAxisSelects();
   rfReportSyncAll();
+  rfRepInstrumentsChanged(); // visibilidad CER/TC + estado botón
   document.getElementById('rf-report-overlay').style.display='flex';
 };
 
 window.rfCloseReportDialog=function(){
   const o=document.getElementById('rf-report-overlay'); if(o)o.style.display='none';
+  const dd=document.getElementById('rep-cer-dropdown'); if(dd) dd.remove();
 };
 
 window.rfReportToggleAll=function(on){
   document.querySelectorAll('.rf-rep-chk').forEach(c=>{ c.checked=!!on; });
+  rfRepInstrumentsChanged();
 };
 
 // Mantiene el checkbox "TODAS" coherente con el estado de los individuales.
@@ -4483,6 +4565,154 @@ window.rfReportSyncAll=function(){
   const all=document.getElementById('rf-rep-all');
   if(!all||!chks.length) return;
   all.checked = chks.every(c=>c.checked);
+};
+
+/* ── Parámetros del diálogo de reporte ──
+   Operan sobre el MISMO estado global que Índice (lc-fecha-liq, _cerOffset,
+   _tcManualVal), así el reporte sale con esos valores sin sincronización extra.
+   Por eso al cambiar acá, también se refleja en Índice (decisión acordada). */
+
+// Categorías tildadas que usan CER / TC
+function rfRepNeedsCer(){
+  const v=[...document.querySelectorAll('.rf-rep-chk:checked')].map(c=>c.value);
+  return v.some(t=>TIPOS_BONCER.has(t)||t==='boncer'||t==='duales');
+}
+function rfRepNeedsTc(){
+  const v=[...document.querySelectorAll('.rf-rep-chk:checked')].map(c=>c.value);
+  return v.some(t=>t==='dolarlinked');
+}
+
+// Recalcula visibilidad de CER/TC y estado del botón al tildar/destildar instrumentos
+window.rfRepInstrumentsChanged=function(){
+  rfReportSyncAll();
+  const cerWrap=document.getElementById('rep-cer-wrap');
+  const tcWrap=document.getElementById('rep-tc-wrap');
+  if(cerWrap) cerWrap.style.display=rfRepNeedsCer()?'flex':'none';
+  if(tcWrap)  tcWrap.style.display=rfRepNeedsTc()?'flex':'none';
+  if(rfRepNeedsCer()) rfRepUpdateCerChip();
+  if(rfRepNeedsTc())  rfRepUpdateTcInput();
+  rfRepUpdateGenBtn();
+};
+
+// Habilita/deshabilita el botón PDF según haya instrumentos y contenido tildados
+window.rfRepUpdateGenBtn=function(){
+  const btn=document.getElementById('rep-gen-btn');
+  if(!btn) return;
+  const anyInstr=document.querySelectorAll('.rf-rep-chk:checked').length>0;
+  const anyContent=document.getElementById('rep-content-curva')?.checked||document.getElementById('rep-content-tabla')?.checked;
+  const ok=anyInstr&&anyContent;
+  btn.disabled=!ok;
+  btn.style.opacity=ok?'1':'.4';
+  btn.style.cursor=ok?'pointer':'not-allowed';
+};
+
+window.rfRepContentChanged=function(){ rfRepUpdateGenBtn(); };
+
+// Fecha liq: escribe en el control global de Índice y recalcula
+window.rfRepLiqChanged=function(){
+  const v=document.getElementById('rep-fecha-liq')?.value;
+  if(!v) return;
+  const liqGlobal=document.getElementById('lc-fecha-liq');
+  if(liqGlobal){ liqGlobal.value=v; if(typeof lcRecalcAll==='function') lcRecalcAll(); }
+  rfRepUpdateCerChip();
+};
+
+// CER chip — actualiza el display con _cerOffset y el valor para la fecha del diálogo
+function rfRepUpdateCerChip(){
+  const liq=document.getElementById('rep-fecha-liq')?.value||defaultLiq();
+  let val=null;
+  try{ if(typeof getCerForDate==='function'&&typeof restarHabiles==='function') val=getCerForDate(restarHabiles(liq,_cerOffset)); }catch(_){}
+  const lbl=document.getElementById('rep-cer-offset-label');
+  const valEl=document.getElementById('rep-cer-valor-display');
+  if(lbl) lbl.textContent='T−'+_cerOffset;
+  if(valEl) valEl.textContent=val?val.toFixed(4):'—';
+}
+
+// CER dropdown (offset T-8..T-12) — escribe _cerOffset global
+window.rfRepCerToggle=function(e){
+  if(e) e.stopPropagation();
+  let dd=document.getElementById('rep-cer-dropdown');
+  if(dd){ dd.remove(); return; }
+  dd=document.createElement('div');
+  dd.id='rep-cer-dropdown';
+  const chip=document.getElementById('rep-cer-chip');
+  const r=chip?chip.getBoundingClientRect():{bottom:100,left:100};
+  dd.style.cssText='position:fixed;top:'+(r.bottom+4)+'px;left:'+r.left+'px;z-index:9999;'
+    +'background:var(--bg2);border:1px solid var(--border2);border-radius:6px;overflow:hidden;min-width:130px;box-shadow:0 4px 16px rgba(0,0,0,0.4);';
+  const liq=document.getElementById('rep-fecha-liq')?.value||defaultLiq();
+  for(let n=8;n<=12;n++){
+    const fc=restarHabiles(liq,n);
+    const v=getCerForDate(fc);
+    const isA=n===_cerOffset;
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px;'
+      +'padding:7px 12px;cursor:pointer;font-family:var(--mono);font-size:10px;'
+      +'background:'+(isA?'var(--accent-mid)':'transparent')+';'
+      +'color:'+(isA?'var(--accent2)':'var(--text2)')+';'
+      +'border-left:2px solid '+(isA?'var(--accent)':'transparent')+';transition:background .1s;';
+    row.onmouseover=function(){if(!isA)this.style.background='var(--accent-light)';};
+    row.onmouseout=function(){if(!isA)this.style.background='transparent';};
+    row.innerHTML='<span style="font-weight:'+(isA?'700':'400')+';">T−'+n+'</span>'
+      +'<span style="color:'+(isA?'var(--accent2)':'var(--text3)')+';">'+(v?v.toFixed(4):'—')+'</span>';
+    row.onclick=(()=>{const nn=n;return function(){
+      _cerOffset=nn; dd.remove();
+      rfRepUpdateCerChip();
+      if(typeof cerUpdateChip==='function') cerUpdateChip();
+      if(typeof lcRecalcAll==='function') lcRecalcAll();
+    };})();
+    dd.appendChild(row);
+  }
+  document.body.appendChild(dd);
+  setTimeout(()=>document.addEventListener('click',()=>{const d=document.getElementById('rep-cer-dropdown');if(d)d.remove();},{once:true}),0);
+};
+
+// TC input — muestra el TC vigente (manual o automático); editar fija manual global
+function rfRepUpdateTcInput(){
+  const inp=document.getElementById('rep-tc-inp');
+  if(!inp) return;
+  const auto=(_tcUsd!=null)?fmtN(_tcUsd,2):'—';
+  inp.placeholder=auto;
+  if(window._tcManual&&window._tcManualVal!=null){
+    inp.value=fmtN(window._tcManualVal,2);
+    inp.style.borderColor='var(--yellow)'; inp.style.color='var(--yellow)';
+  } else {
+    inp.value='';
+    inp.style.borderColor='var(--border2)'; inp.style.color='var(--text)';
+  }
+}
+window.rfRepTcChanged=function(){
+  const inp=document.getElementById('rep-tc-inp');
+  const raw=inp?inp.value.trim():'';
+  if(raw===''){
+    window._tcManual=false; window._tcManualVal=null;
+  } else {
+    const val=(typeof toNum==='function')?toNum(raw):parseFloat(raw.replace(',','.'));
+    if(!isNaN(val)&&val>0){ window._tcManual=true; window._tcManualVal=val; }
+  }
+  rfRepUpdateTcInput();
+  if(typeof lcRecalcAll==='function') lcRecalcAll();
+};
+
+// Pobla los selects de eje con las 6 keys comunes a todas las categorías.
+// Y = tasas (TNA/TEA/TEM), X = tiempo (MD/Duration/Días). Default = estado actual.
+const REP_AXIS_Y=[{val:'tna',label:'TIR TNA'},{val:'tea',label:'TIR TEA'},{val:'tem',label:'TIR TEM'}];
+const REP_AXIS_X=[{val:'md',label:'Duration Modificada'},{val:'dur',label:'Duration'},{val:'dias',label:'Days to Maturity'}];
+// Estado de ejes propio del reporte
+let _repAxisY='tna', _repAxisX='md';
+function rfRepBuildAxisSelects(){
+  const selY=document.getElementById('rep-axis-y');
+  const selX=document.getElementById('rep-axis-x');
+  const curY=REP_AXIS_Y.some(o=>o.val===_chartAxisY)?_chartAxisY:'tna';
+  const curX=REP_AXIS_X.some(o=>o.val===_chartAxisX)?_chartAxisX:'md';
+  if(selY) selY.innerHTML=REP_AXIS_Y.map(o=>`<option value="${o.val}"${o.val===curY?' selected':''}>${o.label}</option>`).join('');
+  if(selX) selX.innerHTML=REP_AXIS_X.map(o=>`<option value="${o.val}"${o.val===curX?' selected':''}>${o.label}</option>`).join('');
+  _repAxisY=curY; _repAxisX=curX;
+}
+window.rfRepAxisChanged=function(){
+  const selY=document.getElementById('rep-axis-y');
+  const selX=document.getElementById('rep-axis-x');
+  if(selY) _repAxisY=selY.value;
+  if(selX) _repAxisX=selX.value;
 };
 
 // Rasteriza la curva de una categoría a PNG (alta resolución) usando un canvas
@@ -4668,9 +4898,13 @@ async function rfBuildCurveImage(tipo, rows, opts){
 window.rfReportGenerate=async function(){
   const checked=[...document.querySelectorAll('.rf-rep-chk:checked')].map(c=>c.value);
   if(!checked.length){ alert('Elegí al menos una categoría.'); return; }
+  // Contenido a incluir (heatmap por ahora no genera nada)
+  const incCurva=document.getElementById('rep-content-curva')?.checked;
+  const incTabla=document.getElementById('rep-content-tabla')?.checked;
+  if(!incCurva && !incTabla){ return; } // botón debería estar bloqueado igual
   if(!(window.jspdf&&window.jspdf.jsPDF)){ alert('Las librerías de PDF aún se están cargando. Probá de nuevo.'); return; }
 
-  const genBtn=document.querySelector('#rf-report-overlay button[onclick="rfReportGenerate()"]');
+  const genBtn=document.getElementById('rep-gen-btn');
   const btnTxt=genBtn?genBtn.textContent:'PDF';
   if(genBtn){ genBtn.textContent='Generando…'; genBtn.disabled=true; }
 
@@ -4726,69 +4960,89 @@ window.rfReportGenerate=async function(){
       return 1;
     };
 
+    // Header grande (torito grande + "Renta Fija — {label}" + subtítulo de parámetros).
+    // Lo usa la PRIMERA hoja de cada instrumento, sea curva o tabla.
+    // Devuelve la Y del divisor (para que la curva sepa dónde arrancar).
+    const drawBigHeader=(tipo, nInstr, catLabel)=>{
+      const titleBaseY=M+12, subY=M+30;
+      let titleX=M;
+      if(torito && torito.data){
+        const logoH=40, logoW=logoH*(torito.w/torito.h);
+        try{ pdf.addImage(torito.data,'PNG',M,M-6,logoW,logoH,undefined,'FAST'); }catch(_){}
+        titleX=M+logoW+14;
+      }
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(20); pdf.setTextColor(...RGB.accent);
+      pdf.text(`Renta Fija — ${catLabel}`, titleX, titleBaseY);
+      const subLines=drawSubtitle(tipo, nInstr, titleX, subY);
+      const dividerY = subLines===2 ? M+48 : M+38;
+      pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.5); pdf.line(M,dividerY,PW-M,dividerY);
+      return dividerY;
+    };
+    // Título chico (torito chico + "{label} · {sufijo}"). Para hojas secundarias.
+    // Devuelve la Y de inicio de contenido.
+    const drawSmallTitle=(catLabel, sufijo)=>{
+      let tx=M;
+      if(torito && torito.data){
+        const lh=30, lw=lh*(torito.w/torito.h);
+        try{ pdf.addImage(torito.data,'PNG',M,M-12,lw,lh,undefined,'FAST'); }catch(_){}
+        tx=M+lw+12;
+      }
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(14); pdf.setTextColor(...RGB.accent);
+      pdf.text(`${catLabel} · ${sufijo}`, tx, M+8);
+      return M+18;
+    };
+
     // Orden canónico de categorías
     const cats=checked.slice().sort((a,b)=>CAT_ORDER.indexOf(a)-CAT_ORDER.indexOf(b));
-    let firstPage=true;
+    let firstDocPage=true; // primera hoja del documento entero (para no addPage de más)
 
     for(const tipo of cats){
-      // Calcular filas. Si es la categoría activa, reutilizar _rows (respeta su estado).
+      // Calcular filas. Si es la categoría activa, reutilizar _rows (respeta exclusiones/patas).
+      // Los EJES se toman SIEMPRE del diálogo de reporte (globales), también en la activa.
       let rows, curveOpts;
       const esDualesCat = (tipo==='duales');
       if(tipo===_catActiva && _rows && _rows.length){
         rows=_rows.slice();
-        curveOpts={excluded:_excluded, showDuales:_showDuales, axY:_chartAxisY, axX:_chartAxisX, patas:esDualesCat&&_showPatas};
+        curveOpts={excluded:_excluded, showDuales:_showDuales, axY:_repAxisY, axX:_repAxisX, patas:esDualesCat&&_showPatas};
         if(RF_CATS_SIN_DUALES.has(tipo) && !_showDuales) rows=rows.filter(r=>!rfRowEsDual(r));
       } else {
         if(tipo==='tamar'||esDualesCat){ try{ await calcularTamarProms(); }catch(_){} }
         rows = esDualesCat ? cruzarDual(_precios,liq) : cruzar(tipo,_precios,liq);
         // Reglas pedidas: boncer/boncap/tamar SIN duales; duales CON patas.
         if(RF_CATS_SIN_DUALES.has(tipo)) rows=rows.filter(r=>!rfRowEsDual(r));
-        curveOpts={excluded:new Set(), showDuales:!RF_CATS_SIN_DUALES.has(tipo), axY:'tna', axX:'md', patas:esDualesCat};
+        curveOpts={excluded:new Set(), showDuales:!RF_CATS_SIN_DUALES.has(tipo), axY:_repAxisY, axX:_repAxisX, patas:esDualesCat};
       }
       // Excluir instrumentos sin precio (no se muestran en el reporte)
       rows=rows.filter(rfRowTienePrecio);
       if(!rows||!rows.length) continue;
 
       const catLabel=CAT_LABELS[tipo]||tipo;
+      let catFirstPage=true; // primera hoja DE ESTE instrumento → header grande
 
-      // ── HOJA 1: torito + título + curva (alto completo) ──
-      if(!firstPage) pdf.addPage();
-      firstPage=false;
-      pageBg();
-      topHeader();
-      // Torito a la izquierda del título — más grande y centrado verticalmente con el bloque de texto.
-      const titleBaseY=M+12;        // baseline del título
-      const subY=M+30;              // primer renglón de subtítulo
-      let titleX=M;
-      if(torito && torito.data){
-        const logoH=40, logoW=logoH*(torito.w/torito.h);
-        // centro vertical del bloque título+subtítulo ≈ entre titleBaseY y subY
-        const blockTop=M-6, logoY=blockTop;
-        try{ pdf.addImage(torito.data,'PNG',M,logoY,logoW,logoH,undefined,'FAST'); }catch(_){}
-        titleX=M+logoW+14;
+      // ── CURVA (si está tildada) ──
+      if(incCurva){
+        if(!firstDocPage) pdf.addPage();
+        firstDocPage=false; catFirstPage=false;
+        pageBg(); topHeader();
+        const dividerY=drawBigHeader(tipo, rows.length, catLabel);
+        const curveImg=await rfBuildCurveImage(tipo, rows, curveOpts);
+        const topY=dividerY+12, bottomY=PH-30;
+        if(curveImg){
+          const availW=PW-M*2, availH=bottomY-topY;
+          const ratio=900/1600;
+          let w=availW, h=w*ratio;
+          if(h>availH){ h=availH; w=h/ratio; }
+          const x=M+(availW-w)/2, y=topY+(availH-h)/2;
+          pdf.addImage(curveImg,'PNG',x,y,w,h,undefined,'FAST');
+        } else {
+          pdf.setFont('helvetica','italic'); pdf.setFontSize(11); pdf.setTextColor(...RGB.text3);
+          pdf.text('Sin curva disponible para esta categoría.', M, topY+30);
+        }
+        footer();
       }
-      pdf.setFont('helvetica','bold'); pdf.setFontSize(20); pdf.setTextColor(...RGB.accent);
-      pdf.text(`Renta Fija — ${catLabel}`, titleX, titleBaseY);
-      const subLines=drawSubtitle(tipo, rows.length, titleX, subY);
-      const dividerY = subLines===2 ? M+48 : M+38;
-      pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.5); pdf.line(M,dividerY,PW-M,dividerY);
 
-      const curveImg=await rfBuildCurveImage(tipo, rows, curveOpts);
-      const topY=dividerY+12, bottomY=PH-30;
-      if(curveImg){
-        const availW=PW-M*2, availH=bottomY-topY;
-        const ratio=900/1600;
-        let w=availW, h=w*ratio;
-        if(h>availH){ h=availH; w=h/ratio; }
-        const x=M+(availW-w)/2, y=topY+(availH-h)/2;
-        pdf.addImage(curveImg,'PNG',x,y,w,h,undefined,'FAST');
-      } else {
-        pdf.setFont('helvetica','italic'); pdf.setFontSize(11); pdf.setTextColor(...RGB.text3);
-        pdf.text('Sin curva disponible para esta categoría.', M, topY+30);
-      }
-      footer();
-
-      // ── HOJA 2+: tabla ──
+      // ── TABLA (si está tildada) ──
+      if(!incTabla) continue;
       const cols=getCols(tipo);
       const sortKey = esDualesCat ? 'tna_tamar' : 'tna';
       const sortCol = cols.find(c=>c.key===sortKey) || cols.find(c=>c.key==='tna') || cols.find(c=>c.colorTNA);
@@ -4828,19 +5082,19 @@ window.rfReportGenerate=async function(){
       };
 
       // ── Escalado dinámico: que la tabla entre, si es posible, en UNA hoja ──
-      pdf.addPage(); pageBg();
-      topHeader();
-      // Torito + título de tabla (mismo estilo que la hoja de gráfico)
-      let t2x=M;
-      if(torito && torito.data){
-        const lh=30, lw=lh*(torito.w/torito.h);
-        try{ pdf.addImage(torito.data,'PNG',M,M-12,lw,lh,undefined,'FAST'); }catch(_){}
-        t2x=M+lw+12;
+      if(!firstDocPage) pdf.addPage();
+      firstDocPage=false;
+      pageBg(); topHeader();
+      // Si la tabla es la PRIMERA hoja de este instrumento (curva destildada),
+      // lleva el header grande; si no (vino después de la curva), título chico.
+      let startY;
+      if(catFirstPage){
+        const dividerY=drawBigHeader(tipo, rows.length, catLabel);
+        startY=dividerY+10;
+        catFirstPage=false;
+      } else {
+        startY=drawSmallTitle(catLabel, 'Tabla');
       }
-      pdf.setFont('helvetica','bold'); pdf.setFontSize(14); pdf.setTextColor(...RGB.accent);
-      pdf.text(`${catLabel} · Tabla`, t2x, M+8);
-
-      const startY=M+18;
       const avail=PH-30-startY;            // alto disponible para la tabla en 1 hoja
       const n=body.length;
       // Buscar el cellPadding (alto de fila) más grande que aún entre en una hoja.
