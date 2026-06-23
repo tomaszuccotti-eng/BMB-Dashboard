@@ -4441,49 +4441,21 @@ async function rfGetToritoPng(){
     });
     const ready=await load;
     const w=ready.naturalWidth||64, h=ready.naturalHeight||64;
-    // Dibujar sobre canvas transparente (sin relleno) para no introducir fondo blanco.
-    const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+    // Opción B: recortar (zoom) un % de cada borde para comerse las 4 esquinas
+    // blancas del recuadro (el PNG es cuadrado y el logo tiene bordes redondeados).
+    // El toro está centrado, así que el recorte de bordes no lo toca.
+    const cropFrac=0.07; // 7% de cada lado
+    const sx=Math.round(w*cropFrac), sy=Math.round(h*cropFrac);
+    const sw=w-sx*2, sh=h-sy*2;
+    // Mantener resolución de la fuente (no degradar). El logo ya es de buena
+    // resolución; recortamos la región interior 1:1.
+    const ow=sw, oh=sh;
+    const cv=document.createElement('canvas'); cv.width=ow; cv.height=oh;
     const cx=cv.getContext('2d');
-    cx.clearRect(0,0,w,h);
-    cx.drawImage(ready,0,0,w,h);
-    // Volver TRANSPARENTES los píxeles casi-blancos (las 4 esquinas del recuadro
-    // quedan blancas porque el PNG es rectangular y el logo tiene bordes redondeados).
-    try{
-      const id=cx.getImageData(0,0,w,h);
-      const dd=id.data;
-      for(let i=0;i<dd.length;i+=4){
-        if(dd[i]>240 && dd[i+1]>240 && dd[i+2]>240){ dd[i+3]=0; }
-      }
-      cx.putImageData(id,0,0);
-    }catch(_){}
-    // Recortar (trim) márgenes uniformes: detecta el bounding box del contenido real
-    // tratando como "vacío" tanto los píxeles transparentes como los casi-blancos.
-    let x0=w,y0=h,x1=0,y1=0, found=false;
-    try{
-      const d=cx.getImageData(0,0,w,h).data;
-      for(let y=0;y<h;y++){
-        for(let x=0;x<w;x++){
-          const i=(y*w+x)*4;
-          const a=d[i+3], r=d[i], g=d[i+1], b=d[i+2];
-          const blanco=(r>240&&g>240&&b>240);
-          if(a>24 && !blanco){
-            found=true;
-            if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y;
-          }
-        }
-      }
-    }catch(_){ found=false; }
-    let outCv=cv, ow=w, oh=h;
-    if(found && x1>x0 && y1>y0){
-      const pad=2;
-      x0=Math.max(0,x0-pad); y0=Math.max(0,y0-pad);
-      x1=Math.min(w-1,x1+pad); y1=Math.min(h-1,y1+pad);
-      ow=x1-x0+1; oh=y1-y0+1;
-      const cc=document.createElement('canvas'); cc.width=ow; cc.height=oh;
-      cc.getContext('2d').drawImage(cv, x0,y0,ow,oh, 0,0,ow,oh);
-      outCv=cc;
-    }
-    _rfToritoPng={ data:outCv.toDataURL('image/png'), w:ow, h:oh };
+    cx.imageSmoothingEnabled=true; cx.imageSmoothingQuality='high';
+    cx.clearRect(0,0,ow,oh);
+    cx.drawImage(ready, sx,sy,sw,sh, 0,0,ow,oh);
+    _rfToritoPng={ data:cv.toDataURL('image/png'), w:ow, h:oh };
     return _rfToritoPng;
   }catch(_){ _rfToritoPng=''; return null; }
 }
@@ -5064,7 +5036,8 @@ window.rfReportGenerate=async function(){
     // Encabezado superior derecho: única fecha del informe, con leyenda.
     const topHeader=()=>{
       pdf.setFont('helvetica','normal'); pdf.setFontSize(7); pdf.setTextColor(...RGB.text3);
-      pdf.text(`Fecha Informe: ${fechaCorta}  ·  Research · Bull Market Brokers`, PW-M, M-18, {align:'right'});
+      pdf.text('Research · Bull Market Brokers', PW-M, M-22, {align:'right'});
+      pdf.text(`Fecha Informe: ${fechaCorta}`, PW-M, M-13, {align:'right'});
     };
     // Pie de página: solo disclaimer CENTRADO (la fecha vive arriba a la derecha).
     const footer=()=>{
@@ -5080,7 +5053,7 @@ window.rfReportGenerate=async function(){
       const mostrarCer = TIPOS_BONCER.has(tipo) || tipo==='duales';
       const mostrarTc  = tipo==='dolarlinked';
       pdf.setFont('helvetica','normal'); pdf.setFontSize(9); pdf.setTextColor(...RGB.text3);
-      const l1=`N° Instrumentos: ${nInstr}    ·    Fecha de Liquidación: ${liqDMY}`;
+      const l1=`Fecha de Liquidación: ${liqDMY}    ·    N° Instrumentos: ${nInstr}`;
       pdf.text(l1, x, yBase);
       const extra=[];
       if(mostrarCer && cerVal!=null) extra.push(`CER: ${fmtMiles(cerVal,4)}`);
@@ -5092,7 +5065,7 @@ window.rfReportGenerate=async function(){
     // Header grande (torito grande + "Renta Fija — {label}" + subtítulo de parámetros).
     // Lo usa la PRIMERA hoja de cada instrumento, sea curva o tabla.
     // Devuelve la Y del divisor (para que la curva sepa dónde arrancar).
-    const drawBigHeader=(tipo, nInstr, catLabel)=>{
+    const drawBigHeader=(tipo, nInstr, catLabel, sufijo)=>{
       const titleBaseY=M+12, subY=M+30;
       let titleX=M;
       if(torito && torito.data){
@@ -5101,7 +5074,8 @@ window.rfReportGenerate=async function(){
         titleX=M+logoW+14;
       }
       pdf.setFont('helvetica','bold'); pdf.setFontSize(20); pdf.setTextColor(...RGB.accent);
-      pdf.text(`Renta Fija — ${catLabel}`, titleX, titleBaseY);
+      const tit = sufijo ? `Renta Fija — ${catLabel} · ${sufijo}` : `Renta Fija — ${catLabel}`;
+      pdf.text(tit, titleX, titleBaseY);
       const subLines=drawSubtitle(tipo, nInstr, titleX, subY);
       const dividerY = subLines===2 ? M+48 : M+38;
       pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.5); pdf.line(M,dividerY,PW-M,dividerY);
@@ -5182,7 +5156,7 @@ window.rfReportGenerate=async function(){
         if(!firstDocPage) pdf.addPage();
         firstDocPage=false; catFirstPage=false;
         pageBg(); topHeader();
-        const dividerY=drawBigHeader(tipo, rows.length, catLabel);
+        const dividerY=drawBigHeader(tipo, rows.length, catLabel, 'Curva');
         const curveImg=await rfBuildCurveImage(tipo, rows, curveOpts);
         const topY=dividerY+12, bottomY=PH-30;
         if(curveImg){
@@ -5247,7 +5221,7 @@ window.rfReportGenerate=async function(){
       // lleva el header grande; si no (vino después de la curva), título chico.
       let startY;
       if(catFirstPage){
-        const dividerY=drawBigHeader(tipo, rows.length, catLabel);
+        const dividerY=drawBigHeader(tipo, rows.length, catLabel, 'Tabla');
         startY=dividerY+10;
         catFirstPage=false;
       } else {
@@ -5255,20 +5229,33 @@ window.rfReportGenerate=async function(){
       }
       const avail=PH-30-startY;            // alto disponible para la tabla en 1 hoja
       const n=body.length;
-      // Buscar el cellPadding (alto de fila) más grande que aún entre en una hoja.
-      // headH ≈ headerPad*2 + fontH ; rowH ≈ pad*2 + fontH
-      const fs=7, fontH=fs*1.15;
-      let pad=6;                            // padding deseado (filas altas)
-      const fits=(p)=>{ const rowH=p*2+fontH; const headH=Math.max(rowH,18); return headH + rowH*n <= avail; };
-      if(!fits(pad)){
-        // reducir padding hasta 1.5pt; si aun así no entra, se partirá en varias hojas
-        for(let p=6; p>=1.5; p-=0.5){ if(fits(p)){ pad=p; break; } pad=p; }
+      // ── Dimensionado dinámico ──
+      // Si la tabla entra en una hoja, agrandar fuente y padding de fila para
+      // ocupar mejor el alto disponible (evita que pocas filas queden chiquitas).
+      // Si NO entra ni con el mínimo, se reduce el padding y se parte en hojas.
+      let fs=7;                  // fuente base
+      let pad=6;                 // padding base
+      const fontHOf=(f)=>f*1.15;
+      const fitsWith=(f,p)=>{ const fh=fontHOf(f); const rowH=p*2+fh; const headH=Math.max(rowH,18); return headH+rowH*n <= avail; };
+
+      if(fitsWith(fs,pad)){
+        // Entra con base → intentar AGRANDAR para llenar el alto.
+        // Subir fuente hasta 11 y padding hasta 14, mientras siga entrando.
+        let bestF=fs, bestP=pad;
+        for(let f=7; f<=11; f+=0.5){
+          for(let p=6; p<=14; p+=0.5){
+            if(fitsWith(f,p)){ if(f>bestF || (f===bestF && p>bestP)){ bestF=f; bestP=p; } }
+          }
+        }
+        fs=bestF; pad=bestP;
+      } else {
+        // No entra con base → reducir padding hasta 1.5; si aún no, se parte.
+        for(let p=6; p>=1.5; p-=0.5){ if(fitsWith(fs,p)){ pad=p; break; } pad=p; }
       }
+      const fontH=fontHOf(fs);
       const cellPad=Math.max(1.5,pad);
 
-      // Centrado vertical: si la tabla entra holgada en la hoja, empujar startY
-      // hacia abajo para centrarla en el espacio disponible (evita amontonar arriba
-      // cuando hay pocas filas). Si no entra en una hoja, no se centra.
+      // Centrado vertical del remanente (si sobra algo de alto tras agrandar).
       const rowHFinal=cellPad*2+fontH;
       const headHFinal=Math.max(rowHFinal,18);
       const tableH=headHFinal+rowHFinal*n;
@@ -5327,7 +5314,7 @@ window.rfReportGenerate=async function(){
           pageBg(); topHeader();
           let hmTopY;
           if(catFirstPage){
-            const dividerY=drawBigHeader(tipo, rows.length, catLabel);
+            const dividerY=drawBigHeader(tipo, rows.length, catLabel, 'Heatmap');
             hmTopY=dividerY+12;
             catFirstPage=false;
           } else {
