@@ -4454,6 +4454,16 @@ async function rfGetToritoPng(){
     const cx=cv.getContext('2d');
     cx.imageSmoothingEnabled=true; cx.imageSmoothingQuality='high';
     cx.clearRect(0,0,ow,oh);
+    // Máscara de esquinas redondeadas (clip) para que el logo tenga bordes suaves.
+    const rad=Math.round(Math.min(ow,oh)*0.18);
+    cx.beginPath();
+    cx.moveTo(rad,0);
+    cx.lineTo(ow-rad,0);             cx.arcTo(ow,0,ow,rad,rad);
+    cx.lineTo(ow,oh-rad);            cx.arcTo(ow,oh,ow-rad,oh,rad);
+    cx.lineTo(rad,oh);              cx.arcTo(0,oh,0,oh-rad,rad);
+    cx.lineTo(0,rad);              cx.arcTo(0,0,rad,0,rad);
+    cx.closePath();
+    cx.clip();
     cx.drawImage(ready, sx,sy,sw,sh, 0,0,ow,oh);
     _rfToritoPng={ data:cv.toDataURL('image/png'), w:ow, h:oh };
     return _rfToritoPng;
@@ -5229,33 +5239,19 @@ window.rfReportGenerate=async function(){
       }
       const avail=PH-30-startY;            // alto disponible para la tabla en 1 hoja
       const n=body.length;
-      // ── Dimensionado dinámico ──
-      // Si la tabla entra en una hoja, agrandar fuente y padding de fila para
-      // ocupar mejor el alto disponible (evita que pocas filas queden chiquitas).
-      // Si NO entra ni con el mínimo, se reduce el padding y se parte en hojas.
-      let fs=7;                  // fuente base
-      let pad=6;                 // padding base
-      const fontHOf=(f)=>f*1.15;
-      const fitsWith=(f,p)=>{ const fh=fontHOf(f); const rowH=p*2+fh; const headH=Math.max(rowH,18); return headH+rowH*n <= avail; };
-
-      if(fitsWith(fs,pad)){
-        // Entra con base → intentar AGRANDAR para llenar el alto.
-        // Subir fuente hasta 11 y padding hasta 14, mientras siga entrando.
-        let bestF=fs, bestP=pad;
-        for(let f=7; f<=11; f+=0.5){
-          for(let p=6; p<=14; p+=0.5){
-            if(fitsWith(f,p)){ if(f>bestF || (f===bestF && p>bestP)){ bestF=f; bestP=p; } }
-          }
-        }
-        fs=bestF; pad=bestP;
-      } else {
-        // No entra con base → reducir padding hasta 1.5; si aún no, se parte.
-        for(let p=6; p>=1.5; p-=0.5){ if(fitsWith(fs,p)){ pad=p; break; } pad=p; }
+      // ── Dimensionado: fuente fija, texto SIEMPRE en una línea, NUNCA partir en 2 hojas ──
+      // Fuente fija a 7 (a este tamaño el texto entra en una sola línea a lo ancho).
+      // El padding de fila arranca en 6 y se reduce solo si hace falta para que la
+      // tabla entre completa en UNA hoja. Luego se centra verticalmente.
+      const fs=7, fontH=fs*1.15;
+      let pad=6;
+      const fits=(p)=>{ const rowH=p*2+fontH; const headH=Math.max(rowH,18); return headH+rowH*n <= avail; };
+      if(!fits(pad)){
+        for(let p=6; p>=1.0; p-=0.5){ if(fits(p)){ pad=p; break; } pad=p; }
       }
-      const fontH=fontHOf(fs);
-      const cellPad=Math.max(1.5,pad);
+      const cellPad=Math.max(1.0,pad);
 
-      // Centrado vertical del remanente (si sobra algo de alto tras agrandar).
+      // Centrado vertical en el espacio disponible (compacta la tabla en el medio).
       const rowHFinal=cellPad*2+fontH;
       const headHFinal=Math.max(rowHFinal,18);
       const tableH=headHFinal+rowHFinal*n;
