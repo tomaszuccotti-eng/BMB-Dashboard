@@ -2705,24 +2705,24 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
             <!-- Fecha liquidación -->
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:11px;">
               <label style="font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);width:74px;flex-shrink:0;">Fecha liq.</label>
-              <input type="date" class="lc-fecha-inp" id="rep-fecha-liq" onchange="rfRepLiqChanged()" style="background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:11px;font-family:var(--mono);padding:4px 7px;outline:none;box-sizing:border-box;">
+              <input type="date" class="lc-fecha-inp" id="rep-fecha-liq" onchange="rfRepLiqChanged()" style="flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:11px;font-family:var(--mono);padding:4px 7px;outline:none;box-sizing:border-box;">
             </div>
 
             <!-- CER (solo si hay boncer/duales) -->
             <div id="rep-cer-wrap" style="display:none;align-items:center;gap:8px;margin-bottom:11px;position:relative;">
               <label style="font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);width:74px;flex-shrink:0;">CER</label>
               <span id="rep-cer-chip" onclick="rfRepCerToggle(event)" title="Click para cambiar offset de días hábiles"
-                style="display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:5px;border:1px solid var(--border2);background:var(--bg);cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--text3);transition:border-color .15s;box-sizing:border-box;">
+                style="flex:1;display:flex;align-items:center;gap:6px;padding:4px 9px;border-radius:5px;border:1px solid var(--border2);background:var(--bg);cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--text3);transition:border-color .15s;box-sizing:border-box;">
                 <span id="rep-cer-offset-label" style="font-size:9px;color:var(--text3);">T−10</span>
                 <span id="rep-cer-valor-display" style="font-weight:500;color:var(--text);">—</span>
-                <svg width="8" height="8" viewBox="0 0 10 10" fill="none" style="color:var(--text3);flex-shrink:0;"><path d="M2 3l3 4 3-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <svg width="8" height="8" viewBox="0 0 10 10" fill="none" style="color:var(--text3);flex-shrink:0;margin-left:auto;"><path d="M2 3l3 4 3-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
               </span>
             </div>
 
             <!-- TC (solo si hay dolarlinked) -->
             <div id="rep-tc-wrap" style="display:none;align-items:center;gap:8px;margin-bottom:11px;">
               <label style="font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);width:74px;flex-shrink:0;">TC A3500</label>
-              <input type="text" id="rep-tc-inp" placeholder="—" onkeydown="if(event.key==='Enter')rfRepTcChanged()" onblur="rfRepTcChanged()" style="width:100px;background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:11px;font-family:var(--mono);padding:4px 7px;outline:none;box-sizing:border-box;">
+              <input type="text" id="rep-tc-inp" placeholder="—" onkeydown="if(event.key==='Enter')rfRepTcChanged()" onblur="rfRepTcChanged()" style="flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:11px;font-family:var(--mono);padding:4px 7px;outline:none;box-sizing:border-box;">
             </div>
 
             <!-- Ejes de la curva -->
@@ -2762,7 +2762,7 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
             <div style="font-size:10px;font-weight:700;font-family:var(--mono);color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px;">Instrumentos</div>
             <label style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:7px;cursor:pointer;border:1px solid var(--accent);background:var(--accent-light);">
               <input type="checkbox" id="rf-rep-all" onchange="rfReportToggleAll(this.checked)" style="width:15px;height:15px;accent-color:#1E27F3;cursor:pointer;">
-              <span style="font-size:12px;font-weight:700;color:var(--accent2);font-family:var(--mono);letter-spacing:.04em;">TODAS</span>
+              <span style="font-size:12px;font-weight:700;color:var(--accent2);font-family:var(--mono);letter-spacing:.04em;">TODOS</span>
             </label>
           </div>
           <div id="rf-report-checks" style="padding:0 20px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:7px;flex:1;"></div>
@@ -2770,7 +2770,6 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
       </div>
 
       <div style="padding:14px 20px 18px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">
-        <button onclick="rfCloseReportDialog()" style="padding:8px 18px;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;" onmouseover="this.style.borderColor='var(--text3)'" onmouseout="this.style.borderColor='var(--border2)'">Cancelar</button>
         <button id="rep-gen-btn" onclick="rfReportGenerate()" style="padding:8px 22px;border-radius:7px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;">PDF</button>
       </div>
     </div>
@@ -4447,6 +4446,16 @@ async function rfGetToritoPng(){
     const cx=cv.getContext('2d');
     cx.clearRect(0,0,w,h);
     cx.drawImage(ready,0,0,w,h);
+    // Volver TRANSPARENTES los píxeles casi-blancos (las 4 esquinas del recuadro
+    // quedan blancas porque el PNG es rectangular y el logo tiene bordes redondeados).
+    try{
+      const id=cx.getImageData(0,0,w,h);
+      const dd=id.data;
+      for(let i=0;i<dd.length;i+=4){
+        if(dd[i]>240 && dd[i+1]>240 && dd[i+2]>240){ dd[i+3]=0; }
+      }
+      cx.putImageData(id,0,0);
+    }catch(_){}
     // Recortar (trim) márgenes uniformes: detecta el bounding box del contenido real
     // tratando como "vacío" tanto los píxeles transparentes como los casi-blancos.
     let x0=w,y0=h,x1=0,y1=0, found=false;
@@ -4957,6 +4966,64 @@ function rfDrawHeatmapPDF(pdf, items, minVar, maxVar, x, y, W, H){
   return true;
 }
 
+// ── Heatmap GLOBAL de dos niveles para PDF (hoja cero) ──
+// Replica el heatmap global de la pestaña: nivel 1 = categorías (tamaño = monto
+// total de la categoría), cada bloque con marco + título, y treemap interno de
+// bonos con escala de color GLOBAL compartida (gMin/gMax de todo el universo).
+// Devuelve true si dibujó algo.
+function rfDrawGlobalHeatmapPDF(pdf, RGB, liq, x, y, W, H){
+  if(typeof d3==='undefined') return false;
+  if(typeof window.rfHmCollectRows!=='function' || !Array.isArray(window.RF_HM_CATS)) return false;
+
+  // Recolectar items de todas las categorías + rango de color global
+  const catBlocks=[];
+  let gMin=0, gMax=0;
+  window.RF_HM_CATS.forEach(cat=>{
+    let items=[];
+    try{ items=window.rfHmCollectRows(cat, liq)||[]; }catch(_){ items=[]; }
+    const totalMonto=items.reduce((s,r)=>s+(r.monto||0),0);
+    items.forEach(r=>{ if(r.variacion!=null){ if(r.variacion<gMin)gMin=r.variacion; if(r.variacion>gMax)gMax=r.variacion; } });
+    if(totalMonto>0) catBlocks.push({ id:cat.id, label:cat.label, monto:totalMonto, items });
+  });
+  if(!catBlocks.length) return false;
+
+  // Treemap nivel 1 (categorías) por monto
+  const rootCat=d3.hierarchy({children:catBlocks}, d=>d.children)
+    .sum(d=>d.monto)
+    .sort((a,b)=>(b.value||0)-(a.value||0));
+  d3.treemap().size([W,H]).paddingInner(4).paddingOuter(0).tile(d3.treemapSquarify)(rootCat);
+
+  const HEADER_H=16;
+  (rootCat.children||[]).forEach(catNode=>{
+    const cat=catNode.data;
+    const bx=x+catNode.x0, by=y+catNode.y0;
+    const bw=catNode.x1-catNode.x0, bh=catNode.y1-catNode.y0;
+    if(bw<10||bh<10) return;
+
+    // Marco del bloque
+    pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.5);
+    pdf.setFillColor(...RGB.card);
+    pdf.roundedRect(bx, by, bw, bh, 3, 3, 'FD');
+
+    // Barra de título
+    pdf.setFillColor(...RGB.head);
+    pdf.rect(bx+0.5, by+0.5, bw-1, HEADER_H, 'F');
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(8); pdf.setTextColor(...RGB.text2);
+    const montoCat='$'+(cat.monto/1e6).toLocaleString('es-AR',{maximumFractionDigits:0})+'M';
+    pdf.text(cat.label.toUpperCase(), bx+6, by+HEADER_H/2+3, {baseline:'middle'});
+    pdf.setFont('helvetica','normal'); pdf.setFontSize(7); pdf.setTextColor(...RGB.text3);
+    pdf.text(montoCat, bx+bw-6, by+HEADER_H/2+3, {align:'right', baseline:'middle'});
+
+    // Treemap interno de bonos (escala de color GLOBAL)
+    const innerX=bx+2, innerY=by+HEADER_H+2;
+    const innerW=bw-4, innerH=bh-HEADER_H-4;
+    if(innerW>6 && innerH>6){
+      rfDrawHeatmapPDF(pdf, cat.items, gMin, gMax, innerX, innerY, innerW, innerH);
+    }
+  });
+  return true;
+}
+
 window.rfReportGenerate=async function(){
   const checked=[...document.querySelectorAll('.rf-rep-chk:checked')].map(c=>c.value);
   if(!checked.length){ alert('Elegí al menos una categoría.'); return; }
@@ -4994,27 +5061,26 @@ window.rfReportGenerate=async function(){
     const torito=await rfGetToritoPng();
 
     const pageBg=()=>{ pdf.setFillColor(...RGB.bg); pdf.rect(0,0,PW,PH,'F'); };
-    // Encabezado superior derecho: "fecha · Research · Bull Market Brokers" (como en Empresas ARG)
+    // Encabezado superior derecho: única fecha del informe, con leyenda.
     const topHeader=()=>{
       pdf.setFont('helvetica','normal'); pdf.setFontSize(7); pdf.setTextColor(...RGB.text3);
-      pdf.text(`${fechaCorta}  ·  Research · Bull Market Brokers`, PW-M, M-18, {align:'right'});
+      pdf.text(`Fecha Informe: ${fechaCorta}  ·  Research · Bull Market Brokers`, PW-M, M-18, {align:'right'});
     };
-    // Pie de página: disclaimer CENTRADO; fecha de informe a la derecha (sin liq.)
+    // Pie de página: solo disclaimer CENTRADO (la fecha vive arriba a la derecha).
     const footer=()=>{
       pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.5); pdf.line(M,PH-22,PW-M,PH-22);
       pdf.setFont('helvetica','normal'); pdf.setFontSize(7); pdf.setTextColor(...RGB.text3);
       pdf.text('Research · Bull Market Brokers · No constituye asesoramiento de inversión', PW/2, PH-12, {align:'center'});
-      pdf.text(`${fechaCorta}`, PW-M, PH-12, {align:'right'});
     };
 
-    // Dibuja el subtítulo (2 renglones) bajo el título. Devuelve nada.
-    // Línea 1: Fecha Informe · N° Instrumentos · Fecha de Liquidación
+    // Dibuja el subtítulo bajo el título. SIN fecha de informe (vive arriba derecha).
+    // Línea 1: N° Instrumentos · Fecha de Liquidación
     // Línea 2 (condicional): CER y/o Tipo de Cambio
     const drawSubtitle=(tipo, nInstr, x, yBase)=>{
       const mostrarCer = TIPOS_BONCER.has(tipo) || tipo==='duales';
       const mostrarTc  = tipo==='dolarlinked';
       pdf.setFont('helvetica','normal'); pdf.setFontSize(9); pdf.setTextColor(...RGB.text3);
-      const l1=`Fecha Informe: ${cap(fechaInforme)}    ·    N° Instrumentos: ${nInstr}    ·    Fecha de Liquidación: ${liqDMY}`;
+      const l1=`N° Instrumentos: ${nInstr}    ·    Fecha de Liquidación: ${liqDMY}`;
       pdf.text(l1, x, yBase);
       const extra=[];
       if(mostrarCer && cerVal!=null) extra.push(`CER: ${fmtMiles(cerVal,4)}`);
@@ -5058,6 +5124,35 @@ window.rfReportGenerate=async function(){
     // Orden canónico de categorías
     const cats=checked.slice().sort((a,b)=>CAT_ORDER.indexOf(a)-CAT_ORDER.indexOf(b));
     let firstDocPage=true; // primera hoja del documento entero (para no addPage de más)
+
+    // ── HOJA CERO: heatmap GLOBAL (solo si TODOS tildado Y Heatmap tildado) ──
+    // Panorama general de dos niveles, una sola vez al inicio del documento.
+    let todosTildados=false;
+    try{
+      const reportables=rfReportableCats().map(c=>c.tipo);
+      todosTildados = reportables.length>0 && reportables.every(t=>checked.includes(t));
+    }catch(_){}
+    if(incHeatmap && todosTildados){
+      pageBg(); topHeader();
+      // Header grande con título especial
+      let titleX=M;
+      if(torito && torito.data){
+        const logoH=40, logoW=logoH*(torito.w/torito.h);
+        try{ pdf.addImage(torito.data,'PNG',M,M-6,logoW,logoH,undefined,'FAST'); }catch(_){}
+        titleX=M+logoW+14;
+      }
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(20); pdf.setTextColor(...RGB.accent);
+      pdf.text('Renta Fija — Títulos Públicos', titleX, M+12);
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(9); pdf.setTextColor(...RGB.text3);
+      pdf.text(`Heatmap global · Fecha de Liquidación: ${liqDMY}`, titleX, M+30);
+      const dividerY=M+38;
+      pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.5); pdf.line(M,dividerY,PW-M,dividerY);
+
+      const ghX=M, ghTopY=dividerY+16, ghBottomY=PH-40;
+      rfDrawGlobalHeatmapPDF(pdf, RGB, liq, ghX, ghTopY, PW-M*2, ghBottomY-ghTopY);
+      footer();
+      firstDocPage=false;
+    }
 
     for(const tipo of cats){
       // Calcular filas. Si es la categoría activa, reutilizar _rows (respeta exclusiones/patas).
@@ -5171,6 +5266,17 @@ window.rfReportGenerate=async function(){
       }
       const cellPad=Math.max(1.5,pad);
 
+      // Centrado vertical: si la tabla entra holgada en la hoja, empujar startY
+      // hacia abajo para centrarla en el espacio disponible (evita amontonar arriba
+      // cuando hay pocas filas). Si no entra en una hoja, no se centra.
+      const rowHFinal=cellPad*2+fontH;
+      const headHFinal=Math.max(rowHFinal,18);
+      const tableH=headHFinal+rowHFinal*n;
+      const baseStartY=startY;
+      if(tableH < avail){
+        startY = baseStartY + (avail-tableH)/2;
+      }
+
       pdf.autoTable({
         head, body,
         startY,
@@ -5227,10 +5333,20 @@ window.rfReportGenerate=async function(){
           } else {
             hmTopY=drawSmallTitle(catLabel, 'Heatmap')+8;
           }
+          // Leyenda "Duales excluidos" para categorías que los excluyen.
+          const muestraLeyendaDuales = RF_CATS_SIN_DUALES.has(tipo);
+          // Margen extra arriba y abajo para separar el treemap del header y del pie.
+          const hmMarginTop=14;
+          const hmMarginBottom=muestraLeyendaDuales ? 34 : 20;
           const hmX=M, hmW=PW-M*2;
-          const hmBottomY=PH-30;
-          const hmH=hmBottomY-hmTopY;
-          rfDrawHeatmapPDF(pdf, hmItems, hmMin, hmMax, hmX, hmTopY, hmW, hmH);
+          const hmY=hmTopY+hmMarginTop;
+          const hmBottomY=PH-30-hmMarginBottom;
+          const hmH=hmBottomY-hmY;
+          rfDrawHeatmapPDF(pdf, hmItems, hmMin, hmMax, hmX, hmY, hmW, hmH);
+          if(muestraLeyendaDuales){
+            pdf.setFont('helvetica','italic'); pdf.setFontSize(8); pdf.setTextColor(...RGB.text3);
+            pdf.text('Duales excluidos del heatmap', PW/2, hmBottomY+16, {align:'center'});
+          }
           footer();
         }
       }
