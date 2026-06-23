@@ -2748,10 +2748,9 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
                 <input type="checkbox" id="rep-content-tabla" checked onchange="rfRepContentChanged()" style="width:15px;height:15px;accent-color:#1E27F3;cursor:pointer;">
                 <span style="font-size:12px;font-weight:700;color:var(--text2);font-family:var(--mono);">Tabla</span>
               </label>
-              <label style="display:flex;align-items:center;gap:10px;padding:8px 11px;border-radius:7px;cursor:not-allowed;border:1px solid var(--border2);background:var(--bg3);opacity:.45;">
-                <input type="checkbox" id="rep-content-heatmap" disabled style="width:15px;height:15px;accent-color:#1E27F3;cursor:not-allowed;">
-                <span style="font-size:12px;font-weight:700;color:var(--text3);font-family:var(--mono);">Heatmap</span>
-                <span style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-left:auto;">próximamente</span>
+              <label style="display:flex;align-items:center;gap:10px;padding:8px 11px;border-radius:7px;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);">
+                <input type="checkbox" id="rep-content-heatmap" onchange="rfRepContentChanged()" style="width:15px;height:15px;accent-color:#1E27F3;cursor:pointer;">
+                <span style="font-size:12px;font-weight:700;color:var(--text2);font-family:var(--mono);">Heatmap</span>
               </label>
             </div>
           </div>
@@ -4599,7 +4598,7 @@ window.rfRepUpdateGenBtn=function(){
   const btn=document.getElementById('rep-gen-btn');
   if(!btn) return;
   const anyInstr=document.querySelectorAll('.rf-rep-chk:checked').length>0;
-  const anyContent=document.getElementById('rep-content-curva')?.checked||document.getElementById('rep-content-tabla')?.checked;
+  const anyContent=document.getElementById('rep-content-curva')?.checked||document.getElementById('rep-content-tabla')?.checked||document.getElementById('rep-content-heatmap')?.checked;
   const ok=anyInstr&&anyContent;
   btn.disabled=!ok;
   btn.style.opacity=ok?'1':'.4';
@@ -4895,13 +4894,77 @@ async function rfBuildCurveImage(tipo, rows, opts){
   return img;
 }
 
+// ── Heatmap del instrumento en PDF (treemap nativo con rect) ──
+// Replica el heatmap por categoría de la pestaña Heatmap: tamaño = monto operado
+// dentro de la categoría, color = variación normalizada al rango [minVar,maxVar]
+// de ESA categoría. Dibuja directo sobre el pdf con rectángulos + texto.
+// items: [{ticker, variacion, monto, ...}]  (lo que devuelve rfHmCollectRows)
+function rfReportColorScaled(pct, minPct, maxPct){
+  // Misma fórmula que rfHmColorScaled, pero devolviendo [r,g,b] para jsPDF.
+  if(pct==null||isNaN(pct)) return [30,34,53];
+  if(pct>=0){
+    const lim=(maxPct&&maxPct>0)?maxPct:1;
+    const t=Math.max(0,Math.min(1,pct/lim));
+    return [Math.round(10+5*t),Math.round(80+110*t),Math.round(50-30*t)];
+  } else {
+    const lim=(minPct&&minPct<0)?Math.abs(minPct):1;
+    const t=Math.max(0,Math.min(1,Math.abs(pct)/lim));
+    return [Math.round(80+150*t),Math.round(20-10*t),Math.round(30-20*t)];
+  }
+}
+function rfDrawHeatmapPDF(pdf, items, minVar, maxVar, x, y, W, H){
+  if(typeof d3==='undefined' || !items || !items.length) return false;
+  // Mismo layout que rfHmPaintTreemap: jerarquía por monto, squarify.
+  const root=d3.hierarchy({children:items}, d=>d.children)
+    .sum(d=>d.monto)
+    .sort((a,b)=>(b.value||0)-(a.value||0));
+  d3.treemap().size([W,H]).paddingInner(2).paddingOuter(1).tile(d3.treemapSquarify)(root);
+
+  const leaves=root.leaves();
+  if(!leaves.length) return false;
+
+  leaves.forEach(node=>{
+    const r=node.data;
+    const cx=x+node.x0, cy=y+node.y0;
+    const w=node.x1-node.x0, h=node.y1-node.y0;
+    if(w<2||h<2) return;
+    const col=rfReportColorScaled(r.variacion, minVar, maxVar);
+    pdf.setFillColor(col[0],col[1],col[2]);
+    pdf.rect(cx, cy, w, h, 'F');
+
+    // Texto: ticker arriba, var% abajo (si la caja es lo bastante grande).
+    if(w>22 && h>13){
+      // fontsize proporcional al área, acotado (réplica del criterio de pantalla)
+      let fs=Math.max(5, Math.min(11, Math.sqrt(w*h)/7));
+      pdf.setTextColor(255,255,255);
+      pdf.setFont('helvetica','bold');
+      pdf.setFontSize(fs);
+      const name=(typeof displayName==='function')?displayName(r.ticker):r.ticker;
+      const cxC=cx+w/2, cyC=cy+h/2;
+      if(h>26){
+        // dos líneas: ticker + var%
+        const varStr=(r.variacion!=null&&!isNaN(r.variacion))?((r.variacion>=0?'+':'')+r.variacion.toFixed(2)+'%'):'—';
+        pdf.text(name, cxC, cyC-1, {align:'center', baseline:'bottom'});
+        pdf.setFont('helvetica','normal');
+        pdf.setFontSize(Math.max(4, fs*0.8));
+        pdf.text(varStr, cxC, cyC+2, {align:'center', baseline:'top'});
+      } else {
+        // una línea: solo ticker, centrado
+        pdf.text(name, cxC, cyC, {align:'center', baseline:'middle'});
+      }
+    }
+  });
+  return true;
+}
+
 window.rfReportGenerate=async function(){
   const checked=[...document.querySelectorAll('.rf-rep-chk:checked')].map(c=>c.value);
   if(!checked.length){ alert('Elegí al menos una categoría.'); return; }
   // Contenido a incluir (heatmap por ahora no genera nada)
   const incCurva=document.getElementById('rep-content-curva')?.checked;
   const incTabla=document.getElementById('rep-content-tabla')?.checked;
-  if(!incCurva && !incTabla){ return; } // botón debería estar bloqueado igual
+  const incHeatmap=document.getElementById('rep-content-heatmap')?.checked;
+  if(!incCurva && !incTabla && !incHeatmap){ return; } // botón debería estar bloqueado igual
   if(!(window.jspdf&&window.jspdf.jsPDF)){ alert('Las librerías de PDF aún se están cargando. Probá de nuevo.'); return; }
 
   const genBtn=document.getElementById('rep-gen-btn');
@@ -5042,7 +5105,7 @@ window.rfReportGenerate=async function(){
       }
 
       // ── TABLA (si está tildada) ──
-      if(!incTabla) continue;
+      if(incTabla){
       const cols=getCols(tipo);
       const sortKey = esDualesCat ? 'tna_tamar' : 'tna';
       const sortCol = cols.find(c=>c.key===sortKey) || cols.find(c=>c.key==='tna') || cols.find(c=>c.colorTNA);
@@ -5137,6 +5200,40 @@ window.rfReportGenerate=async function(){
         },
         didDrawPage:()=>{ footer(); }
       });
+      } // fin if(incTabla)
+
+      // ── HEATMAP (si está tildado) ──
+      // Tercera hoja del instrumento: treemap del instrumento (tamaño=monto
+      // operado en la categoría, color=variación normalizada a la categoría).
+      if(incHeatmap && typeof window.rfHmCollectRows==='function' && Array.isArray(window.RF_HM_CATS)){
+        const hmCat=window.RF_HM_CATS.find(c=>c.id===tipo);
+        let hmItems=[];
+        if(hmCat){
+          try{ hmItems=window.rfHmCollectRows(hmCat, liq)||[]; }catch(_){ hmItems=[]; }
+        }
+        // Rango de color LOCAL a la categoría (igual que el modal de pantalla)
+        let hmMin=0, hmMax=0;
+        hmItems.forEach(it=>{ if(it.variacion!=null){ if(it.variacion<hmMin)hmMin=it.variacion; if(it.variacion>hmMax)hmMax=it.variacion; } });
+
+        if(hmItems.length){
+          if(!firstDocPage) pdf.addPage();
+          firstDocPage=false;
+          pageBg(); topHeader();
+          let hmTopY;
+          if(catFirstPage){
+            const dividerY=drawBigHeader(tipo, rows.length, catLabel);
+            hmTopY=dividerY+12;
+            catFirstPage=false;
+          } else {
+            hmTopY=drawSmallTitle(catLabel, 'Heatmap')+8;
+          }
+          const hmX=M, hmW=PW-M*2;
+          const hmBottomY=PH-30;
+          const hmH=hmBottomY-hmTopY;
+          rfDrawHeatmapPDF(pdf, hmItems, hmMin, hmMax, hmX, hmTopY, hmW, hmH);
+          footer();
+        }
+      }
     }
 
     pdf.save(`renta_fija_reporte_${new Date().toISOString().slice(0,10)}.pdf`);
@@ -11245,6 +11342,9 @@ function rfHmPaintTreemap(container, items, colorMin, colorMax, opts) {
 window.rfHmEnsureTooltip = rfHmEnsureTooltip;
 window.rfHmColorScaled   = rfHmColorScaled;
 window.rfHmPaintTreemap  = rfHmPaintTreemap;
+// Exponer para el generador de reporte RF (otro IIFE): recolección de items + catálogo
+window.rfHmCollectRows   = rfHmCollectRows;
+window.RF_HM_CATS        = RF_HM_CATS;
 
 // Estado del heatmap global: monto por categoría (para drill-down y layout)
 let _rfHmData = {}; // { catId: { label, items, totalMonto, minVar, maxVar } }
