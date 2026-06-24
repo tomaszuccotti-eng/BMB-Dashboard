@@ -47,7 +47,8 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 
 /* ── LANDING ── */
 #landing {
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
   display: flex;
   flex-direction: column;
   background: var(--bg);
@@ -108,8 +109,10 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 80px 24px 60px;
+  padding: 32px 24px 28px;
   position: relative; z-index:1;
+  min-height: 0;
+  overflow: hidden;
 }
 .landing-title {
   font-family: var(--display);
@@ -128,14 +131,14 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
   font-size: 15px;
   color: var(--text3);
   text-align: center;
-  margin-bottom: 64px;
+  margin-bottom: 32px;
   font-weight: 400;
   max-width: 400px;
 }
 .mosaic {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 14px;
   max-width: 720px;
   width: 100%;
 }
@@ -181,7 +184,7 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
   background: var(--bg);
   border: 1.5px solid var(--border);
   border-radius: 16px;
-  padding: 32px 28px;
+  padding: 20px 24px;
   cursor: pointer;
   transition: all .22s cubic-bezier(.4,0,.2,1);
   position: relative;
@@ -190,9 +193,9 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 14px;
-  min-height: 220px;
-  height: 220px;
+  gap: 10px;
+  min-height: 150px;
+  height: 150px;
   text-decoration: none;
 }
 .mosaic-card::before {
@@ -591,6 +594,22 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 #app-equity .table-scroll { scrollbar-width:thin; scrollbar-color:rgba(30,39,243,0.45) transparent; }
 #eq-refresh-btn.spinning { animation:eqSpin .7s linear infinite; }
 @keyframes eqSpin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+
+/* ══ SIDEBAR equity (réplica de #app-rf .sidebar) ══ */
+#app-equity .eq-layout{display:flex;flex:1;overflow:hidden;}
+#app-equity .eq-sidebar{width:230px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+#app-equity .eq-sb-head{padding:14px 12px 10px;border-bottom:1px solid var(--border);flex-shrink:0;}
+#app-equity .eq-sb-label{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);}
+#app-equity .eq-sb-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:6px 8px 12px;}
+#app-equity .eq-sb-scroll::-webkit-scrollbar{width:3px;}
+#app-equity .eq-sb-scroll::-webkit-scrollbar-thumb{background:rgba(30,39,243,0.45);border-radius:3px;}
+#app-equity .eq-sb-item{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.2px;transition:background .1s,color .1s;user-select:none;margin-bottom:2px;}
+#app-equity .eq-sb-item:hover{background:var(--accent-light);color:var(--text);}
+#app-equity .eq-sb-item.active{color:var(--accent2);background:var(--accent-mid);}
+#app-equity .eq-sb-foot{flex-shrink:0;padding:10px 12px;border-top:1px solid var(--border);background:var(--bg2);}
+#app-equity .eq-sb-foot button{width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-family:var(--mono);font-size:10px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;}
+#app-equity .eq-sb-foot button:hover{border-color:#1E27F3;color:var(--text);background:var(--accent-light);}
+#app-equity .eq-sb-foot button svg{flex-shrink:0;vertical-align:-2px;}
 
 .pos { color:var(--green)!important; }
 .neg { color:var(--red)!important; }
@@ -11626,7 +11645,7 @@ window.rfHmCloseCategory = rfHmCloseCategory;
 </div>
 
 <!-- ══════════════════ APP RENTA VARIABLE ══════════════════ -->
-<div id="app-equity" style="display:none;flex-direction:column;min-height:100vh;">
+<div id="app-equity" style="display:none;flex-direction:column;height:100vh;max-height:100vh;overflow:hidden;">
 
   <!-- ══ HEADER ══ -->
   <div style="position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px solid var(--border);box-shadow:0 1px 6px rgba(30,39,243,0.06);">
@@ -11637,11 +11656,10 @@ window.rfHmCloseCategory = rfHmCloseCategory;
           <span style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);">Renta Variable</span>
         </div>
         <div style="height:20px;width:1px;background:var(--border);margin:0 4px;"></div>
-        <!-- TABS mercado en el header — se ocultan en vista ticker -->
-        <div id="eq-market-tabs" style="display:flex;">
-          <div class="tab active" id="eq-mtab-argy"   onclick="eqSwitchMain('argy',this)"   style="padding:0 14px;height:52px;display:flex;align-items:center;">ARGY</div>
-          <div class="tab"        id="eq-mtab-adr"    onclick="eqSwitchMain('adr',this)"    style="padding:0 14px;height:52px;display:flex;align-items:center;">ADR</div>
-          <div class="tab"        id="eq-mtab-cedear" onclick="eqSwitchMain('cedear',this)" style="padding:0 14px;height:52px;display:flex;align-items:center;">CEDEARs</div>
+        <!-- Pestañas de vista: Heatmap / Tabla -->
+        <div id="eq-view-tabs" style="display:flex;align-items:stretch;height:100%;">
+          <div id="eq-vtab-hm"    onclick="eqSwitchView('hm')"    style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);transition:all .15s;">Heatmap</div>
+          <div id="eq-vtab-tabla" onclick="eqSwitchView('tabla')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;">Tabla</div>
         </div>
         <!-- Boton volver visible solo en vista ticker -->
         <div id="eq-back-tab" style="display:none;">
@@ -11659,47 +11677,107 @@ window.rfHmCloseCategory = rfHmCloseCategory;
   </div>
 
   <!-- ══ PANEL VIEW ══ -->
-  <div id="eq-view-panel" style="display:block;">
-    <div class="main" style="padding:20px 24px;">
+  <div id="eq-view-panel" style="display:flex;flex:1;overflow:hidden;">
+    <div class="eq-layout">
+      <!-- SIDEBAR -->
+      <div class="eq-sidebar">
+        <div class="eq-sb-head">
+          <div class="eq-sb-label">Mercado</div>
+        </div>
+        <div class="eq-sb-scroll">
+          <div class="eq-sb-item active" id="eq-mtab-lider"   onclick="eqSwitchMain('lider',this)">Panel Líder</div>
+          <div class="eq-sb-item"        id="eq-mtab-general" onclick="eqSwitchMain('general',this)">Panel General</div>
+          <div class="eq-sb-item"        id="eq-mtab-cedear" onclick="eqSwitchMain('cedear',this)">CEDEARs</div>
+          <div class="eq-sb-item"        id="eq-mtab-adr"    onclick="eqSwitchMain('adr',this)">ADR</div>
+        </div>
+        <!-- Pie fijo del sidebar: Generar reporte -->
+        <div class="eq-sb-foot">
+          <button id="eq-report-btn" onclick="eqOpenReportDialog()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+            </svg>
+            Generar reporte
+          </button>
+        </div>
+      </div>
+      <!-- ÁREA PRINCIPAL -->
+      <div class="main" style="flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;padding:20px 24px;">
 
-      <!-- ARGY -->
-      <div id="eq-section-argy">
-        <div class="card" style="margin-bottom:16px;">
-          <div class="card-header"><span class="card-title">Heatmap ARGY <span id="eq-hm-monto-argy" style="font-family:var(--mono);font-size:11px;font-weight:400;color:var(--text2);margin-left:6px;"></span></span><span style="font-size:10px;font-family:var(--mono);color:var(--text3);">Tamaño = monto operado</span></div>
-          <div style="position:relative;width:100%;height:300px;" id="eq-hm-argy"></div>
+      <!-- PANEL LÍDER -->
+      <div id="eq-section-lider" style="display:flex;flex:1;flex-direction:column;min-height:0;">
+        <div id="eq-hmview-lider" style="flex:1;display:flex;flex-direction:column;min-height:0;">
+        <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0;">
+          <div class="card-header"><span class="card-title">Heatmap Panel Líder <span id="eq-hm-monto-lider" style="font-family:var(--mono);font-size:11px;font-weight:400;color:var(--text2);margin-left:6px;"></span></span><span style="font-size:10px;font-family:var(--mono);color:var(--text3);">Tamaño = monto operado</span></div>
+          <div style="position:relative;width:100%;flex:1;min-height:0;" id="eq-hm-lider"></div>
           <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text3);justify-content:flex-end;">
-            <span id="eq-hm-lo-argy">—</span>
+            <span id="eq-hm-lo-lider">—</span>
             <div style="width:180px;height:6px;border-radius:3px;background:linear-gradient(to right,var(--red),var(--bg3),var(--green));"></div>
-            <span id="eq-hm-hi-argy">—</span>
+            <span id="eq-hm-hi-lider">—</span>
           </div>
         </div>
-        <div class="card">
+        </div>
+        <div id="eq-tabview-lider" style="display:none;flex:1;flex-direction:column;min-height:0;overflow:hidden;">
+        <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;">
           <div class="card-header">
-            <input type="text" id="eq-search-argy" placeholder="Buscar ticker..." oninput="eqFilterTab('argy')"
+            <input type="text" id="eq-search-lider" placeholder="Buscar ticker..." oninput="eqFilterTab('lider')"
               style="padding:4px 10px;font-size:11px;font-family:var(--mono);background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text);outline:none;width:160px;transition:border-color .2s;"
               onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'">
-            <span id="eq-badge-argy" style="font-size:10px;font-family:var(--mono);color:var(--text3);font-weight:600;margin-left:4px;">—</span>
+            <span id="eq-badge-lider" style="font-size:10px;font-family:var(--mono);color:var(--text3);font-weight:600;margin-left:4px;">—</span>
             <span style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-left:auto;">Clic para ver cotización histórica</span>
           </div>
-          <div id="eq-loading-argy" class="loading-state"><div class="spinner"></div><div style="color:var(--text3);font-size:11px;font-family:var(--mono);">Cargando...</div></div>
-          <div class="table-scroll" id="eq-wrap-argy" style="display:none;max-height:420px;overflow-y:auto;">
-            <table class="data-table"><thead><tr id="eq-thead-argy"></tr></thead><tbody id="eq-tbody-argy"></tbody></table>
+          <div id="eq-loading-lider" class="loading-state"><div class="spinner"></div><div style="color:var(--text3);font-size:11px;font-family:var(--mono);">Cargando...</div></div>
+          <div class="table-scroll" id="eq-wrap-lider" style="display:none;flex:1;min-height:0;overflow-y:auto;">
+            <table class="data-table"><thead><tr id="eq-thead-lider"></tr></thead><tbody id="eq-tbody-lider"></tbody></table>
           </div>
+        </div>
+        </div>
+      </div>
+
+      <!-- PANEL GENERAL -->
+      <div id="eq-section-general" style="display:none;flex:1;flex-direction:column;min-height:0;">
+        <div id="eq-hmview-general" style="flex:1;display:flex;flex-direction:column;min-height:0;">
+        <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0;">
+          <div class="card-header"><span class="card-title">Heatmap Panel General <span id="eq-hm-monto-general" style="font-family:var(--mono);font-size:11px;font-weight:400;color:var(--text2);margin-left:6px;"></span></span><span style="font-size:10px;font-family:var(--mono);color:var(--text3);">Tamaño = monto operado</span></div>
+          <div style="position:relative;width:100%;flex:1;min-height:0;" id="eq-hm-general"></div>
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text3);justify-content:flex-end;">
+            <span id="eq-hm-lo-general">—</span>
+            <div style="width:180px;height:6px;border-radius:3px;background:linear-gradient(to right,var(--red),var(--bg3),var(--green));"></div>
+            <span id="eq-hm-hi-general">—</span>
+          </div>
+        </div>
+        </div>
+        <div id="eq-tabview-general" style="display:none;flex:1;flex-direction:column;min-height:0;overflow:hidden;">
+        <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;">
+          <div class="card-header">
+            <input type="text" id="eq-search-general" placeholder="Buscar ticker..." oninput="eqFilterTab('general')"
+              style="padding:4px 10px;font-size:11px;font-family:var(--mono);background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text);outline:none;width:160px;transition:border-color .2s;"
+              onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'">
+            <span id="eq-badge-general" style="font-size:10px;font-family:var(--mono);color:var(--text3);font-weight:600;margin-left:4px;">—</span>
+            <span style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-left:auto;">Clic para ver cotización histórica</span>
+          </div>
+          <div id="eq-loading-general" class="loading-state"><div class="spinner"></div><div style="color:var(--text3);font-size:11px;font-family:var(--mono);">Cargando...</div></div>
+          <div class="table-scroll" id="eq-wrap-general" style="display:none;flex:1;min-height:0;overflow-y:auto;">
+            <table class="data-table"><thead><tr id="eq-thead-general"></tr></thead><tbody id="eq-tbody-general"></tbody></table>
+          </div>
+        </div>
         </div>
       </div>
 
       <!-- ADR -->
-      <div id="eq-section-adr" style="display:none;">
-        <div class="card" style="margin-bottom:16px;">
+      <div id="eq-section-adr" style="display:none;flex:1;flex-direction:column;min-height:0;">
+        <div id="eq-hmview-adr" style="flex:1;display:flex;flex-direction:column;min-height:0;">
+        <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0;">
           <div class="card-header"><span class="card-title">Heatmap ADR <span id="eq-hm-monto-adr" style="font-family:var(--mono);font-size:11px;font-weight:400;color:var(--text2);margin-left:6px;"></span></span><span style="font-size:10px;font-family:var(--mono);color:var(--text3);">Tamaño = monto operado</span></div>
-          <div style="position:relative;width:100%;height:300px;" id="eq-hm-adr"></div>
+          <div style="position:relative;width:100%;flex:1;min-height:0;" id="eq-hm-adr"></div>
           <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text3);justify-content:flex-end;">
             <span id="eq-hm-lo-adr">—</span>
             <div style="width:180px;height:6px;border-radius:3px;background:linear-gradient(to right,var(--red),var(--bg3),var(--green));"></div>
             <span id="eq-hm-hi-adr">—</span>
           </div>
         </div>
-        <div class="card">
+        </div>
+        <div id="eq-tabview-adr" style="display:none;flex:1;flex-direction:column;min-height:0;overflow:hidden;">
+        <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;">
           <div class="card-header">
             <input type="text" id="eq-search-adr" placeholder="Buscar ticker..." oninput="eqFilterTab('adr')"
               style="padding:4px 10px;font-size:11px;font-family:var(--mono);background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text);outline:none;width:160px;"
@@ -11708,24 +11786,28 @@ window.rfHmCloseCategory = rfHmCloseCategory;
             <span style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-left:auto;">Sin histórico disponible</span>
           </div>
           <div id="eq-loading-adr" class="loading-state"><div class="spinner"></div><div style="color:var(--text3);font-size:11px;font-family:var(--mono);">Cargando...</div></div>
-          <div class="table-scroll" id="eq-wrap-adr" style="display:none;max-height:420px;overflow-y:auto;">
+          <div class="table-scroll" id="eq-wrap-adr" style="display:none;flex:1;min-height:0;overflow-y:auto;">
             <table class="data-table"><thead><tr id="eq-thead-adr"></tr></thead><tbody id="eq-tbody-adr"></tbody></table>
           </div>
+        </div>
         </div>
       </div>
 
       <!-- CEDEARs -->
-      <div id="eq-section-cedear" style="display:none;">
-        <div class="card" style="margin-bottom:16px;">
+      <div id="eq-section-cedear" style="display:none;flex:1;flex-direction:column;min-height:0;">
+        <div id="eq-hmview-cedear" style="flex:1;display:flex;flex-direction:column;min-height:0;">
+        <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0;">
           <div class="card-header"><span class="card-title">Heatmap CEDEARs <span id="eq-hm-monto-cedear" style="font-family:var(--mono);font-size:11px;font-weight:400;color:var(--text2);margin-left:6px;"></span></span><span style="font-size:10px;font-family:var(--mono);color:var(--text3);">Tamaño = monto operado</span></div>
-          <div style="position:relative;width:100%;height:300px;" id="eq-hm-cedear"></div>
+          <div style="position:relative;width:100%;flex:1;min-height:0;" id="eq-hm-cedear"></div>
           <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text3);justify-content:flex-end;">
             <span id="eq-hm-lo-cedear">—</span>
             <div style="width:180px;height:6px;border-radius:3px;background:linear-gradient(to right,var(--red),var(--bg3),var(--green));"></div>
             <span id="eq-hm-hi-cedear">—</span>
           </div>
         </div>
-        <div class="card">
+        </div>
+        <div id="eq-tabview-cedear" style="display:none;flex:1;flex-direction:column;min-height:0;overflow:hidden;">
+        <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;">
           <div class="card-header">
             <input type="text" id="eq-search-cedear" placeholder="Buscar ticker..." oninput="eqFilterTab('cedear')"
               style="padding:4px 10px;font-size:11px;font-family:var(--mono);background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text);outline:none;width:160px;"
@@ -11734,12 +11816,55 @@ window.rfHmCloseCategory = rfHmCloseCategory;
             <span style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-left:auto;">Clic para ver cotización histórica</span>
           </div>
           <div id="eq-loading-cedear" class="loading-state"><div class="spinner"></div><div style="color:var(--text3);font-size:11px;font-family:var(--mono);">Cargando...</div></div>
-          <div class="table-scroll" id="eq-wrap-cedear" style="display:none;max-height:420px;overflow-y:auto;">
+          <div class="table-scroll" id="eq-wrap-cedear" style="display:none;flex:1;min-height:0;overflow-y:auto;">
             <table class="data-table"><thead><tr id="eq-thead-cedear"></tr></thead><tbody id="eq-tbody-cedear"></tbody></table>
           </div>
         </div>
+        </div>
       </div>
 
+    </div>
+  </div>
+  </div>
+
+  <!-- ══ MODAL: Generar reporte ══ -->
+  <div id="eq-report-overlay" onclick="if(event.target===this)eqCloseReportDialog()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:300;align-items:center;justify-content:center;">
+    <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;width:440px;max-width:94vw;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,0.7);overflow:hidden;">
+      <div style="padding:18px 20px 14px;border-bottom:1px solid var(--border);position:relative;">
+        <div style="font-size:16px;font-weight:800;font-family:var(--display);color:var(--text);margin-bottom:4px;padding-right:34px;">Generar reporte</div>
+        <div style="font-size:11px;font-family:var(--mono);color:var(--text3);">Renta Variable · elegí los paneles a incluir</div>
+        <button onclick="eqCloseReportDialog()" style="position:absolute;top:14px;right:14px;width:26px;height:26px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;" onmouseover="this.style.background='var(--red)';this.style.color='#fff';this.style.borderColor='var(--red)';" onmouseout="this.style.background='transparent';this.style.color='var(--text3)';this.style.borderColor='var(--border2)';">✕</button>
+      </div>
+
+      <div style="padding:16px 20px;overflow-y:auto;">
+        <div style="font-size:10px;font-weight:700;font-family:var(--mono);color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px;">Paneles</div>
+        <label style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:7px;cursor:pointer;border:1px solid var(--accent);background:var(--accent-light);margin-bottom:10px;">
+          <input type="checkbox" id="eq-rep-all" onchange="eqReportToggleAll(this.checked)" style="width:15px;height:15px;accent-color:#1E27F3;cursor:pointer;">
+          <span style="font-size:12px;font-weight:700;color:var(--accent2);font-family:var(--mono);letter-spacing:.04em;">TODOS</span>
+        </label>
+        <div style="display:flex;flex-direction:column;gap:7px;">
+          <label style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:7px;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);" onmouseover="this.style.borderColor='#1E27F3'" onmouseout="this.style.borderColor='var(--border2)'">
+            <input type="checkbox" class="eq-rep-chk" value="lider" checked onchange="eqReportSyncAll();eqRepUpdateGenBtn()" style="width:15px;height:15px;accent-color:#1E27F3;cursor:pointer;">
+            <span style="font-size:12px;font-weight:700;color:var(--text2);font-family:var(--mono);">Panel Líder</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:7px;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);" onmouseover="this.style.borderColor='#1E27F3'" onmouseout="this.style.borderColor='var(--border2)'">
+            <input type="checkbox" class="eq-rep-chk" value="general" onchange="eqReportSyncAll();eqRepUpdateGenBtn()" style="width:15px;height:15px;accent-color:#1E27F3;cursor:pointer;">
+            <span style="font-size:12px;font-weight:700;color:var(--text2);font-family:var(--mono);">Panel General</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:7px;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);" onmouseover="this.style.borderColor='#1E27F3'" onmouseout="this.style.borderColor='var(--border2)'">
+            <input type="checkbox" class="eq-rep-chk" value="cedear" onchange="eqReportSyncAll();eqRepUpdateGenBtn()" style="width:15px;height:15px;accent-color:#1E27F3;cursor:pointer;">
+            <span style="font-size:12px;font-weight:700;color:var(--text2);font-family:var(--mono);">CEDEARs</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:7px;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);" onmouseover="this.style.borderColor='#1E27F3'" onmouseout="this.style.borderColor='var(--border2)'">
+            <input type="checkbox" class="eq-rep-chk" value="adr" onchange="eqReportSyncAll();eqRepUpdateGenBtn()" style="width:15px;height:15px;accent-color:#1E27F3;cursor:pointer;">
+            <span style="font-size:12px;font-weight:700;color:var(--text2);font-family:var(--mono);">ADR</span>
+          </label>
+        </div>
+      </div>
+
+      <div style="padding:14px 20px 18px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">
+        <button id="eq-rep-gen-btn" onclick="eqReportGenerate()" style="padding:8px 22px;border-radius:7px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;">PDF</button>
+      </div>
     </div>
   </div>
 
@@ -11839,10 +11964,14 @@ window.rfHmCloseCategory = rfHmCloseCategory;
 ══════════════════════════════════════════════════════ */
 (function(){
 
+// Panel Líder: tickers del panel líder de BYMA (hardcodeado). El resto va a Panel General.
+const EQ_LIDER = new Set(['ALUA','BBAR','BMA','BYMA','CEPU','COME','CRES','EDN','GGAL','IRSA','LOMA','METR','PAMP','SUPV','TECO2','TGNO4','TGSU2','TRAN','TXAR','VALO','YPFD']);
+
 const EQ_TAB_CFG = {
-  argy:  { url:'https://data912.com/live/arg_stocks',  hasHist:true,  histEndpoint:'https://data912.com/historical/stocks/' },
-  adr:   { url:'https://data912.com/live/usa_adrs',    hasHist:false, histEndpoint:null },
-  cedear:{ url:'https://data912.com/live/arg_cedears', hasHist:true,  histEndpoint:'https://data912.com/historical/cedears/' },
+  lider:  { url:'https://data912.com/live/arg_stocks',  hasHist:true,  histEndpoint:'https://data912.com/historical/stocks/', filter:r=>EQ_LIDER.has(r.symbol) },
+  general:{ url:'https://data912.com/live/arg_stocks',  hasHist:true,  histEndpoint:'https://data912.com/historical/stocks/', filter:r=>!EQ_LIDER.has(r.symbol) },
+  adr:   { url:'https://data912.com/live/usa_adrs',    hasHist:false, histEndpoint:null, groupSmall:0.0015 },
+  cedear:{ url:'https://data912.com/live/arg_cedears', hasHist:true,  histEndpoint:'https://data912.com/historical/cedears/', groupSmall:0.0015 },
 };
 
 const EQ_COLS = [
@@ -11853,6 +11982,8 @@ const EQ_COLS = [
   { key:'q_op',    label:'Operaciones',right:true },
   { key:'change',  label:'Var %',     right:true  },
   { key:'volume',  label:'Volumen',   right:true  },
+  { key:'monto',   label:'Monto operado', right:true },
+  { key:'pctMonto', label:'% del total', right:true },
 ];
 
 const eqFmt    = n => n!=null ? n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
@@ -11867,11 +11998,13 @@ const eqFmtPct = n => n!=null ? (n>=0?'+':'')+n.toFixed(2)+'%' : '—';
 const eqSafeArr = raw => Array.isArray(raw) ? raw : (raw?.data && Array.isArray(raw.data) ? raw.data : []);
 
 // ── State ──
-const eqTabState = { argy:{data:[],filtered:[],sortCol:'volume',sortAsc:false,loaded:false,heatBuilt:false},
-  adr:{data:[],filtered:[],sortCol:'volume',sortAsc:false,loaded:false,heatBuilt:false},
-  cedear:{data:[],filtered:[],sortCol:'volume',sortAsc:false,loaded:false,heatBuilt:false} };
+const eqTabState = { lider:{data:[],filtered:[],sortCol:'monto',sortAsc:false,loaded:false,heatBuilt:false},
+  general:{data:[],filtered:[],sortCol:'monto',sortAsc:false,loaded:false,heatBuilt:false},
+  adr:{data:[],filtered:[],sortCol:'monto',sortAsc:false,loaded:false,heatBuilt:false},
+  cedear:{data:[],filtered:[],sortCol:'monto',sortAsc:false,loaded:false,heatBuilt:false} };
 
-let eqCurrentTab = 'argy';
+let eqCurrentTab = 'lider';
+let eqCurrentView = 'hm';
 let eqLiveMap = {};
 let eqCurrentHistEndpoint = null;
 let eqAllData = [];
@@ -11927,24 +12060,43 @@ function eqGetFx(date, ccy) {
 // ── Navigation ──
 window.eqShowView = function(view) {
   // El panel permanece visible debajo; la vista 'ticker' es un modal superpuesto.
-  document.getElementById('eq-view-panel').style.display  = 'block';
+  document.getElementById('eq-view-panel').style.display  = 'flex';
   document.getElementById('eq-view-ticker').style.display = view==='ticker' ? 'flex' : 'none';
-  document.getElementById('eq-market-tabs').style.display = 'flex';
-  document.getElementById('eq-back-tab').style.display    = 'none';
   document.body.style.overflow = view==='ticker' ? 'hidden' : '';
 };
 
 window.eqSwitchMain = function(tab, el) {
   window._helpKey = 'eq.' + tab;
   eqCurrentTab = tab;
-  ['argy','adr','cedear'].forEach(t=>{
-    document.getElementById('eq-section-'+t).style.display = t===tab ? '' : 'none';
+  ['lider','general','adr','cedear'].forEach(t=>{
+    document.getElementById('eq-section-'+t).style.display = t===tab ? 'flex' : 'none';
     document.getElementById('eq-mtab-'+t).classList.toggle('active', t===tab);
   });
+  eqApplyView(tab);
   if(!eqTabState[tab].loaded) eqLoadTab(tab);
-  else {
+  else if(eqCurrentView==='hm') {
     // Rebuild heatmap after section is visible (clientWidth could be 0 if was hidden)
     requestAnimationFrame(()=>eqBuildHeatmap(tab));
+  }
+};
+
+// Vista activa: 'hm' (heatmap) | 'tabla'. Aplica a todas las secciones.
+function eqApplyView(tab){
+  const hmv = document.getElementById('eq-hmview-'+tab);
+  const tbv = document.getElementById('eq-tabview-'+tab);
+  if(hmv) hmv.style.display = eqCurrentView==='hm'    ? 'flex' : 'none';
+  if(tbv) tbv.style.display = eqCurrentView==='tabla' ? 'flex' : 'none';
+}
+window.eqSwitchView = function(view){
+  eqCurrentView = view;
+  // estilo de pestañas
+  const tHm = document.getElementById('eq-vtab-hm');
+  const tTb = document.getElementById('eq-vtab-tabla');
+  if(tHm){ tHm.style.borderBottomColor = view==='hm'    ? 'var(--accent)' : 'transparent'; tHm.style.color = view==='hm'    ? 'var(--accent)' : 'var(--text3)'; }
+  if(tTb){ tTb.style.borderBottomColor = view==='tabla' ? 'var(--accent)' : 'transparent'; tTb.style.color = view==='tabla' ? 'var(--accent)' : 'var(--text3)'; }
+  eqApplyView(eqCurrentTab);
+  if(view==='hm' && eqTabState[eqCurrentTab]?.loaded){
+    requestAnimationFrame(()=>eqBuildHeatmap(eqCurrentTab));
   }
 };
 
@@ -11973,15 +12125,20 @@ async function eqLoadTab(tab) {
     const r = await fetch(cfg.url);
     if(!r.ok) throw new Error('HTTP '+r.status);
     const raw = await r.json();
-    const arr = eqSafeArr(raw).map(r=>({
-      symbol: r.symbol ?? '',
-      last:   r.c    ?? r.last ?? null,
-      change: r.pct_change ?? null,
-      volume: r.v    ?? r.volume ?? null,
-      px_bid: r.px_bid ?? null,
-      px_ask: r.px_ask ?? null,
-      q_op:   r.q_op   ?? null,
-    })).filter(r=>r.symbol);
+    const arr = eqSafeArr(raw).map(r=>{
+      const last   = r.c ?? r.last ?? null;
+      const volume = r.v ?? r.volume ?? null;
+      return {
+        symbol: r.symbol ?? '',
+        last,
+        change: r.pct_change ?? null,
+        volume,
+        monto:  (volume!=null && last!=null) ? volume*last : null,
+        px_bid: r.px_bid ?? null,
+        px_ask: r.px_ask ?? null,
+        q_op:   r.q_op   ?? null,
+      };
+    }).filter(r=>r.symbol && (cfg.filter ? cfg.filter(r) : true));
     eqTabState[tab].data = arr;
     eqTabState[tab].filtered = [...arr];
     arr.forEach(r=>{ eqLiveMap[r.symbol]=r; });
@@ -11993,7 +12150,8 @@ async function eqLoadTab(tab) {
     if(dot) { dot.style.background='var(--green)'; dot.style.boxShadow='0 0 6px var(--green)'; }
     eqBuildThead(tab);
     eqRenderTbody(tab);
-    eqBuildHeatmap(tab);
+    eqApplyView(tab);
+    if(eqCurrentView==='hm') requestAnimationFrame(()=>eqBuildHeatmap(tab));
   } catch(e) {
     if(loadEl) loadEl.innerHTML=`<div style="color:var(--red);font-family:var(--mono);font-size:12px;padding:40px;">Error: ${e.message}</div>`;
   }
@@ -12023,20 +12181,23 @@ window.eqSortTab = function(tab, col) {
 
 function eqRenderTbody(tab) {
   const st = eqTabState[tab], cfg = EQ_TAB_CFG[tab];
+  const sortKey = st.sortCol==='pctMonto' ? 'monto' : st.sortCol;
   const sorted = [...st.filtered].sort((a,b)=>{
-    const av=a[st.sortCol], bv=b[st.sortCol];
+    const av=a[sortKey], bv=b[sortKey];
     if(av==null&&bv==null)return 0; if(av==null)return 1; if(bv==null)return-1;
     if(typeof av==='string') return st.sortAsc?av.localeCompare(bv):bv.localeCompare(av);
     return st.sortAsc?av-bv:bv-av;
   });
   const badge = document.getElementById('eq-badge-'+tab);
   if(badge) badge.textContent = sorted.length+' instrumentos';
-  const maxVol = Math.max(...sorted.map(r=>r.volume??0));
+  const maxMonto = Math.max(...sorted.map(r=>r.monto??0));
+  const totMonto = sorted.reduce((s,r)=>s+(r.monto??0),0);
+  const maxPct   = totMonto>0 ? maxMonto/totMonto*100 : 0;
 
   document.getElementById('eq-tbody-'+tab).innerHTML = sorted.map(r=>{
     const cc  = r.change==null?'':r.change>=0?'pos':'neg';
-    const bw  = maxVol>0&&r.volume!=null?(r.volume/maxVol*60):0;
-    const bc  = r.change==null?'var(--text3)':r.change>=0?'var(--green)':'var(--red)';
+    const pct = (totMonto>0 && r.monto!=null) ? r.monto/totMonto*100 : null;
+    const bw  = (maxPct>0 && pct!=null) ? (pct/maxPct*100) : 0;
     const cls = cfg.hasHist?'style="cursor:pointer;"':'';
     const dta = cfg.hasHist?`data-sym="${r.symbol}" data-tab="${tab}"`:'';
     return `<tr ${cls} ${dta}>
@@ -12046,12 +12207,14 @@ function eqRenderTbody(tab) {
       <td>${r.px_ask!=null?eqFmt(r.px_ask):'—'}</td>
       <td>${r.q_op  !=null?r.q_op         :'—'}</td>
       <td class="${cc}">${eqFmtPct(r.change)}</td>
-      <td><div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;">
-        <span>${eqFmtVol(r.volume)}</span>
-        <div style="width:56px;height:4px;background:var(--border2);border-radius:2px;overflow:hidden;">
-          <div style="width:${bw}%;height:100%;background:${bc};opacity:.6;border-radius:2px;"></div>
+      <td>${eqFmtVol(r.volume)}</td>
+      <td>${r.monto!=null?'$'+eqFmtMonto(r.monto):'—'}</td>
+      <td>${pct!=null?`<div style="display:inline-flex;flex-direction:column;align-items:flex-end;gap:1px;vertical-align:middle;line-height:1;">
+        <span style="font-size:9px;color:var(--text3);font-family:var(--mono);">${pct.toFixed(1)}%</span>
+        <div style="width:64px;height:3px;background:var(--border2);border-radius:2px;overflow:hidden;">
+          <div style="width:${bw}%;height:100%;background:var(--accent);border-radius:2px;"></div>
         </div>
-      </div></td>
+      </div>`:'—'}</td>
     </tr>`;
   }).join('');
 
@@ -12080,33 +12243,65 @@ function eqHeatColor(pct, lo, hi) {
   }
 }
 
+// Datos del heatmap (items filtrados, rango lo/hi, montoTotal y leaves con "Otros").
+// Función pura: misma lógica para pantalla y PDF, garantiza heatmaps idénticos.
+function eqHeatmapData(tab){
+  const st = eqTabState[tab], cfg = EQ_TAB_CFG[tab];
+  const items = st.data.filter(r=>r.volume!=null&&r.volume>0&&r.last!=null&&r.last>0);
+  const changes = items.map(r=>r.change).filter(v=>v!=null);
+  let lo = changes.length ? Math.min(...changes) : 0;
+  let hi = changes.length ? Math.max(...changes) : 0;
+  if(lo>0) lo=0; if(hi<0) hi=0;
+  const montoTotal = items.reduce((s,r)=>s+((r.volume??0)*(r.last??0)),0);
+  let leaves = items, otros = null;
+  if(cfg.groupSmall && montoTotal>0){
+    const thr = cfg.groupSmall * montoTotal;
+    const monto = r => (r.volume??0)*(r.last??0);
+    const big   = items.filter(r=>monto(r)>=thr);
+    const small = items.filter(r=>monto(r)< thr);
+    if(small.length>1){
+      const smMonto = small.reduce((s,r)=>s+monto(r),0);
+      const wSum  = small.reduce((s,r)=>s+(r.change!=null?r.change*monto(r):0),0);
+      const wMonto= small.reduce((s,r)=>s+(r.change!=null?monto(r):0),0);
+      const wChange = wMonto>0 ? wSum/wMonto : null;
+      otros = { _otros:true, symbol:'Otros', change:wChange, _count:small.length, _monto:smMonto, volume:smMonto, last:1 };
+      leaves = big.concat([otros]);
+    }
+  }
+  return { items, leaves, lo, hi, montoTotal, otros, groupSmall:cfg.groupSmall };
+}
+window.eqHeatmapData = eqHeatmapData;
+window.eqHeatColor = eqHeatColor;
+
 function eqBuildHeatmap(tab) {
   const st = eqTabState[tab], cfg = EQ_TAB_CFG[tab];
   st.heatBuilt = true;
   const wrap = document.getElementById('eq-hm-'+tab);
   wrap.querySelectorAll('.eq-heat-cell').forEach(el=>el.remove());
-  const items = st.data.filter(r=>r.volume!=null&&r.volume>0&&r.last!=null&&r.last>0);
-  if(!items.length || typeof d3==='undefined') return;
+  if(typeof d3==='undefined') return;
+  const HD = eqHeatmapData(tab);
+  const { leaves, lo, hi, montoTotal } = HD;
+  if(!HD.items.length) return;
 
-  // Rango dinámico del día: mayor caída (lo) y mayor subida (hi)
-  const changes = items.map(r=>r.change).filter(v=>v!=null);
-  let lo = changes.length ? Math.min(...changes) : 0;
-  let hi = changes.length ? Math.max(...changes) : 0;
-  if(lo>0) lo=0; if(hi<0) hi=0;
-  // Actualizar leyenda de la barra de color
+  // Leyenda de la barra de color
   const loEl = document.getElementById('eq-hm-lo-'+tab);
   const hiEl = document.getElementById('eq-hm-hi-'+tab);
   if(loEl) loEl.textContent = (lo<=0?'':'+')+lo.toFixed(1)+'%';
   if(hiEl) hiEl.textContent = (hi>=0?'+':'')+hi.toFixed(1)+'%';
 
-  // Monto global operado del tab (Σ volumen × último)
-  const montoTotal = items.reduce((s,r)=>s+((r.volume??0)*(r.last??0)),0);
+  // Monto global operado del tab
   const montoEl = document.getElementById('eq-hm-monto-'+tab);
   if(montoEl) montoEl.textContent = '· $'+eqFmtMonto(montoTotal);
 
   const W = wrap.clientWidth||wrap.offsetWidth||1200, H = wrap.clientHeight||wrap.offsetHeight||300;
-  const root = d3.hierarchy({children:items}, d=>d.children)
-    .sum(d=>(d.volume??0)*(d.last??0)).sort((a,b)=>(b.value??0)-(a.value??0));
+  const root = d3.hierarchy({children:leaves}, d=>d.children)
+    .sum(d=>(d.volume??0)*(d.last??0))
+    .sort((a,b)=>{
+      // "Otros" siempre al final → squarify lo ubica abajo a la derecha
+      if(a.data._otros) return 1;
+      if(b.data._otros) return -1;
+      return (b.value??0)-(a.value??0);
+    });
   d3.treemap().size([W,H]).paddingInner(2).paddingOuter(2).tile(d3.treemapSquarify)(root);
 
   root.leaves().forEach(node=>{
@@ -12121,13 +12316,40 @@ function eqBuildHeatmap(tab) {
       overflow:'hidden', cursor: cfg.hasHist?'pointer':'default',
       transition:'filter .12s'
     });
-    if(w>28&&h>18) {
-      const fs=Math.max(8,Math.min(18,Math.sqrt(w*h)/7));
-      const fss=Math.max(7,fs*.72);
-      cell.innerHTML = `<div style="font-family:var(--mono);font-weight:600;color:rgba(255,255,255,.95);font-size:${fs}px;text-align:center;pointer-events:none;">${r.symbol}</div>`
-        +(h>32?`<div style="font-family:var(--mono);color:rgba(255,255,255,.72);font-size:${fss}px;text-align:center;pointer-events:none;">${eqFmtPct(r.change)}</div>`:'');
+    if(w>=16&&h>=10) {
+      const fs=Math.max(6,Math.min(18,Math.sqrt(w*h)/7));
+      const fss=Math.max(6,fs*.72);
+      cell.innerHTML = `<div style="font-family:var(--mono);font-weight:600;color:rgba(255,255,255,.95);font-size:${fs}px;line-height:1.05;text-align:center;pointer-events:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.symbol}</div>`
+        +(h>30?`<div style="font-family:var(--mono);color:rgba(255,255,255,.72);font-size:${fss}px;line-height:1.05;text-align:center;pointer-events:none;">${r.change!=null?eqFmtPct(r.change):''}</div>`:'');
     }
-    if(cfg.hasHist) {
+    if(r._otros){
+      // Cuadro agregado: tooltip propio, sin navegación
+      cell.style.cursor = 'default';
+      cell.addEventListener('mouseenter',()=>{
+        cell.style.filter='brightness(1.28)';
+        const tt = rfHmEnsureTooltip();
+        const varStr = r.change!=null ? (r.change>=0?'+':'')+r.change.toFixed(2)+'%' : '—';
+        const varCol = (r.change??0)>=0 ? '#3fb950' : '#f85149';
+        tt.innerHTML =
+          `<div style="font-weight:700;font-size:12px;margin-bottom:4px;color:var(--text);">Otros</div>`+
+          `<div style="color:var(--text3);">Instrumentos <span style="color:var(--text);float:right;">${r._count}</span></div>`+
+          `<div style="color:var(--text3);">Monto <span style="color:var(--text2);float:right;">$${eqFmtMonto(r._monto)}</span></div>`+
+          `<div style="color:var(--text3);">Var. ponderada <span style="color:${varCol};float:right;">${varStr}</span></div>`;
+        tt.style.display='block';
+      });
+      cell.addEventListener('mousemove',e=>{
+        const tt=document.getElementById('rfhm-tooltip'); if(!tt)return;
+        let lx=e.clientX+14, ly=e.clientY+14;
+        const tw=tt.offsetWidth, th=tt.offsetHeight;
+        if(lx+tw>window.innerWidth) lx=e.clientX-tw-14;
+        if(ly+th>window.innerHeight) ly=e.clientY-th-14;
+        tt.style.left=lx+'px'; tt.style.top=ly+'px';
+      });
+      cell.addEventListener('mouseleave',()=>{
+        cell.style.filter='';
+        const tt=document.getElementById('rfhm-tooltip'); if(tt)tt.style.display='none';
+      });
+    } else {
       cell.addEventListener('mouseenter',e=>{
         cell.style.filter='brightness(1.28)';
         const tt = rfHmEnsureTooltip();
@@ -12157,7 +12379,7 @@ function eqBuildHeatmap(tab) {
         cell.style.filter='';
         const tt=document.getElementById('rfhm-tooltip'); if(tt)tt.style.display='none';
       });
-      cell.addEventListener('click',()=>{
+      if(cfg.hasHist) cell.addEventListener('click',()=>{
         const tt=document.getElementById('rfhm-tooltip'); if(tt)tt.style.display='none';
         eqGoTicker(r.symbol, tab);
       });
@@ -12428,13 +12650,13 @@ window.eqHistMore=function(limit){ eqBuildHistTable(eqAllData, limit); };
 
 // ── Init when entering equity ──
 window.enterEquity = function(){
-  window._helpKey = 'eq.argy';
+  window._helpKey = 'eq.lider';
   document.getElementById('landing').style.display='none';
   document.getElementById('app-equity').style.display='flex';
   document.getElementById('app-equity').style.flexDirection='column';
   if(document.getElementById('legal-footer')) document.getElementById('legal-footer').style.display='block';
-  if(!eqTabState.argy.loaded) {
-    eqLoadTab('argy');
+  if(!eqTabState.lider.loaded) {
+    eqLoadTab('lider');
     eqLoadFx();
   }
   eqShowView('panel');
@@ -12453,10 +12675,290 @@ const _eqRO = new ResizeObserver(entries => {
     }, 150);
   });
 });
-['argy','adr','cedear'].forEach(tab => {
+['lider','general','adr','cedear'].forEach(tab => {
   const wrap = document.getElementById('eq-hm-'+tab);
   if(wrap) { wrap.dataset.eqTab = tab; _eqRO.observe(wrap); }
 });
+
+/* ══════════════════════════════════════════════════════
+   REPORTE PDF — Renta Variable
+   Reusa el patrón de Renta Fija: torito + paleta dark/light,
+   header grande/chico, topHeader/footer, autoTable para tablas
+   y treemap nativo (pdf.rect) idéntico al heatmap de pantalla.
+══════════════════════════════════════════════════════ */
+const EQ_PANEL_LABEL = { lider:'Panel Líder', general:'Panel General', cedear:'CEDEARs', adr:'ADR' };
+const EQ_PANEL_ORDER = ['lider','general','cedear','adr'];
+
+window.eqOpenReportDialog = function(){
+  // Asegurar que los paneles a reportar estén cargados se chequea al generar.
+  eqReportSyncAll();
+  eqRepUpdateGenBtn();
+  document.getElementById('eq-report-overlay').style.display='flex';
+};
+window.eqCloseReportDialog = function(){
+  const o=document.getElementById('eq-report-overlay'); if(o)o.style.display='none';
+};
+window.eqReportToggleAll = function(on){
+  document.querySelectorAll('.eq-rep-chk').forEach(c=>{ c.checked=!!on; });
+  eqRepUpdateGenBtn();
+};
+window.eqReportSyncAll = function(){
+  const chks=[...document.querySelectorAll('.eq-rep-chk')];
+  const all=document.getElementById('eq-rep-all');
+  if(all&&chks.length) all.checked = chks.every(c=>c.checked);
+};
+window.eqRepUpdateGenBtn = function(){
+  eqReportSyncAll();
+  const any=[...document.querySelectorAll('.eq-rep-chk')].some(c=>c.checked);
+  const btn=document.getElementById('eq-rep-gen-btn');
+  if(btn){ btn.disabled=!any; btn.style.opacity=any?'1':'.5'; btn.style.cursor=any?'pointer':'not-allowed'; }
+};
+
+function eqReportIsDark(){
+  try{
+    const bg=getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+    const m=bg.match(/#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i);
+    if(m){ const lum=(parseInt(m[1],16)+parseInt(m[2],16)+parseInt(m[3],16))/3; return lum<128; }
+  }catch(_){}
+  return true;
+}
+
+// Torito a PNG (jsPDF no soporta WEBP). Cachea. Toma el logo del header de equity.
+let _eqToritoPng=null;
+async function eqGetToritoPng(){
+  if(_eqToritoPng!==null) return _eqToritoPng||null;
+  try{
+    const img=document.querySelector('#app-equity .tb-home img');
+    if(!img||!img.src){ _eqToritoPng=''; return null; }
+    const load=new Promise((res,rej)=>{
+      if(img.complete && img.naturalWidth>0) return res(img);
+      const tmp=new Image(); tmp.crossOrigin='anonymous';
+      tmp.onload=()=>res(tmp); tmp.onerror=rej; tmp.src=img.src;
+    });
+    const ready=await load;
+    const w=ready.naturalWidth||64, h=ready.naturalHeight||64;
+    const cropFrac=0.07;
+    const sx=Math.round(w*cropFrac), sy=Math.round(h*cropFrac);
+    const sw=w-sx*2, sh=h-sy*2, ow=sw, oh=sh;
+    const cv=document.createElement('canvas'); cv.width=ow; cv.height=oh;
+    const cx=cv.getContext('2d');
+    cx.imageSmoothingEnabled=true; cx.imageSmoothingQuality='high';
+    const rad=Math.round(Math.min(ow,oh)*0.18);
+    cx.beginPath();
+    cx.moveTo(rad,0); cx.lineTo(ow-rad,0); cx.arcTo(ow,0,ow,rad,rad);
+    cx.lineTo(ow,oh-rad); cx.arcTo(ow,oh,ow-rad,oh,rad);
+    cx.lineTo(rad,oh); cx.arcTo(0,oh,0,oh-rad,rad);
+    cx.lineTo(0,rad); cx.arcTo(0,0,rad,0,rad); cx.closePath(); cx.clip();
+    cx.drawImage(ready, sx,sy,sw,sh, 0,0,ow,oh);
+    _eqToritoPng={ data:cv.toDataURL('image/png'), w:ow, h:oh };
+    return _eqToritoPng;
+  }catch(_){ _eqToritoPng=''; return null; }
+}
+
+window.eqReportGenerate = async function(){
+  const checked=[...document.querySelectorAll('.eq-rep-chk:checked')].map(c=>c.value);
+  if(!checked.length){ alert('Elegí al menos un panel.'); return; }
+  if(!(window.jspdf&&window.jspdf.jsPDF)){ alert('Las librerías de PDF aún se están cargando. Probá de nuevo.'); return; }
+
+  const genBtn=document.getElementById('eq-rep-gen-btn');
+  const btnTxt=genBtn?genBtn.textContent:'PDF';
+  if(genBtn){ genBtn.textContent='Generando…'; genBtn.disabled=true; }
+
+  try{
+    // Cargar los paneles tildados que aún no tengan datos
+    for(const tab of checked){
+      if(!eqTabState[tab].loaded){ await eqLoadTab(tab); }
+    }
+
+    const { jsPDF }=window.jspdf;
+    const pdf=new jsPDF({orientation:'landscape',unit:'pt',format:'a4'});
+    const PW=pdf.internal.pageSize.getWidth(), PH=pdf.internal.pageSize.getHeight();
+    const M=36;
+    const dark=eqReportIsDark();
+    const RGB = dark
+      ? {bg:[11,14,23],card:[17,21,31],head:[26,31,48],border:[34,42,61],text:[232,234,246],text2:[195,201,230],text3:[126,135,184],accent:[30,39,243],alt:[20,25,37],green:[63,185,80],red:[248,81,73]}
+      : {bg:[255,255,255],card:[247,248,252],head:[228,231,242],border:[210,214,235],text:[10,12,26],text2:[58,63,92],text3:[138,144,176],accent:[30,39,243],alt:[241,243,250],green:[13,158,110],red:[224,49,49]};
+    const fechaCorta=new Date().toLocaleDateString('es-AR',{year:'numeric',month:'long',day:'numeric'});
+    const torito=await eqGetToritoPng();
+
+    const pageBg=()=>{ pdf.setFillColor(...RGB.bg); pdf.rect(0,0,PW,PH,'F'); };
+    // Bloque "Research / Fecha informe" alineado a la altura del título (no un renglón abajo).
+    const topHeader=()=>{
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(7); pdf.setTextColor(...RGB.text3);
+      pdf.text('Research · Bull Market Brokers', PW-M, M+4, {align:'right'});
+      pdf.text(`Fecha Informe: ${fechaCorta}`, PW-M, M+13, {align:'right'});
+    };
+    const footer=()=>{
+      pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.5); pdf.line(M,PH-22,PW-M,PH-22);
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(7); pdf.setTextColor(...RGB.text3);
+      pdf.text('Research · Bull Market Brokers · No constituye asesoramiento de inversión', PW/2, PH-12, {align:'center'});
+    };
+    // Header unificado (formato compacto): torito + "{panel} · {sufijo}", texto
+    // centrado verticalmente respecto al torito. Devuelve Y del divisor.
+    const drawHeader=(panelLabel, sufijo)=>{
+      const logoH=30, logoY=M-8;           // torito
+      let titleX=M;
+      if(torito&&torito.data){
+        const logoW=logoH*(torito.w/torito.h);
+        try{ pdf.addImage(torito.data,'PNG',M,logoY,logoW,logoH,undefined,'FAST'); }catch(_){}
+        titleX=M+logoW+12;
+      }
+      // Centro vertical del torito → baseline del título centrado en ese eje.
+      const cY=logoY+logoH/2;
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(16); pdf.setTextColor(...RGB.accent);
+      pdf.text(`${panelLabel} · ${sufijo}`, titleX, cY, {baseline:'middle'});
+      const dividerY=logoY+logoH+8;
+      pdf.setDrawColor(...RGB.border); pdf.setLineWidth(0.5); pdf.line(M,dividerY,PW-M,dividerY);
+      return dividerY;
+    };
+    const drawBigHeader=drawHeader;
+    const drawSmallTitle=(panelLabel, sufijo)=>{ drawHeader(panelLabel, sufijo); return M+30; };
+
+    const cats=checked.slice().sort((a,b)=>EQ_PANEL_ORDER.indexOf(a)-EQ_PANEL_ORDER.indexOf(b));
+    let firstDocPage=true;
+
+    for(const tab of cats){
+      const panelLabel=EQ_PANEL_LABEL[tab]||tab;
+      const HD=eqHeatmapData(tab);
+      if(!HD.items.length) continue;
+
+      // ── HOJA 1: HEATMAP ──
+      if(!firstDocPage) pdf.addPage();
+      firstDocPage=false;
+      pageBg(); topHeader();
+      const dividerY=drawBigHeader(panelLabel, 'Heatmap');
+      // Leyenda bajo el header
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(8); pdf.setTextColor(...RGB.text3);
+      let leyenda='El tamaño de las celdas corresponde al monto operado.';
+      if(HD.groupSmall && HD.otros){
+        const pctTxt=(HD.groupSmall*100).toLocaleString('es-AR',{maximumFractionDigits:2});
+        leyenda+=` "Otros" agrupa los tickers que ponderan menos del ${pctTxt}% del total.`;
+      }
+      pdf.text(leyenda, M, dividerY+14);
+
+      const hmTopY=dividerY+24, hmBottomY=PH-30;
+      eqDrawHeatmapPDF(pdf, HD, M, hmTopY, PW-M*2, hmBottomY-hmTopY);
+      footer();
+
+      // ── HOJA 2+: TABLA ──
+      // Para ADR/CEDEAR: solo tickers con monto ≥ 0.1% del total (corte de tabla).
+      const TABLA_THR = HD.groupSmall ? 0.001 : 0; // 0.1% solo en paneles agrupables
+      let rows=[...HD.items];
+      if(TABLA_THR>0 && HD.montoTotal>0){
+        const thr=TABLA_THR*HD.montoTotal;
+        rows=rows.filter(r=>((r.volume??0)*(r.last??0))>=thr);
+      }
+      // Orden por monto desc (igual que pantalla)
+      rows.sort((a,b)=>(b.monto??0)-(a.monto??0));
+
+      const head=[['Ticker','Último','Bid','Ask','Operaciones','Var %','Volumen','Monto operado','% del total']];
+      const body=rows.map(r=>{
+        const pct=(HD.montoTotal>0&&r.monto!=null)?(r.monto/HD.montoTotal*100):null;
+        return [
+          r.symbol??'—',
+          r.last  !=null?eqFmt(r.last)  :'—',
+          r.px_bid!=null?eqFmt(r.px_bid):'—',
+          r.px_ask!=null?eqFmt(r.px_ask):'—',
+          r.q_op  !=null?String(r.q_op) :'—',
+          r.change!=null?((r.change>=0?'+':'')+r.change.toFixed(2)+'%'):'—',
+          r.volume!=null?eqFmtVol(r.volume):'—',
+          r.monto !=null?'$'+eqFmtMonto(r.monto):'—',
+          pct!=null?pct.toFixed(2)+'%':'—',
+        ];
+      });
+      const varColIdx=5;
+
+      // Espacio del header grande + leyenda (reservado en la 1ª hoja de tabla).
+      const headerBigBottom = M+30;       // divisor del header compacto
+      const leyendaTabla = HD.groupSmall;
+      const startY = headerBigBottom + (leyendaTabla ? 24 : 10);
+
+      pdf.addPage();
+      let tablePageCount=0;
+      pdf.autoTable({
+        head, body, startY,
+        margin:{left:M,right:M,top:M+36,bottom:34},
+        theme:'grid',
+        styles:{ font:'helvetica', fontSize:7, cellPadding:3, lineColor:RGB.border, lineWidth:0.3,
+          textColor:RGB.text2, fillColor:RGB.card, halign:'center', valign:'middle' },
+        headStyles:{ fillColor:RGB.head, textColor:RGB.accent, fontStyle:'bold', halign:'center', valign:'middle', lineColor:RGB.border, lineWidth:0.3 },
+        alternateRowStyles:{ fillColor:RGB.alt },
+        columnStyles:{ 0:{halign:'center', fontStyle:'bold', textColor:RGB.text} },
+        didParseCell:(d)=>{
+          if(d.section==='body' && d.column.index===varColIdx){
+            const txt=d.cell.text&&d.cell.text[0]?d.cell.text[0]:'';
+            if(txt.startsWith('+')) { d.cell.styles.textColor=RGB.green; d.cell.styles.fontStyle='bold'; }
+            else if(txt.startsWith('-')) { d.cell.styles.textColor=RGB.red; d.cell.styles.fontStyle='bold'; }
+          }
+        },
+        willDrawPage:()=>{
+          pageBg();
+          topHeader();
+          if(tablePageCount===0){
+            // 1ª hoja de tabla: header grande + leyenda del corte (si aplica)
+            drawBigHeader(panelLabel, 'Tabla');
+            if(leyendaTabla){
+              pdf.setFont('helvetica','normal'); pdf.setFontSize(8); pdf.setTextColor(...RGB.text3);
+              pdf.text('Incluidos los tickers que representan más del 0,1% del monto operado total.', M, headerBigBottom+14);
+            }
+          } else {
+            // Hojas de continuación: título chico
+            drawSmallTitle(panelLabel, 'Tabla');
+          }
+          tablePageCount++;
+        },
+        didDrawPage:()=>{ footer(); },
+      });
+    }
+
+    pdf.save(`renta_variable_reporte_${new Date().toISOString().slice(0,10)}.pdf`);
+  }catch(err){
+    console.error('[eqReportGenerate]',err);
+    alert('No se pudo generar el PDF: '+(err&&err.message?err.message:err));
+  }finally{
+    if(genBtn){ genBtn.textContent=btnTxt; genBtn.disabled=false; }
+    eqCloseReportDialog();
+  }
+};
+
+// Heatmap en PDF: treemap nativo idéntico al de pantalla (mismo layout D3 + eqHeatColor).
+function eqDrawHeatmapPDF(pdf, HD, x, y, W, H){
+  if(typeof d3==='undefined' || !HD.leaves.length) return false;
+  const { leaves, lo, hi } = HD;
+  const root=d3.hierarchy({children:leaves}, d=>d.children)
+    .sum(d=>(d.volume??0)*(d.last??0))
+    .sort((a,b)=>{
+      if(a.data._otros) return 1;
+      if(b.data._otros) return -1;
+      return (b.value??0)-(a.value??0);
+    });
+  d3.treemap().size([W,H]).paddingInner(2).paddingOuter(1).tile(d3.treemapSquarify)(root);
+  root.leaves().forEach(node=>{
+    const r=node.data, cx=x+node.x0, cy=y+node.y0, w=node.x1-node.x0, h=node.y1-node.y0;
+    if(w<2||h<2) return;
+    const colStr=eqHeatColor(r.change, lo, hi); // 'rgb(r,g,b)' o var(--bg3)
+    let col=[30,34,53];
+    const mm=String(colStr).match(/rgb\((\d+),(\d+),(\d+)\)/);
+    if(mm) col=[+mm[1],+mm[2],+mm[3]];
+    pdf.setFillColor(col[0],col[1],col[2]);
+    pdf.rect(cx,cy,w,h,'F');
+    if(w>22 && h>13){
+      let fs=Math.max(5,Math.min(13,Math.sqrt(w*h)/7));
+      pdf.setTextColor(255,255,255);
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(fs);
+      const cxC=cx+w/2, cyC=cy+h/2;
+      if(h>26){
+        const varStr=(r.change!=null&&!isNaN(r.change))?((r.change>=0?'+':'')+r.change.toFixed(2)+'%'):'';
+        pdf.text(r.symbol, cxC, cyC-1, {align:'center', baseline:'bottom'});
+        pdf.setFont('helvetica','normal'); pdf.setFontSize(Math.max(4,fs*0.8));
+        if(varStr) pdf.text(varStr, cxC, cyC+2, {align:'center', baseline:'top'});
+      } else {
+        pdf.text(r.symbol, cxC, cyC, {align:'center', baseline:'middle'});
+      }
+    }
+  });
+  return true;
+}
 
 })();
 </script>
@@ -28717,8 +29219,13 @@ Los parámetros principales son: **Peso pp**, que define el valor de cada column
 
 Es una ponderación de ratios financieros, por lo que funciona como una herramienta más para entender la salud de una empresa, no como la única. Prestá especial atención a la fecha del último balance: indica la última vez que se actualizó el scoring. Un balance de hace un año no necesariamente refleja la situación actual de la empresa.` },
 
-    'eq.argy': { t:'Renta Variable · ARGY', b:
-`Heatmap de acciones argentinas. El tamaño de cada recuadro corresponde al monto operado y el color refleja la variación de precio en la rueda actual: verde una suba, rojo una caída.
+    'eq.lider': { t:'Renta Variable · Panel Líder', b:
+`Heatmap de las acciones del panel líder de BYMA. El tamaño de cada recuadro corresponde al monto operado y el color refleja la variación de precio en la rueda actual: verde una suba, rojo una caída.
+
+Al clickear un ticker se abre su valor histórico.` },
+
+    'eq.general': { t:'Renta Variable · Panel General', b:
+`Heatmap de las acciones del panel general (todas las acciones argentinas que no integran el panel líder). El tamaño de cada recuadro corresponde al monto operado y el color refleja la variación de precio en la rueda actual: verde una suba, rojo una caída.
 
 Al clickear un ticker se abre su valor histórico.` },
 
