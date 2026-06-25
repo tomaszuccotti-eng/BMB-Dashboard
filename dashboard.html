@@ -28982,7 +28982,7 @@ window.ons_toggleExcludeTicker = function(ticker) {
   ons_renderChart();
 };
 
-// ── Auto-excluir outliers (± 2.5 SD de la mediana en Y) ─────────────────────
+// ── Auto-excluir outliers (YTM fuera de [-10%, +19%]) ─────────────────────
 // Aplica los filtros por defecto (Solo con precio + Excluir outliers) tras la primera carga
 function ons_applyDefaultFilters(){
   // Solo con precio: estilo del botón (el estado ya viene en true)
@@ -29011,7 +29011,7 @@ window.ons_autoExcludeOutliers = function() {  const btn = document.getElementBy
     return;
   }
 
-  // — ON: excluir por rango fijo YTM < -10% o YTM > 50%
+  // — ON: excluir por rango fijo YTM < -10% o YTM > 19%
   const ons = ons_getFilteredONs();
   const axisY = document.getElementById('chartY')?.value || 'ytm';
   const settle = new Date();
@@ -29031,7 +29031,7 @@ window.ons_autoExcludeOutliers = function() {  const btn = document.getElementBy
   if(pts.length < 4) return;
 
   const YTM_MIN = -0.10;
-  const YTM_MAX =  0.50;
+  const YTM_MAX =  0.19;
   for(const p of pts) {
     if(p.y < YTM_MIN || p.y > YTM_MAX) {
       onsState.excluded.add(p.ticker);
