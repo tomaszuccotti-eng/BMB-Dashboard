@@ -406,6 +406,15 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 #help-modal .help-body{ flex:1;overflow-y:auto;padding:20px 22px;font-size:13px;line-height:1.6;color:var(--text2); }
 #help-modal .help-warn{ margin:16px 0 4px;padding:12px 14px;border-radius:8px;border:1px solid var(--red);background:rgba(239,68,68,.10);color:var(--red);font-size:14px;font-weight:700;line-height:1.45; }
 #help-modal .help-info{ margin:16px 0 4px;padding:12px 14px;border-radius:8px;border:1px solid var(--accent);background:rgba(30,39,243,.10);color:var(--text);font-size:13px;line-height:1.5; }
+/* ── Acordeones de ayuda ── */
+#help-modal .help-fold{ border:1px solid var(--border);border-radius:8px;margin:8px 0;overflow:hidden; }
+#help-modal .help-fold-head{ width:100%;display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--bg2);border:none;cursor:pointer;font-family:var(--display);font-size:13px;font-weight:700;color:var(--text);text-align:left;transition:background .15s; }
+#help-modal .help-fold-head:hover{ background:var(--accent-light); }
+#help-modal .help-fold-title{ flex:1; }
+#help-modal .help-fold-ico{ flex-shrink:0;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--accent);font-family:var(--mono);transition:transform .18s; }
+#help-modal .help-fold.open .help-fold-ico{ transform:rotate(45deg); }
+#help-modal .help-fold-body{ display:none;padding:4px 14px 2px;border-top:1px solid var(--border); }
+#help-modal .help-fold.open .help-fold-body{ display:block; }
 
 /* Botón Home con logo (mismo tamaño que tb-icon) */
 .tb-home{
@@ -29380,23 +29389,60 @@ Al clickear un ticker se abre su valor histórico.` },
     'af.usa':       { t:'Empresas USA', b:
 `Explorador de estados financieros de empresas que reportan a la **SEC** (EDGAR). Buscás una empresa por ticker y el dashboard arma automáticamente tablas, gráficos y KPIs a partir de los datos estructurados (XBRL) que la empresa presenta en sus reportes 10-K (anuales) y 10-Q (trimestrales).
 
-**Tablas y gráficos — qué se puede editar**
-Cada tabla y cada gráfico se edita desde su ícono de lápiz. En las tablas elegís qué métricas mostrar (filas), el rango de períodos, el ancho, y si son anuales o trimestrales. En los gráficos elegís las series, el tipo (línea/barra), el eje (izquierdo/derecho), y si las barras se apilan. El **orden** de tablas y gráficos se reordena con las flechas; el ancho (100/50/33%) permite ponerlos lado a lado. Lo que **no** se edita es el dato en sí: los valores vienen de EDGAR y no son modificables a mano.
+[[info]]OJO: las métricas y variables provienen de los datos estructurados (XBRL) que cada empresa reporta a EDGAR. Una misma métrica puede tener implicancias distintas de una empresa a otra según cómo cada una clasifique sus rubros contables, así que conviene interpretarlas en el contexto de cada compañía.[[/info]]
+
+[[fold:Buscar empresa]]
+El universo disponible es el mismo que cubre la **SEC**: prácticamente todas las empresas que cotizan en **NYSE, NASDAQ y NYSE American (AMEX)** y que presentan sus balances de forma estructurada (XBRL) ante el regulador. Si una empresa reporta a la SEC, vas a poder encontrarla acá.
+
+Para acceder podés usar el **buscador**, que admite tanto el **ticker** (ej. AAPL) como el **nombre** de la empresa (ej. Apple) — escribí cualquiera de los dos y seleccioná la opción que corresponda. Además, hay una serie de **atajos** que te llevan directo a empresas puntuales, sin necesidad de buscarlas.
+[[/fold]]
+
+[[fold:Qué hay en cada pestaña]]
+El análisis de cada empresa está organizado en pestañas:
+
+**Financials** — gráficos y tablas de los estados contables de la empresa (balance, resultados y flujo de efectivo), construidos a partir de los datos reportados a la SEC.
+
+**Ratios** — la evolución de los principales ratios para evaluar a la empresa, calculados automáticamente período a período.
+
+**Comparador** — permite comparar ratios de distintas empresas entre sí, para ponerlas en contexto unas frente a otras.
+
+**Filings** — los últimos hechos relevantes y presentaciones (filings) de la empresa ante la SEC.
+
+**Datos SEC** — las variables crudas, en el formato y la etiqueta exactos en que la empresa las reporta a la SEC, sin procesar.
+[[/fold]]
+
+[[fold:Editar la vista: tablas, gráficos y variables]]
+Casi todo lo que ves en pantalla es configurable: podés editar cada tabla y cada gráfico, y reordenarlos a tu gusto.
+
+**Qué se puede editar**
+Cada tabla y cada gráfico se edita desde su ícono de lápiz [[ico:pencil]]. En las **tablas** elegís qué métricas mostrar (filas), el rango de períodos, el ancho, y si son anuales o trimestrales. En los **gráficos** elegís las series, el tipo (línea o barra), el eje (izquierdo o derecho) y si las barras se apilan. El **orden** se reordena con las flechas [[ico:arrows]], y el ancho (100 / 50 / 33%) permite poner tablas y gráficos lado a lado.
 
 **Variables personalizadas**
-Además de las métricas base, podés crear **variables propias** con fórmulas sobre las etiquetas de EDGAR (por ejemplo "Liabilities" / "StockholdersEquity"). Se gestionan desde el botón **Gestionar variables** (presente tanto en el editor de tablas como en el de gráficos). El formato (millones, %, ratio "x") se autodetecta, pero podés fijarlo a mano. Una variable creada queda disponible en tablas, gráficos y KPIs.
+Además de las métricas base, podés crear **variables propias** con fórmulas sobre las etiquetas de EDGAR (por ejemplo, "Liabilities" / "StockholdersEquity"). Se gestionan desde el botón **Gestionar variables**, disponible tanto en el editor de tablas como en el de gráficos. El formato (millones, %, ratio "x") se autodetecta, pero podés fijarlo a mano. Una vez creada, la variable queda disponible en tablas, gráficos y KPIs.
 
 **Variaciones**
-Las tablas y KPIs muestran la variación contra el período anterior. El tipo se ajusta al formato de cada fila: **%** en montos, **pp** (puntos porcentuales) en márgenes y porcentajes, y **diferencia absoluta** (ej. +0,74x) en ratios. La leyenda al pie aclara qué modo se usa en cada caso.
+Las tablas y los KPIs muestran la variación contra el período anterior, y el tipo se ajusta al formato de cada fila: **%** en montos, **pp** (puntos porcentuales) en márgenes y porcentajes, y **diferencia absoluta** (ej. +0,74x) en ratios. La leyenda al pie aclara qué modo se usa en cada caso.
+[[/fold]]
 
-**Templates**
-Un template guarda toda la configuración de tablas, gráficos, KPIs y variables personalizadas, y queda vinculado a una o varias empresas. Para **guardar** uno nuevo, usá el botón de guardar ([[ico:save]]): le ponés nombre y queda asociado al ticker actual. Para **actualizar** el template activo con los cambios que hiciste, usá el botón de actualizar ([[ico:update]]). Desde **Configurar** ([[ico:cfg]]) podés renombrar, vincular/desvincular empresas, **duplicar como copia** (clona el template completo con otro nombre, para probar cambios sin tocar el original) y borrar.
+[[fold:Templates]]
+Un template guarda toda la configuración de tablas, gráficos, KPIs y variables personalizadas, y queda vinculado a una o varias empresas. Al abrir una empresa, se activa automáticamente el template más reciente vinculado a ese ticker; si no hay ninguno, se usa la configuración **Default**.
 
-La edición de templates (guardar, actualizar, configurar) está protegida por contraseña: ingresala en el campo **Password** del panel izquierdo para habilitar esos tres botones. Sin la contraseña podés navegar, editar la vista en la sesión y aplicar templates existentes, pero no crearlos ni modificarlos.
+En el **panel izquierdo** tenés tres botones para gestionarlos:
 
-El botón **↻** del topbar recarga la lista de templates desde el servidor (útil si otra persona del equipo creó o modificó uno). Al abrir una empresa, se activa automáticamente el template más reciente vinculado a ese ticker; si no hay ninguno, se usa la configuración Default.
+**Guardar como template** [[ico:save]] — guarda la configuración actual como un **template nuevo**: le ponés nombre y queda asociado al ticker actual.
 
-[[warn]]OJO: las métricas y variables provienen de los datos estructurados (XBRL) que cada empresa reporta a EDGAR. Una misma métrica puede tener implicancias distintas de una empresa a otra según cómo cada una clasifique sus rubros contables, así que conviene interpretarlas en el contexto de cada compañía.[[/warn]]` },
+**Actualizar template activo** [[ico:update]] — guarda los cambios que hiciste **dentro del template que está activo**, sin crear uno nuevo.
+
+**Configurar templates** [[ico:cfg]] — abre el menú de configuración, donde podés renombrar, vincular o desvincular empresas, **duplicar como copia** (clona el template completo con otro nombre, para probar cambios sin tocar el original) y borrar.
+
+Además, el botón **↻** del topbar recarga la lista de templates desde el servidor, útil si otra persona del equipo creó o modificó uno.
+
+[[info]]La edición de templates (guardar, actualizar y configurar) está protegida por contraseña. Si querés armar tus propios templates, podés **solicitar la contraseña** (ver la pestaña Contacto) e ingresarla en el campo **Password** del panel izquierdo para habilitar esos tres botones. Sin la contraseña podés navegar, editar la vista durante la sesión y aplicar templates existentes, pero no crearlos ni modificarlos.[[/info]]
+[[/fold]]
+
+[[fold:Generar reporte]]
+Al final del **panel izquierdo** está el botón **Generar reporte**, que te permite descargar el análisis de la empresa en **PDF** o **HTML**. El reporte toma la vista tal como la tenés configurada en ese momento —tablas, gráficos y KPIs— para que puedas guardarla o compartirla fuera del dashboard.
+[[/fold]]` },
     'ear.buscar':   { t:'Empresas ARG · Buscar', b:'(pendiente)' },
     'ear.sector':   { t:'Empresas ARG · Scoring de Liquidez', b:'(pendiente)' },
     'ear.deudores': { t:'Empresas ARG · Central de Deudores', b:'(pendiente)' },
@@ -29424,24 +29470,59 @@ Equipo: Research BullMarket`;
       save:   '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
       update: '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
       cfg:    '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+      pencil: '<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>',
+      arrows: '<polyline points="18 15 12 9 6 15"/><polyline points="6 9 12 15 18 9" transform="translate(0 6)"/>',
     };
     // Badges que imitan los botones reales del topbar (ayuda y tema)
     const _helpBadge = '<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;border:1px solid var(--border2);background:var(--bg2);color:var(--accent);font-family:var(--mono);font-weight:700;font-size:12px;font-style:italic;vertical-align:middle;margin:0 2px;">i</span>';
     const _themeBadge = '<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;border:1px solid var(--border2);background:var(--bg2);color:var(--accent);font-size:12px;vertical-align:middle;margin:0 2px;">☀</span>';
     esc = esc.replace(/\[\[ico:help\]\]/g, _helpBadge);
     esc = esc.replace(/\[\[ico:theme\]\]/g, _themeBadge);
-    esc = esc.replace(/\[\[ico:(save|update|cfg)\]\]/g, (_,k)=>_icoSvg(_ICONS[k]));
+    esc = esc.replace(/\[\[ico:(save|update|cfg|pencil|arrows)\]\]/g, (_,k)=>_icoSvg(_ICONS[k]));
     esc = esc.replace(/\[\[info\]\]([\s\S]*?)\[\[\/info\]\]/g,
       '<div class="help-info">$1</div>');
     esc = esc.replace(/\[\[warn\]\]([\s\S]*?)\[\[\/warn\]\]/g,
       '<div class="help-warn">$1</div>');
     esc = esc.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    // Párrafos separados por doble salto; saltos simples a <br>.
+    // Acordeones: [[fold:Título]]…[[/fold]]. El cuerpo se renderiza recursivamente
+    // (admite párrafos, **negrita**, íconos, info/warn) y se protege del split de
+    // párrafos con un placeholder. Comportamiento exclusivo: ver helpFoldToggle().
+    const _folds = [];
+    esc = esc.replace(/\[\[fold:([^\]]*)\]\]([\s\S]*?)\[\[\/fold\]\]/g, (_,title,inner)=>{
+      const i = _folds.length;
+      const innerHtml = _renderBlocks(inner.trim());
+      _folds.push(
+        '<div class="help-fold">'+
+          '<button type="button" class="help-fold-head" onclick="helpFoldToggle(this)">'+
+            '<span class="help-fold-title">'+title.trim()+'</span>'+
+            '<span class="help-fold-ico">+</span>'+
+          '</button>'+
+          '<div class="help-fold-body">'+innerHtml+'</div>'+
+        '</div>');
+      return '\u0000FOLD'+i+'\u0000';
+    });
+    let out = _renderBlocks(esc);
+    out = out.replace(/<p style="margin:0 0 12px;">\u0000FOLD(\d+)\u0000<\/p>/g, (_,i)=>_folds[+i]);
+    out = out.replace(/\u0000FOLD(\d+)\u0000/g, (_,i)=>_folds[+i]);
+    return out;
+  }
+
+  // Divide un texto ya escapado/formateado en párrafos (doble salto = <p>,
+  // salto simple = <br>), respetando los bloques div ya generados (info/warn).
+  function _renderBlocks(esc){
     return esc.split(/\n\n+/).map(p=>{
       if(p.indexOf('help-warn')!==-1 || p.indexOf('help-info')!==-1) return p; // ya es un div
       return '<p style="margin:0 0 12px;">'+p.replace(/\n/g,'<br>')+'</p>';
     }).join('');
   }
+
+  // Acordeón exclusivo: abre el clickeado y cierra todos los demás del modal.
+  window.helpFoldToggle = function(btn){
+    const fold = btn.closest('.help-fold');
+    const wasOpen = fold.classList.contains('open');
+    document.querySelectorAll('#help-modal .help-fold.open').forEach(f=>f.classList.remove('open'));
+    if(!wasOpen) fold.classList.add('open');
+  };
 
   window.helpSwitchTab = function(tab){
     document.querySelectorAll('#help-modal .help-tab').forEach(t=>{
