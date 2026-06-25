@@ -29251,7 +29251,7 @@ window.ons_init = function() {
   <div id="help-modal">
     <div class="help-head">
       <span class="help-head-title">Ayuda</span>
-      <button onclick="closeHelp()" style="padding:4px 14px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;" onmouseover="this.style.background='var(--red)';this.style.color='#fff';this.style.borderColor='var(--red)';" onmouseout="this.style.background='transparent';this.style.color='var(--text3)';this.style.borderColor='var(--border2)';">✕ Cerrar</button>
+      <button onclick="closeHelp()" title="Cerrar" style="width:30px;height:30px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:14px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;" onmouseover="this.style.background='var(--red)';this.style.color='#fff';this.style.borderColor='var(--red)';" onmouseout="this.style.background='transparent';this.style.color='var(--text3)';this.style.borderColor='var(--border2)';">✕</button>
     </div>
     <div class="help-tabs">
       <div class="help-tab active" data-htab="uso" onclick="helpSwitchTab('uso')">Modo de uso</div>
@@ -29259,6 +29259,13 @@ window.ons_init = function() {
       <div class="help-tab" data-htab="contacto" onclick="helpSwitchTab('contacto')">Contacto</div>
     </div>
     <div id="help-body" class="help-body"></div>
+    <div id="help-foot" style="display:none;flex-shrink:0;align-items:center;gap:14px;padding:12px 22px;border-top:1px solid var(--border);background:var(--bg2);">
+      <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;font-family:var(--mono);color:var(--text2);user-select:none;flex:1;">
+        <input type="checkbox" id="help-dontshow" style="width:15px;height:15px;accent-color:#1E27F3;cursor:pointer;flex-shrink:0;">
+        No volver a mostrar
+      </label>
+      <button onclick="closeHelp()" style="padding:7px 22px;border-radius:7px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .15s;" onmouseover="this.style.opacity='.85';" onmouseout="this.style.opacity='1';">Aceptar</button>
+    </div>
   </div>
   <script>
   /* ── Sistema de ayuda contextual ── */
@@ -29467,14 +29474,52 @@ Equipo: Research BullMarket`;
     document.querySelector('#help-modal .help-head-title').textContent =
       'Ayuda — ' + (entry.t || 'Dashboard');
     helpSwitchTab('uso');
+    // El footer (checkbox + Aceptar) aparece siempre en la ayuda del Dashboard (landing)
+    const foot = document.getElementById('help-foot');
+    const chk = document.getElementById('help-dontshow');
+    const isLanding = (key === 'landing');
+    if(foot) foot.style.display = isLanding ? 'flex' : 'none';
+    if(chk){
+      let dismissed = false;
+      try { dismissed = localStorage.getItem('bmb_help_landing_dismissed') === '1'; } catch(e){}
+      chk.checked = dismissed;
+    }
     document.getElementById('help-modal-overlay').style.display='block';
     document.getElementById('help-modal').style.display='flex';
   };
 
+  // Apertura automática del popup de bienvenida (landing)
+  window.showHelpAuto = function(){
+    window._helpKey = 'landing';
+    showHelp();
+  };
+
   window.closeHelp = function(){
+    // Si el footer está visible (ayuda del Dashboard), persistir el estado del checkbox
+    const foot = document.getElementById('help-foot');
+    const chk = document.getElementById('help-dontshow');
+    if(foot && foot.style.display !== 'none' && chk){
+      try {
+        if(chk.checked) localStorage.setItem('bmb_help_landing_dismissed', '1');
+        else localStorage.removeItem('bmb_help_landing_dismissed');
+      } catch(e){}
+    }
     document.getElementById('help-modal-overlay').style.display='none';
     document.getElementById('help-modal').style.display='none';
   };
+
+  // Mostrar el popup de bienvenida la primera vez que se abre el dashboard
+  (function showWelcomeOnce(){
+    function check(){
+      let dismissed = false;
+      try { dismissed = localStorage.getItem('bmb_help_landing_dismissed') === '1'; } catch(e){}
+      const landing = document.getElementById('landing');
+      const landingVisible = landing && landing.style.display !== 'none';
+      if(!dismissed && landingVisible){ showHelpAuto(); }
+    }
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', check);
+    else setTimeout(check, 0);
+  })();
 
   document.addEventListener('keydown', function(e){
     if(e.key==='Escape' && document.getElementById('help-modal').style.display==='flex') closeHelp();
