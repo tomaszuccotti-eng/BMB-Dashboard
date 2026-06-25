@@ -155,21 +155,21 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 /* ── Informes sidebar ── */
 #inf-sb-scroll::-webkit-scrollbar { width:3px; }
 #inf-sb-scroll::-webkit-scrollbar-thumb { background:rgba(30,39,243,0.45); border-radius:3px; }
-.inf-folder-wrap { margin-bottom:2px; }
+.inf-folder-wrap { margin-bottom:3px; }
 .inf-folder-header {
-  display:flex; align-items:center; gap:7px;
-  padding:6px 8px; border-radius:6px; cursor:pointer;
-  font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:.2px;
-  color:var(--text2); transition:background .1s,color .1s; user-select:none;
+  display:flex; align-items:center; gap:9px;
+  padding:9px 11px; border-radius:7px; border:1px solid transparent; cursor:pointer;
+  font-family:var(--mono); font-size:12px; font-weight:700;
+  color:var(--text2); transition:all .12s; user-select:none;
 }
 .inf-folder-header:hover { background:var(--accent-light); color:var(--text); }
-.inf-folder-header.open  { color:var(--accent2); }
+.inf-folder-header.open  { border-color:#1E27F3; background:var(--accent-light); color:var(--text); }
 .inf-folder-header .inf-chevron { width:10px; height:10px; flex-shrink:0; color:var(--text3); transition:transform .18s; order:-1; }
 .inf-folder-header.open .inf-chevron { transform:rotate(90deg); }
 .inf-folder-files { display:none; }
 .inf-folder-files.open { display:block; }
 .inf-file-item {
-  display:flex; align-items:center; gap:6px;
+  display:flex; align-items:center; gap:0;
   padding:5px 8px 5px 24px; border-radius:5px; cursor:pointer;
   font-family:var(--mono); font-size:10px; color:var(--text3);
   transition:background .1s,color .1s; border-left:2px solid transparent; margin-bottom:1px;
@@ -177,7 +177,7 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 .inf-file-item:hover  { background:var(--accent-light); color:var(--text2); }
 .inf-file-item.active { background:var(--accent-mid); color:var(--accent2); border-left-color:var(--accent); }
 .inf-fi-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
-.inf-fi-date { font-family:var(--mono); font-size:9px; color:var(--text3); flex-shrink:0; }
+.inf-fi-date { font-family:var(--mono); font-size:9px; color:var(--text3); flex-shrink:0; margin-left:auto; padding-left:4px; }
 .inf-fi-new  { width:5px; height:5px; border-radius:50%; background:var(--accent); box-shadow:0 0 4px var(--accent); flex-shrink:0; }
 .inf-f-cnt   { margin-left:auto; font-family:var(--mono); font-size:9px; padding:1px 6px; border-radius:8px; background:var(--bg4); color:var(--text3); flex-shrink:0; }
 .mosaic-card {
@@ -603,10 +603,10 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 #app-equity .eq-sb-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:6px 8px 12px;}
 #app-equity .eq-sb-scroll::-webkit-scrollbar{width:3px;}
 #app-equity .eq-sb-scroll::-webkit-scrollbar-thumb{background:rgba(30,39,243,0.45);border-radius:3px;}
-#app-equity .eq-sb-item{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.2px;transition:background .1s,color .1s;user-select:none;margin-bottom:2px;}
+#app-equity .eq-sb-item{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:7px;border:1px solid transparent;cursor:pointer;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text2);transition:all .12s;user-select:none;margin-bottom:3px;}
 #app-equity .eq-sb-item:hover{background:var(--accent-light);color:var(--text);}
-#app-equity .eq-sb-item.active{color:var(--accent2);background:var(--accent-mid);}
-#app-equity .eq-sb-foot{flex-shrink:0;padding:10px 12px;border-top:1px solid var(--border);background:var(--bg2);}
+#app-equity .eq-sb-item.active{border-color:#1E27F3;background:var(--accent-light);color:var(--text);}
+#app-equity .eq-sb-foot{flex-shrink:0;padding:16px 14px;border-top:1px solid var(--border);background:var(--bg2);}
 #app-equity .eq-sb-foot button{width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-family:var(--mono);font-size:10px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;}
 #app-equity .eq-sb-foot button:hover{border-color:#1E27F3;color:var(--text);background:var(--accent-light);}
 #app-equity .eq-sb-foot button svg{flex-shrink:0;vertical-align:-2px;}
@@ -984,6 +984,12 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 }
 #app-calc-on .sb-scroll::-webkit-scrollbar { width:3px; }
 #app-calc-on .sb-scroll::-webkit-scrollbar-thumb { background:rgba(30,39,243,0.45); border-radius:3px; }
+#app-calc-on .sb-foot{flex-shrink:0;padding:16px 14px;border-top:1px solid var(--border);background:var(--bg2);}
+#app-calc-on .sb-foot .sb-label{margin-bottom:10px;}
+#app-calc-on .sb-foot button{width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-family:var(--mono);font-size:10px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;}
+#app-calc-on .sb-foot button:hover:not(:disabled){border-color:#1E27F3;color:var(--text);background:var(--accent-light);}
+#app-calc-on .sb-foot button:disabled{opacity:.4;cursor:not-allowed;}
+#app-calc-on .sb-foot button svg{flex-shrink:0;vertical-align:-2px;}
 
 #app-calc-on .sb-msg {
   padding: 20px 10px;
@@ -1067,34 +1073,36 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
   letter-spacing: .06em;
 }
 #app-calc-on .sector-header {
-  display:flex; align-items:center; gap:8px;
-  padding: 7px 10px;
-  border-radius: 8px;
+  display:flex; align-items:center; gap:9px;
+  padding: 9px 11px;
+  border-radius: 7px;
+  border:1px solid transparent;
   cursor: pointer;
-  font-size: 11px;
-  font-weight: 600;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
   color: var(--text2);
-  transition: all .15s;
+  transition: all .12s;
   user-select: none;
 }
-#app-calc-on .sector-header:hover { background: var(--accent-light); }
+#app-calc-on .sector-header:hover { background: var(--accent-light); color:var(--text); }
 #app-calc-on .sector-header.open { color: var(--text); }
-#app-calc-on .sector-header.active { background:var(--accent-light); color:var(--accent); border-left:2px solid var(--accent); }
-#app-calc-on .empresa-header.active { color:var(--accent); font-weight:700; }
+#app-calc-on .sector-header.active { border-color:#1E27F3; background:var(--accent-light); color:var(--text); }
+#app-calc-on .empresa-header.active { border-color:#1E27F3; background:var(--accent-light); color:var(--text); font-weight:700; }
 #app-calc-on .sector-dot {
   width: 6px; height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
 }
-#app-calc-on .s-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; }
+#app-calc-on .s-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; }
 #app-calc-on .s-cnt {
   font-family:var(--mono); font-size:9px;
-  padding:2px 6px; border-radius:10px;
+  padding:1px 6px; border-radius:8px;
   background:var(--bg4); color:var(--text3); flex-shrink:0;
 }
 #app-calc-on .chevron {
-  width:11px; height:11px; flex-shrink:0;
-  color:var(--text3); transition:transform .2s;
+  width:10px; height:10px; flex-shrink:0;
+  color:var(--text3); transition:transform .18s;
 }
 #app-calc-on .sector-header.open .chevron { transform:rotate(90deg); }
 
@@ -1534,6 +1542,7 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
   display:flex; align-items:center; gap:8px;
   padding: 5px 10px 5px 18px;
   border-radius:6px;
+  border:1px solid transparent;
   cursor:pointer;
   font-size:10px; font-weight:600;
   color:var(--text2);
@@ -1565,7 +1574,7 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
   width:2px; height:55%;
   background:var(--accent); border-radius:0 2px 2px 0;
 }
-#app-calc-on .on-item-sub .on-ticker { color:var(--text3); font-size:9px; }
+#app-calc-on .on-item-sub .on-ticker { color:var(--text3); font-size:10px; font-weight:600; }
 #app-calc-on .on-item-sub.active .on-ticker { color:var(--accent2); }
 
 /* GRÁFICO SCATTER */
@@ -1718,17 +1727,18 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 #app-rf .sb-scroll::-webkit-scrollbar{width:3px;}
 #app-rf .sb-scroll::-webkit-scrollbar-thumb{background:rgba(30,39,243,0.45);border-radius:3px;}
 #app-rf .sb-msg{padding:20px 8px;font-family:var(--mono);font-size:10px;color:var(--text3);text-align:center;}
-#app-rf .sb-foot{flex-shrink:0;padding:10px 12px;border-top:1px solid var(--border);background:var(--bg2);}
+#app-rf .sb-foot{flex-shrink:0;padding:16px 14px;border-top:1px solid var(--border);background:var(--bg2);}
+#app-rf .sb-foot .sb-label{margin-bottom:10px;}
 #app-rf .sb-foot button{width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-family:var(--mono);font-size:10px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;}
 #app-rf .sb-foot button:hover{border-color:#1E27F3;color:var(--text);background:var(--accent-light);}
 #app-rf .sb-foot button svg{flex-shrink:0;vertical-align:-2px;}
 
 /* Categoría */
-#app-rf .cat-wrap{margin-bottom:2px;}
-#app-rf .cat-hdr{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.2px;transition:background .1s,color .1s;user-select:none;}
+#app-rf .cat-wrap{margin-bottom:3px;}
+#app-rf .cat-hdr{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:7px;border:1px solid transparent;cursor:pointer;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text2);transition:all .12s;user-select:none;}
 #app-rf .cat-hdr:hover{background:var(--accent-light);color:var(--text);}
 #app-rf .cat-hdr.open .cat-chev{transform:rotate(90deg);}
-#app-rf .cat-hdr.active-cat{color:var(--accent2);}
+#app-rf .cat-hdr.active-cat{border-color:#1E27F3;background:var(--accent-light);color:var(--text);}
 #app-rf .cat-chev{width:10px;height:10px;flex-shrink:0;color:var(--text3);transition:transform .18s;}
 #app-rf .cat-cnt{margin-left:auto;font-size:9px;color:var(--text3);background:var(--bg4);border-radius:8px;padding:1px 6px;font-family:var(--mono);}
 #app-rf .cat-items{display:none;}
@@ -1840,15 +1850,16 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 #cmp-outlier-pips.has-pips{width:90px;padding:6px 5px;border-left:1px solid var(--border);}
 .cmp-pip{display:flex;align-items:center;gap:4px;padding:3px 5px;border-radius:4px;background:rgba(239,68,68,0.10);border:1px solid rgba(239,68,68,0.22);cursor:pointer;font-family:var(--mono);font-size:8px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;transition:background .12s;}
 .cmp-pip:hover{background:rgba(239,68,68,0.22);}
-.cmp-cats-bar{display:flex;flex-direction:column;gap:2px;}
-.cmp-cat-cb{display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:4px;cursor:pointer;user-select:none;font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text3);transition:background .12s;width:100%;box-sizing:border-box;}
-.cmp-cat-cb:hover{background:var(--accent-light);}
+.cmp-cats-bar{display:flex;flex-direction:column;gap:3px;}
+.cmp-cat-cb{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:7px;border:1px solid transparent;cursor:pointer;user-select:none;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text2);transition:all .12s;width:100%;box-sizing:border-box;}
+.cmp-cat-cb:hover{background:var(--accent-light);color:var(--text);}
 .cmp-cat-cb .cmp-cb-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cmp-cat-cb .cmp-cb-box{width:12px;height:12px;border-radius:3px;border:1px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .12s;margin-left:auto;}
 .cmp-cat-cb .cmp-cb-box.checked::after{content:'✓';font-size:8px;font-weight:700;}
-.cmp-cat-cb:hover{border-color:currentColor;opacity:1!important;}
-.cmp-cat-cb.active{color:#fff;opacity:1!important;}
+.cmp-cat-cb.active{border-color:#1E27F3;background:var(--accent-light);color:var(--text);}
 .cmp-cat-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.cmp-subchk-group{display:flex;align-items:center;gap:5px;margin-left:auto;flex-shrink:0;}
+.cmp-subchk{width:13px;height:13px;border-radius:3px;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;line-height:1;cursor:pointer;transition:all .12s;flex-shrink:0;}
 .cmp-body{flex:1;display:flex;flex-direction:column;min-height:0;padding:10px 20px 6px;gap:6px;}
 .cmp-chart-wrap{flex:1;min-height:0;position:relative;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;flex-direction:column;}
 .cmp-chart-inner{flex:1;position:relative;min-height:0;width:100%;}
@@ -2071,6 +2082,16 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
     <div class="sb-scroll" id="sbScroll">
       <div class="sb-msg">Cargando ONs…</div>
     </div>
+    <!-- Pie fijo del sidebar: Generar reporte (no disponible) -->
+    <div class="sb-foot">
+      <div class="sb-label">Reporte</div>
+      <button disabled>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+        </svg>
+        Generar reporte
+      </button>
+    </div>
   </div>
 
   <!-- PANEL DERECHO -->
@@ -2266,29 +2287,44 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
       <div style="margin:0 12px;height:1px;background:var(--border);flex-shrink:0;"></div>
       <!-- Parámetros -->
       <div style="padding:10px 12px 14px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;">
-        <div style="font-size:9px;font-weight:700;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px;">Parámetros</div>
-        <div style="display:flex;flex-direction:column;gap:3px;">
-          <label style="font-size:9px;font-family:var(--mono);color:var(--text3);">Fecha liq.</label>
-          <input type="date" id="onssens-fecha-liq" onchange="onsSens_recalc()"
-            style="background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:10px;font-family:var(--mono);padding:3px 6px;outline:none;width:100%;box-sizing:border-box;">
+        <div onclick="toggleParams(this)" style="display:flex;align-items:center;cursor:pointer;user-select:none;font-size:9px;font-weight:700;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;">
+          <span style="flex:1;">Parámetros</span>
+          <span class="params-toggle" style="font-size:14px;line-height:1;color:var(--text2);">+</span>
         </div>
-        <div style="display:flex;gap:8px;">
-          <div style="display:flex;flex-direction:column;gap:3px;flex:1;">
-            <label style="font-size:9px;font-family:var(--mono);color:var(--text3);">Rango −</label>
-            <input type="number" id="onssens-rango-down" value="3" min="0" max="20" step="0.5" onchange="onsSens_recalc()"
+        <div style="display:none;flex-direction:column;gap:8px;">
+          <div style="display:flex;flex-direction:column;gap:3px;">
+            <label style="font-size:9px;font-family:var(--mono);color:var(--text3);">Fecha liq.</label>
+            <input type="date" id="onssens-fecha-liq" onchange="onsSens_recalc()"
               style="background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:10px;font-family:var(--mono);padding:3px 6px;outline:none;width:100%;box-sizing:border-box;">
           </div>
-          <div style="display:flex;flex-direction:column;gap:3px;flex:1;">
-            <label style="font-size:9px;font-family:var(--mono);color:var(--text3);">Rango +</label>
-            <input type="number" id="onssens-rango-up" value="3" min="0" max="20" step="0.5" onchange="onsSens_recalc()"
-              style="background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:10px;font-family:var(--mono);padding:3px 6px;outline:none;width:100%;box-sizing:border-box;">
-          </div>
-          <div style="display:flex;flex-direction:column;gap:3px;flex:1;">
-            <label style="font-size:9px;font-family:var(--mono);color:var(--text3);">Paso</label>
-            <input type="number" id="onssens-paso" value="1" min="0.1" max="5" step="0.1" onchange="onsSens_recalc()"
-              style="background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:10px;font-family:var(--mono);padding:3px 6px;outline:none;width:100%;box-sizing:border-box;">
+          <div style="display:flex;gap:8px;">
+            <div style="display:flex;flex-direction:column;gap:3px;flex:1;">
+              <label style="font-size:9px;font-family:var(--mono);color:var(--text3);">Rango −</label>
+              <input type="number" id="onssens-rango-down" value="3" min="0" max="20" step="0.5" onchange="onsSens_recalc()"
+                style="background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:10px;font-family:var(--mono);padding:3px 6px;outline:none;width:100%;box-sizing:border-box;">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:3px;flex:1;">
+              <label style="font-size:9px;font-family:var(--mono);color:var(--text3);">Rango +</label>
+              <input type="number" id="onssens-rango-up" value="3" min="0" max="20" step="0.5" onchange="onsSens_recalc()"
+                style="background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:10px;font-family:var(--mono);padding:3px 6px;outline:none;width:100%;box-sizing:border-box;">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:3px;flex:1;">
+              <label style="font-size:9px;font-family:var(--mono);color:var(--text3);">Paso</label>
+              <input type="number" id="onssens-paso" value="1" min="0.1" max="5" step="0.1" onchange="onsSens_recalc()"
+                style="background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:10px;font-family:var(--mono);padding:3px 6px;outline:none;width:100%;box-sizing:border-box;">
+            </div>
           </div>
         </div>
+      </div>
+      <!-- Pie fijo del sidebar: Generar reporte (no disponible) -->
+      <div style="flex-shrink:0;padding:16px 14px;border-top:1px solid var(--border);background:var(--bg2);">
+        <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">Reporte</div>
+        <button disabled style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-family:var(--mono);font-size:10px;font-weight:600;cursor:not-allowed;opacity:.4;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-2px;">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+          </svg>
+          Generar reporte
+        </button>
       </div>
     </div>
     <!-- ÁREA DERECHA -->
@@ -2323,6 +2359,16 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
         <div style="font-size:9px;font-weight:700;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Selección</div>
         <input type="text" id="onscmp-search" class="onscmp-search" placeholder="Buscar empresa…" oninput="onsCmp_filterSidebar(this.value)">
         <div id="onscmp-tree"></div>
+      </div>
+      <!-- Pie fijo del sidebar: Generar reporte (no disponible) -->
+      <div style="flex-shrink:0;padding:16px 14px;border-top:1px solid var(--border);background:var(--bg2);">
+        <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">Reporte</div>
+        <button disabled style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-family:var(--mono);font-size:10px;font-weight:600;cursor:not-allowed;opacity:.4;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-2px;">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+          </svg>
+          Generar reporte
+        </button>
       </div>
     </div>
 
@@ -2435,7 +2481,7 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
     <!-- SIDEBAR -->
     <div class="sidebar" style="width:230px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
       <div class="sb-head">
-        <div class="sb-label">Instrumentos</div>
+        <div class="sb-label">Instrumento</div>
         <div id="rf-sb-status" style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:4px;">
           <span class="spinner" style="width:11px;height:11px;border-width:1.5px;display:inline-block;flex-shrink:0;"></span>
           Cargando…
@@ -2453,6 +2499,7 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
       </div>
       <!-- Pie fijo del sidebar: Generar reporte -->
       <div class="sb-foot">
+        <div class="sb-label">Reporte</div>
         <button id="rf-report-btn" onclick="rfOpenReportDialog()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
@@ -2587,42 +2634,57 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
     <div style="width:230px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
       <!-- Categorías (scroll si hay muchas) -->
       <div style="flex:1;overflow-y:auto;padding:14px 14px 8px;">
-        <div style="font-size:9px;font-weight:700;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Categorías</div>
+        <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;">Instrumento</div>
         <div id="cmp-cats-bar" style="display:flex;flex-direction:column;gap:4px;"></div>
       </div>
       <!-- Divider -->
       <div style="margin:0 14px;height:1px;background:var(--border);flex-shrink:0;"></div>
       <!-- Controles de fecha/CER/TC — fondo del sidebar -->
       <div style="padding:10px 14px 14px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;">
-        <div style="font-size:9px;font-weight:700;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px;">Parámetros</div>
-        <!-- Fecha liq -->
-        <div style="display:flex;flex-direction:column;gap:3px;">
-          <label style="font-size:9px;font-family:var(--mono);color:var(--text3);">Fecha liq.</label>
-          <input type="date" id="cmp-fecha-liq" onchange="cmpRecalc()"
-            style="background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:11px;font-family:var(--mono);padding:3px 8px;outline:none;width:100%;box-sizing:border-box;">
+        <div onclick="toggleParams(this)" style="display:flex;align-items:center;cursor:pointer;user-select:none;font-size:9px;font-weight:700;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;">
+          <span style="flex:1;">Parámetros</span>
+          <span class="params-toggle" style="font-size:14px;line-height:1;color:var(--text2);">+</span>
         </div>
-        <!-- CER chip -->
-        <div id="cmp-cer-wrap" style="display:none;flex-direction:column;gap:3px;">
-          <label style="font-size:9px;font-family:var(--mono);color:var(--text3);">CER</label>
-          <span id="cmp-cer-chip" onclick="cmpCerToggleDropdown(event)"
-            style="display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:5px;border:1px solid var(--border2);background:var(--bg);cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--text3);transition:border-color .15s;user-select:none;width:100%;box-sizing:border-box;"
-            onmouseover="this.style.borderColor='var(--border2)'"
-            onmouseout="this.style.borderColor='var(--border2)'">
-            <span id="cmp-cer-offset-label" style="font-size:9px;color:var(--text3);">T−10</span>
-            <span id="cmp-cer-valor" style="font-weight:500;color:var(--text);flex:1;">—</span>
-            <svg width="8" height="8" viewBox="0 0 10 10" fill="none" style="color:var(--text3);flex-shrink:0;"><path d="M2 3l3 4 3-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-          </span>
-          <div id="cmp-cer-dropdown" style="display:none;position:fixed;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;overflow:hidden;z-index:200;min-width:160px;box-shadow:0 4px 16px rgba(0,0,0,0.4);"></div>
+        <div style="display:none;flex-direction:column;gap:8px;">
+          <!-- Fecha liq -->
+          <div style="display:flex;flex-direction:column;gap:3px;">
+            <label style="font-size:9px;font-family:var(--mono);color:var(--text3);">Fecha liq.</label>
+            <input type="date" id="cmp-fecha-liq" onchange="cmpRecalc()"
+              style="background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:11px;font-family:var(--mono);padding:3px 8px;outline:none;width:100%;box-sizing:border-box;">
+          </div>
+          <!-- CER chip -->
+          <div id="cmp-cer-wrap" style="display:none;flex-direction:column;gap:3px;">
+            <label style="font-size:9px;font-family:var(--mono);color:var(--text3);">CER</label>
+            <span id="cmp-cer-chip" onclick="cmpCerToggleDropdown(event)"
+              style="display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:5px;border:1px solid var(--border2);background:var(--bg);cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--text3);transition:border-color .15s;user-select:none;width:100%;box-sizing:border-box;"
+              onmouseover="this.style.borderColor='var(--border2)'"
+              onmouseout="this.style.borderColor='var(--border2)'">
+              <span id="cmp-cer-offset-label" style="font-size:9px;color:var(--text3);">T−10</span>
+              <span id="cmp-cer-valor" style="font-weight:500;color:var(--text);flex:1;">—</span>
+              <svg width="8" height="8" viewBox="0 0 10 10" fill="none" style="color:var(--text3);flex-shrink:0;"><path d="M2 3l3 4 3-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </span>
+            <div id="cmp-cer-dropdown" style="display:none;position:fixed;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;overflow:hidden;z-index:200;min-width:160px;box-shadow:0 4px 16px rgba(0,0,0,0.4);"></div>
+          </div>
+          <!-- TC input único -->
+          <div id="cmp-tc-wrap" style="display:none;flex-direction:column;gap:3px;">
+            <label style="font-size:9px;font-family:var(--mono);color:var(--text3);">TC</label>
+            <input type="text" id="cmp-tc-inp" title="Vacío = automático (BCRA)"
+              style="background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:11px;font-family:var(--mono);padding:3px 8px;outline:none;width:100%;box-sizing:border-box;text-align:center;transition:border-color .15s;"
+              oninput="cmpTcInput()"
+              onblur="cmpTcBlur()"
+              onkeydown="if(event.key==='Enter')this.blur()"/>
+          </div>
         </div>
-        <!-- TC input único -->
-        <div id="cmp-tc-wrap" style="display:none;flex-direction:column;gap:3px;">
-          <label style="font-size:9px;font-family:var(--mono);color:var(--text3);">TC</label>
-          <input type="text" id="cmp-tc-inp" title="Vacío = automático (BCRA)"
-            style="background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:11px;font-family:var(--mono);padding:3px 8px;outline:none;width:100%;box-sizing:border-box;text-align:center;transition:border-color .15s;"
-            oninput="cmpTcInput()"
-            onblur="cmpTcBlur()"
-            onkeydown="if(event.key==='Enter')this.blur()"/>
-        </div>
+      </div>
+      <!-- Pie fijo del sidebar: Generar reporte (no disponible) -->
+      <div style="flex-shrink:0;padding:16px 14px;border-top:1px solid var(--border);background:var(--bg2);">
+        <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">Reporte</div>
+        <button disabled style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-family:var(--mono);font-size:10px;font-weight:600;cursor:not-allowed;opacity:.4;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-2px;">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+          </svg>
+          Generar reporte
+        </button>
       </div>
     </div>
 
@@ -2801,17 +2863,19 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
     <!-- SIDEBAR izquierdo (230px, igual que el resto) -->
     <div style="width:230px;flex-shrink:0;align-self:stretch;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;min-height:0;">
       <!-- Tipo de instrumento (selección única) -->
-      <div style="flex:0 0 auto;overflow-y:auto;padding:14px 14px 8px;">
-        <div style="font-size:9px;font-weight:700;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Tipo de instrumento</div>
+      <div style="flex:1 1 auto;min-height:0;overflow-y:auto;padding:14px 14px 8px;">
+        <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;">Instrumento</div>
         <div id="sens-types-bar" style="display:flex;flex-direction:column;gap:3px;"></div>
       </div>
-      <!-- Spacer flexible: rellena con bg2 hasta abajo -->
-      <div style="flex:1 1 auto;min-height:0;"></div>
       <!-- Divider -->
       <div style="margin:0 14px;height:1px;background:var(--border);flex-shrink:0;"></div>
       <!-- Parámetros -->
       <div style="padding:10px 14px 14px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;">
-        <div style="font-size:9px;font-weight:700;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px;">Parámetros</div>
+        <div onclick="toggleParams(this)" style="display:flex;align-items:center;cursor:pointer;user-select:none;font-size:9px;font-weight:700;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;">
+          <span style="flex:1;">Parámetros</span>
+          <span class="params-toggle" style="font-size:14px;line-height:1;color:var(--text2);">+</span>
+        </div>
+        <div style="display:none;flex-direction:column;gap:8px;">
         <!-- Fecha liq -->
         <div style="display:flex;flex-direction:column;gap:3px;">
           <label style="font-size:9px;font-family:var(--mono);color:var(--text3);">Fecha liq.</label>
@@ -2878,6 +2942,17 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
             onblur="sensTcBlur()"
             onkeydown="if(event.key==='Enter')this.blur()"/>
         </div>
+        </div>
+      </div>
+      <!-- Pie fijo del sidebar: Generar reporte (no disponible) -->
+      <div style="flex-shrink:0;padding:16px 14px;border-top:1px solid var(--border);background:var(--bg2);">
+        <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">Reporte</div>
+        <button disabled style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-family:var(--mono);font-size:10px;font-weight:600;cursor:not-allowed;opacity:.4;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-2px;">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+          </svg>
+          Generar reporte
+        </button>
       </div>
     </div>
 
@@ -5397,6 +5472,16 @@ function polyFit2(pts){
   const[cc,b,a]=c;
   return x=>a*x*x+b*x+cc;
 }
+// Colapsable de "Parámetros" en sidebars de calculadoras
+window.toggleParams = function(headerEl){
+  const body = headerEl.nextElementSibling;
+  if(!body) return;
+  const open = body.style.display === 'none' || !body.style.display;
+  body.style.display = open ? 'flex' : 'none';
+  const sign = headerEl.querySelector('.params-toggle');
+  if(sign) sign.textContent = open ? '−' : '+';
+};
+
 function makeTrendDs(pts,color,dashed=false){
   if(!pts||pts.length<3) return null;
   const fn=polyFit2(pts);if(!fn) return null;
@@ -9507,12 +9592,6 @@ window.rfSwitchTab = function(tab) {
     _cmpState.tcManual = false;
     _cmpState.tcManualVal = null;
     _cmpState.cerOffset = 10;
-    _cmpState.exclDualesCats.clear();
-    _cmpState.showPatas = false;
-    _cmpState.showSobAR = true;
-    _cmpState.showSobNY = true;
-    cmpSyncPatasBtn();
-    cmpSyncSobBtns();
   }
   const tabs = ['index','hm','cmp','sens','cal','be'];
   tabs.forEach(t => {
@@ -9967,19 +10046,47 @@ const CMP_CATS = [
 const CMP_SOB_AR = '#f87171';
 const CMP_SOB_NY = '#fda4af';
 
+// ── Pool de colores dinámico para el comparador ──
+const CMP_COLOR_POOL = ['#1E27F3','#22c55e','#e3b341','#a78bfa','#34d399','#f87171','#fb923c','#38bdf8','#f59e0b','#ec4899','#14b8a6','#8b5cf6'];
+
+// Devuelve el color asignado a una categoría (o su color base si no tiene)
+function cmpColorFor(catId) {
+  if (_cmpState.colorMap[catId]) return _cmpState.colorMap[catId];
+  const cat = CMP_CATS.find(c => c.id === catId);
+  return cat?.color || 'var(--accent)';
+}
+
+// Asigna un color libre del pool a la categoría. Si excludePrev, evita repetir el color que tenía.
+function cmpAssignColor(catId, prevColor) {
+  const usados = new Set(Object.entries(_cmpState.colorMap)
+    .filter(([k]) => k !== catId).map(([,v]) => v));
+  if (prevColor) usados.add(prevColor);
+  let color = CMP_COLOR_POOL.find(c => !usados.has(c));
+  if (!color) { // pool agotado: permitir repetir, pero distinto al previo
+    color = CMP_COLOR_POOL.find(c => c !== prevColor) || CMP_COLOR_POOL[0];
+  }
+  _cmpState.colorMap[catId] = color;
+  return color;
+}
+
+function cmpReleaseColor(catId) {
+  delete _cmpState.colorMap[catId];
+}
+
 // Estado propio del comparador — nunca toca el estado de Índice
 const _cmpState = {
   cats: new Set(['lecap','boncap']),
   axisY: 'tna',
   axisX: 'md',
   showPatas: false,
-  showSobAR: true,   // sub-toggle Ley AR dentro de Soberanos
-  showSobNY: true,   // sub-toggle Ley NY dentro de Soberanos
+  showSobAR: false,  // sub-toggle Ley AR — ON sólo cuando Soberanos seleccionada
+  showSobNY: false,  // sub-toggle Ley NY — ON sólo cuando Soberanos seleccionada
   cerOffset: 10,
   tcManual: false,
   tcManualVal: null,
   initialized: false,
-  exclDualesCats: new Set(), // categorías que tienen los duales excluidos
+  inclDualesCats: new Set(), // categorías que SÍ incluyen sus duales (default: ninguna)
+  colorMap: {},      // catId/serie -> color asignado dinámicamente
 };
 let _cmpChartInst = null;
 let _cmpRowsMap   = {};  // { catId: rows[] }
@@ -10002,87 +10109,45 @@ function cmpInit() {
       const wrap = document.createElement('div');
       wrap.id = 'cmp-cat-wrap-' + cat.id;
 
-      // Checkbox principal — label neutro + checkbox derecho con color si activo
+      // Chip de categoría — clic en cuerpo prende/apaga; sub-checks a la derecha
       const cb = document.createElement('div');
-      cb.className = 'cmp-cat-cb';
+      cb.className = 'cmp-cat-cb' + (active ? ' active' : '');
       cb.id = 'cmp-cb-' + cat.id;
       cb.onclick = () => cmpToggleCat(cat.id);
-      const box = document.createElement('div');
-      box.className = 'cmp-cb-box' + (active ? ' checked' : '');
-      box.style.borderColor  = active ? cat.color : 'var(--border2)';
-      box.style.background   = active ? cat.color + '33' : 'transparent';
-      box.style.color        = active ? cat.color : 'transparent';
-      cb.innerHTML = `<span class="cmp-cb-label">${cat.label}</span>`;
-      cb.appendChild(box);
-      wrap.appendChild(cb);
 
-      // Sub-control: "Duales" para boncap/boncer/tamar
+      // Mini-checks contextuales (van dentro del chip, a la derecha)
+      let subChecks = '';
       if (CMP_EXCL_DUAL_CATS.has(cat.id)) {
-        const sub = document.createElement('div');
-        sub.id = 'cmp-sub-exclduales-' + cat.id;
-        sub.style.cssText = `display:none;`;
-        sub.innerHTML = `<div id="cmp-row-exclduales-${cat.id}" onclick="cmpToggleExclDuales('${cat.id}')"
-          style="display:flex;align-items:center;padding:2px 6px 2px 18px;border-radius:4px;cursor:pointer;font-family:var(--mono);font-size:9px;color:var(--text3);transition:background .12s;"
-          onmouseover="this.style.background='var(--accent-light)'"
-          onmouseout="this.style.background='transparent'">
-          <span style="flex:1;">Mostrar duales</span>
-          <div id="cmp-btn-exclduales-${cat.id}" style="width:11px;height:11px;border-radius:3px;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;transition:all .12s;flex-shrink:0;"></div>
-        </div>`;
-        wrap.appendChild(sub);
+        subChecks = `<div id="cmp-btn-exclduales-${cat.id}" class="cmp-subchk" title="Mostrar duales"
+          onclick="event.stopPropagation();cmpToggleExclDuales('${cat.id}')"></div>`;
+      } else if (cat.id === 'soberano') {
+        subChecks = `<div id="cmp-btn-sob-ar" class="cmp-subchk" title="Ley AR"
+            onclick="event.stopPropagation();cmpToggleSobLey('ar')"></div>`
+          + `<div id="cmp-btn-sob-ny" class="cmp-subchk" title="Ley NY"
+            onclick="event.stopPropagation();cmpToggleSobLey('ny')"></div>`;
+      } else if (cat.id === 'duales') {
+        subChecks = `<div id="cmp-btn-patas" class="cmp-subchk" title="Patas separadas"
+          onclick="event.stopPropagation();cmpTogglePatas()"></div>`;
       }
-
-      // Sub-controls: "Ley AR" / "Ley NY" para soberanos
-      if (cat.id === 'soberano') {
-        const sub = document.createElement('div');
-        sub.id = 'cmp-sub-soberano';
-        sub.style.cssText = `display:none;flex-direction:column;`;
-        const mkSobRow = (key, label) => `
-          <div id="cmp-row-sob-${key}" onclick="cmpToggleSobLey('${key}')"
-            style="display:flex;align-items:center;padding:2px 6px 2px 18px;border-radius:4px;cursor:pointer;font-family:var(--mono);font-size:9px;color:var(--text3);transition:background .12s;"
-            onmouseover="this.style.background='var(--accent-light)'"
-            onmouseout="this.style.background='transparent'">
-            <span style="flex:1;">${label}</span>
-            <div id="cmp-btn-sob-${key}" style="width:11px;height:11px;border-radius:3px;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;transition:all .12s;flex-shrink:0;"></div>
-          </div>`;
-        sub.innerHTML = mkSobRow('ar','Ley AR') + mkSobRow('ny','Ley NY');
-        wrap.appendChild(sub);
-      }
-
-      // Sub-control: "Patas" para duales
-      if (cat.id === 'duales') {
-        const sub = document.createElement('div');
-        sub.id = 'cmp-sub-patas';
-        sub.style.cssText = `display:none;`;
-        sub.innerHTML = `<div onclick="cmpTogglePatas()"
-          style="display:flex;align-items:center;padding:2px 6px 2px 18px;border-radius:4px;cursor:pointer;font-family:var(--mono);font-size:9px;color:var(--text3);transition:background .12s;"
-          onmouseover="this.style.background='var(--accent-light)'"
-          onmouseout="this.style.background='transparent'">
-          <span style="flex:1;">Patas separadas</span>
-          <div id="cmp-btn-patas" style="width:11px;height:11px;border-radius:3px;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;transition:all .12s;flex-shrink:0;"></div>
-        </div>`;
-        wrap.appendChild(sub);
-      }
+      cb.innerHTML = `<span class="cmp-cb-label">${cat.label}</span>`
+        + (subChecks ? `<div class="cmp-subchk-group">${subChecks}</div>` : '');
+      wrap.appendChild(cb);
 
       bar.appendChild(wrap);
     });
 
-    // Mostrar sub-controles de categorías que arrancan activas y sincronizar estados
+    // Asignar colores a las categorías que arrancan activas y pintar sus chips
     CMP_CATS.forEach(cat => {
-      if (CMP_EXCL_DUAL_CATS.has(cat.id)) {
-        cmpSyncExclDualesBtn(cat.id); // aplica color inicial (siempre, activo o no)
-        if (_cmpState.cats.has(cat.id)) {
-          const sub = document.getElementById('cmp-sub-exclduales-' + cat.id);
-          if (sub) sub.style.display = 'flex';
-        }
-      }
-      if (cat.id === 'soberano' && _cmpState.cats.has(cat.id)) {
-        const sub = document.getElementById('cmp-sub-soberano');
-        if (sub) sub.style.display = 'flex';
-      }
-      if (cat.id === 'duales' && _cmpState.cats.has(cat.id)) {
-        const sub = document.getElementById('cmp-sub-patas');
-        if (sub) sub.style.display = 'block';
-      }
+      if (_cmpState.cats.has(cat.id) && !_cmpState.colorMap[cat.id]) cmpAssignColor(cat.id);
+    });
+    if (_cmpState.cats.has('soberano') && !_cmpState.colorMap['soberano_ny']) cmpAssignColor('soberano_ny');
+    CMP_CATS.forEach(cat => cmpRefreshChipColor(cat.id));
+
+    // Sincronizar estado inicial de los mini-checks
+    CMP_CATS.forEach(cat => {
+      if (CMP_EXCL_DUAL_CATS.has(cat.id)) cmpSyncExclDualesBtn(cat.id);
+      if (cat.id === 'soberano') cmpSyncSobBtns();
+      if (cat.id === 'duales') cmpSyncPatasBtn();
     });
   }
 
@@ -10104,17 +10169,37 @@ window.cmpToggleCat = function(catId) {
     _cmpState.cats.add(catId);
   }
   const active = _cmpState.cats.has(catId);
-  const cat = CMP_CATS.find(c => c.id === catId);
   const cb  = document.getElementById('cmp-cb-' + catId);
-  if (cb && cat) {
-    const box = cb.querySelector('.cmp-cb-box');
-    if (box) {
-      box.classList.toggle('checked', active);
-      box.style.borderColor = active ? cat.color : 'var(--border2)';
-      box.style.background  = active ? cat.color + '33' : 'transparent';
-      box.style.color       = active ? cat.color : 'transparent';
+  if (cb) cb.classList.toggle('active', active);
+
+  // Color dinámico: al activar (o reactivar) asigna color libre, distinto al previo; al desactivar libera
+  if (active) {
+    const prev = _cmpState.colorMap[catId];
+    cmpAssignColor(catId, prev);
+    if (catId === 'soberano') {
+      const prevNY = _cmpState.colorMap['soberano_ny'];
+      cmpAssignColor('soberano_ny', prevNY);
     }
+  } else {
+    cmpReleaseColor(catId);
+    if (catId === 'soberano') cmpReleaseColor('soberano_ny');
   }
+
+  // Estado de los sub-checks según la categoría
+  if (active) {
+    if (catId === 'soberano') { _cmpState.showSobAR = true; _cmpState.showSobNY = true; }
+    // BONCAPs/BONCERs/TAMARs y Duales: arrancan OFF (no se tocan; default no incluido)
+  } else {
+    if (catId === 'soberano') { _cmpState.showSobAR = false; _cmpState.showSobNY = false; }
+    if (CMP_EXCL_DUAL_CATS.has(catId)) _cmpState.inclDualesCats.delete(catId);
+    if (catId === 'duales') _cmpState.showPatas = false;
+  }
+  // Refrescar el color del chip y los sub-checks de esta categoría
+  cmpRefreshChipColor(catId);
+  if (CMP_EXCL_DUAL_CATS.has(catId)) cmpSyncExclDualesBtn(catId);
+  if (catId === 'soberano') cmpSyncSobBtns();
+  if (catId === 'duales') cmpSyncPatasBtn();
+
   // Al toggle (activar o desactivar): limpiar excluidos de los tickers de esta categoría
   if (_cmpRowsMap[catId]) {
     const tickersDeCat = new Set(_cmpRowsMap[catId].map(r => r.ticker));
@@ -10122,25 +10207,25 @@ window.cmpToggleCat = function(catId) {
     // También limpiar patas: ticker + ' (T)' y ticker + ' (F)'
     for (const t of tickersDeCat) { _cmpExcluded.delete(t + ' (T)'); _cmpExcluded.delete(t + ' (F)'); }
   }
-  // Mostrar/ocultar sub-controles
-  if (CMP_EXCL_DUAL_CATS.has(catId)) {
-    const sub = document.getElementById('cmp-sub-exclduales-' + catId);
-    if (sub) sub.style.display = active ? 'flex' : 'none';
-    if (!active) { _cmpState.exclDualesCats.delete(catId); cmpSyncExclDualesBtn(catId); }
-  }
-  if (catId === 'soberano') {
-    const sub = document.getElementById('cmp-sub-soberano');
-    if (sub) sub.style.display = active ? 'flex' : 'none';
-    if (!active) { _cmpState.showSobAR = true; _cmpState.showSobNY = true; cmpSyncSobBtns(); }
-  }
-  if (catId === 'duales') {
-    const sub = document.getElementById('cmp-sub-patas');
-    if (sub) sub.style.display = active ? 'block' : 'none';
-    if (!active && _cmpState.showPatas) { _cmpState.showPatas = false; cmpSyncPatasBtn(); }
-  }
   cmpUpdateContextualControls();
   cmpRecalc();
 };
+
+// Aplica el color de la categoría como acento del chip seleccionado
+function cmpRefreshChipColor(catId) {
+  const cb = document.getElementById('cmp-cb-' + catId);
+  if (!cb) return;
+  if (_cmpState.cats.has(catId)) {
+    const color = cmpColorFor(catId);
+    cb.style.borderColor = color;
+    cb.style.background = color + '1a';
+    cb.style.color = 'var(--text)';
+  } else {
+    cb.style.borderColor = '';
+    cb.style.background = '';
+    cb.style.color = '';
+  }
+}
 
 // ── Mostrar/ocultar CER chip y TC chip según categorías activas ──
 function cmpUpdateContextualControls() {
@@ -10267,6 +10352,7 @@ window.cmpTcBlur = function() {
 
 // ── Toggle PATAS para Duales ──
 window.cmpToggleSobLey = function(key) {
+  if (!_cmpState.cats.has('soberano')) return; // sólo si Soberanos seleccionada
   if (key === 'ar') _cmpState.showSobAR = !_cmpState.showSobAR;
   else              _cmpState.showSobNY = !_cmpState.showSobNY;
   cmpSyncSobBtns();
@@ -10274,19 +10360,23 @@ window.cmpToggleSobLey = function(key) {
 };
 
 function cmpSyncSobBtns() {
-  const syncBox = (key, color, isOn) => {
+  const selected = _cmpState.cats.has('soberano');
+  const syncBox = (key, colorKey, isOn) => {
     const box = document.getElementById('cmp-btn-sob-' + key);
     if (!box) return;
-    box.style.borderColor = isOn ? color : 'var(--border2)';
-    box.style.background  = isOn ? color + '33' : 'transparent';
-    box.style.color       = isOn ? color : 'transparent';
-    box.textContent       = isOn ? '✓' : '';
+    const color = cmpColorFor(colorKey);
+    const on = selected && isOn;
+    box.style.borderColor = on ? color : 'var(--border2)';
+    box.style.background  = on ? color + '33' : 'transparent';
+    box.style.color       = on ? color : 'transparent';
+    box.textContent       = on ? '✓' : '';
   };
-  syncBox('ar', CMP_SOB_AR, _cmpState.showSobAR);
-  syncBox('ny', CMP_SOB_NY, _cmpState.showSobNY);
+  syncBox('ar', 'soberano',    _cmpState.showSobAR);
+  syncBox('ny', 'soberano_ny', _cmpState.showSobNY);
 }
 
 window.cmpTogglePatas = function() {
+  if (!_cmpState.cats.has('duales')) return; // sólo si Duales seleccionada
   _cmpState.showPatas = !_cmpState.showPatas;
   cmpSyncPatasBtn();
   cmpRenderChart();
@@ -10295,9 +10385,8 @@ window.cmpTogglePatas = function() {
 function cmpSyncPatasBtn() {
   const box = document.getElementById('cmp-btn-patas');
   if (!box) return;
-  const cat = CMP_CATS.find(c => c.id === 'duales');
-  const color = cat?.color || 'var(--accent)';
-  const on = _cmpState.showPatas;
+  const color = cmpColorFor('duales');
+  const on = _cmpState.cats.has('duales') && _cmpState.showPatas;
   box.style.borderColor = on ? color : 'var(--border2)';
   box.style.background  = on ? color + '33' : 'transparent';
   box.style.color       = on ? color : 'transparent';
@@ -10307,9 +10396,9 @@ function cmpSyncPatasBtn() {
 function cmpSyncExclDualesBtn(catId) {
   const box = document.getElementById('cmp-btn-exclduales-' + catId);
   if (!box) return;
-  const cat = CMP_CATS.find(c => c.id === catId);
-  const color = cat?.color || 'var(--accent)';
-  const on = !_cmpState.exclDualesCats.has(catId); // ON = duales visibles
+  const color = cmpColorFor(catId);
+  const selected = _cmpState.cats.has(catId);
+  const on = selected && _cmpState.inclDualesCats.has(catId); // ON = duales incluidos
   box.style.borderColor = on ? color : 'var(--border2)';
   box.style.background  = on ? color + '33' : 'transparent';
   box.style.color       = on ? color : 'transparent';
@@ -10317,10 +10406,11 @@ function cmpSyncExclDualesBtn(catId) {
 }
 
 window.cmpToggleExclDuales = function(catId) {
-  if (_cmpState.exclDualesCats.has(catId)) {
-    _cmpState.exclDualesCats.delete(catId);
+  if (!_cmpState.cats.has(catId)) return; // sólo si la categoría está seleccionada
+  if (_cmpState.inclDualesCats.has(catId)) {
+    _cmpState.inclDualesCats.delete(catId);
   } else {
-    _cmpState.exclDualesCats.add(catId);
+    _cmpState.inclDualesCats.add(catId);
   }
   cmpSyncExclDualesBtn(catId);
   cmpRenderChart();
@@ -10428,7 +10518,7 @@ function cmpRenderChart() {
   function filterRows(rows, catId) {
     return rows.filter(r => {
       if (_cmpExcluded.has(r.ticker)) return false;
-      if (catId !== 'duales' && _cmpState.exclDualesCats.has(catId) && isDualRow(r)) return false;
+      if (catId !== 'duales' && !_cmpState.inclDualesCats.has(catId) && isDualRow(r)) return false;
       return true;
     });
   }
@@ -10451,19 +10541,21 @@ function cmpRenderChart() {
       const ptsAR = _cmpState.showSobAR ? allPts.filter(p => isSobLeyAR(p.label))  : [];
       const ptsNY = _cmpState.showSobNY ? allPts.filter(p => !isSobLeyAR(p.label)) : [];
       allDataPts.push(...ptsAR, ...ptsNY);
+      const sobColorAR = cmpColorFor('soberano');
+      const sobColorNY = cmpColorFor('soberano_ny');
       if (ptsAR.length) {
-        const trAR = makeTrendDs(ptsAR, CMP_SOB_AR);
+        const trAR = makeTrendDs(ptsAR, sobColorAR);
         if (trAR) { trAR.label = '_trend'; datasets.push(trAR); }
-        datasets.push({ label: 'Sob. Ley AR', data: ptsAR, backgroundColor: ptsAR.map(p => p.excl ? 'rgba(138,144,176,0.3)' : CMP_SOB_AR), borderColor: ptsAR.map(p => p.excl ? 'rgba(138,144,176,0.3)' : CMP_SOB_AR), pointRadius: 5, pointHoverRadius: 8, showLine: false, order: 2 });
-        legendItems.push({ color: CMP_SOB_AR, label: 'Tend. Sob. AR', isLine: true });
-        legendItems.push({ color: CMP_SOB_AR, label: 'Sob. Ley AR', isLine: false });
+        datasets.push({ label: 'Sob. Ley AR', data: ptsAR, backgroundColor: ptsAR.map(p => p.excl ? 'rgba(138,144,176,0.3)' : sobColorAR), borderColor: ptsAR.map(p => p.excl ? 'rgba(138,144,176,0.3)' : sobColorAR), pointRadius: 5, pointHoverRadius: 8, showLine: false, order: 2 });
+        legendItems.push({ color: sobColorAR, label: 'Tend. Sob. AR', isLine: true });
+        legendItems.push({ color: sobColorAR, label: 'Sob. Ley AR', isLine: false });
       }
       if (ptsNY.length) {
-        const trNY = makeTrendDs(ptsNY, CMP_SOB_NY);
+        const trNY = makeTrendDs(ptsNY, sobColorNY);
         if (trNY) { trNY.label = '_trend'; datasets.push(trNY); }
-        datasets.push({ label: 'Sob. Ley NY', data: ptsNY, backgroundColor: ptsNY.map(p => p.excl ? 'rgba(138,144,176,0.3)' : CMP_SOB_NY), borderColor: ptsNY.map(p => p.excl ? 'rgba(138,144,176,0.3)' : CMP_SOB_NY), pointRadius: 5, pointHoverRadius: 8, showLine: false, order: 2 });
-        legendItems.push({ color: CMP_SOB_NY, label: 'Tend. Sob. NY', isLine: true });
-        legendItems.push({ color: CMP_SOB_NY, label: 'Sob. Ley NY', isLine: false });
+        datasets.push({ label: 'Sob. Ley NY', data: ptsNY, backgroundColor: ptsNY.map(p => p.excl ? 'rgba(138,144,176,0.3)' : sobColorNY), borderColor: ptsNY.map(p => p.excl ? 'rgba(138,144,176,0.3)' : sobColorNY), pointRadius: 5, pointHoverRadius: 8, showLine: false, order: 2 });
+        legendItems.push({ color: sobColorNY, label: 'Tend. Sob. NY', isLine: true });
+        legendItems.push({ color: sobColorNY, label: 'Sob. Ley NY', isLine: false });
       }
       continue;
     }
@@ -10477,7 +10569,7 @@ function cmpRenderChart() {
         .map(r => ({ x: lcGetAxisVal({ calc: r.calcFija }, axX), y: lcGetAxisVal({ calc: r.calcFija }, axY), label: r.ticker + ' (F)' }));
       allDataPts.push(...ptsTamar, ...ptsFija);
 
-      const colorT = cat.color;
+      const colorT = cmpColorFor('duales');
       const colorF = '#d97706';
       if (ptsTamar.length) {
         const trT = makeTrendDs(ptsTamar, colorT);
@@ -10512,11 +10604,12 @@ function cmpRenderChart() {
         });
       if (!pts.length) continue;
       allDataPts.push(...pts);
-      const tr = makeTrendDs(pts, cat.color);
+      const _col = cmpColorFor('duales');
+      const tr = makeTrendDs(pts, _col);
       if (tr) { tr.label = '_trend'; datasets.push(tr); }
-      datasets.push({ label: cat.label, data: pts, backgroundColor: pts.map(p => p.excl ? 'rgba(138,144,176,0.3)' : cat.color), borderColor: pts.map(p => p.excl ? 'rgba(138,144,176,0.3)' : cat.color), pointRadius: 5, pointHoverRadius: 8, showLine: false, order: 2 });
-      legendItems.push({ color: cat.color, label: 'Tend. Duales', isLine: true });
-      legendItems.push({ color: cat.color, label: 'Duales', isLine: false });
+      datasets.push({ label: cat.label, data: pts, backgroundColor: pts.map(p => p.excl ? 'rgba(138,144,176,0.3)' : _col), borderColor: pts.map(p => p.excl ? 'rgba(138,144,176,0.3)' : _col), pointRadius: 5, pointHoverRadius: 8, showLine: false, order: 2 });
+      legendItems.push({ color: _col, label: 'Tend. Duales', isLine: true });
+      legendItems.push({ color: _col, label: 'Duales', isLine: false });
       continue;
     }
 
@@ -10527,11 +10620,12 @@ function cmpRenderChart() {
     if (!pts.length) continue;
     allDataPts.push(...pts);
 
-    const tr = makeTrendDs(pts, cat.color);
+    const _col = cmpColorFor(cat.id);
+    const tr = makeTrendDs(pts, _col);
     if (tr) { tr.label = '_trend'; datasets.push(tr); }
-    datasets.push({ label: cat.label, data: pts, backgroundColor: pts.map(p => p.excl ? 'rgba(138,144,176,0.3)' : cat.color), borderColor: pts.map(p => p.excl ? 'rgba(138,144,176,0.3)' : cat.color), pointRadius: 5, pointHoverRadius: 8, showLine: false, order: 2 });
-    legendItems.push({ color: cat.color, label: `Tend. ${cat.label}`, isLine: true });
-    legendItems.push({ color: cat.color, label: cat.label, isLine: false });
+    datasets.push({ label: cat.label, data: pts, backgroundColor: pts.map(p => p.excl ? 'rgba(138,144,176,0.3)' : _col), borderColor: pts.map(p => p.excl ? 'rgba(138,144,176,0.3)' : _col), pointRadius: 5, pointHoverRadius: 8, showLine: false, order: 2 });
+    legendItems.push({ color: _col, label: `Tend. ${cat.label}`, isLine: true });
+    legendItems.push({ color: _col, label: cat.label, isLine: false });
   }
 
   const legendEl = document.getElementById('cmp-legend');
@@ -10711,7 +10805,7 @@ function cmpUpdatePips() {
     for (const cat of CMP_CATS) {
       const rows = _cmpRowsMap[cat.id] || [];
       if (rows.some(r => r.ticker === lbl || r.ticker + ' (T)' === lbl || r.ticker + ' (F)' === lbl)) {
-        color = cat.color;
+        color = cmpColorFor(cat.id);
         break;
       }
     }
@@ -10859,10 +10953,10 @@ function sensInit() {
       el.className = 'sens-type-item';
       el.id = 'sens-type-' + t.id;
       el.onclick = () => sensSelectType(t.id);
-      el.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:5px;cursor:pointer;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text3);transition:background .12s,color .12s;';
-      el.onmouseover = () => { if (_sensState.tipo !== t.id) el.style.background = 'var(--accent-light)'; };
-      el.onmouseout  = () => { if (_sensState.tipo !== t.id) el.style.background = 'transparent'; };
-      el.innerHTML = `<span style="width:9px;height:9px;border-radius:50%;border:1.5px solid var(--border2);flex-shrink:0;display:inline-block;" class="sens-radio"></span><span>${t.label}</span>`;
+      el.style.cssText = 'display:flex;align-items:center;gap:9px;padding:9px 11px;margin-bottom:3px;border-radius:7px;border:1px solid transparent;cursor:pointer;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text2);transition:all .12s;';
+      el.onmouseover = () => { if (_sensState.tipo !== t.id) { el.style.background = 'var(--accent-light)'; el.style.color = 'var(--text)'; } };
+      el.onmouseout  = () => { if (_sensState.tipo !== t.id) { el.style.background = 'transparent'; el.style.color = 'var(--text2)'; } };
+      el.innerHTML = `<span>${t.label}</span>`;
       bar.appendChild(el);
     });
   }
@@ -10880,13 +10974,9 @@ window.sensSelectType = function(tipoId) {
     const el = document.getElementById('sens-type-' + t.id);
     if (!el) return;
     const active = t.id === tipoId;
-    el.style.background = active ? 'var(--accent)' : 'transparent';
-    el.style.color = active ? '#fff' : 'var(--text3)';
-    const radio = el.querySelector('.sens-radio');
-    if (radio) {
-      radio.style.borderColor = active ? '#fff' : 'var(--border2)';
-      radio.style.background = active ? '#fff' : 'transparent';
-    }
+    el.style.background = active ? 'var(--accent-light)' : 'transparent';
+    el.style.borderColor = active ? '#1E27F3' : 'transparent';
+    el.style.color = active ? 'var(--text)' : 'var(--text2)';
   });
   sensUpdateContextualControls();
   sensRecalc();
@@ -11692,6 +11782,7 @@ window.rfHmCloseCategory = rfHmCloseCategory;
         </div>
         <!-- Pie fijo del sidebar: Generar reporte -->
         <div class="eq-sb-foot">
+          <div class="eq-sb-label" style="margin-bottom:10px;">Reporte</div>
           <button id="eq-report-btn" onclick="eqOpenReportDialog()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
@@ -13054,7 +13145,7 @@ function eqDrawHeatmapPDF(pdf, HD, x, y, W, H){
   <aside class="bal-sidebar">
 
     <!-- Buscador de empresas -->
-    <div class="bal-sb-sec">
+    <div class="bal-sb-sec" style="border-bottom:none;">
       <div class="bal-sb-label">Buscar empresa · BYMA</div>
       <div style="position:relative;margin-bottom:10px;">
         <svg style="position:absolute;left:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--text3);pointer-events:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -13073,7 +13164,7 @@ function eqDrawHeatmapPDF(pdf, HD, x, y, W, H){
     </div>
 
     <!-- Herramientas -->
-    <div class="bal-sb-sec">
+    <div class="bal-sb-sec" style="margin-top:auto;border-top:1px solid var(--border);border-bottom:none;">
       <div class="bal-sb-label">Herramientas</div>
       <div id="earNavScoring" class="ear-navbtn" onclick="earShowView('sector')">Scoring de Liquidez</div>
       <div id="earNavDeudores" class="ear-navbtn" onclick="earShowView('deudores')">Central de Deudores</div>
@@ -13081,7 +13172,7 @@ function eqDrawHeatmapPDF(pdf, HD, x, y, W, H){
     </div>
 
     <!-- Reporte -->
-    <div class="bal-sb-sec" style="flex:1;">
+    <div class="bal-sb-sec" style="border-bottom:none;">
       <div class="bal-sb-label">Reporte</div>
       <button onclick="earOpenReportDialog()" class="bal-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>Generar reporte</button>
     </div>
@@ -13387,6 +13478,16 @@ function eqDrawHeatmapPDF(pdf, HD, x, y, W, H){
       <div id="inf-sb-scroll" style="flex:1;overflow-y:auto;overflow-x:hidden;padding:10px 8px 12px;">
         <div id="inf-sb-msg" style="padding:14px 10px;font-family:var(--mono);font-size:10px;color:var(--text3);line-height:1.7;text-align:center;">Cargando informes…</div>
       </div>
+      <!-- Pie fijo del sidebar: Generar reporte (no disponible) -->
+      <div style="flex-shrink:0;padding:16px 14px;border-top:1px solid var(--border);background:var(--bg2);">
+        <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">Reporte</div>
+        <button disabled style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-family:var(--mono);font-size:10px;font-weight:600;cursor:not-allowed;opacity:.4;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-2px;">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+          </svg>
+          Generar reporte
+        </button>
+      </div>
     </div>
 
     <!-- Main -->
@@ -13453,7 +13554,7 @@ function eqDrawHeatmapPDF(pdf, HD, x, y, W, H){
   <aside class="bal-sidebar">
 
     <!-- Buscador de empresas -->
-    <div class="bal-sb-sec">
+    <div class="bal-sb-sec" style="border-bottom:none;">
       <div class="bal-sb-label" style="white-space:nowrap;letter-spacing:.06em;">Buscar empresa · NYSE/NASDAQ/AMEX</div>
       <div style="position:relative;margin-bottom:10px;" id="secAutoWrap">
         <input id="secTicker" type="text" placeholder="Ticker o nombre…" maxlength="60"
@@ -13486,7 +13587,7 @@ function eqDrawHeatmapPDF(pdf, HD, x, y, W, H){
     </div>
 
     <!-- Templates -->
-    <div class="bal-sb-sec">
+    <div class="bal-sb-sec" style="margin-top:auto;border-top:1px solid var(--border);border-bottom:none;">
       <div class="bal-sb-label">Templates</div>
       <div id="balTplDropdown" class="bal-tpl-dd">
         <div id="balTplCurrent" class="bal-tpl-current" onclick="balToggleTplDropdown()">
@@ -13513,7 +13614,7 @@ function eqDrawHeatmapPDF(pdf, HD, x, y, W, H){
     </div>
 
     <!-- Reporte -->
-    <div class="bal-sb-sec" style="flex:1;">
+    <div class="bal-sb-sec" style="border-bottom:none;">
       <div class="bal-sb-label">Reporte</div>
       <button onclick="secOpenReportDialog()" class="bal-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>Generar reporte</button>
     </div>
@@ -13999,7 +14100,7 @@ function enterInformes(){
       header.innerHTML=
         '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+infEsc(folder)+'</span>'+
         '<span class="inf-f-cnt">'+files.length+'</span>'+
-        '<svg class="inf-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>';
+        '<svg class="inf-chevron" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 2l4 4-4 4"/></svg>';
       var fileList=document.createElement('div');
       fileList.className='inf-folder-files';
       files.forEach(function(f,idx){
@@ -25720,13 +25821,14 @@ function renderCheques(cheques){
 .onscmp-sidebar-top::-webkit-scrollbar-thumb{background:rgba(30,39,243,0.45);border-radius:3px;}
 .onscmp-search{width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:10px;font-family:var(--mono);padding:4px 8px;outline:none;margin-bottom:8px;}
 .onscmp-search:focus{border-color:var(--accent2);}
-.onscmp-sector-row{display:flex;align-items:center;gap:5px;padding:4px 6px;border-radius:4px;cursor:pointer;transition:background .12s;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text3);user-select:none;}
-.onscmp-sector-row:hover{background:var(--accent-light);}
-.onscmp-empresa-row{display:flex;align-items:center;gap:5px;padding:3px 6px 3px 18px;border-radius:4px;cursor:pointer;transition:background .12s;font-family:var(--mono);font-size:9px;color:var(--text3);user-select:none;}
-.onscmp-empresa-row:hover{background:var(--accent-light);}
-.onscmp-empresa-row.selected{color:var(--text);font-weight:600;}
-.onscmp-cb{width:11px;height:11px;border-radius:3px;border:1px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .12s;margin-left:auto;}
-.onscmp-cb.checked::after{content:'✓';font-size:8px;font-weight:700;color:currentColor;}
+.onscmp-sector-row{display:flex;align-items:center;gap:9px;padding:9px 11px;margin-bottom:3px;border-radius:7px;border:1px solid transparent;cursor:pointer;transition:all .12s;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text2);user-select:none;}
+.onscmp-sector-row:hover{background:var(--accent-light);color:var(--text);}
+.onscmp-sector-row.active{border-color:#1E27F3;background:var(--accent-light);color:var(--text);}
+.onscmp-empresa-row{display:flex;align-items:center;gap:5px;padding:6px 9px 6px 18px;margin-bottom:2px;border-radius:6px;border:1px solid transparent;cursor:pointer;transition:all .12s;font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text3);user-select:none;}
+.onscmp-empresa-row:hover{background:var(--accent-light);color:var(--text);}
+.onscmp-empresa-row.selected{color:var(--text);font-weight:700;}
+.onscmp-cb{width:13px;height:13px;border-radius:3px;border:1px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;line-height:1;transition:all .12s;margin-left:auto;cursor:pointer;}
+.onscmp-cb.checked::after{content:'✓';font-size:9px;font-weight:700;color:currentColor;}
 .onscmp-chevron{font-size:8px;transition:transform .15s;color:var(--text3);flex-shrink:0;}
 .onscmp-chevron.open{transform:rotate(90deg);}
 .onscmp-empresa-list{display:none;}
@@ -26007,6 +26109,17 @@ function ons_selectON(ticker) {
   document.querySelectorAll('.on-item,.on-item-sub').forEach(el => {
     el.classList.toggle('active', el.dataset.ticker === ticker);
   });
+
+  // Encender la rama completa: sector + empresa del ON seleccionado
+  document.querySelectorAll('#app-calc-on .sector-header.active').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('#app-calc-on .empresa-header.active').forEach(el => el.classList.remove('active'));
+  const _sec = (on.sector || '').toUpperCase() || 'OTROS';
+  const sectorId = 'sec-' + _sec.replace(/[^a-zA-Z0-9]/g,'-');
+  document.querySelector(`#app-calc-on [onclick*="${sectorId}"]`)?.classList.add('active');
+  if (on.empresa) {
+    const empId = 'emp-' + (_sec+on.empresa).replace(/[^a-zA-Z0-9]/g,'-');
+    document.querySelector(`#app-calc-on [onclick*="${empId}"]`)?.classList.add('active');
+  }
 
   try {
     const cfs = ons_fetchCashflows(on);
@@ -26303,7 +26416,7 @@ function ons_renderSidebar(filter = '') {
     html += `
       <div class="sector-wrap">
         <div class="sector-header" onclick="ons_toggleEl('${sectorId}',this);ons_filterBySector('${sector.replace(/'/g,"\\'")}',this)">
-          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4l4 4-4 4"/></svg>
+          <svg class="chevron" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 2l4 4-4 4"/></svg>
           <span class="s-name">${ons_titleCase(sector)}</span>
           <span class="s-cnt">${filtered.length}</span>
         </div>
@@ -26487,8 +26600,10 @@ function ons_filterByEmpresa(sector, empresa, headerEl) {
   } else {
     selE.value = empresa;
     headerEl.classList.add('active');
-    // Marcar sector activo también
+    // Marcar sector activo también (rama completa encendida: sector + empresa)
     document.querySelectorAll('#app-calc-on .sector-header.active').forEach(el => el.classList.remove('active'));
+    const sectorId = 'sec-' + sector.replace(/[^a-zA-Z0-9]/g,'-');
+    document.querySelector(`[onclick*="${sectorId}"]`)?.classList.add('active');
   }
   ons_onFilterChange();
   const tbl = document.getElementById('ons-comp-table-wrap');
@@ -27035,10 +27150,10 @@ function onsSens_buildTree(filter) {
     const isOpen = f ? true : _onsSensState.openSectors.has(sector);
 
     const sRow = document.createElement('div');
-    sRow.style.cssText = 'display:flex;align-items:center;gap:5px;padding:5px 6px;cursor:pointer;border-radius:5px;user-select:none;';
-    sRow.innerHTML = `<span style="display:inline-block;transition:transform .15s;transform:rotate(${isOpen?90:0}deg);color:var(--text3);font-size:10px;">›</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;">${sector}</span><span style="font-size:8px;color:var(--text3);">${empFiltradas.length}</span>`;
-    sRow.onmouseover = () => sRow.style.background = 'var(--bg3)';
-    sRow.onmouseout = () => sRow.style.background = 'transparent';
+    sRow.style.cssText = `display:flex;align-items:center;gap:9px;padding:9px 11px;margin-bottom:3px;cursor:pointer;border-radius:7px;border:1px solid ${isOpen?'#1E27F3':'transparent'};background:${isOpen?'var(--accent-light)':'transparent'};user-select:none;transition:all .12s;`;
+    sRow.innerHTML = `<span style="display:inline-block;transition:transform .15s;transform:rotate(${isOpen?90:0}deg);color:var(--text3);font-size:11px;flex-shrink:0;">›</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono);font-size:12px;font-weight:700;color:${isOpen?'var(--text)':'var(--text2)'};">${sector}</span><span style="font-size:9px;color:var(--text3);background:var(--bg4);border-radius:8px;padding:1px 6px;font-family:var(--mono);">${empFiltradas.length}</span>`;
+    sRow.onmouseover = () => { if(!isOpen){ sRow.style.background = 'var(--accent-light)'; } };
+    sRow.onmouseout = () => { if(!isOpen){ sRow.style.background = 'transparent'; } };
     sRow.onclick = () => {
       if (_onsSensState.openSectors.has(sector)) {
         _onsSensState.openSectors.clear();
@@ -27057,7 +27172,7 @@ function onsSens_buildTree(filter) {
         const nOns = grouped[sector][emp].length;
         const active = _onsSensState.empresa === emp && _onsSensState.sector === sector;
         const eRow = document.createElement('div');
-        eRow.style.cssText = `display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;border-radius:5px;font-family:var(--mono);font-size:10px;font-weight:600;transition:background .12s;background:${active?'var(--accent)':'transparent'};color:${active?'#fff':'var(--text3)'};`;
+        eRow.style.cssText = `display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;border-radius:5px;border:1px solid ${active?'#1E27F3':'transparent'};font-family:var(--mono);font-size:10px;font-weight:600;transition:all .12s;background:${active?'var(--accent-light)':'transparent'};color:${active?'var(--text)':'var(--text3)'};`;
         eRow.innerHTML = `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${emp}</span><span style="font-size:8px;opacity:.7;">${nOns}</span>`;
         eRow.onmouseover = () => { if (!(_onsSensState.empresa===emp && _onsSensState.sector===sector)) eRow.style.background = 'var(--accent-light)'; };
         eRow.onmouseout = () => { if (!(_onsSensState.empresa===emp && _onsSensState.sector===sector)) eRow.style.background = 'transparent'; };
@@ -27338,6 +27453,7 @@ const onsCmpState = {
 };
 let _onsCmpChart = null;
 let _onsCmpColorMap = {};
+let _onsCmpLastColor = {};
 
 // ── Init ──────────────────────────────────────────────────
 function onsCmp_init() {
@@ -27399,14 +27515,17 @@ function onsCmp_buildTree(filter) {
     const sSelected = onsCmpState.selected.has(sKey);
     const sColor = sSelected ? (_onsCmpColorMap[sKey]?.color || ONSCMP_COLORS[0]) : 'var(--border2)';
     const isOpen = f ? true : onsCmpState.openSectors.has(sector);
+    // ¿Hay empresas sueltas seleccionadas dentro de este sector?
+    const hasEmpSel = empresas.some(e => onsCmpState.selected.has('empresa:' + e));
 
-    // Sector row — label neutro, solo el checkbox toma color cuando activo
+    // Sector row — checker a la derecha (serie agregada); marca combinada en el chip
     const sRow = document.createElement('div');
     sRow.className = 'onscmp-sector-row';
     sRow.innerHTML = `
       <span class="onscmp-chevron${isOpen ? ' open' : ''}">›</span>
-      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;color:var(--text3);">${sector}</span>
-      <div class="onscmp-cb${sSelected ? ' checked' : ''}" style="color:${sColor};border-color:${sColor};background:${sSelected?sColor+'33':'transparent'}"></div>`;
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${sector}</span>
+      <div class="onscmp-cb${sSelected ? ' checked' : ''}" title="Sector completo (1 curva)" style="color:${sColor};border-color:${sColor};background:${sSelected?sColor+'33':'transparent'}"></div>`;
+    onsCmp_applySectorChipMark(sRow, sSelected, sColor, hasEmpSel);
     sRow.querySelector('.onscmp-chevron').onclick = (e) => { e.stopPropagation(); onsCmp_toggleSectorOpen(sector); };
     sRow.querySelector('.onscmp-cb').onclick = (e) => { e.stopPropagation(); onsCmp_toggleSector(sector); };
     sRow.onclick = () => onsCmp_toggleSectorOpen(sector);
@@ -27420,17 +27539,39 @@ function onsCmp_buildTree(filter) {
     for (const emp of empFiltradas) {
       const eKey = 'empresa:' + emp;
       const eSel = onsCmpState.selected.has(eKey);
-      const eColor = eSel ? (_onsCmpColorMap[eKey]?.color || ONSCMP_COLORS[0]) : 'var(--border2)';
+      const eColor = eSel ? (_onsCmpColorMap[eKey]?.color || ONSCMP_COLORS[0]) : null;
       const eRow = document.createElement('div');
-      eRow.className = 'onscmp-empresa-row';
-      eRow.innerHTML = `
-        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text3);">${emp}</span>
-        <div class="onscmp-cb${eSel ? ' checked' : ''}" style="color:${eColor};border-color:${eColor};background:${eSel?eColor+'33':'transparent'}"></div>`;
-      eRow.querySelector('.onscmp-cb').onclick = (e) => { e.stopPropagation(); onsCmp_toggleEmpresa(emp); };
+      eRow.className = 'onscmp-empresa-row' + (eSel ? ' selected' : '');
+      eRow.innerHTML = `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${emp}</span>`;
+      if (eSel && eColor) {
+        eRow.style.borderColor = eColor;
+        eRow.style.background = eColor + '1a';
+        eRow.style.color = 'var(--text)';
+      }
       eRow.onclick = () => onsCmp_toggleEmpresa(emp);
       empList.appendChild(eRow);
     }
     tree.appendChild(empList);
+  }
+}
+
+// Marca combinada del chip de sector:
+//  - serie agregada activa (checker) → borde + relleno color
+//  - inactiva pero con empresas sueltas seleccionadas → borde azul sin relleno
+//  - nada → sin marca
+function onsCmp_applySectorChipMark(sRow, sSelected, sColor, hasEmpSel) {
+  if (sSelected) {
+    sRow.style.borderColor = sColor;
+    sRow.style.background = sColor + '1a';
+    sRow.style.color = 'var(--text)';
+  } else if (hasEmpSel) {
+    sRow.style.borderColor = '#1E27F3';
+    sRow.style.background = 'transparent';
+    sRow.style.color = 'var(--text)';
+  } else {
+    sRow.style.borderColor = '';
+    sRow.style.background = '';
+    sRow.style.color = '';
   }
 }
 
@@ -27440,77 +27581,57 @@ function onsCmp_toggleSectorOpen(sector) {
   onsCmp_buildTree(document.getElementById('onscmp-search')?.value || '');
 }
 
-// ── Toggle selección sector ───────────────────────────────
+// ── Toggle selección sector (serie agregada) ──────────────
 function onsCmp_toggleSector(sector) {
   const key = 'sector:' + sector;
   if (onsCmpState.selected.has(key)) {
+    if (_onsCmpColorMap[key]) _onsCmpLastColor[key] = _onsCmpColorMap[key].color;
     onsCmpState.selected.delete(key);
     delete _onsCmpColorMap[key];
   } else {
     onsCmpState.selected.add(key);
-    onsCmp_assignColor(key);
+    onsCmp_assignColor(key, _onsCmpLastColor[key]);
   }
-  // NO reconstruir el árbol completo — solo actualizar el checkbox del sector
-  const tree = document.getElementById('onscmp-tree');
-  if (tree) {
-    const sSel = onsCmpState.selected.has(key);
-    const sColor = sSel ? (_onsCmpColorMap[key]?.color || ONSCMP_COLORS[0]) : 'var(--border2)';
-    tree.querySelectorAll('.onscmp-sector-row').forEach(row => {
-      const txt = row.querySelector('span:nth-child(2)')?.textContent;
-      if (txt?.trim() === sector) {
-        const cb = row.querySelector('.onscmp-cb');
-        if (cb) {
-          cb.classList.toggle('checked', sSel);
-          cb.style.color = sColor;
-          cb.style.borderColor = sColor;
-          cb.style.background = sSel ? sColor + '33' : 'transparent';
-        }
-      }
-    });
-  }
+  onsCmp_buildTree(document.getElementById('onscmp-search')?.value || '');
   onsCmp_render();
 }
 
-// ── Toggle selección empresa ──────────────────────────────
+// ── Toggle selección empresa (serie individual) ───────────
 function onsCmp_toggleEmpresa(emp) {
   const key = 'empresa:' + emp;
   const tickers = onsState.ons.filter(o => o.empresa === emp).map(o => o.ticker);
   tickers.forEach(t => onsCmpState.excluded.delete(t));
   if (onsCmpState.selected.has(key)) {
+    if (_onsCmpColorMap[key]) _onsCmpLastColor[key] = _onsCmpColorMap[key].color;
     onsCmpState.selected.delete(key);
     delete _onsCmpColorMap[key];
   } else {
     onsCmpState.selected.add(key);
-    onsCmp_assignColor(key);
+    onsCmp_assignColor(key, _onsCmpLastColor[key]);
   }
-  // NO reconstruir árbol completo — solo actualizar el checkbox de esta empresa
-  const tree = document.getElementById('onscmp-tree');
-  if (tree) {
-    const eSel = onsCmpState.selected.has(key);
-    const eColor = eSel ? (_onsCmpColorMap[key]?.color || ONSCMP_COLORS[0]) : 'var(--border2)';
-    tree.querySelectorAll('.onscmp-empresa-row').forEach(row => {
-      const txt = row.querySelector('span:nth-child(1)')?.textContent;
-      if (txt?.trim() === emp) {
-        const cb = row.querySelector('.onscmp-cb');
-        if (cb) {
-          cb.classList.toggle('checked', eSel);
-          cb.style.color = eColor;
-          cb.style.borderColor = eColor;
-          cb.style.background = eSel ? eColor + '33' : 'transparent';
-        }
-      }
-    });
-  }
+  onsCmp_buildTree(document.getElementById('onscmp-search')?.value || '');
   onsCmp_render();
 }
 
 // ── Asignar color/forma/dash ───────────────────────────────
-function onsCmp_assignColor(key) {
-  const idx = Object.keys(_onsCmpColorMap).length;
+function onsCmp_assignColor(key, prevColor) {
+  const usados = new Set(Object.entries(_onsCmpColorMap)
+    .filter(([k]) => k !== key).map(([,v]) => v.color));
+  if (prevColor) usados.add(prevColor);
+  let color = ONSCMP_COLORS.find(c => !usados.has(c));
+  let idx;
+  if (color) {
+    idx = ONSCMP_COLORS.indexOf(color);
+  } else {
+    // pool agotado: permitir repetir, distinto al previo
+    idx = Object.keys(_onsCmpColorMap).length;
+    color = ONSCMP_COLORS.find(c => c !== prevColor) || ONSCMP_COLORS[idx % ONSCMP_COLORS.length];
+  }
+  const used = Object.keys(_onsCmpColorMap).length;
   _onsCmpColorMap[key] = {
-    color:    ONSCMP_COLORS[idx % ONSCMP_COLORS.length],
-    shapeIdx: Math.floor(idx / ONSCMP_COLORS.length) % ONSCMP_SHAPES.length,
-    dashIdx:  Math.floor(idx / (ONSCMP_COLORS.length * ONSCMP_SHAPES.length)) % ONSCMP_DASHES.length,
+    color,
+    shapeIdx: Math.floor(used / ONSCMP_COLORS.length) % ONSCMP_SHAPES.length,
+    dashIdx:  Math.floor(used / (ONSCMP_COLORS.length * ONSCMP_SHAPES.length)) % ONSCMP_DASHES.length,
   };
 }
 
@@ -27540,6 +27661,7 @@ window.onsCmp_setModo = function(modo) {
   onsCmpState.modo = modo;
   onsCmpState.selected.clear();
   _onsCmpColorMap = {};
+  _onsCmpLastColor = {};
   onsCmpState.excluded.clear();
   onsCmp_syncModoBtn();
   onsCmp_buildTree();
