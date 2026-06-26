@@ -9602,7 +9602,7 @@ window.rfCalCloseModal = function() {
 
 // Tab switch: alterna entre vista índice y calendario
 window.rfSwitchTab = function(tab) {
-  window._helpKey = 'rf.' + tab;
+  window._helpKey = 'rf.index';
   // Al salir del comparador, resetear su estado TC/CER a defaults
   const viewCmpEl = document.getElementById('view-rf-cmp');
   if (viewCmpEl && viewCmpEl.style.display !== 'none' && tab !== 'cmp') {
@@ -12174,7 +12174,7 @@ window.eqShowView = function(view) {
 };
 
 window.eqSwitchMain = function(tab, el) {
-  window._helpKey = 'eq.' + tab;
+  window._helpKey = 'eq.lider';
   eqCurrentTab = tab;
   ['lider','general','adr','cedear'].forEach(t=>{
     document.getElementById('eq-section-'+t).style.display = t===tab ? 'flex' : 'none';
@@ -26805,7 +26805,7 @@ function ons_renderCompTable() {
 const ons_calState = { year: new Date().getFullYear(), month: new Date().getMonth() };
 
 function ons_switchTab(tab) {
-  window._helpKey = 'ons.' + tab;
+  window._helpKey = 'ons.index';
   const tabs = ['index','hm','cal','scoring','cmp','sens'];
   tabs.forEach(t => {
     const el = document.getElementById('ons-tab-'+t);
@@ -29303,97 +29303,126 @@ El ícono [[ico:theme]], también arriba a la derecha, alterna entre **modo clar
 
 El contenido tiene fines exclusivamente informativos y no constituye una recomendación de compra o venta de ningún instrumento, ni asesoramiento de inversión. Las decisiones de inversión son responsabilidad exclusiva de cada usuario.` },
 
-    'rf.index': { t:'Bonos · Índice', b:
-`El panel izquierdo navega entre categorías y los distintos instrumentos de renta fija soberana.
+    'rf.index': { t:'Bonos', b:
+`Esta sección reúne las herramientas de análisis para los instrumentos de renta fija soberana (LECAPs, BONCAPs, BONCERs, dólar linked, duales, soberanos hard dollar y BOPREALes). Arriba de todo del panel lateral izquierdo podés alternar entre **Bonos** y **ONs**. Cada pestaña ofrece una vista distinta: curva de rendimientos, heatmap, comparador, sensibilidad, calendario de pagos y breakeven de inflación.
+
+[[info]]OJO: los precios y volúmenes observados pueden tener un lag de hasta dos horas respecto a la operatoria de mercado en vivo.[[/info]]
+
+[[fold:Índice]]
+El panel izquierdo navega entre categorías y los distintos instrumentos de renta fija soberana.
 
 El gráfico de curva de rendimientos permite graficar diversas variables en ambos ejes. Cada punto es un instrumento; al clickearlo lo excluís y la tendencia se recalcula solo con los visibles. Para reincorporarlo, clickeá su ticker en la lista a la derecha del gráfico.
 
 Los tipos que son pata de un dual (ej. TAMAR, BONCER, BONCAP) se pueden excluir de la curva. En los duales, el botón **PATAS** grafica la pata activa y la inactiva.
 
-La fecha de liquidación es editable para todos los bonos. En CER podés elegir el valor de CER de liquidación (**T−10** por default). En Dólar Linked se trae el último A3500 de la API del BCRA, modificable a mano para reflejar cotizaciones no captadas por el lag de publicación.` },
+La fecha de liquidación es editable para todos los bonos. En CER podés elegir el valor de CER de liquidación (**T−10** por default). En Dólar Linked se trae el último A3500 de la API del BCRA, modificable a mano para reflejar cotizaciones no captadas por el lag de publicación.
+[[/fold]]
 
-    'rf.hm': { t:'Bonos · Heatmap', b:
-`El tamaño de cada recuadro corresponde al monto operado (nominales × precio) y el color refleja la variación de precio en la rueda actual: verde una suba, rojo una caída.
+[[fold:Heatmap]]
+El tamaño de cada recuadro corresponde al monto operado (nominales × precio) y el color refleja la variación de precio en la rueda actual: verde una suba, rojo una caída.
 
 En el heatmap principal el tamaño es relativo al monto operado global; en los heatmaps por instrumento, el tamaño es proporcional al monto operado dentro de ese instrumento.
 
-Al clickear un recuadro dentro del heatmap de instrumento se abre la información puntual de ese bono.` },
+Al clickear un recuadro en el heatmap global se abre el heatmap por tipo de instrumento; dentro de ese heatmap, al clickear un recuadro se abre la información puntual de ese bono.
+[[/fold]]
 
-    'rf.cmp': { t:'Bonos · Comparador', b:
-`Permite comparar la curva de rendimientos de todos los tipos de instrumentos de renta fija soberana en simultáneo.
+[[fold:Comparador]]
+Permite comparar la curva de rendimientos de todos los tipos de instrumentos de renta fija soberana en simultáneo.
 
 El panel izquierdo selecciona qué tipos de instrumento comparar. Tené en cuenta que los instrumentos atados al dólar o a tasas reales positivas tienden a rendir en una escala numérica distinta a los rendimientos en pesos de tasa fija o no indexados, con lo cual conviene leer cada grupo en su contexto.
 
 En la parte inferior del panel izquierdo se ajustan los parámetros de las curvas según corresponda al instrumento: fecha de liquidación (editable), valor de CER de liquidación (**T−10** por default) y tipo de cambio A3500 del BCRA (modificable a mano para reflejar cotizaciones no captadas por el lag de publicación).
 
-Las variables graficadas en ambos ejes son seleccionables.` },
+Las variables graficadas en ambos ejes son seleccionables.
+[[/fold]]
 
-    'rf.sens': { t:'Bonos · Sensibilidad', b:
-`Permite analizar los trade-offs precio-rendimiento de los instrumentos de renta fija soberana. Podés seleccionar TNA, TEA o TEM y la fecha de liquidación.
+[[fold:Sensibilidad]]
+Permite analizar los trade-offs precio-rendimiento de los instrumentos de renta fija soberana. Podés seleccionar TNA, TEA o TEM y la fecha de liquidación.
 
-Los parámetros principales son: **Peso pp**, que define el valor de cada columna de la tabla — un valor de 1 indica que cada columna refleja una variación de 1% en la tasa de rendimiento seleccionada (TNA/TEA/TEM); y **Rango −** / **Rango +**, que definen la cantidad de columnas a cada lado.` },
+Los parámetros principales son: **Peso pp**, que define el valor de cada columna de la tabla — un valor de 1 indica que cada columna refleja una variación de 1% en la tasa de rendimiento seleccionada (TNA/TEA/TEM); y **Rango −** / **Rango +**, que definen la cantidad de columnas a cada lado.
+[[/fold]]
 
-    'rf.cal': { t:'Bonos · Calendario', b:
-`Calendario de pagos que permite ver las próximas fechas de pago de los instrumentos de renta fija soberana, diferenciando intereses y amortizaciones.` },
+[[fold:Calendario]]
+Calendario de pagos que permite ver las próximas fechas de pago de los instrumentos de renta fija soberana, diferenciando intereses y amortizaciones.
+[[/fold]]
 
-    'rf.be': { t:'Bonos · Breakeven', b:
-`Permite analizar la diferencia de rendimiento entre un bono CER, que ajusta por inflación, y un bono a tasa fija en pesos (LECAP/BONCAP). Esa diferencia es la inflación implícita en los precios.
+[[fold:Breakeven]]
+Permite analizar la diferencia de rendimiento entre un bono CER, que ajusta por inflación, y un bono a tasa fija en pesos (LECAP/BONCAP). Esa diferencia es la inflación implícita en los precios.
 
 El parámetro **Sensibilidad** está en 0 por default, lo que compara bonos con la misma fecha de vencimiento. Al subirlo —por ejemplo a 10— amplía el rango y permite comparar un bono CER con uno a tasa fija cuya maturity difiera hasta 10 días; la calculadora hace las equivalencias, por lo que la comparación sigue siendo válida.
 
-También se puede ajustar la fecha de liquidación y el valor de CER (**T−10** por default, modificable). Las variables del gráfico son seleccionables entre varias opciones.` },
+También se puede ajustar la fecha de liquidación y el valor de CER (**T−10** por default, modificable). Las variables del gráfico son seleccionables entre varias opciones.
+[[/fold]]
 
-    'ons.index': { t:'ONs · Índice', b:
-`El panel izquierdo navega entre las distintas obligaciones negociables, organizadas por sector y, dentro de cada sector, separadas por empresa. Reúne todas las ONs hard dollar, tanto dólar MEP como dólar cable.
+[[fold:Generar reporte]]
+Desde la pestaña **Índice**, al pie del panel izquierdo, el botón **Generar reporte** te permite descargar un análisis de los instrumentos de renta fija soberana. Se abre un menú donde elegís qué secciones incluir antes de generarlo.
+[[/fold]]` },
+
+    'ons.index': { t:'ONs', b:
+`Esta sección reúne las herramientas de análisis para las obligaciones negociables (ONs) hard dollar, tanto dólar MEP como dólar cable. Arriba de todo del panel lateral izquierdo podés alternar entre **Bonos** y **ONs**. Cada pestaña ofrece una vista distinta: curva de rendimientos, heatmap, calendario de pagos, scoring de liquidez, comparador y sensibilidad.
+
+[[info]]OJO: los precios y volúmenes observados pueden tener un lag de hasta dos horas respecto a la operatoria de mercado en vivo.[[/info]]
+
+[[fold:Índice]]
+El panel izquierdo navega entre las distintas obligaciones negociables, organizadas por sector y, dentro de cada sector, separadas por empresa. Reúne todas las ONs hard dollar, tanto dólar MEP como dólar cable.
 
 El gráfico de curva de rendimientos permite graficar diversas variables en ambos ejes. Cada punto es una ON; al clickearla la excluís y la tendencia se recalcula solo con las visibles. Para reincorporarla, clickeá su ticker en la lista a la derecha del gráfico.
 
 El gráfico permite separar por ley (NY o ARG) y por tipo de moneda. Los botones **Excluir sin precio** y **Excluir outliers** permiten una mejor comparación de rendimientos.
 
-La fecha de liquidación es editable.` },
+La fecha de liquidación es editable.
+[[/fold]]
 
-    'ons.hm': { t:'ONs · Heatmap', b:
-`El tamaño de cada recuadro corresponde al monto operado (nominales × precio) y el color refleja la variación de precio en la rueda actual: verde una suba, rojo una caída.
+[[fold:Heatmap]]
+El tamaño de cada recuadro corresponde al monto operado (nominales × precio) y el color refleja la variación de precio en la rueda actual: verde una suba, rojo una caída.
 
-La navegación es jerárquica: heatmap global → heatmap sectorial → heatmap por empresa → información puntual de la ON. En cada nivel el tamaño de los recuadros es relativo al monto operado dentro de ese nivel, y al clickear vas bajando hasta el detalle de cada obligación.` },
+La navegación es jerárquica: heatmap global → heatmap sectorial → heatmap por empresa → información puntual de la ON. En cada nivel el tamaño de los recuadros es relativo al monto operado dentro de ese nivel, y al clickear vas bajando hasta el detalle de cada obligación.
+[[/fold]]
 
-    'ons.cmp': { t:'ONs · Comparador', b:
-`Permite comparar la curva de rendimientos de distintos sectores y de distintas empresas en simultáneo.
+[[fold:Calendario]]
+Calendario de pagos que permite ver las próximas fechas de pago de las obligaciones negociables, diferenciando intereses y amortizaciones.
+[[/fold]]
+
+[[fold:Scoring]]
+El scoring es una calificación del 0 al 10 sobre la liquidez de corto plazo de la empresa. Valores por debajo de 4 son una señal de alerta.
+
+Es una ponderación de ratios financieros, por lo que funciona como una herramienta más para entender la salud de una empresa, no como la única. Prestá especial atención a la fecha del último balance: indica la última vez que se actualizó el scoring. Un balance de hace un año no necesariamente refleja la situación actual de la empresa.
+[[/fold]]
+
+[[fold:Comparador]]
+Permite comparar la curva de rendimientos de distintos sectores y de distintas empresas en simultáneo.
 
 El panel izquierdo selecciona qué sectores y empresas comparar. Los rendimientos se pueden separar por moneda, con la posibilidad de desagregar y tener una curva de dólar MEP y otra de dólar cable.
 
-Las variables graficadas en ambos ejes son seleccionables.` },
+Las variables graficadas en ambos ejes son seleccionables.
+[[/fold]]
 
-    'ons.sens': { t:'ONs · Sensibilidad', b:
-`Permite analizar los trade-offs precio-rendimiento de las obligaciones negociables, comparando por empresa. Podés seleccionar TNA, TEA o TEM y la fecha de liquidación.
+[[fold:Sensibilidad]]
+Permite analizar los trade-offs precio-rendimiento de las obligaciones negociables, comparando por empresa. Podés seleccionar TNA, TEA o TEM y la fecha de liquidación.
 
-Los parámetros principales son: **Peso pp**, que define el valor de cada columna de la tabla — un valor de 1 indica que cada columna refleja una variación de 1% en la tasa de rendimiento seleccionada (TNA/TEA/TEM); y **Rango −** / **Rango +**, que definen la cantidad de columnas a cada lado.` },
+Los parámetros principales son: **Peso pp**, que define el valor de cada columna de la tabla — un valor de 1 indica que cada columna refleja una variación de 1% en la tasa de rendimiento seleccionada (TNA/TEA/TEM); y **Rango −** / **Rango +**, que definen la cantidad de columnas a cada lado.
+[[/fold]]` },
 
-    'ons.cal': { t:'ONs · Calendario', b:
-`Calendario de pagos que permite ver las próximas fechas de pago de las obligaciones negociables, diferenciando intereses y amortizaciones.` },
+    'eq.lider': { t:'Renta Variable', b:
+`En esta sección podés ver la evolución de la renta variable argentina, tanto en su versión diaria como histórica. En el panel izquierdo elegís el mercado a visualizar (Panel Líder, Panel General, CEDEARs o ADR), y arriba alternás entre dos vistas: **Heatmap** y **Tabla**.
 
-    'ons.scoring': { t:'ONs · Scoring', b:
-`El scoring es una calificación del 0 al 10 sobre la liquidez de corto plazo de la empresa. Valores por debajo de 4 son una señal de alerta.
+[[info]]OJO: los precios y volúmenes observados pueden tener un lag de hasta dos horas respecto a la operatoria de mercado en vivo.[[/info]]
 
-Es una ponderación de ratios financieros, por lo que funciona como una herramienta más para entender la salud de una empresa, no como la única. Prestá especial atención a la fecha del último balance: indica la última vez que se actualizó el scoring. Un balance de hace un año no necesariamente refleja la situación actual de la empresa.` },
+En el **Heatmap**, el tamaño de cada recuadro corresponde al monto operado y el color refleja la variación de precio en la rueda actual: verde una suba, rojo una caída. La vista **Tabla** muestra la misma información en formato de tabla ordenable. Al clickear un ticker se abre su valor histórico.
 
-    'eq.lider': { t:'Renta Variable · Panel Líder', b:
-`Heatmap de las acciones del panel líder de BYMA. El tamaño de cada recuadro corresponde al monto operado y el color refleja la variación de precio en la rueda actual: verde una suba, rojo una caída.
+Los cuatro mercados disponibles son:
 
-Al clickear un ticker se abre su valor histórico.` },
+**Panel Líder** — las acciones del panel líder de BYMA.
 
-    'eq.general': { t:'Renta Variable · Panel General', b:
-`Heatmap de las acciones del panel general (todas las acciones argentinas que no integran el panel líder). El tamaño de cada recuadro corresponde al monto operado y el color refleja la variación de precio en la rueda actual: verde una suba, rojo una caída.
+**Panel General** — todas las acciones argentinas que no integran el panel líder.
 
-Al clickear un ticker se abre su valor histórico.` },
+**CEDEARs** — Certificados de Depósito Argentinos sobre activos del exterior.
 
-    'eq.adr': { t:'Renta Variable · ADR', b:
-`Heatmap de ADRs. El tamaño de cada recuadro corresponde al monto operado y el color refleja la variación de precio en la rueda actual: verde una suba, rojo una caída.` },
+**ADR** — American Depositary Receipts: certificados que cotizan en EE.UU. y representan acciones de empresas extranjeras de distintos países, incluidas las argentinas.
 
-    'eq.cedear': { t:'Renta Variable · CEDEARs', b:
-`Heatmap de CEDEARs. El tamaño de cada recuadro corresponde al monto operado y el color refleja la variación de precio en la rueda actual: verde una suba, rojo una caída.
-
-Al clickear un ticker se abre su valor histórico.` },
+[[fold:Generar reporte]]
+Al pie del panel izquierdo, el botón **Generar reporte** te permite descargar un análisis de la sección. Se abre un menú donde elegís qué secciones incluir antes de generarlo.
+[[/fold]]` },
 
     'af.usa':       { t:'Empresas USA', b:
 `Explorador de estados financieros de empresas que reportan a la **SEC** (EDGAR). Buscás una empresa por ticker y el dashboard arma automáticamente tablas, gráficos y KPIs a partir de los datos estructurados (XBRL) que la empresa presenta en sus reportes 10-K (anuales) y 10-Q (trimestrales).
@@ -29610,9 +29639,12 @@ Equipo: Research BullMarket`;
     const entry = HELP[window._helpKey] || HELP['landing'];
     if(tab==='uso'){
       // El aviso de lag de precio/volumen sólo aplica a módulos con datos de mercado.
-      // Los módulos de empresas (af.*, ear.*) traen su propia nota y no llevan LAG_WARN.
+      // Los módulos de empresas (af.*, ear.*) y los menús unificados de Bonos (rf.*),
+      // ONs (ons.*) y Renta Variable (eq.*) traen su propia nota de lag y no llevan
+      // el LAG_WARN automático.
       const k = window._helpKey || '';
-      const noLag = k==='landing' || k.indexOf('af.')===0 || k.indexOf('ear.')===0;
+      const noLag = k==='landing' || k.indexOf('af.')===0 || k.indexOf('ear.')===0
+                 || k.indexOf('rf.')===0 || k.indexOf('ons.')===0 || k.indexOf('eq.')===0;
       body.innerHTML = helpRender(entry.b + (noLag ? '' : '\n\n' + LAG_WARN));
     }
     else if(tab==='disclaimer') body.innerHTML = helpRenderDisclaimer();
