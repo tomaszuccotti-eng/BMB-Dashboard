@@ -13330,8 +13330,12 @@ function eqDrawHeatmapPDF(pdf, HD, x, y, W, H){
       <div style="font-size:12px;color:var(--text3);font-family:var(--mono);margin-bottom:20px;">Instrumentos de deuda negociados en el mercado de capitales. Aceptá cualquier empresa.</div>
       <div id="mav-global-drop" class="mav-dropzone" onclick="document.getElementById('mav-global-input').click()">
         <div style="font-size:28px;margin-bottom:10px;opacity:.5;">📂</div>
-        <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:4px;">Arrastrá el ZIP de CENDEU aquí</div>
-        <div style="font-size:11px;color:var(--text3);line-height:1.6;">En CENDEU (MAV) descargá en formato <strong style="color:var(--text2);">CSV</strong> y arrastrá acá el <strong style="color:var(--text2);">.zip</strong> (cendeu-XXXXXXXXXX.zip)<br>o hacé click para seleccionarlo</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px;">Arrastrá el ZIP de CENDEU aquí</div>
+        <ol style="display:inline-block;text-align:left;margin:0;padding:0 0 0 18px;font-size:11px;color:var(--text3);line-height:1.7;max-width:520px;">
+          <li>Entrá al sitio de MAV con el botón <strong style="color:var(--text2);">Ir a MAV</strong>.</li>
+          <li>Escribí el CUIT (XX-XXXXXXXX-X) y descargá en formato <strong style="color:var(--text2);">CSV</strong>.</li>
+          <li>Arrastrá acá el <strong style="color:var(--text2);">.zip</strong> descargado (cendeu-XXXXXXXXXX.zip) o hacé click para seleccionarlo.</li>
+        </ol>
         <input type="file" id="mav-global-input" accept=".zip" style="display:none" onchange="mavHandleFile(this.files[0],null,'mav-global-results')">
       </div>
       <div id="mav-global-results" style="margin-top:24px;"></div>
@@ -20288,7 +20292,7 @@ function renderEquity(){
   // TAB SWITCHING
   // ─────────────────────────────────────────────────────────────
   window.earShowView=function(view){
-    window._helpKey = 'ear.' + view;
+    window._helpKey = 'ear.usa';
     // Los tabs de empresa sólo viven en la ficha; ocultarlos al cambiar de vista
     const topTabs=document.getElementById('earTopTabs');
     if(topTabs && view!=='buscar') topTabs.style.display='none';
@@ -25539,8 +25543,13 @@ function renderCheques(cheques){
     wrap.innerHTML=title+`
       <div id="${dropId}" class="mav-dropzone" onclick="document.getElementById('${inputId}').click()">
         <div style="font-size:22px;margin-bottom:8px;opacity:.5;">📂</div>
-        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:3px;">Arrastrá el ZIP de CENDEU para ${ticker}</div>
-        <div style="font-size:11px;color:var(--text3);line-height:1.6;">En CENDEU (MAV) descargá en formato <strong style="color:var(--text2);">CSV</strong> y arrastrá el <strong style="color:var(--text2);">.zip</strong> · debe corresponder al CUIT ${cuit||'de esta empresa'}</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px;">Arrastrá el ZIP de CENDEU para ${ticker}</div>
+        <ol style="display:inline-block;text-align:left;margin:0;padding:0 0 0 18px;font-size:11px;color:var(--text3);line-height:1.7;max-width:520px;">
+          <li>Copiá el CUIT con el botón <strong style="color:var(--text2);">Copiar CUIT</strong> de arriba.</li>
+          <li>Entrá al sitio de MAV con el botón <strong style="color:var(--text2);">Ir a MAV</strong>.</li>
+          <li>Pegá el CUIT (XX-XXXXXXXX-X) y descargá en formato <strong style="color:var(--text2);">CSV</strong>.</li>
+          <li>Arrastrá acá el <strong style="color:var(--text2);">.zip</strong> descargado (cendeu-XXXXXXXXXX.zip) o hacé click para seleccionarlo.</li>
+        </ol>
         <input type="file" id="${inputId}" accept=".zip" style="display:none"
           onchange="document.getElementById('${dropId}').style.display='none';mavHandleFile(this.files[0],'${cuit||''}','${resultId}')">
       </div>
@@ -29443,10 +29452,73 @@ Además, el botón **↻** del topbar recarga la lista de templates desde el ser
 [[fold:Generar reporte]]
 Al final del **panel izquierdo** está el botón **Generar reporte**, que te permite descargar el análisis de la empresa en **PDF** o **HTML**. El reporte toma la vista tal como la tenés configurada en ese momento —tablas, gráficos y KPIs— para que puedas guardarla o compartirla fuera del dashboard.
 [[/fold]]` },
-    'ear.buscar':   { t:'Empresas ARG · Buscar', b:'(pendiente)' },
-    'ear.sector':   { t:'Empresas ARG · Scoring de Liquidez', b:'(pendiente)' },
-    'ear.deudores': { t:'Empresas ARG · Central de Deudores', b:'(pendiente)' },
-    'ear.mav':      { t:'Empresas ARG · MAV', b:'(pendiente)' }
+    'ear.usa': { t:'Empresas ARG', b:
+`En esta sección podés consultar información de empresas argentinas que forman parte de la base de datos de Research. El universo disponible es el que mantiene el equipo; si necesitás una empresa que no figura, podés solicitar que se agregue (ver la pestaña Contacto).
+
+[[info]]OJO: toda la información de estados contables proviene de Economatica. Prestá especial atención a la fecha del balance que estás mirando: no siempre está actualizado al último balance disponible, a veces tiene lag. Un balance viejo no necesariamente refleja la situación actual de la empresa.[[/info]]
+
+[[fold:Buscar empresa]]
+El universo disponible es el que mantiene la base de datos de Research, alimentada con datos de Economatica. Si una empresa no está cargada, podés solicitar que se agregue (ver la pestaña Contacto).
+
+Para acceder podés usar el buscador, que admite tanto el ticker como el nombre de la empresa — escribí cualquiera de los dos y seleccioná la opción que corresponda. Además, hay una serie de atajos que te llevan directo a empresas puntuales, sin necesidad de buscarlas.
+[[/fold]]
+
+[[fold:Qué hay en cada pestaña]]
+El análisis de cada empresa está organizado en pestañas. Según los datos disponibles para cada empresa, algunas pueden no aparecer.
+
+**Financials** — gráficos y tablas de los estados contables de la empresa (balance, resultados y flujo de efectivo), construidos a partir de los datos de Economatica. Podés ordenar las columnas del período más reciente al más antiguo o al revés.
+
+**Ratios** — la evolución de los principales ratios para evaluar a la empresa, calculados período a período a partir de los datos de Economatica.
+
+**Deuda bancaria** — la situación de la empresa en la Central de Deudores del BCRA, consultada por CUIT. Muestra deudas, situación y entidades informadas.
+
+**MAV** — información de la empresa sobre instrumentos negociados en el Mercado Argentino de Valores (cheques, pagarés y demás), a partir de un archivo que descargás del sitio de MAV. Pasos:
+
+1. Copiá el CUIT de la empresa con el botón **Copiar CUIT** (te da el CUIT asociado a la empresa abierta).
+2. Entrá al sitio de MAV con el botón **Ir a MAV**, que te redirige a la página de CENDEU.
+3. Pegá el CUIT con guiones (XX-XXXXXXXX-X) y descargá con la opción CSV.
+4. Cargá el .zip descargado (cendeu-XXXXXXXXXX.zip) en la pestaña MAV, arrastrándolo a la zona de carga o haciendo click para seleccionarlo.
+
+El dashboard procesa el archivo y arroja gráficos, tablas y métricas de los instrumentos negociados.
+
+**Precios** — la evolución histórica del precio de la acción, para las empresas que cotizan.
+
+**Scoring** — un scoring de liquidez de corto plazo (calificación del 0 al 10) que permite calificar la situación de cada empresa. Surge de una ponderación de ratios financieros y contables de la empresa. En términos generales, valores menores a 4 son una señal de alarma, aunque no es una regla exacta porque puede existir estacionalidad. Incluye el histórico de la empresa y su comparación contra el sector. Prestá atención a la fecha del balance de cada registro.
+[[/fold]]
+
+[[fold:Generar reporte]]
+Al final del panel izquierdo está el botón **Generar reporte**, que te permite descargar el análisis de la empresa en **PDF** o **HTML**. El reporte toma la vista tal como la tenés configurada en ese momento, para que puedas guardarla o compartirla fuera del dashboard.
+
+[[info]]Importante: el reporte solo incluye las secciones que ya hayas abierto. Las pestañas se cargan recién cuando entrás a ellas, así que antes de generar el reporte conviene pasar por cada una (Financials, Ratios, Deuda bancaria, MAV, Precios, Scoring) para que se rendericen y se incluyan completas.[[/info]]
+[[/fold]]
+
+[[hr]]
+
+**Herramientas**
+
+Además de la ficha de cada empresa, en el panel izquierdo tenés tres herramientas de consulta general:
+
+[[fold:Scoring de Liquidez]]
+Agrupa por sector el scoring de liquidez de todas las empresas analizadas, lo que permite comparar empresas dentro de un mismo sector y ver cómo se ubica cada una frente a sus pares.
+
+El scoring es una calificación de liquidez de corto plazo del 0 al 10, que surge de una ponderación de ratios financieros y contables de la empresa. En términos generales, valores menores a 4 son una señal de alarma, aunque no es una regla exacta porque puede existir estacionalidad. Prestá atención a la fecha del balance: indica la última actualización del scoring de cada empresa.
+[[/fold]]
+
+[[fold:Central de Deudores]]
+Consulta la Central de Deudores del BCRA por CUIT. Ingresás cualquier CUIT y obtenés cheques rechazados, situación actual, exposición crediticia por banco e historial de los últimos 24 meses.
+[[/fold]]
+
+[[fold:MAV (CENDEU)]]
+Muestra los instrumentos negociados en el Mercado Argentino de Valores (cheques, pagarés y demás) asociados a un CUIT, a partir de un archivo que descargás del sitio de MAV.
+
+Pasos:
+
+1. Entrá al sitio de MAV con el botón **Ir a MAV**, que te redirige a la página de CENDEU.
+2. Escribí el CUIT con guiones (XX-XXXXXXXX-X) y descargá con la opción CSV.
+3. Cargá el .zip descargado (cendeu-XXXXXXXXXX.zip) en la sección MAV, arrastrándolo a la zona de carga o haciendo click para seleccionarlo.
+
+El dashboard procesa el archivo y arroja gráficos, tablas y métricas de los instrumentos negociados.
+[[/fold]]` }
   };
   const HELP_DISCLAIMER_ES = `Los analistas empleados por BMB, un agente de bolsa (broker-dealer) no estadounidense, no están obligados a rendir el examen de analista de FINRA. La información contenida en este informe está destinada exclusivamente a determinados "grandes inversores institucionales estadounidenses" (major U.S. institutional investors) y no podrá ser utilizada ni invocada por ninguna otra persona para ningún fin. Dicha información se proporciona únicamente con fines informativos y no constituye una invitación a comprar ni una oferta de venta de valor alguno bajo la Securities Act de 1933, con sus modificaciones, ni bajo ninguna otra ley, norma o regulación de valores federal o estatal de los Estados Unidos. Las oportunidades de inversión analizadas en este informe pueden resultar inadecuadas para ciertos inversores en función de sus objetivos de inversión específicos, su tolerancia al riesgo y su situación financiera. En aquellas jurisdicciones en las que BMB no se encuentre registrada o habilitada para operar en valores u otros productos financieros, las operaciones solo podrán ejecutarse conforme a la legislación y normativa aplicable, la cual puede variar de una jurisdicción a otra y que puede exigir que toda operación se realice de acuerdo con las exenciones aplicables a los requisitos de registro o habilitación. La información contenida en esta publicación se basa en fuentes que se consideran confiables; no obstante, BMB no efectúa manifestación alguna respecto de su integridad o exactitud. Todas las opiniones aquí expresadas reflejan el juicio del autor al momento original de su publicación, con independencia de la fecha en que usted reciba dicha información, y están sujetas a cambios sin previo aviso. BMB puede haber emitido otros informes que resulten incompatibles con la información presentada en este informe, o que arriben a conclusiones diferentes. Dichas publicaciones reflejan los distintos supuestos, puntos de vista y métodos analíticos de los analistas que las elaboraron. El rendimiento pasado no debe interpretarse como indicación ni garantía de rendimientos futuros, y no se otorga manifestación ni garantía alguna, expresa o implícita, en relación con el rendimiento futuro. La información aquí contenida puede incluir declaraciones prospectivas (forward-looking statements) en el sentido de las leyes federales de valores de los Estados Unidos, las cuales están sujetas a riesgos e incertidumbres. Entre los factores que podrían ocasionar que los resultados reales y la situación financiera de una compañía difieran de las expectativas se incluyen, sin limitación: la incertidumbre política, los cambios en las condiciones económicas generales que afecten adversamente el nivel de demanda de los productos o servicios de la compañía, las variaciones en los mercados de divisas, los cambios en los mercados financieros internacionales y domésticos y en el entorno competitivo, y demás factores relacionados con lo anterior. Todas las declaraciones prospectivas contenidas en este informe quedan plenamente condicionadas por la presente advertencia. Otros países: las leyes y regulaciones de otros países también pueden restringir la distribución de este informe. Toda persona que se encuentre en posesión de este documento debe informarse acerca de las posibles restricciones legales y observarlas en consecuencia.`;
 
@@ -29484,6 +29556,8 @@ Equipo: Research BullMarket`;
     esc = esc.replace(/\[\[warn\]\]([\s\S]*?)\[\[\/warn\]\]/g,
       '<div class="help-warn">$1</div>');
     esc = esc.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    // Línea divisoria: [[hr]] en su propia línea. Se protege con placeholder.
+    esc = esc.replace(/\[\[hr\]\]/g, '\u0000HR\u0000');
     // Acordeones: [[fold:Título]]…[[/fold]]. El cuerpo se renderiza recursivamente
     // (admite párrafos, **negrita**, íconos, info/warn) y se protege del split de
     // párrafos con un placeholder. Comportamiento exclusivo: ver helpFoldToggle().
@@ -29504,6 +29578,10 @@ Equipo: Research BullMarket`;
     let out = _renderBlocks(esc);
     out = out.replace(/<p style="margin:0 0 12px;">\u0000FOLD(\d+)\u0000<\/p>/g, (_,i)=>_folds[+i]);
     out = out.replace(/\u0000FOLD(\d+)\u0000/g, (_,i)=>_folds[+i]);
+    out = out.replace(/<p style="margin:0 0 12px;">\u0000HR\u0000<\/p>/g,
+      '<hr style="border:none;border-top:1px solid var(--border);margin:22px 0;">');
+    out = out.replace(/\u0000HR\u0000/g,
+      '<hr style="border:none;border-top:1px solid var(--border);margin:22px 0;">');
     return out;
   }
 
