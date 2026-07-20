@@ -37,6 +37,8 @@
   --mono: 'DM Mono', monospace;
   --sans: 'DM Sans', sans-serif;
   --display: 'Syne', sans-serif;
+  /* FAL — tokens semánticos (déficit/equilibrio/superávit y escala de heatmap) */
+  --fal-ok:#3fb950; --fal-ok2:#2f8f6b; --fal-warn:#d4a017; --fal-warn2:#c47a2a; --fal-alert:#f85149;
 }
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 body { background:var(--bg); color:var(--text); font-family:var(--sans); font-size:13px; min-height:100vh; overflow-x:hidden; }
@@ -158,10 +160,10 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 }
 .mosaic {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   grid-auto-rows: 1fr;
   gap: clamp(10px, 1.5vh, 14px);
-  max-width: 720px;
+  max-width: 1080px;
   width: 100%;
   flex: 1 1 auto;
   min-height: 0;
@@ -1985,6 +1987,153 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 #app-rf 50%{opacity:.35}}
 
 
+
+/* ══════════════════ FAL — Fondo de Asistencia Laboral ══════════════════ */
+/* Paleta: usa variables del dashboard. Tokens semánticos propios: --fal-ok/--fal-warn/--fal-alert */
+#app-fal .fal-wrap{max-width:1340px;margin:0 auto;padding:0 20px 60px}
+/* norma legal bajo el título de la topbar la ponemos en el cuerpo */
+#app-fal .fal-norm{font-family:var(--mono);font-size:10.5px;color:var(--text3);margin-bottom:14px}
+
+/* layout: sidebar propio + main. El sidebar es el nuestro (230px). */
+#app-fal .fal-body{display:flex;height:calc(100vh - 52px);overflow:hidden}
+#app-fal .fal-main{flex:1;min-width:0;overflow-y:auto;background:var(--bg3);padding:20px 22px}
+
+/* ---------- sidebar (patrón dashboard) ---------- */
+#app-fal .fal-sidebar{width:230px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+#app-fal .fal-sb-scroll{flex:1;overflow-y:auto;overflow-x:hidden}
+#app-fal .fal-grp{border-bottom:1px solid var(--border);padding:13px 15px}
+#app-fal .fal-grp-h{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--text3);margin-bottom:10px}
+#app-fal .fal-f{margin-bottom:9px}
+#app-fal .fal-f:last-child{margin-bottom:0}
+#app-fal .fal-f label{display:block;font-size:11.5px;color:var(--text2);margin-bottom:3px}
+#app-fal .fal-hint{font-size:10px;color:var(--text3);margin-top:2px;line-height:1.35}
+#app-fal input[type=number],#app-fal select{width:100%;padding:5px 7px;border:1px solid var(--border2);border-radius:4px;font-family:var(--mono);font-size:12px;background:var(--bg);color:var(--text)}
+#app-fal input[type=number]:focus,#app-fal select:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:var(--accent)}
+#app-fal .fal-row2{display:grid;grid-template-columns:1fr 1fr;gap:7px;align-items:end}
+#app-fal .fal-row2 .fal-f{display:flex;flex-direction:column}
+#app-fal .fal-row2 .fal-f label{flex:1}
+#app-fal .fal-chk{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text2);margin-bottom:5px;cursor:pointer}
+#app-fal .fal-chk input{accent-color:var(--accent);width:13px;height:13px;cursor:pointer}
+#app-fal .fal-seg{display:flex;border:1px solid var(--border2);border-radius:4px;overflow:hidden}
+#app-fal .fal-seg button{flex:1;padding:5px;font-size:11.5px;background:var(--bg);border:none;cursor:pointer;font-family:inherit;color:var(--text3)}
+#app-fal .fal-seg button.on{background:var(--accent);color:#fff;font-weight:600}
+#app-fal .fal-seg-sm{width:auto;flex:0 0 auto}
+#app-fal .fal-seg-sm button{padding:4px 11px;font-size:11px;white-space:nowrap}
+#app-fal .fal-uso-slider{display:flex;align-items:center;gap:8px}
+#app-fal .fal-uso-slider label{font-size:11px;color:var(--text2);white-space:nowrap}
+#app-fal .fal-uso-slider input[type=range]{width:130px;accent-color:var(--accent);cursor:pointer}
+#app-fal .fal-uso-slider output{font-family:var(--mono);font-size:11.5px;font-weight:600;min-width:34px;text-align:right;color:var(--accent)}
+#app-fal .fal-adv-t{width:100%;text-align:left;background:none;border:none;font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--text3);cursor:pointer;padding:0;display:flex;justify-content:space-between;align-items:center}
+#app-fal .fal-adv-t:hover{color:var(--accent)}
+#app-fal .fal-adv-b{margin-top:11px;display:none}
+#app-fal .fal-adv-b.on{display:block}
+
+/* ---------- derived list ---------- */
+#app-fal .fal-derived{background:none;border:none;padding:0;margin:0}
+#app-fal .fal-dv{display:flex;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:10.5px;padding:2.5px 0}
+#app-fal .fal-dv span:first-child{color:var(--text3)}
+#app-fal .fal-dv b{font-weight:600;color:var(--text)}
+#app-fal .fal-dv.sep{border-top:1px solid var(--border);margin-top:4px;padding-top:5px}
+#app-fal .fal-dv.excl{text-decoration:line-through;text-decoration-color:var(--border2);color:var(--text3)}
+#app-fal .fal-dv.excl b{color:var(--text3);font-weight:400}
+
+/* ---------- verdict ---------- */
+#app-fal .fal-verdict{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:4px;padding:15px 17px;margin-bottom:16px}
+#app-fal .fal-verdict.def{border-left-color:var(--fal-alert)}
+#app-fal .fal-verdict.eq{border-left-color:var(--fal-warn)}
+#app-fal .fal-v-tag{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--text3);margin-bottom:5px}
+#app-fal .fal-v-main{font-size:16px;font-weight:600;letter-spacing:-.01em;margin-bottom:6px;color:var(--text)}
+#app-fal .fal-v-sub{font-size:12.5px;color:var(--text2);line-height:1.5}
+#app-fal .fal-v-cola{font-size:12.5px;color:var(--text2);line-height:1.5;margin-top:9px;padding-top:9px;border-top:1px solid var(--border)}
+
+/* ---------- sim head + top grid ---------- */
+#app-fal .fal-sim-head{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:13px 16px;margin-bottom:9px}
+#app-fal .fal-sim-head h2{font-size:16px;font-weight:650;letter-spacing:-.01em;color:var(--text)}
+#app-fal .fal-sim-head .fal-sh-sub{font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:4px}
+#app-fal .fal-top-grid{display:grid;grid-template-columns:300px 1fr;grid-template-rows:auto auto 1fr;gap:9px 11px;margin-bottom:16px}
+#app-fal .fal-top-grid .fal-derived-card{grid-column:1;grid-row:1 / span 3}
+#app-fal .fal-top-grid .fal-kpis-row{grid-column:2;grid-row:1;display:grid;grid-template-columns:1fr 1fr;gap:9px 11px}
+#app-fal .fal-top-grid .fal-kpis-row2{grid-column:2;grid-row:2;display:grid;grid-template-columns:1fr 1fr;gap:9px 11px}
+#app-fal .fal-top-grid .fal-verdict{grid-column:2;grid-row:3;margin-bottom:0}
+#app-fal .fal-derived-card{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:12px 13px}
+#app-fal .fal-derived-card .fal-k{font-family:var(--mono);font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin-bottom:9px}
+#app-fal .fal-kpi.flexcol{display:flex;flex-direction:column;height:100%}
+#app-fal .fal-kpi .fal-foot{margin-top:auto;padding-top:4px}
+#app-fal .fal-kpi{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:11px 12px}
+#app-fal .fal-kpi.big{padding:14px 16px}
+#app-fal .fal-kpi .fal-k{font-family:var(--mono);font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin-bottom:5px}
+#app-fal .fal-kpi .fal-v{font-size:19px;font-weight:650;font-variant-numeric:tabular-nums;letter-spacing:-.02em;color:var(--text)}
+#app-fal .fal-kpi.big .fal-v{font-size:25px}
+#app-fal .fal-kpi .fal-n{font-size:10.5px;color:var(--text3);margin-top:2px}
+
+/* ---------- cards ---------- */
+#app-fal .fal-card{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:15px 17px;margin-bottom:16px}
+#app-fal .fal-card-h{display:flex;justify-content:space-between;align-items:baseline;gap:14px;margin-bottom:4px;flex-wrap:wrap}
+#app-fal .fal-card-t{font-size:13.5px;font-weight:600;color:var(--text)}
+#app-fal .fal-card-d{font-size:11.5px;color:var(--text3);margin-bottom:12px;max-width:84ch;line-height:1.5}
+#app-fal .fal-card-d.wide{max-width:none}
+#app-fal .fal-card-d b{color:var(--text2)}
+#app-fal .fal-legend{display:flex;gap:13px;flex-wrap:wrap;font-size:11px;color:var(--text2)}
+#app-fal .fal-legend i{display:inline-block;width:14px;height:2.5px;margin-right:5px;vertical-align:middle;border-radius:2px}
+#app-fal #FAL_gCaja svg,#app-fal #FAL_hmGracia svg{display:block;width:100%;height:auto;overflow:visible}
+#app-fal #FAL_gCaja{max-width:1040px;margin:0 auto}
+#app-fal .fal-gl{stroke:var(--border2);stroke-width:1}
+#app-fal .fal-ax{font-family:var(--mono);font-size:8.5px;fill:var(--text3)}
+
+/* ---------- table ---------- */
+#app-fal .fal-tw{overflow-x:auto;margin:0 -17px}
+#app-fal table.fal-tbl{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:11px}
+#app-fal .fal-tbl th,#app-fal .fal-tbl td{padding:5px 9px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
+#app-fal .fal-tbl th{font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);font-weight:500;background:var(--bg3);position:sticky;top:0}
+#app-fal .fal-tbl th:first-child,#app-fal .fal-tbl td:first-child{text-align:left;padding-left:17px}
+#app-fal .fal-tbl th:last-child,#app-fal .fal-tbl td:last-child{padding-right:17px}
+#app-fal .fal-tbl td{font-variant-numeric:tabular-nums;color:var(--text)}
+#app-fal .fal-tbl tbody tr:hover{background:var(--accent-light)}
+#app-fal .fal-tbl .off{color:var(--fal-warn)}
+#app-fal .fal-tbl .neg{color:var(--fal-alert)}
+#app-fal .fal-tbl tr.susp td{color:var(--text3);background:var(--accent-light)}
+#app-fal .fal-tbl tr.cruce td{padding:3px 9px;text-align:center;color:var(--text);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;border-top:1px dashed var(--text3);border-bottom:1px dashed var(--text3);background:var(--bg3);position:static}
+#app-fal .fal-tbl tr.crossyr td{border-top:none}
+
+/* ---------- heatmap ---------- */
+#app-fal .fal-hm{border-collapse:collapse;font-family:var(--mono);font-size:11px;width:100%}
+#app-fal .fal-hm td,#app-fal .fal-hm th{border:2px solid var(--bg3);padding:11px 9px;text-align:center;min-width:56px}
+#app-fal .fal-hm th{background:var(--bg3);color:var(--text3);font-size:9.5px}
+#app-fal .fal-hm .cell{color:#fff;font-weight:600}
+#app-fal .fal-hm-uso{width:100%;table-layout:fixed}
+#app-fal .fal-hm-uso th:first-child{width:130px;font-family:var(--mono);letter-spacing:.03em;text-align:left;padding-left:12px}
+#app-fal .fal-hm-uso td,#app-fal .fal-hm-uso th{min-width:0}
+
+/* ---------- responsive ---------- */
+@media(max-width:900px){
+  #app-fal .fal-top-grid{grid-template-columns:1fr;grid-template-rows:none}
+  #app-fal .fal-top-grid .fal-derived-card,#app-fal .fal-top-grid .fal-kpis-row,#app-fal .fal-top-grid .fal-kpis-row2,#app-fal .fal-top-grid .fal-verdict{grid-column:1;grid-row:auto}
+}
+
+/* ---------- tokens semánticos de leyenda (usan variables --fal-*) ---------- */
+#app-fal .fal-legend i.fal-lg-ok{background:var(--fal-ok)}
+#app-fal .fal-legend i.fal-lg-fal{background:var(--fal-warn)}
+#app-fal .fal-legend i.fal-lg-caja{background:var(--fal-alert)}
+
+/* ---------- FAL: doc de metodología dentro del modal de ayuda ---------- */
+.fal-doc{max-width:82ch;color:var(--text)}
+.fal-doc h2{font-size:15px;font-weight:650;margin:26px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--border);color:var(--text)}
+.fal-doc h2:first-child{margin-top:0}
+.fal-doc h3{font-size:12.5px;font-weight:600;margin:16px 0 5px;color:var(--text)}
+.fal-doc p{margin-bottom:9px;color:var(--text2);font-size:13px;line-height:1.5}
+.fal-doc ul{margin:0 0 9px 17px;color:var(--text2);font-size:13px}
+.fal-doc li{margin-bottom:4px}
+.fal-doc b{color:var(--text)}
+.fal-doc i{color:var(--text2)}
+.fal-doc code{font-family:var(--mono);font-size:11.5px;background:var(--bg3);padding:1px 4px;border-radius:3px;border:1px solid var(--border)}
+.fal-doc table{font-family:var(--sans);font-size:12px;margin-bottom:12px;border-collapse:collapse;width:100%}
+.fal-doc th,.fal-doc td{text-align:left;padding:6px 11px 6px 0;white-space:normal;vertical-align:top;border-bottom:1px solid var(--border);color:var(--text2)}
+.fal-doc th{background:none;color:var(--text3);font-weight:600}
+.fal-doc .flag{background:var(--accent-light);border-left:2px solid var(--fal-alert);padding:9px 12px;margin:9px 0;font-size:12.5px;color:var(--text2);border-radius:0 4px 4px 0}
+.fal-doc .flag b{color:var(--fal-alert)}
+.fal-doc .note{background:var(--accent-light);border-left:2px solid var(--accent);padding:9px 12px;margin:9px 0;font-size:12.5px;color:var(--text2);border-radius:0 4px 4px 0}
+.fal-doc a{color:var(--accent)}
+
 </style>
 </head>
 <body>
@@ -2025,6 +2174,19 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
         <div class="mosaic-desc">Research y reportes de mercado.</div>
       </div>
 
+      <!-- FAL (fila 1, col 3) -->
+      <div class="mosaic-card active-module" onclick="enterFal()" style="cursor:pointer;">
+        <div class="mosaic-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="7" r="4"/>
+            <path d="M5.5 21v-2a4 4 0 0 1 4-4h5a4 4 0 0 1 4 4v2"/>
+            <path d="M2 14h4v5H2z"/>
+          </svg>
+        </div>
+        <div class="mosaic-name">FAL</div>
+        <div class="mosaic-desc">Fondo de Asistencia Laboral — Simulador de cobertura.</div>
+      </div>
+
       <!-- 3 — Calculadoras -->
       <div class="mosaic-card active-module" onclick="enterTest()" style="cursor:pointer;">
         <div class="mosaic-icon">
@@ -2054,6 +2216,18 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
         </div>
         <div class="mosaic-name">Renta Variable</div>
         <div class="mosaic-desc">Acciones del mercado argentino, ADR y CEDEARs.</div>
+      </div>
+
+      <!-- 6 — Próximamente -->
+      <div class="mosaic-card coming-soon">
+        <div class="mosaic-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+        <div class="mosaic-name">Próximamente</div>
+        <div class="mosaic-desc">Nuevas herramientas en camino.</div>
       </div>
     </div>
   </div>
@@ -13491,6 +13665,176 @@ function eqDrawHeatmapPDF(pdf, HD, x, y, W, H){
 <!-- ══════════════════ APP BALANCES ══════════════════ -->
 
 <!-- ══════════════════ APP INFORMES ══════════════════ -->
+<!-- ══════════════════ APP FAL ══════════════════ -->
+<div id="app-fal" style="display:none;">
+
+  <!-- Header -->
+  <div style="height:52px;display:flex;align-items:center;padding:0 24px;border-bottom:1px solid var(--border);background:var(--bg);gap:14px;position:sticky;top:0;z-index:50;flex-shrink:0;">
+    <button onclick="backToLanding()" class="tb-home" title="Inicio"><img src="data:image/webp;base64,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" alt="Inicio"></button>
+    <div style="width:1px;height:20px;background:var(--border2);flex-shrink:0;"></div>
+    <!-- Título grande -->
+    <span style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;">Fondo de Asistencia Laboral</span>
+    <span style="font-family:var(--mono);font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Ley 27.802 Tít. II · Decreto 408/2026 · LCT 20.744 t.o. — vigencia 01/11/2026</span>
+    <div style="flex:1;"></div>
+      <button onclick="window._helpKey='fal';showHelp()" class="tb-icon tb-help" data-tip="Ayuda">i</button>
+      <button onclick="toggleTheme()" class="tb-icon tb-theme" data-tip="Cambiar a modo claro/oscuro"><span class="theme-btn-icon">☀</span></button>
+  </div>
+
+  <!-- Layout split: sidebar + main -->
+  <div class="fal-body">
+
+    <!-- Sidebar (patrón dashboard) con parámetros -->
+    <div class="fal-sidebar">
+      <!-- Sidebar head -->
+      <div style="padding:12px 12px 10px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:8px;">
+        <span style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);flex:1;">Parámetros</span>
+      </div>
+      <!-- Sidebar scroll: parámetros -->
+      <div class="fal-sb-scroll">
+
+        <div class="fal-grp">
+          <div class="fal-grp-h">Empresa</div>
+          <div class="fal-f">
+            <label>Tipo</label>
+            <div class="fal-seg" id="FAL_segTipo">
+              <button data-v="mipyme" class="on">MiPyME</button>
+              <button data-v="grande">Grande</button>
+            </div>
+            <div class="fal-hint">Por certificado MiPyME (Res. 220/19), no por nómina.</div>
+          </div>
+          <div class="fal-row2">
+            <div class="fal-f"><label>Empleados</label><input type="number" id="FAL_empleados" value="20" min="1" step="1"></div>
+            <div class="fal-f"><label>Salario prom. ($)</label><input type="number" id="FAL_salario" value="1500000" step="50000"></div>
+          </div>
+          <div class="fal-row2">
+            <div class="fal-f"><label>Antigüedad prom. (años)</label><input type="number" id="FAL_antig" value="5" min="0" step="0.5"></div>
+            <div class="fal-f"><label>Ajuste salarial (%/año)</label><input type="number" id="FAL_ajuste" value="20" step="1"></div>
+          </div>
+          <div class="fal-hint">Antigüedad en 0 mide sólo lo devengado desde que existe el fondo.</div>
+        </div>
+
+        <div class="fal-grp">
+          <div class="fal-grp-h">Rotación</div>
+          <div class="fal-f"><label>Rotación (%/año)</label><input type="number" id="FAL_rotacion" value="5" step="0.5" min="0"></div>
+          <div class="fal-f" style="margin-top:9px">
+            <label>Gracia — meses sin usar el fondo</label>
+            <input type="number" id="FAL_gracia" value="6" min="6" step="1">
+            <div class="fal-hint">El fondo capitaliza intacto durante este período; recién después se usa. Mínimo 6 meses (la carencia legal, art. 65). Los despidos anteriores se pagan de caja.</div>
+          </div>
+        </div>
+
+        <div class="fal-grp">
+          <div class="fal-grp-h">Fondo</div>
+          <div class="fal-f">
+            <label>Alícuota</label>
+            <select id="FAL_alicuota"></select>
+            <div class="fal-hint" id="FAL_alicHint"></div>
+          </div>
+          <div class="fal-row2">
+            <div class="fal-f"><label>Rendimiento bruto (TNA %)</label><input type="number" id="FAL_rend" value="25" step="1"></div>
+            <div class="fal-f"><label>Comisión (TNA %)</label><input type="number" id="FAL_comision" value="1" step="0.1" max="1"></div>
+          </div>
+          <div class="fal-hint" style="margin-top:-4px">Nominales anuales, como se cotiza un FCI. El motor capitaliza mensualmente.</div>
+          <div class="fal-f" style="margin-top:9px">
+            <label>Aportes por año</label>
+            <div class="fal-seg" id="FAL_segAportes">
+              <button data-v="12">12</button>
+              <button data-v="13" class="on">13 (con SAC)</button>
+            </div>
+            <div class="fal-hint">Supuesto: el SAC integra la base SIPA. No está expreso en la ley.</div>
+          </div>
+        </div>
+
+        <div class="fal-grp">
+          <div class="fal-grp-h">Indemnización</div>
+          <label class="fal-chk"><input type="checkbox" id="FAL_incPre" checked> Preaviso (art. 232)</label>
+          <label class="fal-chk"><input type="checkbox" id="FAL_incInt" checked> Integración del mes (art. 233)</label>
+          <label class="fal-chk"><input type="checkbox" id="FAL_incSac" checked> SAC sobre accesorios</label>
+          <div class="fal-f" style="margin-top:8px"><label>Días de integración</label><input type="number" id="FAL_diasInt" value="15" min="0" max="30" step="1"></div>
+        </div>
+
+        <div class="fal-grp">
+          <button class="fal-adv-t" id="FAL_advT"><span>Configuración avanzada</span><span id="FAL_advI">+</span></button>
+          <div class="fal-adv-b" id="FAL_advB">
+            <div class="fal-f">
+              <label>Tope CCT mensual ($)</label>
+              <input type="number" id="FAL_topeCct" value="0" step="100000" min="0">
+              <div class="fal-hint">3× el salario promedio del CCT. 0 = sin dato. El piso Vizzoti (67%) se aplica solo cuando hay tope.</div>
+            </div>
+            <div class="fal-f">
+              <label>Techo art. 66 (% del pasivo de la nómina)</label>
+              <input type="number" id="FAL_techo" value="100" step="10" min="0">
+              <div class="fal-hint">Cobertura del pasivo contingente de toda la nómina que habilitaría suspender el aporte. El % real es reglamentación pendiente; podría ser mayor a 100% por "desvinculaciones simultáneas" (D. art. 4).</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <!-- Pie fijo del sidebar: Generar reporte -->
+      <div style="flex-shrink:0;padding:16px 14px;border-top:1px solid var(--border);background:var(--bg2);">
+        <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">Reporte</div>
+        <button onclick="if(window.FAL_render)window.FAL_render();" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-family:var(--mono);font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .15s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)';this.style.background='var(--accent-light)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)';this.style.background='var(--bg3)'">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+          </svg>
+          Generar reporte
+        </button>
+      </div>
+    </div>
+
+    <!-- Main: panel de simulación -->
+    <div class="fal-main">
+      <div class="fal-wrap" style="max-width:1400px;margin:0 auto;padding:0">
+
+        <div class="fal-sim-head" id="FAL_simHead"></div>
+        <div class="fal-top-grid">
+          <div class="fal-derived-card">
+            <div class="fal-k">Parámetros derivados</div>
+            <div class="fal-derived" id="FAL_derived"></div>
+          </div>
+          <div class="fal-kpis-row" id="FAL_kpis"></div>
+          <div class="fal-kpis-row2" id="FAL_kpis2"></div>
+          <div class="fal-verdict" id="FAL_verdict"></div>
+        </div>
+
+        <div class="fal-card">
+          <div class="fal-card-h">
+            <div class="fal-card-t">Matriz de uso</div>
+            <div class="fal-seg fal-seg-sm" id="FAL_segUnidad">
+              <button data-v="meses" class="on">Meses</button>
+              <button data-v="anios">Años</button>
+            </div>
+          </div>
+          <div class="fal-card-d wide">Hay un <b>trade-off entre corto y largo plazo</b>. El FAL, como todo fondo capitalizable, se beneficia del interés compuesto: cuanto más tiempo se deja inmovilizado el capital reinvirtiendo los rendimientos, mayor es la ganancia esperada — pero a costa de pagar más despidos con caja propia mientras tanto. Cada celda es un escenario. Las <b>columnas</b> son el período de gracia: los meses en que el fondo acumula sin tocarse, durante los cuales toda indemnización se paga de caja y no con el FAL. Las <b>filas</b> son cómo se pagan después las indemnizaciones: la fila 100% las cubre íntegramente con el fondo, pudiendo descapitalizarlo; la fila 0% no lo toca nunca. El valor de cada celda es el <b>punto de inflexión</b>: los meses hasta que el rendimiento real del fondo —lo que gana por encima de la actualización de sueldos y neto de comisiones— pasa a cubrir el costo de la rotación por sí solo.</div>
+          <div id="FAL_hmGracia" style="overflow-x:auto"></div>
+        </div>
+
+        <div class="fal-card">
+          <div class="fal-card-h">
+            <div class="fal-card-t">Efecto en caja</div>
+            <div class="fal-uso-slider">
+              <label>Uso del fondo</label>
+              <input type="range" id="FAL_usoCaja" min="0" max="100" step="5" value="0">
+              <output id="FAL_usoCajaVal">0%</output>
+            </div>
+          </div>
+          <div class="fal-card-d wide">Todo en <b>términos reales</b> (neto de la actualización salarial), por eso la indemnización es una barra constante. <b>Abajo</b>: la indemnización anual, partida entre lo que paga la empresa de caja (rojo) y lo que cubre el fondo (amarillo). <b>Arriba</b>: el rendimiento real que genera el fondo (verde). La barra de uso fija cuánto se exprime el fondo <b>antes del punto de inflexión</b>: más uso alivia el rojo temprano pero capitaliza menos y corre el punto de inflexión a la derecha. <b>Después del punto de inflexión</b> el comportamiento es siempre el mismo: la renta real del fondo ya alcanza para pagar las indemnizaciones, así que se cubre el 100% con esa renta sin descapitalizar — el rojo desaparece y el fondo sigue creciendo. La barra mueve la frontera entre las dos fases, no el destino.</div>
+          <div class="fal-legend" style="margin-bottom:8px">
+            <span><i class="fal-lg-ok"></i>Rendimiento real del fondo</span>
+            <span><i class="fal-lg-fal"></i>Indemnización pagada con el FAL</span>
+            <span><i class="fal-lg-caja"></i>Indemnización pagada de caja propia</span>
+          </div>
+          <div id="FAL_gCaja"></div>
+          <div style="margin-top:9px;font-size:10.5px;color:var(--text3);line-height:1.5">Supuesto: la rotación mantiene constante la antigüedad promedio, por lo que la indemnización es estable en términos reales. Pasado el punto de inflexión se retira sólo hasta la renta real (rendimiento por encima de la actualización salarial), de modo que el fondo no se descapitaliza.</div>
+          <div class="fal-tw" style="margin-top:14px"><table class="fal-tbl" id="FAL_tblCaja"></table></div>
+          <div id="FAL_tblCajaNota" style="margin-top:9px;font-size:10.5px;color:var(--text3);line-height:1.5"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <div id="app-informes" style="display:none;">
 
   <!-- Header -->
@@ -14033,7 +14377,7 @@ function enterExcel(){
 }
 function backToLanding(){
   ['app','app-equity','app-balances','app-balances-menu','app-excel',
-   'app-rf','app-informes','app-calc-on','legal-footer'
+   'app-rf','app-informes','app-calc-on','app-fal','legal-footer'
   ].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   document.getElementById('landing').style.display='flex';
   window._helpKey = 'landing';
@@ -14055,6 +14399,19 @@ function enterInformes(){
   el.style.display='flex';
   el.style.flexDirection='column';
   if(!window.INF_LOADED) infFetchSheet();
+}
+
+function enterFal(){
+  window._helpKey='fal';
+  document.getElementById('landing').style.display='none';
+  const el=document.getElementById('app-fal');
+  el.style.display='flex';
+  el.style.flexDirection='column';
+  if(typeof window.FAL_init==='function') window.FAL_init();
+  // Popup de bienvenida de FAL (independiente del landing)
+  let dismissed=false;
+  try{ dismissed = localStorage.getItem('bmb_help_fal_dismissed')==='1'; }catch(e){}
+  if(!dismissed && typeof showHelp==='function') showHelp();
 }
 
 // ── INFORMES VIEWER ───────────────────────────────────────────
@@ -23732,7 +24089,8 @@ const LIGHT_VARS = {
   '--text':'#0a0c1a','--text2':'#3a3f5c','--text3':'#8a90b0',
   '--accent':'#1E27F3','--accent2':'#3a42f5','--accent3':'#1E27F3',
   '--accent-light':'rgba(30,39,243,0.08)','--accent-mid':'rgba(30,39,243,0.15)',
-  '--green':'#0d9e6e','--red':'#e03131','--yellow':'#d97706'
+  '--green':'#0d9e6e','--red':'#e03131','--yellow':'#d97706',
+  '--fal-ok':'#0d9e6e','--fal-ok2':'#2f8f6b','--fal-warn':'#d97706','--fal-warn2':'#c47a2a','--fal-alert':'#e03131'
 };
 const DARK_VARS = {
   '--bg':'#0a0c1a','--bg2':'#0d1020','--bg3':'#0f1422','--bg4':'#131929',
@@ -23740,7 +24098,8 @@ const DARK_VARS = {
   '--text':'#e8eaf6','--text2':'#a5b4fc','--text3':'#4a5280',
   '--accent':'#1E27F3','--accent2':'#3a42f5','--accent3':'#1E27F3',
   '--accent-light':'rgba(30,39,243,0.12)','--accent-mid':'rgba(30,39,243,0.20)',
-  '--green':'#3fb950','--red':'#f85149','--yellow':'#d4a017'
+  '--green':'#3fb950','--red':'#f85149','--yellow':'#d4a017',
+  '--fal-ok':'#3fb950','--fal-ok2':'#2f8f6b','--fal-warn':'#d4a017','--fal-warn2':'#c47a2a','--fal-alert':'#f85149'
 };
 let _isDark = true;
 function applyTheme(dark){
@@ -29304,6 +29663,153 @@ window.ons_init = function() {
   const LAG_WARN = '[[warn]]OJO: los datos de precio y volumen NO son en directo, tienen un lag de aproximadamente dos horas.[[/warn]]';
   // Cada entrada: { t: título completo, b: cuerpo }. Soporta **negrita** y [[warn]]…[[/warn]].
   const HELP = {
+    'fal': { t:'Fondo de Asistencia Laboral', html:
+`<h2>Qué hace esta calculadora</h2>
+<p>Responde una pregunta: <b>cuánto del pasivo por desvinculaciones está prefinanciado en el FAL, y cuánto sigue saliendo de caja propia.</b> Es un modelo económico de orden de magnitud, no una liquidación legal.</p>
+<div class="note">La indemnización legal no cambia con el FAL. El régimen sólo cambia <b>de dónde sale la plata</b> (art. 58, último párrafo: "El presente régimen no modifica, sustituye, ni altera el régimen indemnizatorio").</div>
+
+<h2>Mecanismo del FAL</h2>
+<table>
+<tr><th style="width:150px">Concepto</th><th>Regla</th><th style="width:105px">Norma</th></tr>
+<tr><td>Naturaleza</td><td>Cuenta individual del empleador, común y <b>no individualizable por trabajador</b>. Patrimonio separado, inembargable.</td><td><code>L. 59, 62, 74</code></td></tr>
+<tr><td>Vehículo</td><td>FCI o fideicomiso financiero autorizado por CNV, a elección del empleador. Identificador único "ID FAL".</td><td><code>L. 59 / D. 5, 8</code></td></tr>
+<tr><td>Aporte</td><td><b>Obligatorio.</b> 1% grandes / 2,5% MiPyME sobre la base de contribuciones patronales SIPA. Máximos 1,5% / 3% sólo por decisión del PEN con aprobación de la Bicameral.</td><td><code>L. 60</code></td></tr>
+<tr><td>Costo neto</td><td><b>≈ 0.</b> Reducción de contribuciones patronales equivalente al aporte.</td><td><code>L. 76 / D. 24</code></td></tr>
+<tr><td>Comisión</td><td>Tope 1% <b>anual, global e integral</b> sobre activos administrados.</td><td><code>L. 71 / D. 20</code></td></tr>
+<tr><td>Inversiones</td><td>Sólo instrumentos emitidos y negociados en Argentina.</td><td><code>D. 11</code></td></tr>
+<tr><td>Carencia</td><td>6 períodos de devengamiento y pago completos y consecutivos desde la primera contribución registrada en ARCA.</td><td><code>L. 65 / D. 15</code></td></tr>
+<tr><td>Cobertura</td><td>Sólo trabajadores registrados con antigüedad ≥ 12 meses. Nunca no registrados.</td><td><code>L. 58 / D. 3.c</code></td></tr>
+<tr><td>Alcance</td><td>Arts. 95, 212, 232, 233, 241, 245, 246, 247, 248, 250, 254 LCT — <b>no sólo el 245</b>. Incluye mutuo acuerdo: el fondo sirve para retiros negociados.</td><td><code>L. 58</code></td></tr>
+<tr><td>Uso</td><td><b>Opcional caso por caso</b>, total o parcial. No limita la responsabilidad del empleador por el pago íntegro.</td><td><code>L. 64</code></td></tr>
+<tr><td>Suspensión</td><td>Si el saldo cubre las contingencias de la nómina, se puede pedir suspender el aporte. <b>Sin reducción de contribuciones durante la suspensión.</b></td><td><code>L. 66 / D. 16, 24</code></td></tr>
+<tr><td>Remanente</td><td>Cese, quiebra o 6 meses sin empleados → cuenta extinguida, fondos al empleador (gravados por Ganancias).</td><td><code>L. 72 / D. 21</code></td></tr>
+<tr><td>Vigencia</td><td>01/11/2026 (prorrogada desde el 01/06/2026).</td><td><code>D. 27</code></td></tr>
+</table>
+
+<h2>Por qué el aporte es neutro en caja</h2>
+<p>El art. 76 da una reducción de contribuciones patronales <b>equivalente</b> al aporte FAL. El decreto (art. 24) precisa la mecánica: el empleador detrae la alícuota FAL de las contribuciones a las Leyes 19.032, 24.013, 24.241 y 24.714, en la misma proporción en que se distribuyen.</p>
+<p>Aportás 2,5% al fondo y pagás 2,5% menos de contribuciones. El flujo mensual no se mueve. La diferencia es de destino: sin FAL ese 2,5% se lo queda el Estado; con FAL es tuyo, capitaliza exento y vuelve si no lo usás. <b>El FAL convierte un gasto en un activo.</b></p>
+<p>Por eso el aporte no aparece en el gráfico de caja: no es un costo. Y por eso suspender el aporte (art. 66) tampoco libera caja — se pierde la reducción en el mismo acto.</p>
+
+<h2>El motor</h2>
+<h3>Paso mensual</h3>
+<p>Cada mes, en este orden: aporte → rendimiento sobre el saldo → comisión sobre el saldo → despidos y aplicación del fondo → evaluación del techo del art. 66 → ajuste salarial. Los resultados se agregan a año para la tabla y los gráficos.</p>
+<p>Mensual y no anual porque las tres cosas que definen el comportamiento son mensuales: la carencia son 6 meses, el aporte se integra con las contribuciones cada mes, y la comisión se devenga sobre el saldo.</p>
+
+<h3>Tasas: TNA de entrada, TEA de trabajo</h3>
+<p>El rendimiento y la comisión se cargan en <b>TNA</b> porque es como se cotiza un FCI. El motor las convierte a efectivas antes de usarlas: <code>TEA = (1 + TNA/12)^12 − 1</code>. Una TNA del 25% es una TEA del 28,07% — tres puntos de diferencia que, capitalizados sobre 20 años, no son un detalle.</p>
+<p>El <b>ajuste salarial</b> se carga directo como efectiva anual: cuando se dice "los salarios suben 20%", se está diciendo que el salario de diciembre es 1,20× el de enero. No hay TNA salarial.</p>
+<p>Dos aclaraciones sobre cómo se combinan las tasas, porque los números del panel no son restas:</p>
+<ul>
+<li><b>Rendimiento neto = (1 + TEA bruta) / (1 + comisión) − 1.</b> La comisión no se resta del rendimiento: se cobra sobre los activos, que ya incluyen el rendimiento. Con 28,07% y 1%, el neto es 26,80%, no 27,07%.</li>
+<li><b>Spread real = (1 + neto) / (1 + ajuste salarial) − 1.</b> Es una tasa real, la misma lógica que se usa contra CER. Un fondo que rinde 26,80% con salarios creciendo 20% no ganó 6,80 puntos: ganó 5,67%.</li>
+</ul>
+<div class="note">El <b>spread real</b> es lo único que hace que el fondo gane terreno contra el pasivo. Si el rendimiento neto iguala al ajuste salarial, el spread es cero y la cobertura se congela: el fondo crece exactamente al mismo ritmo que la indemnización que tiene que pagar. Un rendimiento nominal alto no dice nada por sí solo.</div>
+
+<h3>La carencia de 6 meses</h3>
+<p>El art. 65 de la ley dice que el FAL empieza a responder <i>"una vez que hubiera recibido al menos SEIS (6) aportes mensuales, a efectos de su capitalización y con el fin de garantizar la estabilidad financiera del sistema"</i>. El decreto (art. 15) precisa: seis períodos de devengamiento y pago <b>completos y consecutivos</b>, contados desde el mes en que ARCA registra la primera contribución efectivamente ingresada.</p>
+<p>Es una condición <b>binaria</b>, no un límite de retiro: cumplidos los 6 aportes, el fondo responde con todo lo que tenga. Si el mes 7 hay un despido, se puede aplicar el 100% del saldo acumulado. Nada en la ley ni en el decreto limita qué fracción del saldo se puede usar — el único límite es el saldo mismo, y la decisión del empleador (art. 64).</p>
+<p>En el modelo esto es el input <b>gracia</b>, en meses, con piso de 6 (el mínimo legal). Durante ese período el fondo capitaliza intacto y ningún despido lo toca; recién después se usa según la política. Subirlo —por ejemplo a 24 meses— simula una decisión del empleador de dejar madurar el fondo dos años antes de empezar a usarlo, pagando de caja los despidos de ese lapso. Como capitalizar nunca usa el fondo, la gracia sólo corre el arranque de "mitad" y "usar siempre".</p>
+<p>Dos simplificaciones: se asume que los aportes son <b>continuos desde el mes 1</b> (la ley exige consecutivos — un mes salteado reiniciaría el conteo de la carencia legal), y que el mes 1 de la simulación es el de la primera contribución registrada en ARCA, no la vigencia del régimen. Una empresa que arranca tarde tiene su carencia más tarde.</p>
+
+<h3>El horizonte se deriva del cruce</h3>
+<p>No hay input de horizonte: la vista se ajusta sola al cruce de la política elegida, más un 25% de margen para ver qué pasa después. Un cruce en el año 13 muestra hasta el 16; uno en el 60, hasta el 75. Cuando no hay cruce se muestran 40 años, que ya alcanzan para ver que la curva no se junta.</p>
+<p>El cruce se busca <b>hasta 200 años</b>, muy por encima de cualquier horizonte razonable. Es a propósito: un cruce en el año 70 es información distinta de "no cruza nunca", aunque ninguno de los dos le sirva a nadie. El card dice "Nunca" sólo cuando de verdad no ocurre.</p>
+
+<h3>Rotación prorrateada</h3>
+<p>Los despidos se distribuyen uniformemente: 5% sobre 20 empleados = 1 persona por año = 0,083 por mes. Conceptualmente suena raro despedir fracciones de persona, pero es lo correcto para una <i>tasa</i>: evita que el resultado dependa de si el despido cae en enero o en diciembre.</p>
+
+<h3>Las tres políticas de uso</h3>
+<p>El art. 64 permite usar el fondo, usarlo parcialmente, o no usarlo. Las tres curvas son la misma proyección con distinta aplicación:</p>
+<ul>
+<li><b>Usar siempre</b> — se aplica el fondo a cada indemnización hasta agotar el saldo disponible.</li>
+<li><b>Mitad</b> — se paga la mitad de cada indemnización con el fondo, capado por el saldo.</li>
+<li><b>Capitalizar</b> — no se toca el fondo; toda la indemnización sale de caja.</li>
+</ul>
+<div class="note">Capitalizar alcanza la cobertura antes <b>precisamente porque paga todo de caja mientras tanto</b>. No es una estrategia mejor: traslada el costo en el tiempo. Los dos gráficos son espejo — lo que se gana en cobertura se paga en caja, peso por peso.</div>
+
+<h3>Qué política lee cada parte</h3>
+<p>El resultado depende de qué se hace con el fondo, así que conviene saber de dónde sale cada número:</p>
+<ul>
+<li><b>Los tres cards de cruce → una política cada uno.</b> Es la comparación directa: mismo escenario, tres decisiones.</li>
+<li><b>El régimen y el ratio → ninguna.</b> Salen de la condición de equilibrio, que compara flujos y no depende de la política.</li>
+<li><b>Pasivo de la nómina y costo de la rotación → ninguna.</b> Son el escenario, no el resultado.</li>
+<li><b>Tabla anual → usar siempre.</b> Es la única vista donde se ve el drenaje real: columna "Aplicado" y saldo bajando. Capitalizando serían todas cero.</li>
+<li><b>Heatmap → capitalizar.</b> Mide el techo de acumulación.</li>
+<li><b>Gráficos → las tres.</b></li>
+</ul>
+<div class="flag"><b>La cobertura sola no alcanza para juzgar.</b> Un fondo puede mostrar una cobertura creciente capitalizando y estar en déficit estructural al mismo tiempo: acumula porque nunca se usa, mientras cada despido se paga de caja. Las dos cosas son ciertas. Por eso el veredicto muestra las dos coberturas y el ratio de equilibrio en la misma línea.</div>
+
+<h2>Decisiones de modelo</h2>
+
+<h3>Contra qué se mide la cobertura</h3>
+<p>El art. 66 permite suspender el aporte cuando el saldo cubre "los porcentajes que determine la reglamentación de las posibles contingencias laborales de su nómina". <b>Ese porcentaje todavía no existe</b> — depende de una resolución conjunta pendiente (D. art. 16).</p>
+<p>Lo que sí dice la ley es contra qué se mide: <b>las contingencias de la nómina</b>. Eso es un stock, no un flujo. Por eso la cobertura se calcula como <code>saldo / (indemnización por empleado × empleados)</code>: cuánto del costo de despedir a toda la dotación está prefinanciado hoy.</p>
+<p>Es una barra alta. Con una alícuota del 2,5% entran ~0,325 sueldos por empleado por año, y despedir a alguien con 5 años cuesta ~6,6 sueldos. Cubrir la nómina entera lleva <b>entre 10 y 25 años</b> según alícuota y antigüedad, incluso capitalizando sin tocar el fondo. Lo que hace que llegue es el spread real: el fondo compone más rápido de lo que crece el pasivo, y la brecha se cierra sola. Lento, pero se cierra.</p>
+<p>El techo es configurable en <b>Configuración avanzada</b>, con default 100% y sin límite superior — el art. 4 del decreto habla de garantizar cobertura "aún bajo escenarios adversos razonables que impliquen incrementos en las desvinculaciones simultáneas", lo que sugiere que la reglamentación podría exigir más que el pasivo nominal.</p>
+<div class="flag"><b>Con horizontes cortos el techo casi nunca se activa.</b> A 10 años, la mayoría de las configuraciones quedan lejos del 100%. No es un defecto del modelo: es el resultado. El FAL es un instrumento de acumulación lenta, y decirlo es más útil que inflar la métrica eligiendo un denominador más chico.</div>
+
+<h3>Antigüedad constante</h3>
+<p>Se asume antigüedad promedio estable. Un modelo dinámico (los que salen se reponen con antigüedad 0) es más realista en apariencia, pero introduce un supuesto falso: que los despedidos tienen la antigüedad promedio. En la práctica rota más el personal nuevo. Preferimos un supuesto explícito y controlable por el usuario antes que una deriva automática que nadie puede auditar.</p>
+
+<h3>Sólo despido sin causa</h3>
+<p>El FAL cubre once artículos de la LCT, no sólo el 245: extinción por mutuo acuerdo (241), fuerza mayor o falta de trabajo (247), muerte del trabajador (248), muerte del empleador (249), vencimiento de plazo (250), quiebra (251), incapacidad (212), y los accesorios de preaviso (232) e integración (233). El fondo sirve, entre otras cosas, <b>para financiar retiros negociados</b>.</p>
+<p>Aun así el modelo asume que toda la rotación es despido sin causa. La razón: como <i>input de una tasa de rotación</i>, elegir una causal única para el 100% de las desvinculaciones durante todo el horizonte no describe ninguna empresa real. Y el 245 es el caso más caro, así que el resultado es el piso de cobertura — cualquier mezcla real da mejor.</p>
+
+<h3>Nómina homogénea</h3>
+<p>Una sola cohorte de salario y antigüedad. Es la simplificación grande del modelo. El art. 245 es lineal en antigüedad, así que el promedio se comporta razonablemente — salvo en dos puntos donde hay escalones: la antigüedad mínima de 12 meses para la cobertura (L. 58) y el salto del preaviso a los 5 años (art. 231.b). Los tramos de nómina quedan para una versión posterior.</p>
+
+<h3>13 aportes por año</h3>
+<p>La base del aporte son "las remuneraciones que se toman como base para el cálculo de las contribuciones patronales con destino al SIPA" (L. 60). El SAC es remuneración (LCT 121) e integra esa base, así que serían 13 aportes anuales, no 12. <b>La ley no lo dice expresamente</b> — es interpretación. Por eso es un toggle y el default es 13.</p>
+
+<h2>El cruce: cuándo el fondo se autosustenta</h2>
+<p>Es el resultado principal de la herramienta. La condición:</p>
+<p><code>saldo × spread real ≥ rotación × indemnización × empleados</code></p>
+<p>Es decir: cuando el <b>rendimiento real</b> del fondo alcanza a pagar el costo anual de la rotación. Desde ese momento el fondo se paga los despidos solo — la empresa deja de poner caja propia de forma permanente, y el saldo sigue creciendo.</p>
+<p>Se usa el <b>spread real</b> y no el rendimiento nominal, y ésa es la parte que importa. El pasivo indemnizatorio crece con los salarios: si el fondo rinde 30,6% y los salarios suben 20%, sólo 8,8 puntos son ganancia genuina. El resto apenas empata la actualización de la deuda que hay que pagar. <b>Con spread real cero o negativo el cruce no llega nunca</b>, por más alto que sea el rendimiento nominal.</p>
+<p>Las tres políticas cruzan en momentos distintos y el orden es siempre el mismo: capitalizar primero, mitad después, usarlo siempre al final. Capitalizar llega antes porque no drena el fondo — y paga ese privilegio en caja.</p>
+<div class="note">El cruce llega <b>mucho antes</b> que el techo del art. 66. Un fondo puede volverse autosustentable con 15-20% de cobertura del pasivo total: no necesita tener toda la nómina cubierta, sólo necesita que su rendimiento real supere el costo de la rotación. El techo es un stock enorme; el cruce es la pregunta que decide.</div>
+
+<h2>La condición de equilibrio</h2>
+<p>La cobertura mide un stock: cuánto del pasivo total está prefinanciado. El equilibrio mide un flujo: si lo que entra alcanza para lo que sale. <b>Son preguntas distintas y pueden dar respuestas opuestas.</b></p>
+<p>La desigualdad:</p>
+<p><code>alícuota × aportes ≥ rotación × (antigüedad + accesorios)</code></p>
+<p>Del lado izquierdo, lo que entra: con 2,5% y 13 aportes, <b>0,325 sueldos por empleado por año</b>. Del lado derecho, lo que sale: despedir a alguien con 10 años cuesta ~12,7 sueldos, así que con 5% de rotación salen 0,64 sueldos por empleado por año.</p>
+<p>Si el ratio es menor a 1, usar el fondo en cada despido lo mantiene vacío indefinidamente — sin importar cuánto rinda. <b>El rendimiento no salva un déficit</b>: actúa sobre el stock acumulado, y si la salida se lo come, no hay nada sobre qué rendir.</p>
+<p>La antigüedad promedio es la variable dominante, y es la que menos controla la empresa. Una empresa con personal antiguo arranca con una mochila que el fondo tarda décadas en alcanzar — de ahí que la antigüedad inicial sea un input y no un detalle.</p>
+
+<h2>Tope CCT y piso Vizzoti</h2>
+<p>El art. 245 topea la <b>base de cálculo</b> a 3× el salario promedio del convenio aplicable. Vizzoti (CSJN, 2004) estableció que ese tope no puede recortar más del 33% del salario real; el art. 51 de la Ley 27.802 <b>incorporó ese piso al texto legal</b>: "En ningún supuesto la aplicación del tope previsto en este artículo podrá ser inferior al sesenta y siete por ciento (67%) de la remuneración mensual, normal y habitual".</p>
+<p>Fórmula: <code>base = MAX(MIN(salario, tope), salario × 0,67)</code></p>
+<p>Sólo muerde cuando el salario supera cómodamente 3× el promedio del convenio: nunca para el operario promedio, siempre para gerentes y fuera de convenio. Con nómina homogénea a salario promedio casi nunca aplica, por eso está en avanzada.</p>
+<div class="flag"><b>Dato que hay que traer.</b> No existe una tabla pública única de topes por convenio, y el art. 51 cambió quién los calcula: ahora los calculan las partes signatarias del CCT, con la homologación como intervención suficiente. Antes los publicaba el Ministerio. El input es manual.</div>
+
+<h2>Qué no incluye</h2>
+<ul>
+<li>Vacaciones no gozadas y SAC proporcional (art. 156, 123)</li>
+<li>Multas y agravamiento por despido discriminatorio (art. 245 bis)</li>
+<li>Actualización IPC + 3% anual sobre créditos laborales (art. 276)</li>
+<li>Convenios colectivos específicos y estatutos profesionales</li>
+<li>Tratamiento fiscal: los aportes son deducibles al entrar (D. 19), así que los pagos hechos con el fondo no vuelven a deducirse. El neto es el mismo — no cambia la decisión de usar o no usar. Sí queda gravado el remanente devuelto por art. 72, pero es un caso de borde (cierre de empresa).</li>
+<li>Período de prueba (6 meses, sin indemnización ni preaviso)</li>
+<li>Composición real de la nómina por tramos</li>
+</ul>
+
+<h2>Pendiente de reglamentación</h2>
+<ul>
+<li><b>% de cobertura para suspender aportes</b> (L. 66 / D. 16) — resolución conjunta STEySS + Ministerio de Economía. Es el input "techo art. 66".</li>
+<li><b>Cobertura mínima ampliada</b> (L. 58 2º párr. / D. 4) — resolución conjunta STEySS + Secretaría de Finanzas, con informe técnico previo de CNV y ARCA.</li>
+<li><b>Normas complementarias</b> de CNV, ARCA, STEySS y Finanzas (D. 26, plazo de 45 días hábiles desde el 01/06/2026).</li>
+<li><b>Base del aporte y SAC</b> — no hay texto expreso.</li>
+</ul>
+
+<h2>Fuentes</h2>
+<ul>
+<li>Ley 27.802 de Modernización Laboral — Título II, arts. 58 a 77 (B.O. 06/03/2026)</li>
+<li>Decreto 408/2026 — Reglamentación del Título II (B.O. 01/06/2026)</li>
+<li>Ley 20.744 de Contrato de Trabajo, t.o. con las modificaciones de la Ley 27.802</li>
+</ul>` },
+
     'landing': { t:'Dashboard', b:
 `Esta página reúne un conjunto de herramientas de análisis financiero para los mercados de renta fija, renta variable y análisis de empresas. Su objetivo es facilitar el estudio y la comparación de instrumentos, brindando datos y métricas de forma centralizada.
 
@@ -29648,12 +30154,18 @@ Equipo: Research BullMarket`;
     const body = document.getElementById('help-body');
     const entry = HELP[window._helpKey] || HELP['landing'];
     if(tab==='uso'){
+      // Entradas con HTML propio (ej. FAL / Metodología): se inyectan sin pasar
+      // por el mini-parser, envueltas en un contenedor tematizado.
+      if(entry && entry.html){
+        body.innerHTML = '<div class="fal-doc">'+entry.html+'</div>';
+        return;
+      }
       // El aviso de lag de precio/volumen sólo aplica a módulos con datos de mercado.
       // Los módulos de empresas (af.*, ear.*) y los menús unificados de Bonos (rf.*),
       // ONs (ons.*) y Renta Variable (eq.*) traen su propia nota de lag y no llevan
       // el LAG_WARN automático.
       const k = window._helpKey || '';
-      const noLag = k==='landing' || k.indexOf('af.')===0 || k.indexOf('ear.')===0
+      const noLag = k==='landing' || k==='fal' || k.indexOf('af.')===0 || k.indexOf('ear.')===0
                  || k.indexOf('rf.')===0 || k.indexOf('ons.')===0 || k.indexOf('eq.')===0;
       body.innerHTML = helpRender(entry.b + (noLag ? '' : '\n\n' + LAG_WARN));
     }
@@ -29685,14 +30197,15 @@ Equipo: Research BullMarket`;
     document.querySelector('#help-modal .help-head-title').textContent =
       'Ayuda — ' + (entry.t || 'Dashboard');
     helpSwitchTab('uso');
-    // El footer (checkbox + Aceptar) aparece siempre en la ayuda del Dashboard (landing)
+    // El footer (checkbox + Aceptar) aparece en la ayuda del Dashboard (landing) y de FAL.
     const foot = document.getElementById('help-foot');
     const chk = document.getElementById('help-dontshow');
-    const isLanding = (key === 'landing');
-    if(foot) foot.style.display = isLanding ? 'flex' : 'none';
+    const hasFooter = (key === 'landing' || key === 'fal');
+    if(foot) foot.style.display = hasFooter ? 'flex' : 'none';
     if(chk){
+      const dkey = (key === 'fal') ? 'bmb_help_fal_dismissed' : 'bmb_help_landing_dismissed';
       let dismissed = false;
-      try { dismissed = localStorage.getItem('bmb_help_landing_dismissed') === '1'; } catch(e){}
+      try { dismissed = localStorage.getItem(dkey) === '1'; } catch(e){}
       chk.checked = dismissed;
     }
     document.getElementById('help-modal-overlay').style.display='block';
@@ -29706,13 +30219,14 @@ Equipo: Research BullMarket`;
   };
 
   window.closeHelp = function(){
-    // Si el footer está visible (ayuda del Dashboard), persistir el estado del checkbox
+    // Si el footer está visible (ayuda del Dashboard o FAL), persistir el estado del checkbox
     const foot = document.getElementById('help-foot');
     const chk = document.getElementById('help-dontshow');
     if(foot && foot.style.display !== 'none' && chk){
+      const dkey = (window._helpKey === 'fal') ? 'bmb_help_fal_dismissed' : 'bmb_help_landing_dismissed';
       try {
-        if(chk.checked) localStorage.setItem('bmb_help_landing_dismissed', '1');
-        else localStorage.removeItem('bmb_help_landing_dismissed');
+        if(chk.checked) localStorage.setItem(dkey, '1');
+        else localStorage.removeItem(dkey);
       } catch(e){}
     }
     document.getElementById('help-modal-overlay').style.display='none';
@@ -29750,5 +30264,638 @@ Equipo: Research BullMarket`;
   })();
   </script>
 
+
+<script>
+/* ══════════════════ FAL — motor de simulación ══════════════════ */
+(function(){
+"use strict";
+
+
+/* ══════════════ ESTADO ══════════════ */
+const S = { tipo:"mipyme", aportes:13, adv:false, unidad:"meses", usoCaja:0 };
+
+const ALIC = {
+  mipyme:[{v:0.025,t:"2,5% — ley",h:"Alícuota legal MiPyME (art. 60)."},
+          {v:0.030,t:"3,0% — máximo",h:"Requiere decisión del PEN + Bicameral. Hipotético."}],
+  grande:[{v:0.010,t:"1,0% — ley",h:"Alícuota legal grandes empresas (art. 60)."},
+          {v:0.015,t:"1,5% — máximo",h:"Requiere decisión del PEN + Bicameral. Hipotético."}]
+};
+
+const $ = id => document.getElementById(id);
+const num = id => parseFloat($(id).value) || 0;
+
+function params(){
+  return {
+    empleados: Math.max(1, num("FAL_empleados")),
+    salario:   num("FAL_salario"),
+    antig:     num("FAL_antig"),
+    ajuste:    num("FAL_ajuste")/100,
+    alicuota:  parseFloat($("FAL_alicuota").value),
+    // TNA -> tasa mensual -> TEA. Los FCI se cotizan en TNA; el motor capitaliza mensual.
+    rendTna:   num("FAL_rend")/100,
+    comTna:    num("FAL_comision")/100,
+    rend:      Math.pow(1 + num("FAL_rend")/100/12, 12) - 1,
+    comision:  Math.pow(1 + num("FAL_comision")/100/12, 12) - 1,
+    aportes:   S.aportes,
+    rotacion:  num("FAL_rotacion")/100,
+    gracia:    Math.max(6, Math.round(num("FAL_gracia")) || 6),
+    incPre:    $("FAL_incPre").checked,
+    incInt:    $("FAL_incInt").checked,
+    incSac:    $("FAL_incSac").checked,
+    diasInt:   num("FAL_diasInt"),
+    topeCct:   num("FAL_topeCct"),
+    techo:     num("FAL_techo")/100
+  };
+}
+
+/* ══════════════ MOTOR ══════════════ */
+
+// Indemnización por empleado. Devuelve el desglose.
+function indem(salario, antig, p){
+  // Base art. 245: tope CCT con piso Vizzoti (67%). Sin tope, pasa el salario entero.
+  const base = p.topeCct > 0
+    ? Math.max(Math.min(salario, p.topeCct), salario*0.67)
+    : salario;
+
+  // Años computables: fracción > 3 meses cuenta como año completo. Mínimo 1 mes de sueldo.
+  let anios = Math.floor(antig) + ((antig - Math.floor(antig)) > 0.25 ? 1 : 0);
+  anios = Math.max(anios, 1);
+
+  const a245 = base * anios;
+
+  // Preaviso: 1 mes ≤5 años, 2 meses >5. No hay 3 (art. 231.b).
+  const mesesPre = antig <= 5 ? 1 : 2;
+  const preaviso = p.incPre ? salario * mesesPre : 0;
+  const integ    = p.incInt ? salario/30 * p.diasInt : 0;
+  const sac      = p.incSac ? (preaviso + integ)/12 : 0;
+
+  return { base, anios, a245, preaviso, integ, sac, mesesPre,
+           total: a245 + preaviso + integ + sac };
+}
+
+// politica: fracción de cada indemnización a pagar con el fondo antes del cruce
+//   (1 = usar siempre · 0.5 = mitad · 0 = capitalizar). Post-cruce la política se
+//   ignora: se paga el 100% con renta real sin descapitalizar (ver paso 4).
+function simular(p, politica, anios){
+  const meses = (anios || p.horizonte) * 12;
+  const tm = Math.pow(1+p.rend, 1/12) - 1;
+  const cm = Math.pow(1+p.comision, 1/12) - 1;
+  const am = Math.pow(1+p.ajuste, 1/12) - 1;
+  // Spread real mensual: rendimiento neto por encima de la actualización salarial.
+  // Es la renta que se puede retirar sin descapitalizar el fondo en términos reales.
+  const neto = (1+p.rend)/(1+p.comision) - 1;
+  const spreadM = Math.pow((1+neto)/(1+p.ajuste), 1/12) - 1;
+
+  let salario = p.salario, saldo = 0, aporteOn = true;
+  let acCaja=0, acAp=0, acRend=0, acCom=0, acApl=0, acPasivo=0;
+  const out = [];
+
+  for (let m=1; m<=meses; m++){
+    // 1. Aporte. El 13º (SAC) se prorratea sobre 12 meses.
+    const baseAp = salario * p.empleados * (p.aportes===13 ? 13/12 : 1);
+    const ap = aporteOn ? baseAp * p.alicuota : 0;
+    saldo += ap;
+
+    // 2. Rendimiento, 3. Comisión (ambos sobre el saldo)
+    const rend = saldo * tm; saldo += rend;
+    const com  = saldo * cm; saldo -= com;
+
+    // 4. Despidos prorrateados
+    const iu = indem(salario, p.antig, p).total;
+    const despidos = p.empleados * p.rotacion / 12;
+    const pasivo = iu * despidos;
+
+    // 4. Aplicación del fondo. Dos modos, con switch endógeno mes a mes:
+    //    - Post-cruce: si la renta real del fondo (saldo × spread real) ya cubre la
+    //      indemnización del mes, se paga el 100% con esa renta. Se retira sólo hasta
+    //      la renta real, así el fondo no se descapitaliza en términos reales y sigue
+    //      por encima del cruce. La política de la barrita se ignora acá.
+    //    - Pre-cruce: no alcanza la renta. Se aplica la fracción de la política,
+    //      capada por el saldo disponible. El resto sale de caja.
+    //    La gracia bloquea todo uso (el fondo capitaliza intacto) hasta cumplirse.
+    const rentaReal = saldo * spreadM;
+    const enGracia = m <= p.gracia;
+    let aplicado;
+    if (enGracia){
+      aplicado = 0;
+    } else if (rentaReal >= pasivo){
+      // post-cruce: pagar todo con renta real, sin tocar el capital
+      aplicado = Math.min(pasivo, saldo);
+    } else {
+      // pre-cruce: fracción de la política, capada por saldo
+      aplicado = Math.min(pasivo * politica, saldo);
+    }
+    saldo -= aplicado;
+    const caja = pasivo - aplicado;
+
+    // 5. Cobertura vs. pasivo contingente de toda la nómina (art. 66: "las posibles
+    //    contingencias laborales de su nómina"). Es un stock, no un flujo.
+    const pasivoNomina = iu * p.empleados;
+    const cob = pasivoNomina > 0 ? saldo/pasivoNomina : 0;
+    aporteOn = !(pasivoNomina > 0 && saldo >= pasivoNomina * p.techo);
+
+    salario *= (1+am);
+    acCaja+=caja; acAp+=ap; acRend+=rend; acCom+=com; acApl+=aplicado; acPasivo+=pasivo;
+    out.push({m,saldo,caja,pasivo,cob,aplicado,aporteOn,ap,rend,com,iu,salario,
+              acCaja,acAp,acRend,acCom,acApl,acPasivo});
+  }
+  return out;
+}
+
+// Condición de equilibrio, en sueldos por empleado por año
+function equilibrio(p){
+  const entra = p.alicuota * p.aportes;
+  const iu = indem(p.salario, p.antig, p).total;
+  const sale = p.rotacion * iu / p.salario;
+  return { entra, sale, ratio: sale>0 ? entra/sale : Infinity, iu };
+}
+
+// Cruce de autosustentabilidad: el año en que el rendimiento REAL del fondo
+// (saldo × spread real) alcanza a cubrir el costo anual de la rotación.
+// Desde ahí el fondo se paga los despidos solo y la empresa no pone más caja.
+// Se usa el spread real y no el nominal porque el pasivo crece con los salarios:
+// lo que rinde por encima del ajuste salarial es lo único que gana terreno.
+// Busca hasta 200 años, más allá del horizonte visible: un cruce en el año 70 es
+// información distinta de "no cruza nunca", aunque ninguno de los dos sirva.
+function cruceAuto(p, politica, spread, enMeses){
+  if (spread <= 0 || p.rotacion <= 0) return null;
+  const f = simular(p, politica, 200);
+  for (let m = 12; m < f.length; m++){
+    const costoRot = f[m].iu * p.empleados * p.rotacion;
+    if (f[m].saldo * spread >= costoRot) return enMeses ? m+1 : Math.floor(m/12)+1;
+  }
+  return null;
+}
+
+// Horizonte de la vista: el cruce más un margen, para que se vea el después.
+// Sin cruce no hay meta que enmarcar y se usa un default largo.
+// margenFijo (años) reemplaza el margen proporcional cuando se pasa.
+function horizonteVista(cruce, margenFijo){
+  if (!cruce) return 40;
+  if (margenFijo) return Math.min(200, Math.max(10, cruce + margenFijo));
+  return Math.min(200, Math.max(10, Math.ceil(cruce * 1.25)));
+}
+
+/* ══════════════ FORMATO ══════════════ */
+const fmt = n => {
+  const a = Math.abs(n);
+  if (a >= 1e9) return (n/1e9).toFixed(2)+" MM";
+  if (a >= 1e6) return (n/1e6).toFixed(1)+" M";
+  if (a >= 1e3) return (n/1e3).toFixed(0)+" k";
+  return n.toFixed(0);
+};
+const pct = n => (n*100).toFixed(1)+"%";
+const money = n => "$"+Math.round(n).toLocaleString("es-AR");
+
+/* ══════════════ GRÁFICOS ══════════════ */
+function linea(el, series, opts){
+  const W=760, H=opts.h||250, P={t:14,r:14,b:26,l:56};
+  const iw = W-P.l-P.r, ih = H-P.t-P.b;
+  const xs = series[0].d.length;
+
+  // Escala log: con crecimiento compuesto al 20-30% anual, en 40 años el último
+  // valor es ~1500× el primero. En lineal los primeros años quedan pegados a cero
+  // y el cruce — que es lo que hay que ver — desaparece.
+  const log = !!opts.log;
+  let max = 0, min = Infinity;
+  series.forEach(s => s.d.forEach(v => {
+    if (v > max) max = v;
+    if (v > 0 && v < min) min = v;
+  }));
+  if (opts.ref) max = Math.max(max, opts.ref);
+  if (!isFinite(min) || min <= 0) min = 1;
+  max = max || 1;
+
+  let Y, ticks;
+  if (log){
+    const lo = Math.log10(min), hi = Math.log10(max*1.3);
+    Y = v => P.t + ih - (Math.log10(Math.max(v, min)) - lo)/(hi-lo)*ih;
+    ticks = [];
+    for (let e = Math.floor(lo); e <= Math.ceil(hi); e++){
+      const v = Math.pow(10, e);
+      if (v >= min*0.9 && v <= max*1.3) ticks.push(v);
+    }
+    if (ticks.length < 2) ticks = [min, max];
+  } else {
+    max = max*1.08;
+    Y = v => P.t + ih - (v/max)*ih;
+    ticks = [0,1,2,3,4].map(i => max*i/4);
+  }
+  const X = i => P.l + (xs<=1 ? 0 : i/(xs-1)*iw);
+
+  let g = "";
+  ticks.forEach(v => {
+    const y = Y(v);
+    g += `<line class="fal-gl" x1="${P.l}" y1="${y}" x2="${W-P.r}" y2="${y}"/>`;
+    g += `<text class="fal-ax" x="${P.l-6}" y="${y+3}" text-anchor="end">${opts.fy?opts.fy(v):fmt(v)}</text>`;
+  });
+  for (let i=0;i<xs;i++){
+    if (xs>12 && i%Math.ceil(xs/12)!==0 && i!==xs-1) continue;
+    g += `<text class="fal-ax" x="${X(i)}" y="${H-8}" text-anchor="middle">${opts.lx?opts.lx(i):i+1}</text>`;
+  }
+  if (opts.ref){
+    const y = Y(opts.ref);
+    g += `<line x1="${P.l}" y1="${y}" x2="${W-P.r}" y2="${y}" stroke="var(--fal-warn)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+    g += `<text class="fal-ax" x="${W-P.r}" y="${y-5}" text-anchor="end" fill="var(--fal-warn)">${opts.refLabel||""}</text>`;
+  }
+  series.forEach(s => {
+    const d = s.d.map((v,i)=>`${i?"L":"M"}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(" ");
+    g += `<path d="${d}" fill="none" stroke="${s.c}" stroke-width="${s.w||2}" stroke-linejoin="round" stroke-linecap="round"${s.dash?` stroke-dasharray="${s.dash}"`:""}/>`;
+  });
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${opts.aria||""}">${g}</svg>`;
+}
+
+// Gráfico de barras contrapuestas: rendimiento real del fondo hacia arriba (verde),
+// indemnización hacia abajo partida en caja propia (rojo) y cubierto por FAL (amarillo).
+// Escalas independientes arriba/abajo. Marca el año del cruce con una línea.
+function barrasCaja(el, data, cruce, hz){
+  const W=760, H=300, P={t:16,r:14,b:26,l:56};
+  const iw=W-P.l-P.r, ih=H-P.t-P.b;
+  const n=data.length;
+  const gap=Math.max(1, iw/n*0.18);
+  const bw=(iw/n)-gap;
+
+  // Eje horizontal (cero) en un punto que dé más lugar arriba (el verde crece mucho).
+  const y0 = P.t + ih*0.62;
+  const hUp = y0 - P.t;        // alto disponible arriba (verde)
+  const hDn = P.t + ih - y0;   // alto disponible abajo (indemnización)
+
+  const maxUp = Math.max(...data.map(d=>d.rend), 1) * 1.1;
+  const maxDn = Math.max(...data.map(d=>d.indem), 1) * 1.15;
+
+  const X = i => P.l + i*(iw/n) + gap/2;
+  const YU = v => hUp * (v/maxUp);   // altura arriba
+  const YD = v => hDn * (v/maxDn);   // altura abajo
+
+  let g = "";
+  // línea cero
+  g += `<line x1="${P.l}" y1="${y0}" x2="${W-P.r}" y2="${y0}" stroke="var(--text3)" stroke-width="1"/>`;
+
+  // grilla arriba y abajo
+  [0.5,1].forEach(f=>{
+    const yu=y0-YU(maxUp*f);
+    g+=`<line class="fal-gl" x1="${P.l}" y1="${yu}" x2="${W-P.r}" y2="${yu}"/>`;
+    g+=`<text class="fal-ax" x="${P.l-6}" y="${yu+3}" text-anchor="end">${fmt(maxUp*f)}</text>`;
+  });
+  { const yd=y0+YD(maxDn);
+    g+=`<line class="fal-gl" x1="${P.l}" y1="${yd}" x2="${W-P.r}" y2="${yd}"/>`;
+    g+=`<text class="fal-ax" x="${P.l-6}" y="${yd+3}" text-anchor="end">${fmt(maxDn)}</text>`; }
+
+  // etiquetas de lado
+  g+=`<text class="fal-ax" x="${P.l-6}" y="${y0-4}" text-anchor="end">0</text>`;
+
+  data.forEach((d,i)=>{
+    const x=X(i);
+    const eps = maxDn*0.002;
+    // hover invisible sobre toda la columna (detrás), desglose completo del año (todo real)
+    g+=`<rect x="${x.toFixed(1)}" y="${P.t}" width="${bw.toFixed(1)}" height="${ih}" fill="transparent"><title>Año ${i+1} — en términos reales
+Aportes al FAL: ${money(d.aporte)}
+Rendimiento real: ${money(d.rend)}
+Indemnizaciones: ${money(d.indem)}
+  · pagado con el FAL: ${money(d.fal)}
+  · pagado de caja: ${money(d.caja)}
+Saldo del FAL a fin de año: ${money(d.saldo)}</title></rect>`;
+    // arriba: rendimiento real (verde)
+    const hr=YU(d.rend);
+    g+=`<rect x="${x.toFixed(1)}" y="${(y0-hr).toFixed(1)}" width="${bw.toFixed(1)}" height="${hr.toFixed(1)}" fill="var(--fal-ok)" pointer-events="none"/>`;
+    // abajo: indemnización, rojo (caja) arriba + amarillo (FAL) abajo
+    const hCaja = d.caja > eps ? YD(d.caja) : 0;
+    const hFal  = d.fal  > eps ? YD(d.fal)  : 0;
+    if (hCaja > 0)
+      g+=`<rect x="${x.toFixed(1)}" y="${y0.toFixed(1)}" width="${bw.toFixed(1)}" height="${hCaja.toFixed(1)}" fill="var(--fal-alert)" pointer-events="none"/>`;
+    if (hFal > 0)
+      g+=`<rect x="${x.toFixed(1)}" y="${(y0+hCaja).toFixed(1)}" width="${bw.toFixed(1)}" height="${hFal.toFixed(1)}" fill="var(--fal-warn)" pointer-events="none"/>`;
+  });
+
+  // marca del cruce
+  if (cruce && cruce <= n){
+    const xc = X(cruce-1) + bw/2;
+    g+=`<line x1="${xc.toFixed(1)}" y1="${P.t}" x2="${xc.toFixed(1)}" y2="${P.t+ih}" stroke="var(--text)" stroke-width="1" stroke-dasharray="3 3"/>`;
+    g+=`<text class="fal-ax" x="${xc.toFixed(1)}" y="${P.t-4}" text-anchor="middle" fill="var(--text)">punto de inflexión · año ${cruce}</text>`;
+  }
+
+  // eje X
+  for(let i=0;i<n;i++){
+    if(n>12 && i%Math.ceil(n/12)!==0 && i!==n-1) continue;
+    g+=`<text class="fal-ax" x="${(X(i)+bw/2).toFixed(1)}" y="${H-8}" text-anchor="middle">A${i+1}</text>`;
+  }
+
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Efecto en caja: rendimiento del fondo e indemnización por año">${g}</svg>`;
+}
+
+/* ══════════════ RENDER ══════════════ */
+function anual(f, anios){
+  const r = [];
+  for (let a=1; a<=anios && a*12-1 < f.length; a++) r.push(f[a*12-1]);
+  return r;
+}
+
+function render(){
+  const p = params();
+  const eq = equilibrio(p);
+
+  /* ---- derivados ---- */
+  // Comisión y spread se componen (cociente), no se restan: la comisión se cobra
+  // sobre el saldo, y el spread compara dos tasas de crecimiento.
+  const neto = (1+p.rend)/(1+p.comision) - 1;
+  const spread = (1+neto)/(1+p.ajuste) - 1;
+
+  /* ---- cruce de la política del slider: define el horizonte de la vista ---- */
+  const usoPol = S.usoCaja / 100;
+  const cUso = cruceAuto(p, usoPol, spread);
+  const hzGraf = horizonteVista(cUso, 5);
+  const fUso   = simular(p, usoPol, hzGraf);
+  /* ---- cabezal ---- */
+  const tipoLabel = S.tipo === "mipyme" ? "PyME" : "Grandes empresas";
+  const antigStr  = String(p.antig).replace(".", ",");
+  const alicStr   = (p.alicuota*100).toFixed(1).replace(".", ",") + "%";
+  $("FAL_simHead").innerHTML =
+    `<h2>SIMULACIÓN FAL · ${tipoLabel}</h2>
+     <div class="sh-sub">${p.empleados} ${p.empleados===1?"empleado":"empleados"} · ${antigStr} ${p.antig===1?"año":"años"} de antigüedad · alícuota ${alicStr}</div>`;
+
+  /* ---- derivados (incluye el desglose de indemnización, dinámico) ---- */
+  // Accesorios destildados: fila tachada con "—", igual que el card original.
+  const b = indem(p.salario, p.antig, p);
+  const off = x => x ? " excl" : "";
+  const acc = (on, v) => on ? fmt(v) : "—";
+  $("FAL_derived").innerHTML = `
+    <div class="fal-dv"><span>Rendimiento bruto TNA</span><b>${pct(p.rendTna)}</b></div>
+    <div class="fal-dv"><span>Rendimiento bruto TEA</span><b>${pct(p.rend)}</b></div>
+    <div class="fal-dv"><span>Comisión TNA</span><b>${pct(p.comTna)}</b></div>
+    <div class="fal-dv sep"><span>Rendimiento neto TEA</span><b>${pct(neto)}</b></div>
+    <div class="fal-dv sep"><span>Ajuste salarial por año</span><b>${pct(p.ajuste)}</b></div>
+    <div class="fal-dv"><span>Tasa real neta de incr. salarial</span><b style="color:${spread>=0?"var(--accent)":"var(--fal-alert)"}">${pct(spread)}</b></div>
+    <div class="fal-dv sep"><span>Indemnización por antigüedad</span><b>${fmt(b.a245)}</b></div>
+    <div class="fal-dv${off(!p.incPre)}"><span>Preaviso — ${b.mesesPre} ${b.mesesPre===1?"mes":"meses"}</span><b>${acc(p.incPre,b.preaviso)}</b></div>
+    <div class="fal-dv${off(!p.incInt)}"><span>Integración — ${p.diasInt} días</span><b>${acc(p.incInt,b.integ)}</b></div>
+    <div class="fal-dv${off(!p.incSac)}"><span>SAC sobre preaviso e integración</span><b>${acc(p.incSac,b.sac)}</b></div>
+    <div class="fal-dv"><span>Total por empleado</span><b>${fmt(b.total)}</b></div>
+    <div class="fal-dv"><span>Pasivo por empleado</span><b>${(b.total/p.salario).toFixed(2)} sueldos</b></div>`;
+
+
+  /* ---- guía de lectura ---- */
+  // El régimen (superávit / equilibrio / déficit) sale de la condición de equilibrio,
+  // que compara flujos y no depende de la política. El texto narra las dos puntas del
+  // ratio (aporte vs. erogación) con los valores vivos, y cierra con una cola por régimen.
+  const pasNom     = eq.iu * p.empleados;
+  const costoRot   = pasNom * p.rotacion;
+  const despAnio   = p.empleados * p.rotacion;
+  const aportesTot = eq.entra * p.salario * p.empleados;
+  const ratioTxt   = eq.ratio===Infinity ? "∞" : eq.ratio.toFixed(2)+"×";
+  const ratioCol   = eq.ratio>=1 ? "var(--accent)" : "var(--fal-alert)";
+
+  // formateadores del texto narrado (coma decimal es-AR)
+  const _mill = n => (n/1e6).toFixed(1).replace(".",",");
+  const _sld  = n => n.toFixed(3).replace(".",",");
+  const _pctP = n => (n*100).toFixed(1).replace(".0","").replace(".",",")+"%";
+  const _empN = despAnio.toFixed(1).replace(".0","").replace(".",",");
+  const comun = `Con una alícuota del ${alicStr} y bajo los parámetros seleccionados, la empresa realiza un aporte estimado de <b>${_mill(aportesTot)} millones anuales</b>, es decir un ratio de <b>${_sld(eq.entra)} sueldos por empleado</b>. Como contraprestación, la empresa estima una rotación del <b>${_pctP(p.rotacion)}</b> de la plantilla (${_empN} ${_empN==="1"?"empleado":"empleados"} por año), lo que representa una erogación de recursos de <b>${_mill(costoRot)} millones anuales</b>, es decir un ratio de <b>${_sld(eq.sale)} sueldos por empleado</b>. `;
+
+  let cls, tag, main, cola;
+  if (spread <= 0){
+    cls="def"; tag="Sin spread real";
+    main = `El fondo no le gana a los salarios: rinde ${pct(neto)} neto y el pasivo se actualiza ${pct(p.ajuste)}`;
+    cola = `Más allá de este balance de flujos, el fondo rinde <b>${_pctP(neto)}</b> neto mientras el pasivo se actualiza <b>${_pctP(p.ajuste)}</b>: el spread real es <b>${_pctP(spread)}</b>. Sin rendimiento por encima de los salarios, el fondo no gana terreno contra un pasivo que crece al mismo ritmo, y la cobertura se congela por más alto que sea el aporte.`;
+  } else if (eq.ratio >= 1.05){
+    cls=""; tag="Superávit estructural";
+    main = `Entra más de lo que sale: ${eq.ratio===Infinity?"sin rotación, el fondo sólo acumula":`el aporte cubre ${eq.ratio.toFixed(2)}× el costo de la rotación`}`;
+    cola = `Esto significa un <b>superávit estructural</b>: lo que la empresa aporta supera lo que gasta en indemnizaciones, así que el fondo crece incluso pagando los despidos con él. El excedente se capitaliza año a año.`;
+  } else if (eq.ratio >= 0.95){
+    cls="eq"; tag="Equilibrio";
+    main = `Entrada y salida empatadas: el aporte cubre ${eq.ratio.toFixed(2)}× el costo de la rotación`;
+    cola = `Esto significa un <b>equilibrio estructural</b>: el aporte y el gasto en indemnizaciones se compensan casi exactamente. El fondo se sostiene, pero por sí solo casi no acumula: sólo logrará capitalizar si la empresa decide pagar las indemnizaciones —parcial o totalmente— con caja propia, al menos en el corto plazo, hasta que el fondo madure. Es un punto de balance frágil, sensible a cambios chicos en la rotación o la antigüedad.`;
+  } else {
+    cls="def"; tag="Déficit estructural";
+    main = `Sale más de lo que entra: el aporte cubre ${eq.ratio.toFixed(2)}× el costo de la rotación`;
+    cola = `Esto significa un <b>déficit estructural</b>: el gasto en indemnizaciones supera al aporte, así que usar el fondo en cada despido lo mantiene casi vacío. Sólo logrará capitalizar si la empresa asume las indemnizaciones —parcial o totalmente— con caja propia en el corto plazo, hasta que el fondo madure y su rendimiento tome el relevo; y eso depende, además, de que el spread real alcance.`;
+  }
+  $("FAL_verdict").className = "fal-verdict "+cls;
+  $("FAL_verdict").innerHTML = `<div class="fal-v-tag">${tag}</div><div class="fal-v-main">${main}</div>
+    <div class="fal-v-sub">${comun}</div>
+    <div class="fal-v-cola">${cola}</div>`;
+
+  /* ---- KPIs ---- */
+  // fila 1: pasivo de la nómina · ratio (ratio sin nota, con aire)
+  $("FAL_kpis").innerHTML = `
+    <div class="fal-kpi big"><div class="fal-k">Pasivo de la nómina, hoy</div>
+      <div class="fal-v">${fmt(pasNom)}</div>
+      <div class="fal-n">${money(eq.iu)} × ${p.empleados} empleados · ${(eq.iu/p.salario).toFixed(1)} sueldos c/u</div></div>
+    <div class="fal-kpi big"><div class="fal-k">Ratio</div>
+      <div class="fal-v" style="color:${ratioCol}">${ratioTxt}</div></div>`;
+
+  // fila 2: aportes al FAL · indemnización (misma altura, sueldos anclados al fondo)
+  $("FAL_kpis2").innerHTML = `
+    <div class="fal-kpi big flexcol"><div class="fal-k">Aportes al FAL</div>
+      <div class="fal-v">${fmt(aportesTot)}</div>
+      <div class="fal-n">${p.aportes} aportes/año al ${alicStr}</div>
+      <div class="fal-n foot">${eq.entra.toFixed(3)} sueldos por empleado</div></div>
+    <div class="fal-kpi big flexcol"><div class="fal-k">Indemnización</div>
+      <div class="fal-v">${fmt(costoRot)}</div>
+      <div class="fal-n">${despAnio.toFixed(1)} ${despAnio===1?"despido":"despidos"}/año al ${pct(p.rotacion)}</div>
+      <div class="fal-n foot">${eq.sale.toFixed(3)} sueldos por empleado</div></div>`;
+
+  /* ---- gráfico de barras: efecto en caja ---- */
+  // Todo en términos reales: se deflacta por el ajuste salarial. La indemnización
+  // queda constante; el rendimiento real crece al spread. Abajo la indemnización
+  // partida en caja propia (rojo) y cubierto por FAL (amarillo); arriba el
+  // rendimiento real del fondo (verde). El amarillo = lo efectivamente aplicado,
+  // capado por saldo disponible, no por la intención del slider.
+  // Se deflacta CADA MES con su propio factor (no el bloque anual con el de fin de
+  // año), si no quedan desajustes de redondeo que hacen aparecer caja residual
+  // espuria post-cruce. spreadM y amM: tasas mensuales.
+  const amM = Math.pow(1+p.ajuste, 1/12) - 1;
+  const barras = [];
+  for (let a = 0; a < hzGraf && a*12 < fUso.length; a++){
+    let indemR = 0, aplR = 0, apR = 0, rendR = 0, comR = 0;
+    for (let k = 0; k < 12; k++){
+      const m = a*12 + k;
+      if (m >= fUso.length) break;
+      const defM = Math.pow(1+amM, m+1);        // deflactor del mes m (1-indexed)
+      indemR += fUso[m].pasivo   / defM;
+      aplR   += fUso[m].aplicado / defM;
+      apR    += fUso[m].ap       / defM;
+      rendR  += fUso[m].rend     / defM;         // rendimiento nominal deflactado
+      comR   += fUso[m].com      / defM;
+    }
+    const iFin = Math.min(a*12+11, fUso.length-1);
+    const deflFin = Math.pow(1+p.ajuste, a+1);
+    const saldoR = fUso[iFin].saldo / deflFin;   // saldo real a fin de año
+    // rendimiento REAL del año (verde): saldo × spread, deflactado
+    const rendReal = Math.max(0, fUso[iFin].saldo * spread) / deflFin;
+    barras.push({
+      indem: indemR,
+      fal: Math.min(aplR, indemR),
+      caja: Math.max(0, indemR - aplR),
+      rend: rendReal,        // verde: rendimiento real
+      aporte: apR,
+      comision: comR,
+      saldo: saldoR
+    });
+  }
+  barrasCaja($("FAL_gCaja"), barras, cUso, hzGraf);
+
+  /* ---- tabla del efecto en caja ---- */
+  // Mismos valores que el gráfico (términos reales), una fila por año. El horizonte
+  // se extiende más allá del gráfico hasta que el aporte se suspende por el techo del
+  // art. 66, para que se vean las filas atenuadas; si no se suspende, iguala al
+  // gráfico. Tope de 50 años.
+  const fLong = simular(p, usoPol, 100);
+  let ySusp = null;
+  for (let m = 0; m < fLong.length; m++){ if (!fLong[m].aporteOn){ ySusp = Math.floor(m/12)+1; break; } }
+  const hzTabla = ySusp ? Math.min(50, Math.max(hzGraf, ySusp + 2)) : hzGraf;
+  const techoVisible = ySusp && ySusp <= hzTabla;
+
+  const filas = [];
+  for (let a = 0; a < hzTabla && a*12 < fLong.length; a++){
+    let indemR = 0, aplR = 0, apR = 0;
+    for (let k = 0; k < 12; k++){
+      const m = a*12 + k;
+      if (m >= fLong.length) break;
+      const defM = Math.pow(1+amM, m+1);
+      indemR += fLong[m].pasivo   / defM;
+      aplR   += fLong[m].aplicado / defM;
+      apR    += fLong[m].ap       / defM;
+    }
+    const iFin = Math.min(a*12+11, fLong.length-1);
+    const deflFin = Math.pow(1+p.ajuste, a+1);
+    filas.push({
+      anio: a+1,
+      aporte: apR,
+      rend: Math.max(0, fLong[iFin].saldo * spread) / deflFin,
+      indem: indemR,
+      fal: Math.min(aplR, indemR),
+      caja: Math.max(0, indemR - aplR),
+      saldo: fLong[iFin].saldo / deflFin,
+      aporteOn: fLong[iFin].aporteOn
+    });
+  }
+
+  let tc = `<thead><tr><th>Año</th><th>Aportes</th><th>Rend. real</th><th>Indemniz.</th>
+    <th>con FAL</th><th>de caja</th><th>Saldo FAL</th></tr></thead><tbody>`;
+  filas.forEach(f => {
+    if (cUso && f.anio === cUso)
+      tc += `<tr class="cruce"><td colspan="7">punto de inflexión · año ${cUso}</td></tr>`;
+    const clsRow = ((!f.aporteOn ? "susp " : "") + (cUso && f.anio === cUso ? "crossyr" : "")).trim();
+    tc += `<tr${clsRow?` class="${clsRow}"`:""}>
+      <td>A${f.anio}</td>
+      <td>${fmt(f.aporte)}</td>
+      <td>${fmt(f.rend)}</td>
+      <td>${fmt(f.indem)}</td>
+      <td>${fmt(f.fal)}</td>
+      <td class="${f.caja>0?"neg":""}">${fmt(f.caja)}</td>
+      <td>${fmt(f.saldo)}</td></tr>`;
+  });
+  $("FAL_tblCaja").innerHTML = tc + "</tbody>";
+
+  $("FAL_tblCajaNota").innerHTML =
+    `Todo en <b>términos reales</b> (deflactado por el ajuste salarial), igual que el gráfico. ` +
+    (cUso ? `La línea punteada marca el <b>punto de inflexión</b> (año ${cUso}): desde ahí la renta real cubre las indemnizaciones y la caja propia cae a cero. ` : `No hay punto de inflexión dentro del horizonte: la caja propia no se anula. `) +
+    (techoVisible ? `Las filas <span style="color:var(--text3)">atenuadas</span> son los años con el aporte suspendido por alcanzar el techo del art. 66 (${(p.techo*100).toFixed(0)}% del pasivo de la nómina).` : `El aporte no llega a suspenderse (techo del art. 66 en ${(p.techo*100).toFixed(0)}%) dentro del horizonte mostrado.`);
+
+  /* ---- heatmap: año del cruce según gracia × uso ---- */
+  // Columnas: gracia en meses, arrancando en el input, de a 6, 10 columnas.
+  // Filas: fracción de cada indemnización pagada con el fondo (0 = capitalizar).
+  // Celda: año del cruce de autosustentabilidad. D/E si no cruza ni a 200 años.
+  const graciaCols = Array.from({length:10}, (_,i) => p.gracia + i*6);
+  const usoRows = [0, 0.25, 0.5, 0.75, 1];
+  const colorCruce = a => {
+    if (!a) return "var(--fal-alert)";           // no cruza
+    if (a <= 10) return "var(--fal-ok)";
+    if (a <= 20) return "var(--fal-ok2)";
+    if (a <= 35) return "var(--fal-warn)";
+    if (a <= 60) return "var(--fal-warn2)";
+    return "var(--fal-alert)";
+  };
+  const esAnios = S.unidad === "anios";
+  const colHdr = m => esAnios ? `${(m/12).toFixed(1).replace(".0","")}A` : `${m}M`;
+  const celdaVal = mes => {
+    if (spread <= 0) return "—";
+    if (!mes) return "D/E";
+    return esAnios ? (mes/12).toFixed(1).replace(".0","") : mes;
+  };
+
+  let hg = `<table class="fal-hm fal-hm-uso"><tr><th>uso ↓ / gracia →</th>`;
+  hg += graciaCols.map(m => `<th>${colHdr(m)}</th>`).join("") + "</tr>";
+  usoRows.forEach(uso => {
+    hg += `<tr><th>${(uso*100).toFixed(0)}%</th>`;
+    graciaCols.forEach(g => {
+      const pp = {...p, gracia:g};
+      const a = cruceAuto(pp, uso, spread, true);
+      const col = colorCruce(a ? Math.ceil(a/12) : null);
+      hg += `<td class="fal-hm-cell cell" style="background:${col}">${celdaVal(a)}</td>`;
+    });
+    hg += "</tr>";
+  });
+  $("FAL_hmGracia").innerHTML = hg + "</table>" +
+    `<div style="margin-top:9px;font-size:10.5px;color:var(--text3);line-height:1.5"><b>D/E</b> = déficit estructural: no cruza ni a 200 años. La fila 0% no depende de la gracia porque nunca toca el fondo. Para modificar los períodos de gracia, cambiar el valor en Parámetros.</div>`;
+}
+
+/* ══════════════ UI ══════════════ */
+let _rt;
+const renderDeb = () => { clearTimeout(_rt); _rt = setTimeout(render, 150); };
+
+function llenarAlic(){
+  const sel = $("FAL_alicuota"), prev = sel.value;
+  sel.innerHTML = ALIC[S.tipo].map(o=>`<option value="${o.v}">${o.t}</option>`).join("");
+  const hit = ALIC[S.tipo].find(o=>String(o.v)===prev);
+  sel.value = hit ? prev : ALIC[S.tipo][0].v;
+  $("FAL_alicHint").textContent = ALIC[S.tipo].find(o=>String(o.v)===sel.value).h;
+}
+
+$("FAL_segTipo").addEventListener("click", e => {
+  const b = e.target.closest("button"); if(!b) return;
+  S.tipo = b.dataset.v;
+  [...$("FAL_segTipo").children].forEach(x=>x.classList.toggle("on", x===b));
+  llenarAlic(); render();
+});
+$("FAL_segAportes").addEventListener("click", e => {
+  const b = e.target.closest("button"); if(!b) return;
+  S.aportes = +b.dataset.v;
+  [...$("FAL_segAportes").children].forEach(x=>x.classList.toggle("on", x===b));
+  render();
+});
+$("FAL_alicuota").addEventListener("change", () => {
+  $("FAL_alicHint").textContent = ALIC[S.tipo].find(o=>String(o.v)===$("FAL_alicuota").value).h;
+  render();
+});
+$("FAL_segUnidad").addEventListener("click", e => {
+  const b = e.target.closest("button"); if(!b) return;
+  S.unidad = b.dataset.v;
+  [...$("FAL_segUnidad").children].forEach(x=>x.classList.toggle("on", x===b));
+  render();
+});
+$("FAL_usoCaja").addEventListener("input", e => {
+  S.usoCaja = parseInt(e.target.value);
+  $("FAL_usoCajaVal").textContent = S.usoCaja + "%";
+  renderDeb();
+});
+$("FAL_advT").addEventListener("click", () => {
+  S.adv = !S.adv;
+  $("FAL_advB").classList.toggle("on", S.adv);
+  $("FAL_advI").textContent = S.adv ? "−" : "+";
+});
+/* tabs eliminados: Metodología vive en la ayuda */
+["empleados","salario","antig","ajuste","rend","comision","rotacion","gracia",
+ "incPre","incInt","incSac","diasInt","topeCct","techo"].forEach(id => {
+  $("FAL_"+id).addEventListener("input", renderDeb);
+  $("FAL_"+id).addEventListener("change", renderDeb);
+});
+
+/* ══════════════ DOCUMENTACIÓN ══════════════ */
+/* DOC movido a la ayuda (HELP.fal) */
+
+
+/* ── Exposición para el dashboard ── */
+window.FAL_render = render;
+window.FAL_init = function(){
+  if(window.__FAL_wired) { render(); return; }
+  window.__FAL_wired = true;
+  llenarAlic();
+  render();
+};
+
+})();
+
+</script>
 </body>
 </html>
