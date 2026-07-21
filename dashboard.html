@@ -2007,11 +2007,15 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 #app-fal .fal-f:last-child{margin-bottom:0}
 #app-fal .fal-f label{display:block;font-size:11.5px;color:var(--text2);margin-bottom:3px}
 #app-fal .fal-hint{font-size:10px;color:var(--text3);margin-top:2px;line-height:1.35}
-#app-fal input[type=number],#app-fal select{width:100%;padding:5px 7px;border:1px solid var(--border2);border-radius:4px;font-family:var(--mono);font-size:12px;background:var(--bg);color:var(--text)}
-#app-fal input[type=number]:focus,#app-fal select:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:var(--accent)}
-#app-fal .fal-row2{display:grid;grid-template-columns:1fr 1fr;gap:7px;align-items:end}
+#app-fal input[type=number],#app-fal input[type=text],#app-fal select{width:100%;padding:5px 7px;border:1px solid var(--border2);border-radius:4px;font-family:var(--mono);font-size:12px;background:var(--bg);color:var(--text)}
+#app-fal input[type=number]:focus,#app-fal input[type=text]:focus,#app-fal select:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:var(--accent)}
+/* input con sufijo textual a la derecha (años, %, %/año). El valor sigue siendo el número. */
+#app-fal .fal-suf{position:relative}
+#app-fal .fal-suf input{padding-right:38px}
+#app-fal .fal-suf .fal-suf-t{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:10.5px;color:var(--text3);pointer-events:none}
+#app-fal .fal-row2{display:grid;grid-template-columns:1fr 1fr;gap:7px 7px;align-items:start}
 #app-fal .fal-row2 .fal-f{display:flex;flex-direction:column}
-#app-fal .fal-row2 .fal-f label{flex:1}
+#app-fal .fal-row2 .fal-f label{flex:none;line-height:1.25;height:calc(2 * 1.25em);display:flex;align-items:flex-start;margin-bottom:3px}
 #app-fal .fal-chk{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text2);margin-bottom:5px;cursor:pointer}
 #app-fal .fal-chk input{accent-color:var(--accent);width:13px;height:13px;cursor:pointer}
 #app-fal .fal-seg{display:flex;border:1px solid var(--border2);border-radius:4px;overflow:hidden}
@@ -13697,30 +13701,19 @@ function eqDrawHeatmapPDF(pdf, HD, x, y, W, H){
           <div class="fal-f">
             <label>Tipo</label>
             <div class="fal-seg" id="FAL_segTipo">
-              <button data-v="mipyme" class="on">MiPyME</button>
+              <button data-v="mipyme" class="on">PyME</button>
               <button data-v="grande">Grande</button>
             </div>
-            <div class="fal-hint">Por certificado MiPyME (Res. 220/19), no por nómina.</div>
           </div>
           <div class="fal-row2">
-            <div class="fal-f"><label>Empleados</label><input type="number" id="FAL_empleados" value="20" min="1" step="1"></div>
-            <div class="fal-f"><label>Salario prom. ($)</label><input type="number" id="FAL_salario" value="1500000" step="50000"></div>
+            <div class="fal-f"><label>N° Empleados</label><input type="number" id="FAL_empleados" value="20" min="1" step="1"></div>
+            <div class="fal-f"><label>Salario prom. ($)</label><input type="text" id="FAL_salario" inputmode="numeric" value="1.500.000"></div>
+            <div class="fal-f"><label>Antigüedad Promedio</label><div class="fal-suf"><input type="number" id="FAL_antig" value="5" min="0" step="0.5"><span class="fal-suf-t">años</span></div></div>
+            <div class="fal-f"><label>Ajuste Salarial Anual</label><div class="fal-suf"><input type="number" id="FAL_ajuste" value="20" step="1"><span class="fal-suf-t">%</span></div></div>
+            <div class="fal-f"><label>Rotación</label><div class="fal-suf"><input type="number" id="FAL_rotacion" value="5" step="0.5" min="0"><span class="fal-suf-t">%/año</span></div></div>
+            <div class="fal-f"><label>Período de Gracia</label><input type="number" id="FAL_gracia" value="6" min="6" step="1"></div>
           </div>
-          <div class="fal-row2">
-            <div class="fal-f"><label>Antigüedad prom. (años)</label><input type="number" id="FAL_antig" value="5" min="0" step="0.5"></div>
-            <div class="fal-f"><label>Ajuste salarial (%/año)</label><input type="number" id="FAL_ajuste" value="20" step="1"></div>
-          </div>
-          <div class="fal-hint">Antigüedad en 0 mide sólo lo devengado desde que existe el fondo.</div>
-        </div>
-
-        <div class="fal-grp">
-          <div class="fal-grp-h">Rotación</div>
-          <div class="fal-f"><label>Rotación (%/año)</label><input type="number" id="FAL_rotacion" value="5" step="0.5" min="0"></div>
-          <div class="fal-f" style="margin-top:9px">
-            <label>Gracia — meses sin usar el fondo</label>
-            <input type="number" id="FAL_gracia" value="6" min="6" step="1">
-            <div class="fal-hint">El fondo capitaliza intacto durante este período; recién después se usa. Mínimo 6 meses (la carencia legal, art. 65). Los despidos anteriores se pagan de caja.</div>
-          </div>
+          <div class="fal-hint" style="margin-top:9px">El fondo capitaliza intacto durante el período de gracia: mínimo legal de 6 meses. Los despidos durante ese período se pagan de caja.</div>
         </div>
 
         <div class="fal-grp">
@@ -13731,26 +13724,27 @@ function eqDrawHeatmapPDF(pdf, HD, x, y, W, H){
             <div class="fal-hint" id="FAL_alicHint"></div>
           </div>
           <div class="fal-row2">
-            <div class="fal-f"><label>Rendimiento bruto (TNA %)</label><input type="number" id="FAL_rend" value="25" step="1"></div>
-            <div class="fal-f"><label>Comisión (TNA %)</label><input type="number" id="FAL_comision" value="1" step="0.1" max="1"></div>
-          </div>
-          <div class="fal-hint" style="margin-top:-4px">Nominales anuales, como se cotiza un FCI. El motor capitaliza mensualmente.</div>
-          <div class="fal-f" style="margin-top:9px">
-            <label>Aportes por año</label>
-            <div class="fal-seg" id="FAL_segAportes">
-              <button data-v="12">12</button>
-              <button data-v="13" class="on">13 (con SAC)</button>
-            </div>
-            <div class="fal-hint">Supuesto: el SAC integra la base SIPA. No está expreso en la ley.</div>
+            <div class="fal-f"><label>Rendimiento TNA</label><div class="fal-suf"><input type="number" id="FAL_rend" value="25" step="1"><span class="fal-suf-t">%</span></div></div>
+            <div class="fal-f"><label>Comisión</label><input type="number" id="FAL_comision" value="1" step="0.1" max="1"></div>
           </div>
         </div>
 
         <div class="fal-grp">
-          <div class="fal-grp-h">Indemnización</div>
-          <label class="fal-chk"><input type="checkbox" id="FAL_incPre" checked> Preaviso (art. 232)</label>
-          <label class="fal-chk"><input type="checkbox" id="FAL_incInt" checked> Integración del mes (art. 233)</label>
-          <label class="fal-chk"><input type="checkbox" id="FAL_incSac" checked> SAC sobre accesorios</label>
-          <div class="fal-f" style="margin-top:8px"><label>Días de integración</label><input type="number" id="FAL_diasInt" value="15" min="0" max="30" step="1"></div>
+          <button class="fal-adv-t" id="FAL_indT"><span>Indemnización</span><span id="FAL_indI">+</span></button>
+          <div class="fal-adv-b" id="FAL_indB">
+            <label class="fal-chk"><input type="checkbox" id="FAL_incPre" checked> Preaviso (art. 232)</label>
+            <label class="fal-chk"><input type="checkbox" id="FAL_incInt" checked> Integración del mes (art. 233)</label>
+            <label class="fal-chk"><input type="checkbox" id="FAL_incSac" checked> SAC sobre accesorios</label>
+            <div class="fal-f" style="margin-top:8px"><label>Días de integración</label><input type="number" id="FAL_diasInt" value="15" min="0" max="30" step="1"></div>
+            <div class="fal-f" style="margin-top:9px">
+              <label>Aportes por año</label>
+              <div class="fal-seg" id="FAL_segAportes">
+                <button data-v="12">12</button>
+                <button data-v="13" class="on">13 (con SAC)</button>
+              </div>
+              <div class="fal-hint">Supuesto: el SAC integra la base SIPA. No está expreso en la ley.</div>
+            </div>
+          </div>
         </div>
 
         <div class="fal-grp">
@@ -13773,7 +13767,7 @@ function eqDrawHeatmapPDF(pdf, HD, x, y, W, H){
       <!-- Pie fijo del sidebar: Generar reporte -->
       <div style="flex-shrink:0;padding:16px 14px;border-top:1px solid var(--border);background:var(--bg2);">
         <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">Reporte</div>
-        <button onclick="if(window.FAL_render)window.FAL_render();" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-family:var(--mono);font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .15s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)';this.style.background='var(--accent-light)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)';this.style.background='var(--bg3)'">
+        <button disabled title="Próximamente" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);color:var(--text3);font-family:var(--mono);font-size:11px;font-weight:600;cursor:not-allowed;opacity:.5;display:flex;align-items:center;justify-content:center;gap:7px;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
           </svg>
@@ -29664,8 +29658,8 @@ window.ons_init = function() {
   // Cada entrada: { t: título completo, b: cuerpo }. Soporta **negrita** y [[warn]]…[[/warn]].
   const HELP = {
     'fal': { t:'Fondo de Asistencia Laboral', html:
-`<h2>Qué hace esta calculadora</h2>
-<p>Responde una pregunta: <b>cuánto del pasivo por desvinculaciones está prefinanciado en el FAL, y cuánto sigue saliendo de caja propia.</b> Es un modelo económico de orden de magnitud, no una liquidación legal.</p>
+`<h2>Qué hace esta herramienta</h2>
+<p>Ayuda a entender el efecto del FAL: <b>cuánto del pasivo por desvinculaciones está prefinanciado en el FAL, y cuánto sigue saliendo de caja propia.</b> Es un modelo de orden de magnitudes para un caso genérico.</p>
 <div class="note">La indemnización legal no cambia con el FAL. El régimen sólo cambia <b>de dónde sale la plata</b> (art. 58, último párrafo: "El presente régimen no modifica, sustituye, ni altera el régimen indemnizatorio").</div>
 
 <h2>Mecanismo del FAL</h2>
@@ -29686,63 +29680,43 @@ window.ons_init = function() {
 <tr><td>Vigencia</td><td>01/11/2026 (prorrogada desde el 01/06/2026).</td><td><code>D. 27</code></td></tr>
 </table>
 
-<h2>Por qué el aporte es neutro en caja</h2>
+<h2>¿Por qué el aporte es neutro en caja?</h2>
 <p>El art. 76 da una reducción de contribuciones patronales <b>equivalente</b> al aporte FAL. El decreto (art. 24) precisa la mecánica: el empleador detrae la alícuota FAL de las contribuciones a las Leyes 19.032, 24.013, 24.241 y 24.714, en la misma proporción en que se distribuyen.</p>
-<p>Aportás 2,5% al fondo y pagás 2,5% menos de contribuciones. El flujo mensual no se mueve. La diferencia es de destino: sin FAL ese 2,5% se lo queda el Estado; con FAL es tuyo, capitaliza exento y vuelve si no lo usás. <b>El FAL convierte un gasto en un activo.</b></p>
-<p>Por eso el aporte no aparece en el gráfico de caja: no es un costo. Y por eso suspender el aporte (art. 66) tampoco libera caja — se pierde la reducción en el mismo acto.</p>
+<p>Aportás 2,5% al fondo y pagás 2,5% menos de contribuciones. El flujo mensual no se mueve. La diferencia es de destino: sin FAL ese 2,5% se lo queda el Estado; con FAL es "tuyo", capitaliza exento y te permite cancelar erogaciones producto de la desvinculación de un empleado. <b>El FAL convierte un gasto en un activo.</b></p>
 
-<h2>El motor</h2>
+<h2>El modelo</h2>
 <h3>Paso mensual</h3>
 <p>Cada mes, en este orden: aporte → rendimiento sobre el saldo → comisión sobre el saldo → despidos y aplicación del fondo → evaluación del techo del art. 66 → ajuste salarial. Los resultados se agregan a año para la tabla y los gráficos.</p>
 <p>Mensual y no anual porque las tres cosas que definen el comportamiento son mensuales: la carencia son 6 meses, el aporte se integra con las contribuciones cada mes, y la comisión se devenga sobre el saldo.</p>
 
 <h3>Tasas: TNA de entrada, TEA de trabajo</h3>
-<p>El rendimiento y la comisión se cargan en <b>TNA</b> porque es como se cotiza un FCI. El motor las convierte a efectivas antes de usarlas: <code>TEA = (1 + TNA/12)^12 − 1</code>. Una TNA del 25% es una TEA del 28,07% — tres puntos de diferencia que, capitalizados sobre 20 años, no son un detalle.</p>
+<p>El rendimiento y la comisión se cargan en <b>TNA</b>. El modelo las convierte a efectivas antes de usarlas: <code>TEA = (1 + TNA/12)^12 − 1</code>. Una TNA del 25% es una TEA del 28,07% — tres puntos de diferencia que, capitalizados sobre 20 años, no son un detalle.</p>
 <p>El <b>ajuste salarial</b> se carga directo como efectiva anual: cuando se dice "los salarios suben 20%", se está diciendo que el salario de diciembre es 1,20× el de enero. No hay TNA salarial.</p>
 <p>Dos aclaraciones sobre cómo se combinan las tasas, porque los números del panel no son restas:</p>
 <ul>
 <li><b>Rendimiento neto = (1 + TEA bruta) / (1 + comisión) − 1.</b> La comisión no se resta del rendimiento: se cobra sobre los activos, que ya incluyen el rendimiento. Con 28,07% y 1%, el neto es 26,80%, no 27,07%.</li>
-<li><b>Spread real = (1 + neto) / (1 + ajuste salarial) − 1.</b> Es una tasa real, la misma lógica que se usa contra CER. Un fondo que rinde 26,80% con salarios creciendo 20% no ganó 6,80 puntos: ganó 5,67%.</li>
+<li><b>Spread real = (1 + neto) / (1 + ajuste salarial) − 1.</b> Es una tasa real. Un fondo que rinde 26,80% con salarios creciendo 20% no ganó 6,80 puntos: ganó 5,67%.</li>
 </ul>
 <div class="note">El <b>spread real</b> es lo único que hace que el fondo gane terreno contra el pasivo. Si el rendimiento neto iguala al ajuste salarial, el spread es cero y la cobertura se congela: el fondo crece exactamente al mismo ritmo que la indemnización que tiene que pagar. Un rendimiento nominal alto no dice nada por sí solo.</div>
 
-<h3>La carencia de 6 meses</h3>
+<h3>Período de gracia:</h3>
 <p>El art. 65 de la ley dice que el FAL empieza a responder <i>"una vez que hubiera recibido al menos SEIS (6) aportes mensuales, a efectos de su capitalización y con el fin de garantizar la estabilidad financiera del sistema"</i>. El decreto (art. 15) precisa: seis períodos de devengamiento y pago <b>completos y consecutivos</b>, contados desde el mes en que ARCA registra la primera contribución efectivamente ingresada.</p>
 <p>Es una condición <b>binaria</b>, no un límite de retiro: cumplidos los 6 aportes, el fondo responde con todo lo que tenga. Si el mes 7 hay un despido, se puede aplicar el 100% del saldo acumulado. Nada en la ley ni en el decreto limita qué fracción del saldo se puede usar — el único límite es el saldo mismo, y la decisión del empleador (art. 64).</p>
-<p>En el modelo esto es el input <b>gracia</b>, en meses, con piso de 6 (el mínimo legal). Durante ese período el fondo capitaliza intacto y ningún despido lo toca; recién después se usa según la política. Subirlo —por ejemplo a 24 meses— simula una decisión del empleador de dejar madurar el fondo dos años antes de empezar a usarlo, pagando de caja los despidos de ese lapso. Como capitalizar nunca usa el fondo, la gracia sólo corre el arranque de "mitad" y "usar siempre".</p>
+<p>En el modelo esto es el input <b>Período de gracia</b>, en meses, con piso de 6 (el mínimo legal). Durante ese período el fondo capitaliza intacto y ningún despido lo toca; recién después se usa según la política. Subirlo —por ejemplo a 24 meses— simula una decisión del empleador de dejar madurar el fondo dos años antes de empezar a usarlo, pagando de caja los despidos de ese lapso.</p>
 <p>Dos simplificaciones: se asume que los aportes son <b>continuos desde el mes 1</b> (la ley exige consecutivos — un mes salteado reiniciaría el conteo de la carencia legal), y que el mes 1 de la simulación es el de la primera contribución registrada en ARCA, no la vigencia del régimen. Una empresa que arranca tarde tiene su carencia más tarde.</p>
-
-<h3>El horizonte se deriva del cruce</h3>
-<p>No hay input de horizonte: la vista se ajusta sola al cruce de la política elegida, más un 25% de margen para ver qué pasa después. Un cruce en el año 13 muestra hasta el 16; uno en el 60, hasta el 75. Cuando no hay cruce se muestran 40 años, que ya alcanzan para ver que la curva no se junta.</p>
-<p>El cruce se busca <b>hasta 200 años</b>, muy por encima de cualquier horizonte razonable. Es a propósito: un cruce en el año 70 es información distinta de "no cruza nunca", aunque ninguno de los dos le sirva a nadie. El card dice "Nunca" sólo cuando de verdad no ocurre.</p>
 
 <h3>Rotación prorrateada</h3>
 <p>Los despidos se distribuyen uniformemente: 5% sobre 20 empleados = 1 persona por año = 0,083 por mes. Conceptualmente suena raro despedir fracciones de persona, pero es lo correcto para una <i>tasa</i>: evita que el resultado dependa de si el despido cae en enero o en diciembre.</p>
 
-<h3>Las tres políticas de uso</h3>
-<p>El art. 64 permite usar el fondo, usarlo parcialmente, o no usarlo. Las tres curvas son la misma proyección con distinta aplicación:</p>
-<ul>
-<li><b>Usar siempre</b> — se aplica el fondo a cada indemnización hasta agotar el saldo disponible.</li>
-<li><b>Mitad</b> — se paga la mitad de cada indemnización con el fondo, capado por el saldo.</li>
-<li><b>Capitalizar</b> — no se toca el fondo; toda la indemnización sale de caja.</li>
-</ul>
-<div class="note">Capitalizar alcanza la cobertura antes <b>precisamente porque paga todo de caja mientras tanto</b>. No es una estrategia mejor: traslada el costo en el tiempo. Los dos gráficos son espejo — lo que se gana en cobertura se paga en caja, peso por peso.</div>
-
-<h3>Qué política lee cada parte</h3>
-<p>El resultado depende de qué se hace con el fondo, así que conviene saber de dónde sale cada número:</p>
-<ul>
-<li><b>Los tres cards de cruce → una política cada uno.</b> Es la comparación directa: mismo escenario, tres decisiones.</li>
-<li><b>El régimen y el ratio → ninguna.</b> Salen de la condición de equilibrio, que compara flujos y no depende de la política.</li>
-<li><b>Pasivo de la nómina y costo de la rotación → ninguna.</b> Son el escenario, no el resultado.</li>
-<li><b>Tabla anual → usar siempre.</b> Es la única vista donde se ve el drenaje real: columna "Aplicado" y saldo bajando. Capitalizando serían todas cero.</li>
-<li><b>Heatmap → capitalizar.</b> Mide el techo de acumulación.</li>
-<li><b>Gráficos → las tres.</b></li>
-</ul>
-<div class="flag"><b>La cobertura sola no alcanza para juzgar.</b> Un fondo puede mostrar una cobertura creciente capitalizando y estar en déficit estructural al mismo tiempo: acumula porque nunca se usa, mientras cada despido se paga de caja. Las dos cosas son ciertas. Por eso el veredicto muestra las dos coberturas y el ratio de equilibrio en la misma línea.</div>
+<h3>Punto de Inflexión</h3>
+    
+<h3>Uso de fondos</h3>
+<p>El art. 64 permite usar el fondo, usarlo parcialmente, o no usarlo. :</p>
+<div class="note">El art. 64 permite usar el fondo en su totalidad, usarlo parcialmente o no usarlo. Cuanto más tiempo se capitaliza el fondo, más crecen sus rendimientos por efecto del interés compuesto. Pero existe un <b>trade-off entre capitalizar y usar los fondos</b>: mientras se capitaliza, todos los costos indemnizatorios salen de la caja de la empresa, un escenario similar al de no tener FAL. Usar el FAL, en cambio, reduce esos costos de inmediato. La disyuntiva es entre tener menos costos ahora o llegar cuanto antes al <b>punto de inflexión</b> —el momento en que los rendimientos reales del fondo alcanzan para cubrir la totalidad de las indemnizaciones, reduciendo a cero su costo para la empresa.</div>
 
 <h2>Decisiones de modelo</h2>
 
-<h3>Contra qué se mide la cobertura</h3>
+<h3>Suspensión de aportes</h3>
 <p>El art. 66 permite suspender el aporte cuando el saldo cubre "los porcentajes que determine la reglamentación de las posibles contingencias laborales de su nómina". <b>Ese porcentaje todavía no existe</b> — depende de una resolución conjunta pendiente (D. art. 16).</p>
 <p>Lo que sí dice la ley es contra qué se mide: <b>las contingencias de la nómina</b>. Eso es un stock, no un flujo. Por eso la cobertura se calcula como <code>saldo / (indemnización por empleado × empleados)</code>: cuánto del costo de despedir a toda la dotación está prefinanciado hoy.</p>
 <p>Es una barra alta. Con una alícuota del 2,5% entran ~0,325 sueldos por empleado por año, y despedir a alguien con 5 años cuesta ~6,6 sueldos. Cubrir la nómina entera lleva <b>entre 10 y 25 años</b> según alícuota y antigüedad, incluso capitalizando sin tocar el fondo. Lo que hace que llegue es el spread real: el fondo compone más rápido de lo que crece el pasivo, y la brecha se cierra sola. Lento, pero se cierra.</p>
@@ -29750,7 +29724,7 @@ window.ons_init = function() {
 <div class="flag"><b>Con horizontes cortos el techo casi nunca se activa.</b> A 10 años, la mayoría de las configuraciones quedan lejos del 100%. No es un defecto del modelo: es el resultado. El FAL es un instrumento de acumulación lenta, y decirlo es más útil que inflar la métrica eligiendo un denominador más chico.</div>
 
 <h3>Antigüedad constante</h3>
-<p>Se asume antigüedad promedio estable. Un modelo dinámico (los que salen se reponen con antigüedad 0) es más realista en apariencia, pero introduce un supuesto falso: que los despedidos tienen la antigüedad promedio. En la práctica rota más el personal nuevo. Preferimos un supuesto explícito y controlable por el usuario antes que una deriva automática que nadie puede auditar.</p>
+<p>Se asume antigüedad promedio estable. </p>
 
 <h3>Sólo despido sin causa</h3>
 <p>El FAL cubre once artículos de la LCT, no sólo el 245: extinción por mutuo acuerdo (241), fuerza mayor o falta de trabajo (247), muerte del trabajador (248), muerte del empleador (249), vencimiento de plazo (250), quiebra (251), incapacidad (212), y los accesorios de preaviso (232) e integración (233). El fondo sirve, entre otras cosas, <b>para financiar retiros negociados</b>.</p>
@@ -29762,13 +29736,12 @@ window.ons_init = function() {
 <h3>13 aportes por año</h3>
 <p>La base del aporte son "las remuneraciones que se toman como base para el cálculo de las contribuciones patronales con destino al SIPA" (L. 60). El SAC es remuneración (LCT 121) e integra esa base, así que serían 13 aportes anuales, no 12. <b>La ley no lo dice expresamente</b> — es interpretación. Por eso es un toggle y el default es 13.</p>
 
-<h2>El cruce: cuándo el fondo se autosustenta</h2>
+<h2>El punto de inflexión: cuándo los flujos de fondo compensa los flujos indemnizatorios.</h2>
 <p>Es el resultado principal de la herramienta. La condición:</p>
 <p><code>saldo × spread real ≥ rotación × indemnización × empleados</code></p>
 <p>Es decir: cuando el <b>rendimiento real</b> del fondo alcanza a pagar el costo anual de la rotación. Desde ese momento el fondo se paga los despidos solo — la empresa deja de poner caja propia de forma permanente, y el saldo sigue creciendo.</p>
 <p>Se usa el <b>spread real</b> y no el rendimiento nominal, y ésa es la parte que importa. El pasivo indemnizatorio crece con los salarios: si el fondo rinde 30,6% y los salarios suben 20%, sólo 8,8 puntos son ganancia genuina. El resto apenas empata la actualización de la deuda que hay que pagar. <b>Con spread real cero o negativo el cruce no llega nunca</b>, por más alto que sea el rendimiento nominal.</p>
-<p>Las tres políticas cruzan en momentos distintos y el orden es siempre el mismo: capitalizar primero, mitad después, usarlo siempre al final. Capitalizar llega antes porque no drena el fondo — y paga ese privilegio en caja.</p>
-<div class="note">El cruce llega <b>mucho antes</b> que el techo del art. 66. Un fondo puede volverse autosustentable con 15-20% de cobertura del pasivo total: no necesita tener toda la nómina cubierta, sólo necesita que su rendimiento real supere el costo de la rotación. El techo es un stock enorme; el cruce es la pregunta que decide.</div>
+<div class="note">El punto de inflexión llega <b>mucho antes</b> que el techo del art. 66. Un fondo puede volverse autosustentable con 15-20% de cobertura del pasivo total: no necesita tener toda la nómina cubierta, sólo necesita que su rendimiento real supere el costo de la rotación. El techo es un stock enorme; el cruce es la pregunta que decide.</div>
 
 <h2>La condición de equilibrio</h2>
 <p>La cobertura mide un stock: cuánto del pasivo total está prefinanciado. El equilibrio mide un flujo: si lo que entra alcanza para lo que sale. <b>Son preguntas distintas y pueden dar respuestas opuestas.</b></p>
@@ -30272,7 +30245,7 @@ Equipo: Research BullMarket`;
 
 
 /* ══════════════ ESTADO ══════════════ */
-const S = { tipo:"mipyme", aportes:13, adv:false, unidad:"meses", usoCaja:0 };
+const S = { tipo:"mipyme", aportes:13, adv:false, ind:false, unidad:"meses", usoCaja:0 };
 
 const ALIC = {
   mipyme:[{v:0.025,t:"2,5% — ley",h:"Alícuota legal MiPyME (art. 60)."},
@@ -30283,11 +30256,13 @@ const ALIC = {
 
 const $ = id => document.getElementById(id);
 const num = id => parseFloat($(id).value) || 0;
+// Salario: input de texto con separador de miles (1.500.000). Se limpian los puntos.
+const numMiles = id => parseFloat(String($(id).value).replace(/\./g,"")) || 0;
 
 function params(){
   return {
     empleados: Math.max(1, num("FAL_empleados")),
-    salario:   num("FAL_salario"),
+    salario:   numMiles("FAL_salario"),
     antig:     num("FAL_antig"),
     ajuste:    num("FAL_ajuste")/100,
     alicuota:  parseFloat($("FAL_alicuota").value),
@@ -30873,6 +30848,20 @@ $("FAL_advT").addEventListener("click", () => {
   S.adv = !S.adv;
   $("FAL_advB").classList.toggle("on", S.adv);
   $("FAL_advI").textContent = S.adv ? "−" : "+";
+});
+$("FAL_indT").addEventListener("click", () => {
+  S.ind = !S.ind;
+  $("FAL_indB").classList.toggle("on", S.ind);
+  $("FAL_indI").textContent = S.ind ? "−" : "+";
+});
+// Salario: formateo en vivo con separador de miles, conservando la posición del cursor.
+$("FAL_salario").addEventListener("input", e => {
+  const el = e.target;
+  const posDesdeFin = el.value.length - el.selectionStart;
+  const limpio = el.value.replace(/\D/g,"");
+  el.value = limpio ? parseInt(limpio,10).toLocaleString("es-AR") : "";
+  const nuevaPos = Math.max(0, el.value.length - posDesdeFin);
+  el.setSelectionRange(nuevaPos, nuevaPos);
 });
 /* tabs eliminados: Metodología vive en la ayuda */
 ["empleados","salario","antig","ajuste","rend","comision","rotacion","gracia",
