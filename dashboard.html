@@ -2040,6 +2040,9 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 #app-fal .fal-dv.sep{border-top:1px solid var(--border);margin-top:4px;padding-top:5px}
 #app-fal .fal-dv.excl{text-decoration:line-through;text-decoration-color:var(--border2);color:var(--text3)}
 #app-fal .fal-dv.excl b{color:var(--text3);font-weight:400}
+/* encabezado de grupo dentro del card de parámetros */
+#app-fal .fal-dvh{font-family:var(--mono);font-size:8.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--accent);margin:13px 0 5px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+#app-fal .fal-dvh:first-child{margin-top:0}
 
 /* ---------- verdict ---------- */
 #app-fal .fal-verdict{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:4px;padding:15px 17px;margin-bottom:16px}
@@ -2054,11 +2057,20 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 #app-fal .fal-sim-head{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:13px 16px;margin-bottom:9px}
 #app-fal .fal-sim-head h2{font-size:16px;font-weight:650;letter-spacing:-.01em;color:var(--text)}
 #app-fal .fal-sim-head .fal-sh-sub{font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:4px}
-#app-fal .fal-top-grid{display:grid;grid-template-columns:300px 1fr;grid-template-rows:auto auto 1fr;gap:9px 11px;margin-bottom:16px}
-#app-fal .fal-top-grid .fal-derived-card{grid-column:1;grid-row:1 / span 3}
+#app-fal .fal-top-grid{display:grid;grid-template-columns:300px 1fr;grid-template-rows:auto auto auto 1fr;gap:9px 11px;margin-bottom:16px}
+#app-fal .fal-top-grid .fal-derived-card{grid-column:1;grid-row:1 / span 4}
 #app-fal .fal-top-grid .fal-kpis-row{grid-column:2;grid-row:1;display:grid;grid-template-columns:1fr 1fr;gap:9px 11px}
 #app-fal .fal-top-grid .fal-kpis-row2{grid-column:2;grid-row:2;display:grid;grid-template-columns:1fr 1fr;gap:9px 11px}
-#app-fal .fal-top-grid .fal-verdict{grid-column:2;grid-row:3;margin-bottom:0}
+#app-fal .fal-top-grid .fal-kpis-row3{grid-column:2;grid-row:3}
+#app-fal .fal-top-grid .fal-verdict{grid-column:2;grid-row:4;margin-bottom:0}
+/* tira de hitos de cobertura: 4 cards + leyenda */
+#app-fal .fal-cov-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:9px 11px}
+#app-fal .fal-kpi.cov{border-left:2px solid var(--fal-ok);padding:10px 12px}
+#app-fal .fal-kpi.cov.na{border-left-color:var(--border2)}
+#app-fal .fal-kpi.cov .fal-k{margin-bottom:4px;color:var(--text2);font-weight:600;font-size:9.5px;letter-spacing:.06em}
+#app-fal .fal-kpi.cov .fal-v{font-size:22px}
+#app-fal .fal-kpi.cov.na .fal-v{color:var(--text3)}
+#app-fal .fal-cov-leg{font-family:var(--mono);font-size:9.5px;color:var(--text3);margin-top:7px;letter-spacing:.02em}
 #app-fal .fal-derived-card{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:12px 13px}
 #app-fal .fal-derived-card .fal-k{font-family:var(--mono);font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin-bottom:9px}
 #app-fal .fal-kpi.flexcol{display:flex;flex-direction:column;height:100%}
@@ -2124,10 +2136,47 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 #app-fal #FAL_gCob svg{display:block;width:100%;height:auto;overflow:visible}
 #app-fal #FAL_gCob{max-width:1040px;margin:0 auto}
 
+/* ---------- carrusel del veredicto ---------- */
+/* El bloque reserva espacio abajo (padding) para los dots, que van absolutos y
+   centrados: en flujo normal se apoyaban donde terminaba el texto de cada vista
+   y saltaban de posición al rotar. */
+#app-fal .fal-verdict,#app-fal .fal-top-grid .fal-verdict{position:relative;padding-bottom:32px}
+#app-fal .fal-v-view{display:none}
+#app-fal .fal-v-view.on{display:block}
+#app-fal .fal-v-dots{position:absolute;left:0;right:0;bottom:12px;display:flex;gap:7px;justify-content:center;z-index:2}
+#app-fal .fal-v-dot{display:block;flex:0 0 auto;width:8px;height:8px;min-width:8px;min-height:8px;border-radius:50%;background:var(--text3);border:none;padding:0;margin:0;cursor:pointer;opacity:.45;transition:opacity .15s,background .15s;appearance:none;-webkit-appearance:none}
+#app-fal .fal-v-dot:hover{opacity:.8}
+#app-fal .fal-v-dot.on{background:var(--accent);opacity:1}
+/* tabla de hitos: ancho natural y centrada — a width:100% las columnas se desparraman */
+#app-fal .fal-hitos{border-collapse:collapse;font-size:11.5px;margin:11px auto 3px}
+#app-fal .fal-hitos th{font-family:var(--mono);font-size:8.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:right;padding:0 0 6px 30px;font-weight:400;white-space:nowrap}
+#app-fal .fal-hitos th:first-child{text-align:left;padding-left:0}
+#app-fal .fal-hitos td{padding:6px 0 6px 30px;border-top:1px solid var(--border);text-align:right;font-variant-numeric:tabular-nums;color:var(--text2);white-space:nowrap}
+#app-fal .fal-hitos td:first-child{text-align:left;padding-left:0;color:var(--text);font-weight:650}
+#app-fal .fal-hitos td.anio{color:var(--text);font-weight:650}
+#app-fal .fal-hitos td.na{color:var(--text3)}
+
+/* ---------- selector de cobertura ---------- */
+#app-fal .fal-cov-sel{display:grid;grid-template-columns:230px 1fr;gap:18px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:14px 16px;margin-bottom:14px}
+#app-fal .fal-cov-ctl{display:flex;flex-direction:column;gap:13px}
+/* Los tres sliders en grilla: a flex, cada track arrancaba donde terminaba su label y
+   quedaban desparejos. Con grid la columna de labels es fija y los tracks se alinean. */
+#app-fal .fal-cov-ctl .fal-uso-slider{margin:0;display:grid;grid-template-columns:1fr;gap:4px}
+#app-fal .fal-cov-ctl .fal-uso-slider label{white-space:normal;line-height:1.3}
+#app-fal .fal-cov-ctl .fal-uso-slider input[type=range]{width:100%}
+#app-fal .fal-cov-out{font-size:12px;line-height:1.65;color:var(--text2)}
+#app-fal .fal-cov-out b{color:var(--text);font-weight:650}
+#app-fal .fal-cov-out .big{font-size:23px;font-weight:650;font-variant-numeric:tabular-nums;letter-spacing:-.02em;display:block;margin-bottom:6px}
+#app-fal .fal-cov-out .rem{margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+#app-fal .fal-cov .cell.dim{opacity:.24}
+#app-fal .fal-cov .cell.xhair{opacity:1}
+
 /* ---------- responsive ---------- */
 @media(max-width:900px){
+  #app-fal .fal-cov-sel{grid-template-columns:1fr}
+  #app-fal .fal-cov-strip{grid-template-columns:1fr 1fr}
   #app-fal .fal-top-grid{grid-template-columns:1fr;grid-template-rows:none}
-  #app-fal .fal-top-grid .fal-derived-card,#app-fal .fal-top-grid .fal-kpis-row,#app-fal .fal-top-grid .fal-kpis-row2,#app-fal .fal-top-grid .fal-verdict{grid-column:1;grid-row:auto}
+  #app-fal .fal-top-grid .fal-derived-card,#app-fal .fal-top-grid .fal-kpis-row,#app-fal .fal-top-grid .fal-kpis-row2,#app-fal .fal-top-grid .fal-kpis-row3,#app-fal .fal-top-grid .fal-verdict{grid-column:1;grid-row:auto}
 }
 
 /* ---------- tokens semánticos de leyenda (usan variables --fal-*) ---------- */
@@ -13799,11 +13848,12 @@ function eqDrawHeatmapPDF(pdf, HD, x, y, W, H){
         <div class="fal-sim-head" id="FAL_simHead"></div>
         <div class="fal-top-grid">
           <div class="fal-derived-card">
-            <div class="fal-k">Parámetros derivados</div>
+            <div class="fal-k">Parámetros</div>
             <div class="fal-derived" id="FAL_derived"></div>
           </div>
           <div class="fal-kpis-row" id="FAL_kpis"></div>
           <div class="fal-kpis-row2" id="FAL_kpis2"></div>
+          <div class="fal-kpis-row3" id="FAL_kpis3"></div>
           <div class="fal-verdict" id="FAL_verdict"></div>
         </div>
 
@@ -13824,10 +13874,27 @@ function eqDrawHeatmapPDF(pdf, HD, x, y, W, H){
             </div>
           </div>
           <div class="fal-card-d wide">Cuánto de un evento de reestructuración logra absorber el fondo. El supuesto es de acumulación pura: <b>no hay rotación y el fondo no se toca</b> — sólo recibe aportes y capitaliza. Las <b>columnas</b> son los años transcurridos desde el inicio del régimen. Las <b>filas</b> son el tamaño del evento: qué porcentaje de la plantilla se desvincula de una sola vez. Cada celda es <b>qué fracción del costo de esa desvinculación está prefinanciada en el fondo</b> en ese momento. La celda marcada en cada fila es el primer año en que la cobertura llega al 100%; de ahí en adelante el evento está cubierto y la celda se muestra al tope.</div>
+          <div class="fal-cov-sel">
+            <div class="fal-cov-ctl">
+              <div class="fal-uso-slider">
+                <label>Años acumulando <b id="FAL_selAnioL">—</b></label>
+                <input type="range" id="FAL_selAnio" min="0" max="0" step="1" value="0">
+              </div>
+              <div class="fal-uso-slider">
+                <label>Desvinculación <b id="FAL_selFracL">—</b></label>
+                <input type="range" id="FAL_selFrac" min="1" max="10" step="1" value="10">
+              </div>
+              <div class="fal-uso-slider">
+                <label>Despidos puntuales <b id="FAL_selRetL">—</b></label>
+                <input type="range" id="FAL_selRet" min="0" max="4" step="1" value="0">
+              </div>
+            </div>
+            <div class="fal-cov-out" id="FAL_selOut"></div>
+          </div>
           <div id="FAL_hmCob" style="overflow-x:auto"></div>
           <div id="FAL_covNota" style="margin-top:9px;font-size:10.5px;color:var(--text3);line-height:1.5"></div>
-          <div class="fal-legend" style="margin:16px 0 8px">
-            <span><i class="fal-lg-ok"></i>Cobertura de reestructuración</span>
+          <div class="fal-legend" id="FAL_gLeg" style="margin:16px 0 8px">
+            <span><i class="fal-lg-ok"></i>Cobertura del pasivo de la nómina</span>
           </div>
           <div id="FAL_gCob"></div>
           <div id="FAL_gCobNota" style="margin-top:9px;font-size:10.5px;color:var(--text3);line-height:1.5"></div>
@@ -30471,6 +30538,68 @@ function acumular(p, meses, antigDin){
   return out;
 }
 
+// Acumulación CON retiros puntuales. No modifica acumular(): la matriz y los cards de
+// hito siguen leyendo la serie pura, y ésta alimenta sólo la curva de comparación y la
+// frase del selector.
+// Los `nRet` retiros se reparten centrados sobre la ventana de `mesesVentana`, que es el
+// plazo que el usuario tiene seleccionado — con 3 retiros y ventana de 12 años caen en
+// los meses 24, 72 y 120 (centro de cada tercio). Cada retiro paga UNA indemnización al
+// salario y antigüedad vigentes de ese mes, y se asume recontratación inmediata: la
+// plantilla no cambia de tamaño y la antigüedad promedio sigue el mismo supuesto que el
+// resto del módulo (el reemplazo hereda la antigüedad promedio; modelar antigüedad cero
+// exigiría llevar una distribución y cambia el motor entero).
+// El fondo NUNCA queda negativo: si el saldo no alcanza, se vacía y el faltante lo
+// absorbe la empresa — eso se acumula en `faltante` para poder declararlo.
+function acumularConRetiros(p, meses, antigDin, nRet, mesesVentana){
+  const tm = Math.pow(1+p.rend, 1/12) - 1;
+  const cm = Math.pow(1+p.comision, 1/12) - 1;
+  const am = Math.pow(1+p.ajuste, 1/12) - 1;
+
+  // meses en que ocurre cada retiro: centro de cada tramo de la ventana
+  const golpes = new Set();
+  if (nRet > 0 && mesesVentana > 0){
+    for (let k=0; k<nRet; k++){
+      const m = Math.max(1, Math.round(mesesVentana * (k + 0.5) / nRet));
+      golpes.add(m);
+    }
+  }
+
+  let salario = p.salario, saldo = 0, aporteOn = true;
+  let retirado = 0, faltante = 0, nHechos = 0;
+  const out = [];
+
+  for (let m=1; m<=meses; m++){
+    const baseAp = salario * p.empleados * (p.aportes===13 ? 13/12 : 1);
+    const ap = aporteOn ? baseAp * p.alicuota : 0;
+    saldo += ap;
+    saldo += saldo * tm;
+    saldo -= saldo * cm;
+
+    const antigM = antigDin ? p.antig + m/12 : p.antig;
+    const iu = indem(salario, antigM, p).total;
+
+    // retiro puntual: una indemnización, capada por el saldo disponible
+    let retMes = 0, faltaMes = 0;
+    if (golpes.has(m)){
+      retMes   = Math.min(saldo, iu);
+      faltaMes = Math.max(0, iu - saldo);
+      saldo   -= retMes;
+      retirado += retMes;
+      faltante += faltaMes;
+      nHechos++;
+    }
+
+    const pasivoNomina = iu * p.empleados;
+    aporteOn = !(pasivoNomina > 0 && saldo >= pasivoNomina * p.techo);
+
+    salario *= (1+am);
+    out.push({ m, saldo, iu, pasivoNomina, aporteOn, antig: antigM,
+               retMes, faltaMes, retirado, faltante, nHechos,
+               cob: pasivoNomina > 0 ? saldo/pasivoNomina : 0 });
+  }
+  return out;
+}
+
 // Primer mes en que la cobertura de una fracción `frac` de la plantilla llega al 100%.
 // null si no ocurre dentro de la serie.
 function mesCobertura(serie, frac){
@@ -30669,14 +30798,14 @@ Saldo del FAL a fin de año: ${money(d.saldo)}</title></rect>`;
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Efecto en caja: rendimiento del fondo e indemnización por año">${g}</svg>`;
 }
 
-// Curva de cobertura del 100% de la plantilla. Muestreo ANUAL: con antigüedad dinámica
+// Curva de cobertura del pasivo de la nómina. Muestreo ANUAL: con antigüedad dinámica
 // el pasivo salta al cumplirse cada año computable (art. 245) y una curva mensual queda
 // dentada; el muestreo anual absorbe el escalón y deja la tendencia limpia. Líneas
 // horizontales en los umbrales de 10..100% (las filas de la matriz): donde la curva cruza
 // cada una, ese es el año que la tabla da en esa fila. La cobertura se capea al 100%,
 // igual que en la matriz: pasado ese punto el pasivo está cubierto y el excedente no
 // agrega información. Sombreado sobre los años con el aporte suspendido (art. 66).
-function curvaCobertura(el, serie, hzAnios, umbrales){
+function curvaCobertura(el, serie, hzAnios, umbrales, serieRet){
   const W=760, H=280, P={t:16,r:40,b:26,l:48};
   const iw=W-P.l-P.r, ih=H-P.t-P.b;
 
@@ -30685,7 +30814,8 @@ function curvaCobertura(el, serie, hzAnios, umbrales){
   for (let a=1; a<=hzAnios; a++){
     const i = a*12-1;
     if (i >= serie.length) break;
-    pts.push({ a, cob: Math.min(serie[i].cob, 1), aporteOn: serie[i].aporteOn });
+    pts.push({ a, cob: Math.min(serie[i].cob, 1), aporteOn: serie[i].aporteOn,
+               cobR: serieRet && i < serieRet.length ? Math.min(serieRet[i].cob, 1) : null });
   }
   const n = pts.length;
   if (n < 2){ el.innerHTML=""; return; }
@@ -30723,16 +30853,43 @@ function curvaCobertura(el, serie, hzAnios, umbrales){
     g += `<text class="fal-ax" x="${X(k).toFixed(1)}" y="${H-8}" text-anchor="middle">A${pt.a}</text>`;
   });
 
-  // curva
+  // curva de referencia (sin retiros)
   const d = pts.map((pt,k)=>`${k?"L":"M"}${X(k).toFixed(1)},${Y(pt.cob).toFixed(1)}`);
-  g += `<path d="${d.join(" ")}" fill="none" stroke="var(--fal-ok)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  g += `<path d="${d.join(" ")}" fill="none" stroke="var(--fal-ok)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"${pts[0].cobR!==null?' stroke-dasharray="4 3" opacity=".55"':''}/>`;
 
-  // marca del primer año con cobertura total
-  const kFull = pts.findIndex(pt => pt.cob >= 1);
+  // curva con retiros: se dibuja llena porque es el escenario real; la de referencia
+  // pasa a punteada. La distancia vertical entre ambas es el costo del consumo, con el
+  // rendimiento que esos pesos habrían generado ya incorporado.
+  if (pts[0].cobR !== null){
+    const dr = pts.map((pt,k)=>`${k?"L":"M"}${X(k).toFixed(1)},${Y(pt.cobR).toFixed(1)}`);
+    g += `<path d="${dr.join(" ")}" fill="none" stroke="var(--fal-warn)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  }
+
+  // Marcas de cobertura total. Con retiros hay dos cruces: el de la curva de referencia
+  // y el real, y la distancia entre ambos ES el atraso que provoca haber consumido el
+  // fondo. Se combinan en una sola etiqueta para que los textos no se pisen cuando los
+  // años están cerca; si el escenario real no llega a cubrir dentro del horizonte, se
+  // dice explícitamente en vez de dejar la marca muda.
+  const kFull  = pts.findIndex(pt => pt.cob  >= 1);
+  const kFullR = pts[0].cobR !== null ? pts.findIndex(pt => pt.cobR >= 1) : -1;
+  const conRet = pts[0].cobR !== null;
+
   if (kFull >= 0){
     const x = X(kFull);
-    g += `<line x1="${x.toFixed(1)}" y1="${P.t}" x2="${x.toFixed(1)}" y2="${P.t+ih}" stroke="var(--text)" stroke-width="1" stroke-dasharray="3 3"/>`;
-    g += `<text class="fal-ax" x="${x.toFixed(1)}" y="${P.t-4}" text-anchor="middle" fill="var(--text)">cobertura total · año ${pts[kFull].a}</text>`;
+    g += `<line x1="${x.toFixed(1)}" y1="${P.t}" x2="${x.toFixed(1)}" y2="${P.t+ih}" stroke="var(--text)" stroke-width="1" stroke-dasharray="3 3" opacity="${conRet?".5":"1"}"/>`;
+    const et = !conRet
+      ? `cobertura total · año ${pts[kFull].a}`
+      : (kFullR >= 0
+          ? `cobertura total · año ${pts[kFull].a} → ${pts[kFullR].a} con retiros`
+          : `cobertura total · año ${pts[kFull].a} · con retiros no se alcanza`);
+    // la etiqueta se ancla al cruce real cuando existe, que es el dato operativo
+    const xe = (conRet && kFullR >= 0) ? X(kFullR) : x;
+    const anchor = xe > P.l + iw*0.72 ? "end" : (xe < P.l + iw*0.28 ? "start" : "middle");
+    g += `<text class="fal-ax" x="${xe.toFixed(1)}" y="${P.t-4}" text-anchor="${anchor}" fill="var(--text)">${et}</text>`;
+  }
+  if (conRet && kFullR >= 0){
+    const xr = X(kFullR);
+    g += `<line x1="${xr.toFixed(1)}" y1="${P.t}" x2="${xr.toFixed(1)}" y2="${P.t+ih}" stroke="var(--fal-warn)" stroke-width="1" stroke-dasharray="3 3"/>`;
   }
 
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Curva de cobertura del pasivo de la nómina en el tiempo">${g}</svg>`;
@@ -30743,6 +30900,67 @@ function anual(f, anios){
   const r = [];
   for (let a=1; a<=anios && a*12-1 < f.length; a++) r.push(f[a*12-1]);
   return r;
+}
+
+/* ══════════════ CARRUSEL DEL VEREDICTO ══════════════ */
+// Dos vistas del mismo bloque. Rota sola cada CARR_MS, pero el primer click en un dot
+// la detiene DEFINITIVAMENTE: si el usuario eligió una vista, cambiársela mientras lee
+// es peor que no rotar nunca. El estado (vista activa y si quedó fijada) vive fuera de
+// render() porque render() se llama en cada cambio de parámetro y no debe reiniciarlo.
+const CARR_MS = 12000;
+let _carrIdx = 0, _carrFijo = false, _carrT = null;
+// Marca si el selector de la matriz ya tomó su posición inicial. Vive fuera de render()
+// porque render() corre con cada cambio de parámetro y no debe reposicionar los sliders.
+let _selInit = false;
+
+function montarCarrusel(){
+  const wrap = $("FAL_verdict");
+  const views = [...wrap.querySelectorAll(".fal-v-view")];
+  const dots  = [...wrap.querySelectorAll(".fal-v-dot")];
+  if (!views.length) return;
+
+  const mostrar = i => {
+    _carrIdx = i % views.length;
+    views.forEach((v,k) => v.classList.toggle("on", k===_carrIdx));
+    dots.forEach((d,k)  => d.classList.toggle("on", k===_carrIdx));
+  };
+
+  dots.forEach((d,k) => d.addEventListener("click", () => {
+    _carrFijo = true;                       // elección del usuario: se corta la rotación
+    if (_carrT){ clearInterval(_carrT); _carrT = null; }
+    mostrar(k);
+  }));
+
+  mostrar(_carrIdx);
+  igualarAlturas(wrap, views);
+
+  if (_carrT){ clearInterval(_carrT); _carrT = null; }
+  if (!_carrFijo) _carrT = setInterval(() => mostrar(_carrIdx+1), CARR_MS);
+}
+
+// Altura constante entre vistas: se mide la más alta y se fija como min-height, así el
+// bloque no salta al cambiar de vista ni al cambiar de régimen. Hay que medir después
+// del paint — con las vistas ocultas por display:none no tienen altura, así que se
+// revelan de a una fuera de pantalla. Doble rAF: el layout tiene que estar pintado.
+// OJO: box-sizing es border-box globalmente, así que min-height INCLUYE el padding —
+// hay que sumarlo a la medida del contenido o el bloque queda corto y los dots, que van
+// absolutos contra el borde inferior, se superponen con el texto.
+function igualarAlturas(wrap, views){
+  wrap.style.minHeight = "";
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    let max = 0;
+    views.forEach(v => {
+      const era = v.classList.contains("on");
+      if (!era){ v.style.cssText = "display:block;position:absolute;visibility:hidden;left:-9999px;width:"+wrap.clientWidth+"px"; }
+      max = Math.max(max, v.scrollHeight);
+      if (!era) v.style.cssText = "";
+    });
+    if (max > 0){
+      const cs  = getComputedStyle(wrap);
+      const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+      wrap.style.minHeight = Math.ceil(max + pad) + "px";
+    }
+  }));
 }
 
 function render(){
@@ -30773,20 +30991,52 @@ function render(){
   const b = indem(p.salario, p.antig, p);
   const off = x => x ? " excl" : "";
   const acc = (on, v) => on ? fmt(v) : "—";
+  // Card de parámetros: primero los supuestos de entrada (lo que el usuario cargó en el
+  // sidebar), después lo derivado. Agrupado con encabezados para que no sea una lista
+  // corrida — el card abarca cuatro filas del grid y a lista plana quedaba con aire.
+  const tipoTxt = S.tipo === "mipyme" ? "MiPyME" : "Gran empresa";
   $("FAL_derived").innerHTML = `
+    <div class="fal-dvh">Empresa</div>
+    <div class="fal-dv"><span>Tipo</span><b>${tipoTxt}</b></div>
+    <div class="fal-dv"><span>Empleados</span><b>${p.empleados}</b></div>
+    <div class="fal-dv"><span>Salario promedio</span><b>${fmt(p.salario)}</b></div>
+    <div class="fal-dv"><span>Antigüedad promedio</span><b>${String(p.antig).replace(".",",")} años</b></div>
+    <div class="fal-dv"><span>Alícuota</span><b>${pct(p.alicuota)}</b></div>
+    <div class="fal-dv"><span>Aportes por año</span><b>${p.aportes}</b></div>
+
+    <div class="fal-dvh">Fondo</div>
     <div class="fal-dv"><span>Rendimiento bruto TNA</span><b>${pct(p.rendTna)}</b></div>
     <div class="fal-dv"><span>Rendimiento bruto TEA</span><b>${pct(p.rend)}</b></div>
     <div class="fal-dv"><span>Comisión TNA</span><b>${pct(p.comTna)}</b></div>
     <div class="fal-dv sep"><span>Rendimiento neto TEA</span><b>${pct(neto)}</b></div>
-    <div class="fal-dv sep"><span>Ajuste salarial por año</span><b>${pct(p.ajuste)}</b></div>
+    <div class="fal-dv"><span>Techo art. 66</span><b>${pct(p.techo)}</b></div>
+
+    <div class="fal-dvh">Contexto</div>
+    <div class="fal-dv"><span>Ajuste salarial por año</span><b>${pct(p.ajuste)}</b></div>
     <div class="fal-dv"><span>Tasa real neta de incr. salarial</span><b style="color:${spread>=0?"var(--accent)":"var(--fal-alert)"}">${pct(spread)}</b></div>
-    <div class="fal-dv sep"><span>Indemnización por antigüedad</span><b>${fmt(b.a245)}</b></div>
+
+    <div class="fal-dvh">Rotación</div>
+    <div class="fal-dv"><span>Rotación anual</span><b>${pct(p.rotacion)}</b></div>
+    <div class="fal-dv"><span>Período de gracia</span><b>${p.gracia} meses</b></div>
+
+    <div class="fal-dvh">Indemnización por empleado</div>
+    <div class="fal-dv"><span>Indemnización por antigüedad</span><b>${fmt(b.a245)}</b></div>
     <div class="fal-dv${off(!p.incPre)}"><span>Preaviso — ${b.mesesPre} ${b.mesesPre===1?"mes":"meses"}</span><b>${acc(p.incPre,b.preaviso)}</b></div>
     <div class="fal-dv${off(!p.incInt)}"><span>Integración — ${p.diasInt} días</span><b>${acc(p.incInt,b.integ)}</b></div>
     <div class="fal-dv${off(!p.incSac)}"><span>SAC sobre preaviso e integración</span><b>${acc(p.incSac,b.sac)}</b></div>
-    <div class="fal-dv"><span>Total por empleado</span><b>${fmt(b.total)}</b></div>
+    ${p.topeCct > 0 ? `<div class="fal-dv"><span>Tope CCT</span><b>${fmt(p.topeCct)}</b></div>` : ``}
+    <div class="fal-dv sep"><span>Total por empleado</span><b>${fmt(b.total)}</b></div>
     <div class="fal-dv"><span>Pasivo por empleado</span><b>${(b.total/p.salario).toFixed(2)} sueldos</b></div>`;
 
+
+  /* ---- serie de acumulación pura (alimenta veredicto, cards de hitos y matriz) ---- */
+  // Se calcula acá arriba porque tanto la vista 2 del veredicto como los cards de hitos
+  // del grid superior la necesitan. Una sola pasada por render: son COV_TOPE*12
+  // iteraciones y no conviene repetirla.
+  const serieCob = acumular(p, COV_TOPE*12, S.antigDin);
+  const mesFull  = mesCobertura(serieCob, 1);
+  const anioFull = mesFull ? Math.ceil(mesFull/12) : null;
+  const anioHit  = frac => { const m = mesCobertura(serieCob, frac); return m ? Math.ceil(m/12) : null; };
 
   /* ---- guía de lectura ---- */
   // El régimen (superávit / equilibrio / déficit) sale de la condición de equilibrio,
@@ -30824,10 +31074,48 @@ function render(){
     main = `Sale más de lo que entra: el aporte cubre ${eq.ratio.toFixed(2)}× el costo de la rotación`;
     cola = `Esto significa un <b>déficit estructural</b>: el gasto en indemnizaciones supera al aporte, así que usar el fondo en cada despido lo mantiene casi vacío. Sólo logrará capitalizar si la empresa asume las indemnizaciones —parcial o totalmente— con caja propia en el corto plazo, hasta que el fondo madure y su rendimiento tome el relevo; y eso depende, además, de que el spread real alcance.`;
   }
+  // Vista 2: lectura de los hitos de cobertura. Repite deliberadamente algunas cifras de
+  // la vista 1 (aporte, indemnización unitaria, pasivo) porque son vistas alternativas y
+  // cada una tiene que leerse sola. La última columna es el costo del evento en el año
+  // del hito, DEFLACTADO a pesos de hoy: en nominales, con ajuste salarial del 20%, un
+  // evento a 40 años da cifras que no dicen nada (miles de millones) porque compara pesos
+  // de dos épocas. En términos reales la comparación es la que importa — con antigüedad
+  // constante el costo real no se mueve (el pasivo sigue al salario); con dinámica crece
+  // sólo por los años computables que la plantilla va sumando.
+  const hitosV = [0.25, 0.5, 0.75, 1];
+  const filasHito = hitosV.map(f => {
+    const a = anioHit(f);
+    const hoy = pasNom * f;
+    let real = null;
+    if (a){
+      const idx = Math.min(a*12-1, serieCob.length-1);
+      real = serieCob[idx].pasivoNomina * f / Math.pow(1+p.ajuste, idx/12);
+    }
+    return `<tr><td>${(f*100).toFixed(0)}%</td>
+      <td class="${a?"anio":"na"}">${a ? "Año "+a : "—"}</td>
+      <td>${fmt(hoy)}</td>
+      <td class="${real?"":"na"}">${real ? fmt(real) : "—"}</td></tr>`;
+  }).join("");
+
+  const vista2 = `<div class="fal-v-tag">Cobertura acumulada</div>
+    <div class="fal-v-main">Sin retiros, el fondo cubre a la plantilla entera ${anioFull ? "en el año "+anioFull : "más allá del horizonte analizado"}</div>
+    <div class="fal-v-sub">Con aportes de <b>${fmt(aportesTot)}</b> al año y un costo indemnizatorio de <b>${money(eq.iu)}</b> por empleado, el pasivo de la nómina asciende hoy a <b>${fmt(pasNom)}</b>. Acumulando <b>sin realizar retiros</b>, el saldo habilita estos recortes de plantilla:</div>
+    <table class="fal-hitos"><tr><th>Recorte</th><th>Se cubre en</th><th>Cuesta hoy</th><th>Costo real ese año</th></tr>${filasHito}</table>
+    <div class="fal-v-cola">Antigüedad ${S.antigDin?"dinámica":"constante"}, capitalización mensual, sin uso del fondo. La última columna está deflactada a pesos de hoy. ${S.antigDin
+      ? "El costo real del evento <b>crece mientras el fondo acumula</b>: la plantilla suma años computables, así que el objetivo se mueve."
+      : "El costo real <b>no se mueve</b>: el pasivo sigue al salario, de modo que ambas columnas coinciden."}</div>`;
+
   $("FAL_verdict").className = "fal-verdict "+cls;
-  $("FAL_verdict").innerHTML = `<div class="fal-v-tag">${tag}</div><div class="fal-v-main">${main}</div>
-    <div class="fal-v-sub">${comun}</div>
-    <div class="fal-v-cola">${cola}</div>`;
+  $("FAL_verdict").innerHTML =
+    `<div class="fal-v-view on" data-v="0"><div class="fal-v-tag">${tag}</div><div class="fal-v-main">${main}</div>
+      <div class="fal-v-sub">${comun}</div>
+      <div class="fal-v-cola">${cola}</div></div>
+     <div class="fal-v-view" data-v="1">${vista2}</div>
+     <div class="fal-v-dots">
+       <button class="fal-v-dot on" data-v="0" aria-label="Guía de lectura"></button>
+       <button class="fal-v-dot" data-v="1" aria-label="Cobertura acumulada"></button>
+     </div>`;
+  montarCarrusel();
 
   /* ---- KPIs ---- */
   // fila 1: pasivo de la nómina · ratio (ratio sin nota, con aire)
@@ -30848,6 +31136,18 @@ function render(){
       <div class="fal-v">${fmt(costoRot)}</div>
       <div class="fal-n">${despAnio.toFixed(1)} ${despAnio===1?"despido":"despidos"}/año al ${pct(p.rotacion)}</div>
       <div class="fal-n foot">${eq.sale.toFixed(3)} sueldos por empleado</div></div>`;
+
+  // fila 3: hitos de cobertura. Año en que el fondo alcanza a cubrir por completo un
+  // evento de desvinculación de ese tamaño, bajo acumulación pura. Siguen el toggle de
+  // antigüedad de la matriz de abajo; la leyenda declara qué supuesto está activo.
+  const hitos = [0.25, 0.5, 0.75, 1];
+  $("FAL_kpis3").innerHTML = `<div class="fal-cov-strip">` + hitos.map(f => {
+    const a = anioHit(f);
+    return `<div class="fal-kpi cov${a?"":" na"}"><div class="fal-k">Indemnizar ${(f*100).toFixed(0)}% de la plantilla</div>
+      <div class="fal-v">${a ? "Año "+a : "—"}</div>
+      <div class="fal-n">${a ? "cobertura total del evento" : "no se alcanza en "+COV_TOPE+" años"}</div></div>`;
+  }).join("") + `</div>
+    <div class="fal-cov-leg">Asumiendo antigüedad ${S.antigDin?"dinámica":"constante"}, capitalización mensual y sin uso del fondo</div>`;
 
   /* ---- gráfico de barras: efecto en caja ---- */
   // Todo en términos reales: se deflacta por el ajuste salarial. La indemnización
@@ -30948,11 +31248,7 @@ function render(){
     (techoVisible ? `Las filas <span style="color:var(--text3)">atenuadas</span> son los años con el aporte suspendido por alcanzar el techo del art. 66 (${(p.techo*100).toFixed(0)}% del pasivo de la nómina).` : `El aporte no llega a suspenderse (techo del art. 66 en ${(p.techo*100).toFixed(0)}%) dentro del horizonte mostrado.`);
 
   /* ---- seguro contra default: matriz de cobertura ---- */
-  // Acumulación pura hasta el tope de búsqueda. De ahí salen tanto las columnas
-  // adaptativas como la curva mensual.
-  const serieCob = acumular(p, COV_TOPE*12, S.antigDin);
-  const mesFull  = mesCobertura(serieCob, 1);
-  const anioFull = mesFull ? Math.ceil(mesFull/12) : null;
+  // serieCob / anioFull / anioHit ya se calcularon arriba (los usan los cards de hitos).
   const colsCob  = colsCobertura(anioFull);
   const filasCob = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1];
 
@@ -30966,28 +31262,128 @@ function render(){
   };
   // Cobertura al cierre del año a (índice del mes 12a-1)
   const cobEnAnio = a => { const i = Math.min(a*12-1, serieCob.length-1); return serieCob[i].cob; };
-  // Primer año en que la fila `frac` llega al 100%, para marcar el hito.
-  const anioHit = frac => { const m = mesCobertura(serieCob, frac); return m ? Math.ceil(m/12) : null; };
 
   let hc = `<table class="fal-cov"><tr><th>desvinc. ↓ / año →</th>`;
   hc += colsCob.map(a => `<th>A${a}</th>`).join("") + "</tr>";
-  filasCob.forEach(frac => {
+  filasCob.forEach((frac, fi) => {
     const hit = anioHit(frac);
     // Con paso grueso el año exacto del hito puede caer entre dos columnas: se marca
     // la primera columna visible que ya lo alcanzó.
     const colHit = hit ? colsCob.find(c => c >= hit) : null;
     hc += `<tr><th>${(frac*100).toFixed(0)}%</th>`;
-    colsCob.forEach(a => {
+    colsCob.forEach((a, ci) => {
       // Cap a 100%: pasado ese punto el evento está cubierto y el excedente no agrega
       // información útil. El valor sin capear va en el tooltip.
       const crudo = cobEnAnio(a)/frac;
       const cob = Math.min(crudo, 1);
       const esHit = colHit !== null && colHit !== undefined && a === colHit;
-      hc += `<td class="fal-hm-cell cell${esHit?" hit":""}" style="background:${colorCob(cob)}" title="Año ${a} · desvinculación del ${(frac*100).toFixed(0)}% de la plantilla&#10;Cobertura: ${(crudo*100).toFixed(1)}%${crudo>1?" (cubierto)":""}">${(cob*100).toFixed(0)}%</td>`;
+      hc += `<td class="fal-hm-cell cell${esHit?" hit":""}" data-fi="${fi}" data-ci="${ci}" style="background:${colorCob(cob)}" title="Año ${a} · desvinculación del ${(frac*100).toFixed(0)}% de la plantilla&#10;Cobertura: ${(crudo*100).toFixed(1)}%${crudo>1?" (cubierto)":""}">${(cob*100).toFixed(0)}%</td>`;
     });
     hc += "</tr>";
   });
   $("FAL_hmCob").innerHTML = hc + "</table>";
+
+  /* ---- selector de la matriz ---- */
+  // El gráfico se dibuja desde acá porque la segunda curva depende del selector: la
+  // ventana de reparto de los retiros es el plazo seleccionado, así que al mover el
+  // slider de años cambia dónde caen los despidos y la curva se redibuja.
+  const hzCob = colsCob[colsCob.length-1];
+  function dibujarCurva(nRet, anioVentana){
+    const sRet = nRet > 0
+      ? acumularConRetiros(p, hzCob*12, S.antigDin, nRet, anioVentana*12)
+      : null;
+    curvaCobertura($("FAL_gCob"), serieCob, hzCob, filasCob, sRet);
+    $("FAL_gLeg").innerHTML = nRet > 0
+      ? `<span><i class="fal-lg-ok" style="opacity:.55"></i>Sin retiros (referencia)</span>
+         <span><i class="fal-lg-fal"></i>Con ${nRet} ${nRet===1?"retiro":"retiros"} en ${anioVentana} años</span>`
+      : `<span><i class="fal-lg-ok"></i>Cobertura del pasivo de la nómina</span>`;
+  }
+
+  // Lee una celda puntual y arma la frase completa del caso. El slider de años se mueve
+  // por ÍNDICE de columna, no por año: con paso grueso no todos los años existen como
+  // columna. El de desvinculación va por las filas de 10 en 10, así el resaltado es exacto.
+  // El de retiros define un escenario alternativo que NO afecta a la matriz ni a los
+  // cards de hito (ésos son acumulación pura): vive en la frase y en la segunda curva.
+  const selA = $("FAL_selAnio"), selF = $("FAL_selFrac"), selR = $("FAL_selRet");
+  selA.max = String(colsCob.length - 1);
+  // tope de retiros: 20% de la plantilla, con mínimo 1 para que el control siempre corra
+  const maxRet = Math.max(1, Math.round(p.empleados * 0.2));
+  selR.max = String(maxRet);
+  // Posición inicial: año 10 / 100% de desvinculación / 1 despido. El año 10 puede no
+  // existir como columna (la matriz corta antes si la cobertura llega rápido), así que se
+  // toma la columna más cercana. Sólo se aplica en el primer render — después manda el
+  // usuario, y render() se dispara con cada cambio de parámetro.
+  if (!_selInit){
+    _selInit = true;
+    let mejor = 0, dist = Infinity;
+    colsCob.forEach((a, i) => { const d = Math.abs(a - 10); if (d < dist){ dist = d; mejor = i; } });
+    selA.value = String(mejor);
+    selF.value = String(filasCob.length);          // 100%
+    selR.value = String(Math.min(1, maxRet));      // 1 despido
+  }
+  if (+selA.value > colsCob.length - 1) selA.value = String(colsCob.length - 1);
+  if (+selR.value > maxRet) selR.value = String(maxRet);
+
+  function pintarSel(){
+    const ci = Math.min(+selA.value, colsCob.length - 1);
+    const fi = Math.min(+selF.value, filasCob.length) - 1;
+    const nRet = Math.min(+selR.value, maxRet);
+    const anio = colsCob[ci], frac = filasCob[fi];
+    $("FAL_selAnioL").textContent = String(anio);
+    $("FAL_selFracL").textContent = (frac*100).toFixed(0) + "%";
+    $("FAL_selRetL").textContent  = nRet === 0 ? "ninguno"
+      : nRet + (nRet === 1 ? " despido" : " despidos");
+
+    const idx   = Math.min(anio*12-1, serieCob.length-1);
+    const saldo = serieCob[idx].saldo;
+    const costo = serieCob[idx].pasivoNomina * frac;
+    const cob   = costo > 0 ? Math.min(saldo/costo, 1) : 0;
+
+    if (nRet === 0){
+      const rem = Math.max(0, costo - Math.min(saldo, costo));
+      $("FAL_selOut").innerHTML =
+        `<span class="big" style="color:${colorCob(cob)}">${(cob*100).toFixed(0)}% cubierto</span>` +
+        `Desvincular al <b>${(frac*100).toFixed(0)}% de la plantilla</b> en el <b>año ${anio}</b> cuesta <b>${money(costo)}</b>. ` +
+        `A esa altura el FAL acumula <b>${money(saldo)}</b>, sin haber realizado erogaciones. ` +
+        `<span class="rem">${rem > 0
+          ? `La empresa debe cubrir un remanente de <b>${money(rem)}</b> con recursos propios.`
+          : `El evento queda <b>íntegramente cubierto</b> por el fondo.`}</span>`;
+    } else {
+      // Escenario con retiros: la ventana de reparto es el plazo seleccionado.
+      const sR      = acumularConRetiros(p, anio*12, S.antigDin, nRet, anio*12);
+      const uR      = sR[sR.length-1];
+      const saldoR  = uR.saldo;
+      const cobR    = costo > 0 ? Math.min(saldoR/costo, 1) : 0;
+      const remR    = Math.max(0, costo - Math.min(saldoR, costo));
+      const perdido = Math.max(0, saldo - saldoR);   // retiros + rendimiento no generado
+
+      $("FAL_selOut").innerHTML =
+        `<span class="big" style="color:${colorCob(cobR)}">${(cobR*100).toFixed(0)}% cubierto</span>` +
+        `Sin retiros, al <b>año ${anio}</b> el FAL habría acumulado <b>${money(saldo)}</b>, equivalente al <b>${(cob*100).toFixed(0)}%</b> del costo de desvincular al ${(frac*100).toFixed(0)}% de la nómina (<b>${money(costo)}</b>). ` +
+        `Con <b>${nRet} ${nRet===1?"despido":"despidos"}</b> en esos ${anio} años —asumiendo que en cada caso <b>se recontrató</b>, de modo que la plantilla se mantiene en ${p.empleados}—, el retiro del fondo fue de <b>${money(uR.retirado)}</b>; contando el rendimiento no generado, el saldo baja a <b>${money(saldoR)}</b>` +
+        (perdido > 0 ? ` (<b>${money(perdido)}</b> menos)` : ``) + `. ` +
+        (uR.faltante > 0
+          ? `<span class="rem">En algún momento el FAL <b>no alcanzó</b> a cubrir la totalidad de esas indemnizaciones: la empresa ya absorbió <b>${money(uR.faltante)}</b> de su caja. `
+          : `<span class="rem">`) +
+        (remR > 0
+          ? `El saldo restante cubre el <b>${(cobR*100).toFixed(0)}%</b> del evento, quedando <b>${money(remR)}</b> a cargo de la empresa.</span>`
+          : `El saldo restante <b>alcanza igual</b> para cubrir el evento por completo.</span>`);
+    }
+
+    // resaltado en cruz: atenúa el resto de la grilla
+    $("FAL_hmCob").querySelectorAll("td.cell").forEach(td => {
+      const mismo = +td.dataset.fi === fi && +td.dataset.ci === ci;
+      const cruz  = +td.dataset.fi === fi || +td.dataset.ci === ci;
+      td.classList.toggle("dim", !cruz);
+      td.classList.toggle("xhair", mismo);
+    });
+
+    dibujarCurva(nRet, anio);
+  }
+  selA.oninput = pintarSel;
+  selF.oninput = pintarSel;
+  selR.oninput = pintarSel;
+  pintarSel();
 
   const _antigFin = serieCob[Math.min(colsCob[colsCob.length-1]*12-1, serieCob.length-1)].antig;
   $("FAL_covNota").innerHTML =
@@ -31002,9 +31398,8 @@ function render(){
       : `<b>Antigüedad constante</b>: se mantiene fija en ${String(p.antig).replace(".",",")} años, igual que en el resto del módulo. Es el supuesto optimista — asume que la plantilla no envejece pese a no haber rotación. `) +
     `El techo del art. 66 (${(p.techo*100).toFixed(0)}% del pasivo de la nómina) se respeta: el aporte se suspende al alcanzarlo, y de ahí en más el saldo sólo crece por rendimiento.`;
 
-  /* ---- seguro contra default: curva de cobertura ---- */
-  const hzCob = colsCob[colsCob.length-1];
-  curvaCobertura($("FAL_gCob"), serieCob, hzCob, filasCob);
+  /* ---- seguro contra default: nota de la curva ---- */
+  // La curva se dibuja en dibujarCurva(), llamada desde el selector.
   $("FAL_gCobNota").innerHTML =
     `Cobertura del pasivo de <b>toda la nómina</b>, al cierre de cada año. Las líneas punteadas son los umbrales de la matriz: donde la curva cruza el 10%, el 20%, el 30%… ese es el año que la tabla marca en cada fila. La serie se <b>capea al 100%</b>, igual que la matriz. ` +
     (S.antigDin
