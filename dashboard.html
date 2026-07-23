@@ -2108,6 +2108,22 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 #app-fal .fal-hm-uso th:first-child{width:130px;font-family:var(--mono);letter-spacing:.03em;text-align:left;padding-left:12px}
 #app-fal .fal-hm-uso td,#app-fal .fal-hm-uso th{min-width:0}
 
+/* ---------- section headers ---------- */
+#app-fal .fal-sec{margin:26px 0 13px;padding-bottom:7px;border-bottom:2px solid var(--border2)}
+#app-fal .fal-sec:first-of-type{margin-top:20px}
+#app-fal .fal-sec-t{font-family:var(--display);font-size:19px;font-weight:700;letter-spacing:-.015em;color:var(--text)}
+#app-fal .fal-sec-s{font-family:var(--mono);font-size:10.5px;color:var(--text3);margin-top:4px;line-height:1.45}
+
+/* ---------- coverage matrix (seguro contra default) ---------- */
+#app-fal .fal-cov{border-collapse:collapse;font-family:var(--mono);font-size:9.5px;width:100%;table-layout:fixed}
+#app-fal .fal-cov td,#app-fal .fal-cov th{border:1px solid var(--bg3);padding:8px 2px;text-align:center;min-width:0}
+#app-fal .fal-cov th{background:var(--bg3);color:var(--text3);font-size:8.5px}
+#app-fal .fal-cov th:first-child{width:62px;text-align:center;padding-left:2px;letter-spacing:.02em}
+#app-fal .fal-cov .cell{color:#fff;font-weight:600}
+#app-fal .fal-cov .cell.hit{outline:2px solid var(--text);outline-offset:-3px}
+#app-fal #FAL_gCob svg{display:block;width:100%;height:auto;overflow:visible}
+#app-fal #FAL_gCob{max-width:1040px;margin:0 auto}
+
 /* ---------- responsive ---------- */
 @media(max-width:900px){
   #app-fal .fal-top-grid{grid-template-columns:1fr;grid-template-rows:none}
@@ -13789,6 +13805,37 @@ function eqDrawHeatmapPDF(pdf, HD, x, y, W, H){
           <div class="fal-kpis-row" id="FAL_kpis"></div>
           <div class="fal-kpis-row2" id="FAL_kpis2"></div>
           <div class="fal-verdict" id="FAL_verdict"></div>
+        </div>
+
+        <div class="fal-sec">
+          <div class="fal-sec-t">FAL como seguro contra default</div>
+          <div class="fal-sec-s">Capacidad de absorción de un evento de reestructuración · sin rotación · fondo sin usar</div>
+        </div>
+
+        <div class="fal-card">
+          <div class="fal-card-h">
+            <div class="fal-card-t">Matriz de cobertura</div>
+            <div class="fal-uso-slider">
+              <label>Antigüedad</label>
+              <div class="fal-seg fal-seg-sm" id="FAL_segAntig">
+                <button data-v="cte" class="on">Constante</button>
+                <button data-v="din">Dinámica</button>
+              </div>
+            </div>
+          </div>
+          <div class="fal-card-d wide">Cuánto de un evento de reestructuración logra absorber el fondo. El supuesto es de acumulación pura: <b>no hay rotación y el fondo no se toca</b> — sólo recibe aportes y capitaliza. Las <b>columnas</b> son los años transcurridos desde el inicio del régimen. Las <b>filas</b> son el tamaño del evento: qué porcentaje de la plantilla se desvincula de una sola vez. Cada celda es <b>qué fracción del costo de esa desvinculación está prefinanciada en el fondo</b> en ese momento. La celda marcada en cada fila es el primer año en que la cobertura llega al 100%; de ahí en adelante el evento está cubierto y la celda se muestra al tope.</div>
+          <div id="FAL_hmCob" style="overflow-x:auto"></div>
+          <div id="FAL_covNota" style="margin-top:9px;font-size:10.5px;color:var(--text3);line-height:1.5"></div>
+          <div class="fal-legend" style="margin:16px 0 8px">
+            <span><i class="fal-lg-ok"></i>Cobertura del 100% de la plantilla</span>
+          </div>
+          <div id="FAL_gCob"></div>
+          <div id="FAL_gCobNota" style="margin-top:9px;font-size:10.5px;color:var(--text3);line-height:1.5"></div>
+        </div>
+
+        <div class="fal-sec">
+          <div class="fal-sec-t">FAL como reducción de costos</div>
+          <div class="fal-sec-s">Efecto sobre el costo de la rotación en régimen normal · con uso del fondo</div>
         </div>
 
         <div class="fal-card">
@@ -30245,7 +30292,7 @@ Equipo: Research BullMarket`;
 
 
 /* ══════════════ ESTADO ══════════════ */
-const S = { tipo:"mipyme", aportes:13, adv:false, ind:false, unidad:"meses", usoCaja:0 };
+const S = { tipo:"mipyme", aportes:13, adv:false, ind:false, unidad:"meses", usoCaja:0, antigDin:false };
 
 const ALIC = {
   mipyme:[{v:0.025,t:"2,5% — ley",h:"Alícuota legal MiPyME (art. 60)."},
@@ -30383,6 +30430,70 @@ function equilibrio(p){
   const iu = indem(p.salario, p.antig, p).total;
   const sale = p.rotacion * iu / p.salario;
   return { entra, sale, ratio: sale>0 ? entra/sale : Infinity, iu };
+}
+
+/* ══════════════ SEGURO CONTRA DEFAULT ══════════════ */
+// Acumulación pura: no hay rotación y el fondo no se toca. Sólo entra aporte y
+// capitaliza. Es un stock contra otro stock, sin política ni gracia: el evento de
+// reestructuración es hipotético, así que no hay nada que "usar" antes de que ocurra.
+// El techo del art. 66 SÍ se respeta: la ley lo calibra al pasivo de toda la nómina,
+// de modo que el aporte se suspende justo cuando la cobertura del 100% llega al techo.
+// antigDin: sin rotación la plantilla envejece un año por año calendario. indem() ya
+// redondea los años computables, así que pasarle antig + m/12 reproduce los escalones
+// solo — incluido el salto del preaviso al superar los 5 años (art. 231.b).
+function acumular(p, meses, antigDin){
+  const tm = Math.pow(1+p.rend, 1/12) - 1;
+  const cm = Math.pow(1+p.comision, 1/12) - 1;
+  const am = Math.pow(1+p.ajuste, 1/12) - 1;
+
+  let salario = p.salario, saldo = 0, aporteOn = true;
+  const out = [];
+
+  for (let m=1; m<=meses; m++){
+    const baseAp = salario * p.empleados * (p.aportes===13 ? 13/12 : 1);
+    const ap = aporteOn ? baseAp * p.alicuota : 0;
+    saldo += ap;
+    saldo += saldo * tm;
+    saldo -= saldo * cm;
+
+    // Pasivo contingente de toda la nómina en este mes, al salario y antigüedad vigentes.
+    const antigM = antigDin ? p.antig + m/12 : p.antig;
+    const iu = indem(salario, antigM, p).total;
+    const pasivoNomina = iu * p.empleados;
+
+    // Techo art. 66: se evalúa contra el pasivo de la nómina completa.
+    aporteOn = !(pasivoNomina > 0 && saldo >= pasivoNomina * p.techo);
+
+    salario *= (1+am);
+    out.push({ m, saldo, iu, pasivoNomina, aporteOn, antig: antigM,
+               cob: pasivoNomina > 0 ? saldo/pasivoNomina : 0 });
+  }
+  return out;
+}
+
+// Primer mes en que la cobertura de una fracción `frac` de la plantilla llega al 100%.
+// null si no ocurre dentro de la serie.
+function mesCobertura(serie, frac){
+  for (let i=0; i<serie.length; i++) if (serie[i].cob >= frac) return i+1;
+  return null;
+}
+
+// Columnas de la matriz de cobertura. Regla acordada:
+//  · si la fila 100% se completa dentro de los 25 años → todas las columnas anuales,
+//    cortando en ese año + margen (sin saltos).
+//  · si no → anual hasta A10 y las 15 columnas restantes con paso uniforme calculado
+//    para que la última caiga en el año en que se completa. Si tampoco se completa
+//    dentro del tope de búsqueda, paso por default.
+const COV_MAXCOL = 25, COV_ANUAL = 10, COV_TOPE = 120;
+function colsCobertura(anioFull){
+  if (anioFull && anioFull <= COV_MAXCOL)
+    return Array.from({length: Math.min(COV_MAXCOL, anioFull+2)}, (_,i)=>i+1);
+  const cols = Array.from({length: COV_ANUAL}, (_,i)=>i+1);
+  const rest = COV_MAXCOL - COV_ANUAL;
+  const destino = anioFull || COV_TOPE;
+  const paso = Math.max(2, Math.ceil((destino - COV_ANUAL) / rest));
+  for (let i=1; i<=rest; i++) cols.push(COV_ANUAL + i*paso);
+  return cols;
 }
 
 // Cruce de autosustentabilidad: el año en que el rendimiento REAL del fondo
@@ -30556,6 +30667,75 @@ Saldo del FAL a fin de año: ${money(d.saldo)}</title></rect>`;
   }
 
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Efecto en caja: rendimiento del fondo e indemnización por año">${g}</svg>`;
+}
+
+// Curva de cobertura del 100% de la plantilla. Muestreo ANUAL: con antigüedad dinámica
+// el pasivo salta al cumplirse cada año computable (art. 245) y una curva mensual queda
+// dentada; el muestreo anual absorbe el escalón y deja la tendencia limpia. Líneas
+// horizontales en los umbrales de 10..100% (las filas de la matriz): donde la curva cruza
+// cada una, ese es el año que la tabla da en esa fila. La cobertura se capea al 100%,
+// igual que en la matriz: pasado ese punto el pasivo está cubierto y el excedente no
+// agrega información. Sombreado sobre los años con el aporte suspendido (art. 66).
+function curvaCobertura(el, serie, hzAnios, umbrales){
+  const W=760, H=280, P={t:16,r:40,b:26,l:48};
+  const iw=W-P.l-P.r, ih=H-P.t-P.b;
+
+  // muestreo anual, capeado a 1
+  const pts = [];
+  for (let a=1; a<=hzAnios; a++){
+    const i = a*12-1;
+    if (i >= serie.length) break;
+    pts.push({ a, cob: Math.min(serie[i].cob, 1), aporteOn: serie[i].aporteOn });
+  }
+  const n = pts.length;
+  if (n < 2){ el.innerHTML=""; return; }
+
+  const maxCob = 1.06;
+  const X = k => P.l + (k/(n-1))*iw;
+  const Y = v => P.t + ih - (v/maxCob)*ih;
+
+  let g = "";
+
+  // banda de aporte suspendido
+  let runIni = null;
+  for (let k=0;k<n;k++){
+    const off = !pts[k].aporteOn;
+    if (off && runIni===null) runIni = k;
+    if ((!off || k===n-1) && runIni!==null){
+      const fin = off ? k : k-1;
+      g += `<rect x="${X(runIni).toFixed(1)}" y="${P.t}" width="${Math.max(1,X(fin)-X(runIni)).toFixed(1)}" height="${ih}" fill="var(--accent-light)"/>`;
+      runIni = null;
+    }
+  }
+
+  // umbrales horizontales
+  umbrales.forEach(u => {
+    if (u > maxCob) return;
+    const y = Y(u);
+    g += `<line class="fal-gl" x1="${P.l}" y1="${y}" x2="${W-P.r}" y2="${y}"${u===1?' stroke="var(--text3)"':' stroke-dasharray="2 3"'}/>`;
+    g += `<text class="fal-ax" x="${W-P.r+4}" y="${y+3}" text-anchor="start"${u===1?' fill="var(--text2)"':''}>${(u*100).toFixed(0)}%</text>`;
+  });
+
+  // eje X: una marca por año, ralo si el horizonte es largo
+  const paso = hzAnios>15 ? Math.ceil(hzAnios/12) : 1;
+  pts.forEach((pt,k) => {
+    if (pt.a%paso!==0 && k!==n-1) return;
+    g += `<text class="fal-ax" x="${X(k).toFixed(1)}" y="${H-8}" text-anchor="middle">A${pt.a}</text>`;
+  });
+
+  // curva
+  const d = pts.map((pt,k)=>`${k?"L":"M"}${X(k).toFixed(1)},${Y(pt.cob).toFixed(1)}`);
+  g += `<path d="${d.join(" ")}" fill="none" stroke="var(--fal-ok)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+
+  // marca del primer año con cobertura total
+  const kFull = pts.findIndex(pt => pt.cob >= 1);
+  if (kFull >= 0){
+    const x = X(kFull);
+    g += `<line x1="${x.toFixed(1)}" y1="${P.t}" x2="${x.toFixed(1)}" y2="${P.t+ih}" stroke="var(--text)" stroke-width="1" stroke-dasharray="3 3"/>`;
+    g += `<text class="fal-ax" x="${x.toFixed(1)}" y="${P.t-4}" text-anchor="middle" fill="var(--text)">cobertura total · año ${pts[kFull].a}</text>`;
+  }
+
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Curva de cobertura del pasivo de la nómina en el tiempo">${g}</svg>`;
 }
 
 /* ══════════════ RENDER ══════════════ */
@@ -30767,6 +30947,71 @@ function render(){
     (cUso ? `La línea punteada marca el <b>punto de inflexión</b> (año ${cUso}): desde ahí la renta real cubre las indemnizaciones y la caja propia cae a cero. ` : `No hay punto de inflexión dentro del horizonte: la caja propia no se anula. `) +
     (techoVisible ? `Las filas <span style="color:var(--text3)">atenuadas</span> son los años con el aporte suspendido por alcanzar el techo del art. 66 (${(p.techo*100).toFixed(0)}% del pasivo de la nómina).` : `El aporte no llega a suspenderse (techo del art. 66 en ${(p.techo*100).toFixed(0)}%) dentro del horizonte mostrado.`);
 
+  /* ---- seguro contra default: matriz de cobertura ---- */
+  // Acumulación pura hasta el tope de búsqueda. De ahí salen tanto las columnas
+  // adaptativas como la curva mensual.
+  const serieCob = acumular(p, COV_TOPE*12, S.antigDin);
+  const mesFull  = mesCobertura(serieCob, 1);
+  const anioFull = mesFull ? Math.ceil(mesFull/12) : null;
+  const colsCob  = colsCobertura(anioFull);
+  const filasCob = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1];
+
+  // Color por nivel de cobertura, sobre la escala semántica del módulo.
+  const colorCob = c => {
+    if (c >= 1)    return "var(--fal-ok)";     // cubierto
+    if (c >= 0.7)  return "var(--fal-ok2)";
+    if (c >= 0.45) return "var(--fal-warn)";
+    if (c >= 0.2)  return "var(--fal-warn2)";
+    return "var(--fal-alert)";
+  };
+  // Cobertura al cierre del año a (índice del mes 12a-1)
+  const cobEnAnio = a => { const i = Math.min(a*12-1, serieCob.length-1); return serieCob[i].cob; };
+  // Primer año en que la fila `frac` llega al 100%, para marcar el hito.
+  const anioHit = frac => { const m = mesCobertura(serieCob, frac); return m ? Math.ceil(m/12) : null; };
+
+  let hc = `<table class="fal-cov"><tr><th>desvinc. ↓ / año →</th>`;
+  hc += colsCob.map(a => `<th>A${a}</th>`).join("") + "</tr>";
+  filasCob.forEach(frac => {
+    const hit = anioHit(frac);
+    // Con paso grueso el año exacto del hito puede caer entre dos columnas: se marca
+    // la primera columna visible que ya lo alcanzó.
+    const colHit = hit ? colsCob.find(c => c >= hit) : null;
+    hc += `<tr><th>${(frac*100).toFixed(0)}%</th>`;
+    colsCob.forEach(a => {
+      // Cap a 100%: pasado ese punto el evento está cubierto y el excedente no agrega
+      // información útil. El valor sin capear va en el tooltip.
+      const crudo = cobEnAnio(a)/frac;
+      const cob = Math.min(crudo, 1);
+      const esHit = colHit !== null && colHit !== undefined && a === colHit;
+      hc += `<td class="fal-hm-cell cell${esHit?" hit":""}" style="background:${colorCob(cob)}" title="Año ${a} · desvinculación del ${(frac*100).toFixed(0)}% de la plantilla&#10;Cobertura: ${(crudo*100).toFixed(1)}%${crudo>1?" (cubierto)":""}">${(cob*100).toFixed(0)}%</td>`;
+    });
+    hc += "</tr>";
+  });
+  $("FAL_hmCob").innerHTML = hc + "</table>";
+
+  const _antigFin = serieCob[Math.min(colsCob[colsCob.length-1]*12-1, serieCob.length-1)].antig;
+  $("FAL_covNota").innerHTML =
+    (anioFull
+      ? `El fondo cubre la desvinculación de <b>toda la plantilla</b> en el <b>año ${anioFull}</b>. `
+      : `El fondo <b>no llega a cubrir la desvinculación de toda la plantilla</b> dentro del horizonte analizado (${COV_TOPE} años). `) +
+    (colsCob.length > 1 && colsCob[colsCob.length-1] - colsCob[colsCob.length-2] > 1
+      ? `Las columnas son anuales hasta A${COV_ANUAL} y de ahí en adelante avanzan de a ${colsCob[colsCob.length-1]-colsCob[colsCob.length-2]} años para alcanzar ese hito dentro de las ${COV_MAXCOL} columnas. `
+      : `Las columnas son anuales. `) +
+    (S.antigDin
+      ? `<b>Antigüedad dinámica</b>: sin rotación, la antigüedad promedio de la plantilla crece un año por año calendario (de ${String(p.antig).replace(".",",")} a ${_antigFin.toFixed(1).replace(".",",")} años al final de la tabla). El pasivo no crece de forma continua sino <b>en escalones</b>: salta al cumplirse cada año computable (art. 245, la fracción mayor a tres meses cuenta como año entero) y da un salto adicional al superar los cinco años, cuando el preaviso pasa de uno a dos meses (art. 231.b). `
+      : `<b>Antigüedad constante</b>: se mantiene fija en ${String(p.antig).replace(".",",")} años, igual que en el resto del módulo. Es el supuesto optimista — asume que la plantilla no envejece pese a no haber rotación. `) +
+    `El techo del art. 66 (${(p.techo*100).toFixed(0)}% del pasivo de la nómina) se respeta: el aporte se suspende al alcanzarlo, y de ahí en más el saldo sólo crece por rendimiento.`;
+
+  /* ---- seguro contra default: curva de cobertura ---- */
+  const hzCob = colsCob[colsCob.length-1];
+  curvaCobertura($("FAL_gCob"), serieCob, hzCob, filasCob);
+  $("FAL_gCobNota").innerHTML =
+    `Cobertura del pasivo de <b>toda la nómina</b>, al cierre de cada año. Las líneas punteadas son los umbrales de la matriz: donde la curva cruza el 10%, el 20%, el 30%… ese es el año que la tabla marca en cada fila. La serie se <b>capea al 100%</b>, igual que la matriz. ` +
+    (S.antigDin
+      ? `Con antigüedad dinámica el pasivo no crece de forma continua sino en escalones anuales; el muestreo anual los absorbe y deja la tendencia. `
+      : ``) +
+    `La banda sombreada, si aparece, son los años con el <b>aporte suspendido</b> por el techo del art. 66.`;
+
   /* ---- heatmap: año del cruce según gracia × uso ---- */
   // Columnas: gracia en meses, arrancando en el input, de a 6, 10 columnas.
   // Filas: fracción de cada indemnización pagada con el fondo (0 = capitalizar).
@@ -30831,6 +31076,12 @@ $("FAL_segAportes").addEventListener("click", e => {
 });
 $("FAL_alicuota").addEventListener("change", () => {
   $("FAL_alicHint").textContent = ALIC[S.tipo].find(o=>String(o.v)===$("FAL_alicuota").value).h;
+  render();
+});
+$("FAL_segAntig").addEventListener("click", e => {
+  const b = e.target.closest("button"); if(!b) return;
+  S.antigDin = b.dataset.v === "din";
+  [...$("FAL_segAntig").children].forEach(x=>x.classList.toggle("on", x===b));
   render();
 });
 $("FAL_segUnidad").addEventListener("click", e => {
