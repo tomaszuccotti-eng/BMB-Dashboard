@@ -2116,9 +2116,12 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 #app-fal .fal-hm td,#app-fal .fal-hm th{border:2px solid var(--bg3);padding:11px 9px;text-align:center;min-width:56px}
 #app-fal .fal-hm th{background:var(--bg3);color:var(--text3);font-size:9.5px}
 #app-fal .fal-hm .cell{color:#fff;font-weight:600}
-#app-fal .fal-hm-uso{width:100%;table-layout:fixed}
-#app-fal .fal-hm-uso th:first-child{width:130px;font-family:var(--mono);letter-spacing:.03em;text-align:left;padding-left:12px}
-#app-fal .fal-hm-uso td,#app-fal .fal-hm-uso th{min-width:0}
+/* 21 columnas × 11 filas: misma densidad que la matriz de cobertura, si no las celdas
+   no entran a 11px con padding de 9. */
+#app-fal .fal-hm-uso{width:100%;table-layout:fixed;font-size:9.5px}
+#app-fal .fal-hm-uso td,#app-fal .fal-hm-uso th{min-width:0;padding:8px 2px;border-width:1px}
+#app-fal .fal-hm-uso th{font-size:8.5px}
+#app-fal .fal-hm-uso th:first-child{width:62px;font-family:var(--mono);letter-spacing:.02em;text-align:center;padding-left:2px}
 
 /* ---------- section headers ---------- */
 #app-fal .fal-sec{margin:26px 0 13px;padding-bottom:7px;border-bottom:2px solid var(--border2)}
@@ -2156,6 +2159,9 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 #app-fal .fal-hitos td.anio{color:var(--text);font-weight:650}
 #app-fal .fal-hitos td.na{color:var(--text3)}
 
+/* subtítulo dentro de una card: separa bloques sin cortar el fondo en dos cards */
+#app-fal .fal-sub-t{font-family:var(--display);font-size:14.5px;font-weight:650;color:var(--text);margin:26px 0 10px;padding-top:16px;border-top:1px solid var(--border)}
+
 /* ---------- selector de cobertura ---------- */
 #app-fal .fal-cov-sel{display:grid;grid-template-columns:230px 1fr;gap:18px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:14px 16px;margin-bottom:14px}
 #app-fal .fal-cov-ctl{display:flex;flex-direction:column;gap:13px}
@@ -2167,9 +2173,14 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 #app-fal .fal-cov-out{font-size:12px;line-height:1.65;color:var(--text2)}
 #app-fal .fal-cov-out b{color:var(--text);font-weight:650}
 #app-fal .fal-cov-out .big{font-size:23px;font-weight:650;font-variant-numeric:tabular-nums;letter-spacing:-.02em;display:block;margin-bottom:6px}
+/* titular del ahorro: monto y leyenda en la misma línea, con la leyenda legible
+   (no en --text3 de 10px) pero claramente subordinada al monto */
+#app-fal .fal-ahorro-h{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin-bottom:9px}
+#app-fal .fal-ahorro-h .big{margin-bottom:0}
+#app-fal .fal-ahorro-s{font-size:12.5px;color:var(--text2);line-height:1.4}
 #app-fal .fal-cov-out .rem{margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
-#app-fal .fal-cov .cell.dim{opacity:.24}
-#app-fal .fal-cov .cell.xhair{opacity:1}
+#app-fal .fal-cov .cell.dim,#app-fal .fal-hm-uso .cell.dim{opacity:.24}
+#app-fal .fal-cov .cell.xhair,#app-fal .fal-hm-uso .cell.xhair{opacity:1;outline:2px solid var(--text);outline-offset:-3px}
 
 /* ---------- responsive ---------- */
 @media(max-width:900px){
@@ -13913,20 +13924,28 @@ function eqDrawHeatmapPDF(pdf, HD, x, y, W, H){
               <button data-v="anios">Años</button>
             </div>
           </div>
-          <div class="fal-card-d wide">Hay un <b>trade-off entre corto y largo plazo</b>. El FAL, como todo fondo capitalizable, se beneficia del interés compuesto: cuanto más tiempo se deja inmovilizado el capital reinvirtiendo los rendimientos, mayor es la ganancia esperada — pero a costa de pagar más despidos con caja propia mientras tanto. Cada celda es un escenario. Las <b>columnas</b> son el período de gracia: los meses en que el fondo acumula sin tocarse, durante los cuales toda indemnización se paga de caja y no con el FAL. Las <b>filas</b> son cómo se pagan después las indemnizaciones: la fila 100% las cubre íntegramente con el fondo, pudiendo descapitalizarlo; la fila 0% no lo toca nunca. El valor de cada celda es el <b>punto de inflexión</b>: los meses hasta que el rendimiento real del fondo —lo que gana por encima de la actualización de sueldos y neto de comisiones— pasa a cubrir el costo de la rotación por sí solo.</div>
-          <div id="FAL_hmGracia" style="overflow-x:auto"></div>
-        </div>
-
-        <div class="fal-card">
-          <div class="fal-card-h">
-            <div class="fal-card-t">Efecto en caja</div>
-            <div class="fal-uso-slider">
-              <label>Uso del fondo</label>
-              <input type="range" id="FAL_usoCaja" min="0" max="100" step="5" value="0">
-              <output id="FAL_usoCajaVal">0%</output>
+          <div class="fal-card-d wide">Todo en <b>términos reales</b>: neto de la actualización salarial, de modo que las cifras son comparables entre años. Hay un <b>trade-off entre corto y largo plazo</b>. El FAL, como todo fondo capitalizable, se beneficia del interés compuesto: cuanto más tiempo se deja inmovilizado el capital reinvirtiendo los rendimientos, mayor es la ganancia esperada — pero a costa de pagar más despidos con caja propia mientras tanto. Cada celda es un escenario. Las <b>columnas</b> son el período de gracia: los meses en que el fondo acumula sin usarse, durante los cuales toda indemnización se paga de caja y no con el FAL. Las <b>filas</b> son cómo se pagan después las indemnizaciones: la fila 100% las cubre íntegramente con el fondo, pudiendo descapitalizarlo; la fila 0% no lo toca nunca. El valor de cada celda es el <b>punto de inflexión</b>: los meses hasta que el rendimiento real del fondo —lo que gana por encima de la actualización de sueldos y neto de comisiones— pasa a cubrir el costo de la rotación por sí solo.</div>
+          <div class="fal-cov-sel">
+            <div class="fal-cov-ctl">
+              <div class="fal-uso-slider">
+                <label>Período de gracia <b id="FAL_selGraL">—</b></label>
+                <input type="range" id="FAL_selGra" min="0" max="20" step="1" value="0">
+              </div>
+              <div class="fal-uso-slider">
+                <label>Uso del fondo <b id="FAL_selUsoL">—</b></label>
+                <input type="range" id="FAL_selUso" min="0" max="10" step="1" value="3">
+              </div>
+              <div class="fal-uso-slider">
+                <label>Horizonte de ahorro <b id="FAL_selHzL">—</b></label>
+                <input type="range" id="FAL_selHz" min="1" max="10" step="1" value="5">
+              </div>
             </div>
+            <div class="fal-cov-out" id="FAL_selUsoOut"></div>
           </div>
-          <div class="fal-card-d wide">Todo en <b>términos reales</b> (neto de la actualización salarial), por eso la indemnización es una barra constante. <b>Abajo</b>: la indemnización anual, partida entre lo que paga la empresa de caja (rojo) y lo que cubre el fondo (amarillo). <b>Arriba</b>: el rendimiento real que genera el fondo (verde). La barra de uso fija cuánto se exprime el fondo <b>antes del punto de inflexión</b>: más uso alivia el rojo temprano pero capitaliza menos y corre el punto de inflexión a la derecha. <b>Después del punto de inflexión</b> el comportamiento es siempre el mismo: la renta real del fondo ya alcanza para pagar las indemnizaciones, así que se cubre el 100% con esa renta sin descapitalizar — el rojo desaparece y el fondo sigue creciendo. La barra mueve la frontera entre las dos fases, no el destino.</div>
+          <div id="FAL_hmGracia" style="overflow-x:auto"></div>
+
+          <div class="fal-sub-t">Efecto en caja</div>
+          <div class="fal-card-d wide"><b>Abajo</b>: la indemnización anual, partida entre lo que paga la empresa de caja (rojo) y lo que cubre el fondo (amarillo). <b>Arriba</b>: el rendimiento real que genera el fondo (verde). La barra de uso fija cuánto se exprime el fondo <b>antes del punto de inflexión</b>: más uso alivia el rojo temprano pero capitaliza menos y corre el punto de inflexión a la derecha. <b>Después del punto de inflexión</b> el comportamiento es siempre el mismo: la renta real del fondo ya alcanza para pagar las indemnizaciones, así que se cubre el 100% con esa renta sin descapitalizar — el rojo desaparece y el fondo sigue creciendo. La barra mueve la frontera entre las dos fases, no el destino.</div>
           <div class="fal-legend" style="margin-bottom:8px">
             <span><i class="fal-lg-ok"></i>Rendimiento real del fondo</span>
             <span><i class="fal-lg-fal"></i>Indemnización pagada con el FAL</span>
@@ -30359,7 +30378,7 @@ Equipo: Research BullMarket`;
 
 
 /* ══════════════ ESTADO ══════════════ */
-const S = { tipo:"mipyme", aportes:13, adv:false, ind:false, unidad:"meses", usoCaja:0, antigDin:false };
+const S = { tipo:"mipyme", aportes:13, adv:false, ind:false, unidad:"meses", usoCaja:30, antigDin:false, graIdx:0, hzAhorro:5 };
 
 const ALIC = {
   mipyme:[{v:0.025,t:"2,5% — ley",h:"Alícuota legal MiPyME (art. 60)."},
@@ -30638,6 +30657,49 @@ function cruceAuto(p, politica, spread, enMeses){
   for (let m = 12; m < f.length; m++){
     const costoRot = f[m].iu * p.empleados * p.rotacion;
     if (f[m].saldo * spread >= costoRot) return enMeses ? m+1 : Math.floor(m/12)+1;
+  }
+  return null;
+}
+
+// Versión liviana de cruceAuto para la grilla del heatmap. Hace exactamente el mismo
+// cálculo que simular()+cruceAuto pero (a) corta apenas encuentra el cruce en vez de
+// simular siempre 200 años, y (b) no construye el array de salida, que para la grilla
+// se descarta entero. Con 231 celdas eso baja el render de ~500ms a un rango usable.
+// Cualquier cambio en la mecánica de simular() debe replicarse acá.
+function cruceRapido(p, politica, spread, tope){
+  if (spread <= 0 || p.rotacion <= 0) return null;
+  const meses = (tope || 200) * 12;
+  const tm = Math.pow(1+p.rend, 1/12) - 1;
+  const cm = Math.pow(1+p.comision, 1/12) - 1;
+  const am = Math.pow(1+p.ajuste, 1/12) - 1;
+  const neto = (1+p.rend)/(1+p.comision) - 1;
+  const spreadM = Math.pow((1+neto)/(1+p.ajuste), 1/12) - 1;
+
+  let salario = p.salario, saldo = 0, aporteOn = true;
+
+  for (let m=1; m<=meses; m++){
+    const baseAp = salario * p.empleados * (p.aportes===13 ? 13/12 : 1);
+    if (aporteOn) saldo += baseAp * p.alicuota;
+    saldo += saldo * tm;
+    saldo -= saldo * cm;
+
+    const iu = indem(salario, p.antig, p).total;
+    const pasivo = iu * p.empleados * p.rotacion / 12;
+
+    const rentaReal = saldo * spreadM;
+    let aplicado;
+    if (m <= p.gracia)            aplicado = 0;
+    else if (rentaReal >= pasivo) aplicado = Math.min(pasivo, saldo);
+    else                          aplicado = Math.min(pasivo * politica, saldo);
+    saldo -= aplicado;
+
+    const pasivoNomina = iu * p.empleados;
+    aporteOn = !(pasivoNomina > 0 && saldo >= pasivoNomina * p.techo);
+
+    // mismo criterio y misma ventana que cruceAuto (arranca en el índice 12)
+    if (m >= 13 && saldo * spread >= iu * p.empleados * p.rotacion) return m;
+
+    salario *= (1+am);
   }
   return null;
 }
@@ -30974,10 +31036,22 @@ function render(){
   const spread = (1+neto)/(1+p.ajuste) - 1;
 
   /* ---- cruce de la política del slider: define el horizonte de la vista ---- */
+  // La sección de reducción de costos se gobierna desde el selector de la matriz de uso:
+  // la gracia sale de la columna elegida (el sidebar define desde dónde arranca la escala)
+  // y el uso, de la fila. `pSel` es `p` con esa gracia, y es lo que consumen el gráfico de
+  // efecto en caja y su tabla, de modo que matriz y gráfico muestran siempre lo mismo.
+  const graciaCols = Array.from({length:21}, (_,i) => p.gracia + i*6);
+  const graIdx  = Math.min(Math.max(0, S.graIdx), graciaCols.length-1);
+  const graciaSel = graciaCols[graIdx];
+  const pSel = {...p, gracia: graciaSel};
+
   const usoPol = S.usoCaja / 100;
-  const cUso = cruceAuto(p, usoPol, spread);
-  const hzGraf = horizonteVista(cUso, 5);
-  const fUso   = simular(p, usoPol, hzGraf);
+  const cUso = cruceAuto(pSel, usoPol, spread);
+  // El horizonte lo fija el gráfico (cruce + 5, mínimo 10) y sólo se extiende lo
+  // necesario para que la gracia entre. NO depende de la barra de horizonte de ahorro:
+  // esa barra recorre lo que el gráfico ya muestra, nunca lo estira.
+  const hzGraf = Math.max(horizonteVista(cUso, 5), Math.ceil(graciaSel/12) + 1);
+  const fUso   = simular(pSel, usoPol, hzGraf);
   /* ---- cabezal ---- */
   const tipoLabel = S.tipo === "mipyme" ? "PyME" : "Grandes empresas";
   const antigStr  = String(p.antig).replace(".", ",");
@@ -31194,7 +31268,7 @@ function render(){
   // se extiende más allá del gráfico hasta que el aporte se suspende por el techo del
   // art. 66, para que se vean las filas atenuadas; si no se suspende, iguala al
   // gráfico. Tope de 50 años.
-  const fLong = simular(p, usoPol, 100);
+  const fLong = simular(pSel, usoPol, 100);
   let ySusp = null;
   for (let m = 0; m < fLong.length; m++){ if (!fLong[m].aporteOn){ ySusp = Math.floor(m/12)+1; break; } }
   const hzTabla = ySusp ? Math.min(50, Math.max(hzGraf, ySusp + 2)) : hzGraf;
@@ -31408,11 +31482,16 @@ function render(){
     `La banda sombreada, si aparece, son los años con el <b>aporte suspendido</b> por el techo del art. 66.`;
 
   /* ---- heatmap: año del cruce según gracia × uso ---- */
-  // Columnas: gracia en meses, arrancando en el input, de a 6, 10 columnas.
-  // Filas: fracción de cada indemnización pagada con el fondo (0 = capitalizar).
+  // Columnas: gracia en meses, arrancando en el input, de a 6, hasta 10 años (21 cols).
+  // Filas: fracción de cada indemnización pagada con el fondo, de a 10% (11 filas).
   // Celda: año del cruce de autosustentabilidad. D/E si no cruza ni a 200 años.
-  const graciaCols = Array.from({length:10}, (_,i) => p.gracia + i*6);
-  const usoRows = [0, 0.25, 0.5, 0.75, 1];
+  // Son 231 celdas y cada una es una simulación completa: sin caché la grilla tarda
+  // ~200ms en caso normal y ~430ms con spread bajo (cruceAuto agota la búsqueda), lo
+  // que se nota con el debounce de 150ms del sidebar. La fila 0% no depende de la
+  // gracia — si nunca se toca el fondo, el período de gracia es irrelevante — así que
+  // se calcula una sola vez y se reusa en las 21 columnas.
+  const usoRows = Array.from({length:11}, (_,i) => i/10);
+  const usoIdx  = Math.max(0, usoRows.findIndex(u => Math.abs(u - usoPol) < 1e-9));
   const colorCruce = a => {
     if (!a) return "var(--fal-alert)";           // no cruza
     if (a <= 10) return "var(--fal-ok)";
@@ -31429,20 +31508,97 @@ function render(){
     return esAnios ? (mes/12).toFixed(1).replace(".0","") : mes;
   };
 
-  let hg = `<table class="fal-hm fal-hm-uso"><tr><th>uso ↓ / gracia →</th>`;
+  let hg = `<table class="fal-hm fal-hm-uso"><tr><th>uso ↓<br>gracia →</th>`;
   hg += graciaCols.map(m => `<th>${colHdr(m)}</th>`).join("") + "</tr>";
-  usoRows.forEach(uso => {
+  usoRows.forEach((uso, fi) => {
     hg += `<tr><th>${(uso*100).toFixed(0)}%</th>`;
-    graciaCols.forEach(g => {
-      const pp = {...p, gracia:g};
-      const a = cruceAuto(pp, uso, spread, true);
+    const cero = uso === 0 ? cruceRapido({...p, gracia:graciaCols[0]}, 0, spread) : null;
+    graciaCols.forEach((g, ci) => {
+      const a = uso === 0 ? cero : cruceRapido({...p, gracia:g}, uso, spread);
       const col = colorCruce(a ? Math.ceil(a/12) : null);
-      hg += `<td class="fal-hm-cell cell" style="background:${col}">${celdaVal(a)}</td>`;
+      const cruz  = fi === usoIdx || ci === graIdx;
+      const mismo = fi === usoIdx && ci === graIdx;
+      hg += `<td class="fal-hm-cell cell${mismo?" xhair":""}${cruz?"":" dim"}" data-fi="${fi}" data-ci="${ci}" style="background:${col}">${celdaVal(a)}</td>`;
     });
     hg += "</tr>";
   });
   $("FAL_hmGracia").innerHTML = hg + "</table>" +
-    `<div style="margin-top:9px;font-size:10.5px;color:var(--text3);line-height:1.5"><b>D/E</b> = déficit estructural: no cruza ni a 200 años. La fila 0% no depende de la gracia porque nunca toca el fondo. Para modificar los períodos de gracia, cambiar el valor en Parámetros.</div>`;
+    `<div style="margin-top:9px;font-size:10.5px;color:var(--text3);line-height:1.5"><b>D/E</b> = déficit estructural: no cruza ni a 200 años. La fila 0% no depende de la gracia porque nunca toca el fondo. El rango de períodos de gracia arranca en el valor cargado en Parámetros; las barras de arriba recorren la grilla.</div>`;
+
+  /* ---- selector de la matriz de uso ---- */
+  $("FAL_selGra").max = String(graciaCols.length - 1);
+  $("FAL_selUso").max = String(usoRows.length - 1);
+  $("FAL_selGra").value = String(graIdx);
+  $("FAL_selUso").value = String(usoIdx);
+  $("FAL_selGraL").textContent = esAnios
+    ? (graciaSel/12).toFixed(1).replace(".0","") + " años"
+    : graciaSel + " meses";
+  $("FAL_selUsoL").textContent = (usoPol*100).toFixed(0) + "%";
+
+  /* ---- texto dinámico del selector ---- */
+  // Todo en términos reales, igual que el resto de la sección (la rotación mantiene
+  // constante la antigüedad promedio, así que la indemnización es estable en términos
+  // reales y no hay nada que deflactar).
+  // Agregación anual post-gracia sobre fUso, que ya usa la gracia y el uso seleccionados.
+  const aniosUso = [];
+  const aIni = Math.floor(graciaSel/12) + 1;
+  for (let a=aIni; a<=Math.ceil(fUso.length/12); a++){
+    let pas=0, apl=0;
+    for (let m=(a-1)*12; m<a*12 && m<fUso.length; m++){ pas += fUso[m].pasivo; apl += fUso[m].aplicado; }
+    if (pas > 0) aniosUso.push({ a, pas, apl, pct: apl/pas });
+  }
+
+  // Ahorro de caja: lo que pagó el fondo durante los N años posteriores a la gracia, con
+  // N elegido en la barra. No se corta en el punto de inflexión — pasado el cruce el
+  // ahorro es total, así que incluirlo refleja que la empresa dejó de poner plata antes.
+  // El tope es la cantidad de años de uso que el gráfico efectivamente dibuja: la barra
+  // recorre esa ventana y no la extiende.
+  const hzMaxAhorro = Math.max(1, aniosUso.length);
+  const nAnios5  = Math.max(1, Math.min(S.hzAhorro, hzMaxAhorro));
+  const ahorro5  = aniosUso.slice(0, nAnios5).reduce((s,y) => s + y.apl, 0);
+  $("FAL_selHz").max   = String(hzMaxAhorro);
+  $("FAL_selHz").value = String(nAnios5);
+  $("FAL_selHzL").textContent = nAnios5 === 1 ? "1 año" : nAnios5 + " años";
+
+  // Enumeración: se listan los años mientras la cobertura mejore al menos 5 puntos,
+  // hasta el primero que alcanza el porcentaje elegido. Así el párrafo no enumera
+  // años casi idénticos cuando la brecha se cierra de a poco.
+  const UMBRAL = 0.05;
+  const enum5 = [];
+  let prevPct = -1, yObj = null;
+  for (const y of aniosUso){
+    if (y.pct >= usoPol - 1e-9){ yObj = y; break; }
+    if (prevPct < 0 || (y.pct - prevPct) >= UMBRAL){ enum5.push(y); prevPct = y.pct; }
+  }
+
+  const cruceA   = cUso;                       // año del punto de inflexión, o null
+  const rotAnual = aniosUso.length ? aniosUso[0].pas : 0;
+  const saldoGra = fUso[Math.min(graciaSel-1, fUso.length-1)].saldo;
+  const aporteM  = fUso[0].ap;
+  const graTxt   = esAnios ? (graciaSel/12).toFixed(1).replace(".0","")+" años" : graciaSel+" meses";
+
+  let tUso = `Con ${graTxt} de gracia el fondo acumula <b>${fmt(saldoGra)}</b> sin usarse, con aportes de <b>${money(aporteM)}</b> mensuales. La rotación cuesta <b>${fmt(rotAnual)}</b> al año. `;
+
+  if (usoPol === 0){
+    tUso += `Con uso <b>0%</b> el fondo no se toca nunca: la empresa paga la rotación íntegramente de caja hasta el punto de inflexión, y el fondo capitaliza sin interrupciones. `;
+  } else if (enum5.length === 0 && yObj){
+    tUso += `Aplicando el <b>${(usoPol*100).toFixed(0)}%</b>, desde el primer año posterior a la gracia el fondo ya cubre <b>${fmt(yObj.apl)}</b> (<b>${(yObj.pct*100).toFixed(0)}%</b> del costo), el porcentaje elegido. `;
+  } else {
+    tUso += `Aplicando el <b>${(usoPol*100).toFixed(0)}%</b>, el saldo no alcanza de entrada: `;
+    tUso += enum5.map(y => `el año ${y.a} se cubren <b>${fmt(y.apl)}</b> (<b>${(y.pct*100).toFixed(0)}%</b>)`).join(", ");
+    tUso += yObj
+      ? `, y recién el año <b>${yObj.a}</b> se alcanza el ${(usoPol*100).toFixed(0)}% elegido, con <b>${fmt(yObj.apl)}</b>. `
+      : `. El fondo <b>no llega a cubrir</b> el porcentaje elegido: la política es más agresiva de lo que el saldo soporta. `;
+  }
+
+  tUso += cruceA
+    ? `El <b>punto de inflexión</b> —el momento en que el rendimiento real del fondo alcanza a cubrir los flujos indemnizatorios sin descapitalizarlo— llega el <b>año ${cruceA}</b>. De ahí en más el fondo paga la rotación completa con su renta.`
+    : `No hay <b>punto de inflexión</b>: el rendimiento real del fondo nunca llega a cubrir los flujos indemnizatorios por sí solo, de modo que la empresa sigue poniendo caja indefinidamente.`;
+
+  $("FAL_selUsoOut").innerHTML =
+    `<span class="fal-ahorro-h"><span class="big" style="color:var(--fal-ok)">${fmt(ahorro5)}</span>` +
+    `<span class="fal-ahorro-s">ahorrados de caja propia, durante ${nAnios5===1?"el primer año":"los primeros "+nAnios5+" años"} posterior${nAnios5===1?"":"es"} al período de gracia</span></span>` +
+    tUso;
 }
 
 /* ══════════════ UI ══════════════ */
@@ -31485,9 +31641,19 @@ $("FAL_segUnidad").addEventListener("click", e => {
   [...$("FAL_segUnidad").children].forEach(x=>x.classList.toggle("on", x===b));
   render();
 });
-$("FAL_usoCaja").addEventListener("input", e => {
-  S.usoCaja = parseInt(e.target.value);
-  $("FAL_usoCajaVal").textContent = S.usoCaja + "%";
+// Selector de la matriz de uso: gracia por índice de columna (el sidebar define desde
+// dónde arranca la escala, el slider la recorre — así la grilla no se reacomoda sola
+// mientras se la mira) y uso por las 5 filas, para que el resaltado sea exacto.
+$("FAL_selGra").addEventListener("input", e => {
+  S.graIdx = parseInt(e.target.value);
+  renderDeb();
+});
+$("FAL_selUso").addEventListener("input", e => {
+  S.usoCaja = Math.min(10, Math.max(0, parseInt(e.target.value))) * 10;
+  renderDeb();
+});
+$("FAL_selHz").addEventListener("input", e => {
+  S.hzAhorro = Math.max(1, parseInt(e.target.value));
   renderDeb();
 });
 $("FAL_advT").addEventListener("click", () => {
