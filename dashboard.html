@@ -4340,6 +4340,23 @@ function calcTamar(precio, fechaLiqStr, maturityStr, tamarData){
 }
 
 
+// ── Helpers dual TAMAR–Dólar Linked ─────────────────────────
+// Un dual TAMAR–DL tiene su pata fija tipada 'dual_dl'. En ese caso AMBAS patas
+// (TAMAR y DL) cotizan en pesos pero representan flujo en USD → el precio entra
+// a las calculadoras dividido por el TC (A3500). El TC es global (mismo que DL puro).
+// Dado un ticker base o pata TAMAR, indica si el dual es TAMAR–DL (existe la pata _F dual_dl).
+function esDualDL(tickerBase){
+  if(!_bundle) return false;
+  const tipos=_bundle._tipos||{};
+  const base=String(tickerBase||'').replace(/_F$/i,'');
+  return (tipos[base+'_F']||'').toLowerCase()==='dual_dl';
+}
+// TC vigente (manual override o A3500 BCRA). null si no hay dato válido.
+function tcVigente(){
+  const tc=window._tcManualVal??_tcUsd;
+  return (tc&&!isNaN(tc)&&tc>0)?tc:null;
+}
+
 // ── Vista consolidada Duales ────────────────────────────────
 function cruzarDual(preciosMap, fechaLiq){
   if(!_bundle) return [];
@@ -4349,7 +4366,7 @@ function cruzarDual(preciosMap, fechaLiq){
 
   // Armar mapa ticker_base → {tipoFija, tickerFija, tickerTamar}
   const dualTamarTickers=new Set(allT.filter(t=>(tipos[t]||'').toLowerCase()==='dual_tamar'));
-  const dualFijaTickers =allT.filter(t=>['dual_boncap','dual_boncer'].includes((tipos[t]||'').toLowerCase()));
+  const dualFijaTickers =allT.filter(t=>['dual_boncap','dual_boncer','dual_dl'].includes((tipos[t]||'').toLowerCase()));
 
   const rows=[];
   for(const tickerFija of dualFijaTickers){
@@ -4367,14 +4384,20 @@ function cruzarDual(preciosMap, fechaLiq){
     const variacion=pxEff?pxEff.variacion:NaN;
     const vol=pxEff?pxEff.vol:NaN;
 
+    // Dual TAMAR–DL: ambas patas devengan en USD → precio/TC. TC global (A3500 o manual).
+    const esDL=tipoFija==='dual_dl';
+    const tcDual=esDL?tcVigente():null;
+    // Precio en USD para la pata TAMAR (calcDolarLinked de la pata fija divide internamente)
+    const precioTamar=esDL?(tcDual?precio/tcDual:NaN):precio;
+
     // Calc TAMAR
     let calcT=null;
     const tp=_tamarProms[base];
     const metaTamar=meta[base]||{};
-    if(tp&&metaTamar.maturity&&!isNaN(precio)&&precio>0)
-      calcT=calcTamar(precio,fechaLiq,metaTamar.maturity,tp);
+    if(tp&&metaTamar.maturity&&!isNaN(precioTamar)&&precioTamar>0)
+      calcT=calcTamar(precioTamar,fechaLiq,metaTamar.maturity,tp);
 
-    // Calc fija (boncap bullet o boncer bullet)
+    // Calc fija (boncap bullet, boncer bullet o dólar linked)
     let calcFija=null;
     const metaFija=meta[tickerFija]||{};
     if(tipoFija==='dual_boncap'){
@@ -4384,6 +4407,10 @@ function cruzarDual(preciosMap, fechaLiq){
     } else if(tipoFija==='dual_boncer'){
       if(metaFija.cerInicial&&metaFija.maturity&&!isNaN(precio)&&precio>0)
         calcFija=calcBoncer(precio,fechaLiq,metaFija.maturity,metaFija.cerInicial);
+    } else if(tipoFija==='dual_dl'){
+      const matDL=metaFija.maturity||metaTamar.maturity;
+      if(matDL&&tcDual&&!isNaN(precio)&&precio>0)
+        calcFija=calcDolarLinked(precio,fechaLiq,matDL,tcDual);
     }
 
     // Ganador: mayor TNA
@@ -4417,6 +4444,7 @@ function cruzar(tipo, preciosMap, fechaLiq){
     if(tipo==='boncer') match=tp==='boncer'||tp==='boncer_bullet'||tp==='dual_boncer';
     else if(tipo==='tamar') match=tp==='tamar'||tp==='dual_tamar';
     else if(tipo==='boncap') match=tp==='boncap'||tp==='dual_boncap';
+    else if(tipo==='dolarlinked') match=tp==='dolarlinked'||tp==='dual_dl';
     else match=tp===tipo;
     if(!match) return false;
     if(seen.has(t)) return false; // deduplicar si el index repite el ticker
@@ -4437,6 +4465,7 @@ function cruzar(tipo, preciosMap, fechaLiq){
     else if(tipoReal==='fixed_rate') lookupKey = (FIXED_RATE_PX_MAP[ticker.toUpperCase()] || ticker.toUpperCase());
     else if(tipoReal==='dual_boncap') lookupKey = ticker.toUpperCase().replace(/_F$/,'');
     else if(tipoReal==='dual_boncer') lookupKey = ticker.toUpperCase().replace(/_F$/,'');
+    else if(tipoReal==='dual_dl')     lookupKey = ticker.toUpperCase().replace(/_F$/,'');
     else                             lookupKey = ticker.toUpperCase();
     const px=preciosMap[lookupKey]||preciosMap[ticker.toUpperCase()]||preciosMap[ticker]||null;
     const pxEff=px?(px.latest||px):null;
@@ -4463,8 +4492,9 @@ function cruzar(tipo, preciosMap, fechaLiq){
       calc=calcSoberano(_bundle[ticker],precio,fechaLiq);
     } else if(TIPOS_CALCULADORA.has(tipoReal)&&cf&&!isNaN(precio)&&precio>0){
       calc=calcLecap(cf,precio,fechaLiq);
-    } else if(tipoReal==='dolarlinked'&&!isNaN(precio)&&precio>0){
-      const meta=(_bundle._meta||{})[ticker]||{};
+    } else if((tipoReal==='dolarlinked'||tipoReal==='dual_dl')&&!isNaN(precio)&&precio>0){
+      // calcDolarLinked divide el precio por TC internamente (dirty_usd = precio/tc)
+      const meta=(_bundle._meta||{})[ticker]||(_bundle._meta||{})[ticker.replace(/_F$/i,'')]||{};
       const tc=window._tcManualVal??_tcUsd;
       if(meta.maturity&&tc) calc=calcDolarLinked(precio,fechaLiq,meta.maturity,tc);
     } else if(tipoReal==='bopreal'&&!isNaN(precio)&&precio>0&&_bundle[ticker]){
@@ -4474,7 +4504,13 @@ function cruzar(tipo, preciosMap, fechaLiq){
     } else if((tipoReal==='tamar'||tipoReal==='dual_tamar')&&!isNaN(precio)&&precio>0){
       const tp=_tamarProms[ticker];
       const meta=(_bundle._meta||{})[ticker]||{};
-      if(tp&&meta.maturity) calc=calcTamar(precio,fechaLiq,meta.maturity,tp);
+      // Dual TAMAR–DL: la pata TAMAR devenga en USD → precio/TC antes de calcTamar
+      if(tipoReal==='dual_tamar'&&esDualDL(ticker)){
+        const tc=tcVigente();
+        if(tp&&meta.maturity&&tc) calc=calcTamar(precio/tc,fechaLiq,meta.maturity,tp);
+      } else {
+        if(tp&&meta.maturity) calc=calcTamar(precio,fechaLiq,meta.maturity,tp);
+      }
     }
     return{ticker,tipo:tipoReal,precio,precioPesos,variacion,vol,fechaPx,cf,cfs,calc};
   }).filter(Boolean);
@@ -4491,7 +4527,7 @@ function getCols(tipo){
     return`<span class="${cls}">${r.variacion>=0?'+':''}${fmtN(r.variacion,2)}%</span>`;
   };
   if(tipo==='dolarlinked') return [
-    {key:'ticker',  label:'Ticker',    left:true,  sort:r=>r.ticker,                       fmt:r=>`<span class="t-link" onclick="event.stopPropagation();lcOpenDetail('${r.ticker}')">${(r.tipo==='dual_tamar'||r.tipo==='dual_boncap'||r.tipo==='dual_boncer')?'<span style="font-size:9px;font-weight:600;margin-right:3px;opacity:0.6;">DUAL</span>':''}${displayName(r.ticker)}</span>`},
+    {key:'ticker',  label:'Ticker',    left:true,  sort:r=>r.ticker,                       fmt:r=>`<span class="t-link" onclick="event.stopPropagation();lcOpenDetail('${r.ticker}')">${(r.tipo==='dual_tamar'||r.tipo==='dual_boncap'||r.tipo==='dual_boncer'||r.tipo==='dual_dl')?'<span style="font-size:9px;font-weight:600;margin-right:3px;opacity:0.6;">DUAL</span>':''}${displayName(r.ticker)}</span>`},
     {key:'precio',  label:'Precio $',  left:false, sort:r=>r.precio||0,                    fmt:r=>fmtN(r.precio,2)},
     {key:'usd',     label:'Precio USD',left:false, sort:r=>r.calc?.dirtyUsd??-Infinity,    fmt:r=>r.calc?fmtN(r.calc.dirtyUsd,2):'—'},
     {key:'tna',     label:'TNA',       left:false, sort:r=>r.calc?.tna??-Infinity,         fmt:r=>r.calc?fmtPct(r.calc.tna,2):'—', colorTNA:true},
@@ -4505,7 +4541,7 @@ function getCols(tipo){
     {key:'vol',     label:'Volumen',   left:false, sort:r=>r.vol||0,                       fmt:r=>isNaN(r.vol)||!r.vol?'—':r.vol.toLocaleString('es-AR',{maximumFractionDigits:0})},
   ];
   if(tipo==='soberano') return [
-    {key:'ticker', label:'Ticker',   left:true,  sort:r=>r.ticker,                         fmt:r=>`<span class="t-link" onclick="event.stopPropagation();lcOpenDetail('${r.ticker}')">${(r.tipo==='dual_tamar'||r.tipo==='dual_boncap'||r.tipo==='dual_boncer')?'<span style="font-size:9px;font-weight:600;margin-right:3px;opacity:0.6;">DUAL</span>':''}${displayName(r.ticker)}</span>`},
+    {key:'ticker', label:'Ticker',   left:true,  sort:r=>r.ticker,                         fmt:r=>`<span class="t-link" onclick="event.stopPropagation();lcOpenDetail('${r.ticker}')">${(r.tipo==='dual_tamar'||r.tipo==='dual_boncap'||r.tipo==='dual_boncer'||r.tipo==='dual_dl')?'<span style="font-size:9px;font-weight:600;margin-right:3px;opacity:0.6;">DUAL</span>':''}${displayName(r.ticker)}</span>`},
     {key:'precio', label:'Precio',   left:false, sort:r=>r.precio||0,                      fmt:r=>fmtN(r.precio,2)},
     {key:'tna',    label:'TNA',      left:false, sort:r=>r.calc?.tna??-Infinity,            fmt:r=>r.calc?fmtPct(r.calc.tna,2):'—', colorTNA:true},
     {key:'tea',    label:'TEA',  left:false, sort:r=>r.calc?.tea??-Infinity,            fmt:r=>r.calc?fmtPct(r.calc.tea,2):'—'},
@@ -4541,7 +4577,7 @@ function getCols(tipo){
     {key:'vol',    label:'Volumen',   left:false, sort:r=>r.vol||0,                          fmt:r=>isNaN(r.vol)||!r.vol?'—':r.vol.toLocaleString('es-AR',{maximumFractionDigits:0})},
   ];
   if(tipo==='bopreal') return [
-    {key:'ticker', label:'Ticker',    left:true,  sort:r=>r.ticker,                          fmt:r=>`<span class="t-link" onclick="event.stopPropagation();lcOpenDetail('${r.ticker}')">${(r.tipo==='dual_tamar'||r.tipo==='dual_boncap'||r.tipo==='dual_boncer')?'<span style="font-size:9px;font-weight:600;margin-right:3px;opacity:0.6;">DUAL</span>':''}${displayName(r.ticker)}</span>`},
+    {key:'ticker', label:'Ticker',    left:true,  sort:r=>r.ticker,                          fmt:r=>`<span class="t-link" onclick="event.stopPropagation();lcOpenDetail('${r.ticker}')">${(r.tipo==='dual_tamar'||r.tipo==='dual_boncap'||r.tipo==='dual_boncer'||r.tipo==='dual_dl')?'<span style="font-size:9px;font-weight:600;margin-right:3px;opacity:0.6;">DUAL</span>':''}${displayName(r.ticker)}</span>`},
     {key:'precioars', label:'Precio $', left:false, sort:r=>r.precioPesos||0,                fmt:r=>!isNaN(r.precioPesos)&&r.precioPesos>0?fmtN(r.precioPesos,2):'—'},
     {key:'precio', label:'Precio USD',  left:false, sort:r=>r.precio||0,                     fmt:r=>fmtN(r.precio,2)},
     {key:'tna',    label:'TNA',       left:false, sort:r=>r.calc?.tna??-Infinity,            fmt:r=>r.calc?fmtPct(r.calc.tna,2):'—', colorTNA:true},
@@ -4561,7 +4597,7 @@ function getCols(tipo){
     {key:'vol',    label:'Volumen',   left:false, sort:r=>r.vol||0,                          fmt:r=>isNaN(r.vol)||!r.vol?'—':r.vol.toLocaleString('es-AR',{maximumFractionDigits:0})},
   ];
   if(tipo==='boncer_bullet'||tipo==='boncer') return [
-    {key:'ticker', label:'Ticker',  left:true,  sort:r=>r.ticker,                      fmt:r=>`<span class="t-link" onclick="event.stopPropagation();lcOpenDetail('${r.ticker}')">${(r.tipo==='dual_tamar'||r.tipo==='dual_boncap'||r.tipo==='dual_boncer')?'<span style="font-size:9px;font-weight:600;margin-right:3px;opacity:0.6;">DUAL</span>':''}${displayName(r.ticker)}</span>`},
+    {key:'ticker', label:'Ticker',  left:true,  sort:r=>r.ticker,                      fmt:r=>`<span class="t-link" onclick="event.stopPropagation();lcOpenDetail('${r.ticker}')">${(r.tipo==='dual_tamar'||r.tipo==='dual_boncap'||r.tipo==='dual_boncer'||r.tipo==='dual_dl')?'<span style="font-size:9px;font-weight:600;margin-right:3px;opacity:0.6;">DUAL</span>':''}${displayName(r.ticker)}</span>`},
     {key:'precio', label:'Precio',   left:false, sort:r=>r.precio||0,                      fmt:r=>fmtN(r.precio)},
     {key:'tna',    label:'TNA',      left:false, sort:r=>r.calc?.tna??-Infinity,            fmt:r=>r.calc?fmtPct(r.calc.tna,2):'—', colorTNA:true},
     {key:'tea',    label:'TEA',      left:false, sort:r=>r.calc?.tea??-Infinity,            fmt:r=>r.calc?fmtPct(r.calc.tea,2):'—'},
@@ -4577,7 +4613,7 @@ function getCols(tipo){
     {key:'vol',    label:'Volumen',  left:false, sort:r=>r.vol||0,                         fmt:r=>isNaN(r.vol)||!r.vol?'—':r.vol.toLocaleString('es-AR',{maximumFractionDigits:0})},
   ];
   if(esCalc) return [
-    {key:'ticker',  label:'Ticker',   left:true,  sort:r=>r.ticker,                      fmt:r=>`<span class="t-link" onclick="event.stopPropagation();lcOpenDetail('${r.ticker}')">${(r.tipo==='dual_tamar'||r.tipo==='dual_boncap'||r.tipo==='dual_boncer')?'<span style="font-size:9px;font-weight:600;margin-right:3px;opacity:0.6;">DUAL</span>':''}${displayName(r.ticker)}</span>`},
+    {key:'ticker',  label:'Ticker',   left:true,  sort:r=>r.ticker,                      fmt:r=>`<span class="t-link" onclick="event.stopPropagation();lcOpenDetail('${r.ticker}')">${(r.tipo==='dual_tamar'||r.tipo==='dual_boncap'||r.tipo==='dual_boncer'||r.tipo==='dual_dl')?'<span style="font-size:9px;font-weight:600;margin-right:3px;opacity:0.6;">DUAL</span>':''}${displayName(r.ticker)}</span>`},
     {key:'precio',  label:'Precio',   left:false, sort:r=>r.precio||0,                   fmt:r=>fmtN(r.precio)},
     {key:'tna',     label:'TNA',      left:false, sort:r=>r.calc?.tna??-Infinity,        fmt:r=>r.calc?fmtPct(r.calc.tna):'—'},
     {key:'tea',     label:'TEA',      left:false, sort:r=>r.calc?.tea??-Infinity,        fmt:r=>r.calc?fmtPct(r.calc.tea):'—'},
@@ -4598,13 +4634,13 @@ function getCols(tipo){
       fmt:r=>`<span class="t-link" onclick="event.stopPropagation();lcOpenDetail('${r.ticker}')">${r.ticker}</span>`},
     {key:'precio',   label:'Precio',      left:false, sort:r=>r.precio||0,                           fmt:r=>fmtN(r.precio,2)},
     {key:'tna_tamar',label:'TIR TNA TAMAR',   left:false, sort:r=>r.calcTamar?.tna??-Infinity,           fmt:r=>r.calcTamar?fmtPct(r.calcTamar.tna,2):'—'},
-    {key:'tna_fija', label:'TIR TNA BONCAP/CER', left:false, sort:r=>r.calcFija?.tna??-Infinity,         fmt:r=>r.calcFija?fmtPct(r.calcFija.tna,2):'—'},
+    {key:'tna_fija', label:'TIR TNA Pata Fija', left:false, sort:r=>r.calcFija?.tna??-Infinity,         fmt:r=>r.calcFija?fmtPct(r.calcFija.tna,2):'—'},
     {key:'activa',   label:'TIR TNA Parte Activa', left:false, sort:r=>r.ganador==='tamar'?(r.calcTamar?.tna??-Infinity):(r.calcFija?.tna??-Infinity),
       colorActiva:true,
       fmt:r=>{
         if(!r.calcTamar||!r.calcFija) return '—';
         const esTamar=r.ganador==='tamar';
-        const labelFija=r.tipoFija==='dual_boncer'?'CER':'BONCAP';
+        const labelFija=r.tipoFija==='dual_boncer'?'CER':r.tipoFija==='dual_dl'?'DL':'BONCAP';
         const lbl=esTamar?'TAMAR':labelFija;
         const tna=esTamar?r.calcTamar.tna:r.calcFija.tna;
         return '<span style="display:inline-flex;align-items:center;gap:5px;">'
@@ -4625,7 +4661,7 @@ function getCols(tipo){
     {key:'vol',      label:'Volumen',     left:false, sort:r=>r.vol||0,                              fmt:r=>isNaN(r.vol)||!r.vol?'—':r.vol.toLocaleString('es-AR',{maximumFractionDigits:0})},
   ];
   if(tipo==='tamar'||tipo==='dual_tamar') return [
-    {key:'ticker',    label:'Ticker',          left:true,  sort:r=>r.ticker,                           fmt:r=>`<span class="t-link" onclick="event.stopPropagation();lcOpenDetail('${r.ticker}')">${(r.tipo==='dual_tamar'||r.tipo==='dual_boncap'||r.tipo==='dual_boncer')?'<span style="font-size:9px;font-weight:600;margin-right:3px;opacity:0.6;">DUAL</span>':''}${displayName(r.ticker)}</span>`},
+    {key:'ticker',    label:'Ticker',          left:true,  sort:r=>r.ticker,                           fmt:r=>`<span class="t-link" onclick="event.stopPropagation();lcOpenDetail('${r.ticker}')">${(r.tipo==='dual_tamar'||r.tipo==='dual_boncap'||r.tipo==='dual_boncer'||r.tipo==='dual_dl')?'<span style="font-size:9px;font-weight:600;margin-right:3px;opacity:0.6;">DUAL</span>':''}${displayName(r.ticker)}</span>`},
     {key:'precio',    label:'Precio',          left:false, sort:r=>r.precio||0,                        fmt:r=>fmtN(r.precio,2)},
     {key:'tna',       label:'TIR TNA',         left:false, sort:r=>r.calc?.tna??-Infinity,             fmt:r=>r.calc?fmtPct(r.calc.tna,2):'—', colorTNA:true},
     {key:'tea',       label:'TIR TEA',         left:false, sort:r=>r.calc?.tea??-Infinity,             fmt:r=>r.calc?fmtPct(r.calc.tea,2):'—'},
@@ -4643,7 +4679,7 @@ function getCols(tipo){
   ];
   // Tipos sin calculadora: solo precio/var/volumen
   return [
-    {key:'ticker',  label:'Ticker',   left:true,  sort:r=>r.ticker,      fmt:r=>`<span class="t-link" onclick="event.stopPropagation();lcOpenDetail('${r.ticker}')">${(r.tipo==='dual_tamar'||r.tipo==='dual_boncap'||r.tipo==='dual_boncer')?'<span style="font-size:9px;font-weight:600;margin-right:3px;opacity:0.6;">DUAL</span>':''}${displayName(r.ticker)}</span>`},
+    {key:'ticker',  label:'Ticker',   left:true,  sort:r=>r.ticker,      fmt:r=>`<span class="t-link" onclick="event.stopPropagation();lcOpenDetail('${r.ticker}')">${(r.tipo==='dual_tamar'||r.tipo==='dual_boncap'||r.tipo==='dual_boncer'||r.tipo==='dual_dl')?'<span style="font-size:9px;font-weight:600;margin-right:3px;opacity:0.6;">DUAL</span>':''}${displayName(r.ticker)}</span>`},
     {key:'precio',  label:'Precio',   left:false, sort:r=>r.precio||0,   fmt:r=>fmtN(r.precio)},
     {key:'var',     label:'Var%',     left:false, sort:r=>r.variacion||0,fmt:varFmt},
     {key:'vol',     label:'Volumen',  left:false, sort:r=>r.vol||0,      fmt:r=>isNaN(r.vol)||!r.vol?'—':r.vol.toLocaleString('es-AR',{maximumFractionDigits:0})},
@@ -4659,7 +4695,7 @@ function renderTabla(){
   const tbody=document.getElementById('lc-tbody');
   if(!thead||!tbody) return;
 
-  const isDual=r=>r.tipo==='dual_boncap'||r.tipo==='dual_tamar'||r.tipo==='dual_boncer';
+  const isDual=r=>r.tipo==='dual_boncap'||r.tipo==='dual_tamar'||r.tipo==='dual_boncer'||r.tipo==='dual_dl';
   const sorted=[..._rows].sort((a,b)=>{
     // Si duales off: no-duales primero, duales al fondo (ordenados entre sí)
     if(!_showDuales){
@@ -4722,7 +4758,7 @@ function colorTNA(cols){
   if(idx<0) return;
   const rows=[...tbody.querySelectorAll('tr')];
   // Si duales ocultos, excluirlos del rango del degradé
-  const isDualRow=r=>{const t=r.dataset.tipo||'';return t==='dual_boncap'||t==='dual_tamar'||t==='dual_boncer';};
+  const isDualRow=r=>{const t=r.dataset.tipo||'';return t==='dual_boncap'||t==='dual_tamar'||t==='dual_boncer'||t==='dual_dl';};
   const vals=rows.map(tr=>{
     const td=tr.querySelectorAll('td')[idx];
     if(!td) return null;
@@ -4861,7 +4897,7 @@ function rfCatTieneCurva(tipo){
 }
 
 // ¿Una fila es dual? (pata fija de un dual)
-function rfRowEsDual(r){ return r && (r.tipo==='dual_boncap'||r.tipo==='dual_tamar'||r.tipo==='dual_boncer'); }
+function rfRowEsDual(r){ return r && (r.tipo==='dual_boncap'||r.tipo==='dual_tamar'||r.tipo==='dual_boncer'||r.tipo==='dual_dl'); }
 
 // ¿La fila tiene precio válido? (los sin precio no se muestran en el reporte)
 function rfRowTienePrecio(r){
@@ -4872,7 +4908,7 @@ function rfRowTienePrecio(r){
 
 // Categorías en las que, por defecto, excluimos los duales (se ven en su propia
 // categoría "Duales"/"TAMARs"). Coincide con el botón DUALES de la UI.
-const RF_CATS_SIN_DUALES = new Set(['boncap','boncer','tamar']);
+const RF_CATS_SIN_DUALES = new Set(['boncap','boncer','tamar','dolarlinked']);
 
 // Devuelve [{tipo,label,count}] de categorías con instrumentos vigentes y con precio.
 function rfReportableCats(){
@@ -5135,7 +5171,7 @@ async function rfBuildCurveImage(tipo, rows, opts){
       if(dupes.length>1){const idx=dupes.indexOf(p);const offset=(idx-(dupes.length-1)/2)*0.08;return{...p,y:p.y+offset};}
       return p;
     });
-    const ap=allPts.filter(p=>!excluded.has(p.label)&&(showDuales||!(p.tipo==='dual_boncap'||p.tipo==='dual_tamar'||p.tipo==='dual_boncer')));
+    const ap=allPts.filter(p=>!excluded.has(p.label)&&(showDuales||!(p.tipo==='dual_boncap'||p.tipo==='dual_tamar'||p.tipo==='dual_boncer'||p.tipo==='dual_dl')));
     if(!ap.length) return null;
 
     const isSobLeyAR=t=>t.toUpperCase().startsWith('A');
@@ -5148,8 +5184,8 @@ async function rfBuildCurveImage(tipo, rows, opts){
       datasets.push({label:'Ley NY',data:ptsNY,backgroundColor:'#22c55e',borderColor:'#22c55e',pointRadius:6,showLine:false,order:2});
     } else {
       const tr=makeTrendDs(ap,'#1E27F3'); if(tr) datasets.push(tr);
-      const hasDual=ap.some(p=>p.tipo==='dual_tamar'||p.tipo==='dual_boncap'||p.tipo==='dual_boncer');
-      const colors=ap.map(p=>(p.tipo==='dual_tamar'||p.tipo==='dual_boncap'||p.tipo==='dual_boncer')?'rgba(245,166,35,0.95)':'#1E27F3');
+      const hasDual=ap.some(p=>p.tipo==='dual_tamar'||p.tipo==='dual_boncap'||p.tipo==='dual_boncer'||p.tipo==='dual_dl');
+      const colors=ap.map(p=>(p.tipo==='dual_tamar'||p.tipo==='dual_boncap'||p.tipo==='dual_boncer'||p.tipo==='dual_dl')?'rgba(245,166,35,0.95)':'#1E27F3');
       datasets.push({label:catLabel,data:ap,backgroundColor:colors,borderColor:colors,pointRadius:6,showLine:false,order:2});
       if(hasDual){ // dataset fantasma solo para que aparezca el dual en la leyenda
         datasets.push({label:'Dual',data:[],backgroundColor:'rgba(245,166,35,0.95)',borderColor:'rgba(245,166,35,0.95)',pointRadius:6,showLine:false,order:2});
@@ -5818,7 +5854,7 @@ function renderCurva(rows, cmpRows){
     return;
   }
 
-  function getAP(){return allPts.filter(p=>!_excluded.has(p.label)&&(_showDuales||(p.tipo!=='dual_boncap'&&p.tipo!=='dual_tamar'&&p.tipo!=='dual_boncer')));}
+  function getAP(){return allPts.filter(p=>!_excluded.has(p.label)&&(_showDuales||(p.tipo!=='dual_boncap'&&p.tipo!=='dual_tamar'&&p.tipo!=='dual_boncer'&&p.tipo!=='dual_dl')));}
   function getRange(pts){
     if(!pts.length) return{xMin:0,xMax:1,yMin:0,yMax:1};
     const fn=polyFit2(pts.filter(p=>isFinite(p.x)&&isFinite(p.y)));
@@ -5862,7 +5898,7 @@ function renderCurva(rows, cmpRows){
       return ds;
     }
     const tr=makeTrendDs(ap,'#1E27F3');if(tr) ds.push(tr);
-    const colors=ap.map(p=>(p.tipo==='dual_tamar'||p.tipo==='dual_boncap'||p.tipo==='dual_boncer')?'rgba(245,166,35,0.9)':'#1E27F3');
+    const colors=ap.map(p=>(p.tipo==='dual_tamar'||p.tipo==='dual_boncap'||p.tipo==='dual_boncer'||p.tipo==='dual_dl')?'rgba(245,166,35,0.9)':'#1E27F3');
     const radii=ap.map(()=>5);
     ds.push({label:catLabel,data:ap,backgroundColor:colors,borderColor:colors,
       pointRadius:radii,pointHoverRadius:8,showLine:false,order:2});
@@ -5911,7 +5947,7 @@ function renderCurva(rows, cmpRows){
       _chartInst.update('active');updatePips();return;
     }
     const nt=makeTrendDs(ap,'#1E27F3');
-    const nc=ap.map(p=>(p.tipo==='dual_tamar'||p.tipo==='dual_boncap'||p.tipo==='dual_boncer')?'rgba(245,166,35,0.9)':'#1E27F3');
+    const nc=ap.map(p=>(p.tipo==='dual_tamar'||p.tipo==='dual_boncap'||p.tipo==='dual_boncer'||p.tipo==='dual_dl')?'rgba(245,166,35,0.9)':'#1E27F3');
     const nr=ap.map(()=>5);
     if(_chartInst.data.datasets[0]?.label==='_trend') _chartInst.data.datasets[0].data=nt?nt.data:[];
     const ptDs=_chartInst.data.datasets.find(d=>d.label===catLabel);
@@ -6032,7 +6068,7 @@ function renderCurva(rows, cmpRows){
       <div class="legend-item"><div class="legend-line" style="background:#22c55e"></div>Tend. Ley NY</div>
       <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>Ley NY <span style="color:var(--text3);font-size:9px;">(click para excluir)</span></div>`;
   } else {
-    const hasDualesEnPts=_showDuales&&allPts.some(p=>p.tipo==='dual_tamar'||p.tipo==='dual_boncap'||p.tipo==='dual_boncer'||p.tipo==='duales');
+    const hasDualesEnPts=_showDuales&&allPts.some(p=>p.tipo==='dual_tamar'||p.tipo==='dual_boncap'||p.tipo==='dual_boncer'||p.tipo==='dual_dl'||p.tipo==='duales');
     document.getElementById('rf-curve-legend').innerHTML=`
       <div class="legend-item"><div class="legend-line" style="background:#1E27F3"></div>Tendencia hoy</div>
       <div class="legend-item"><div class="legend-dot" style="background:#1E27F3"></div>${catLabel} <span style="color:var(--text3);font-size:9px;">(click para excluir)</span></div>
@@ -6199,6 +6235,8 @@ function buildSidebar(){
     if(tipo==='dual_boncap') tipo='boncap';
     // dual_boncer agrupa visualmente con boncer
     if(tipo==='dual_boncer') tipo='boncer';
+    // dual_dl agrupa visualmente con dolarlinked
+    if(tipo==='dual_dl') tipo='dolarlinked';
     if(!tipo) continue;
     const key=`${tipo}::${t}`;
     if(sbSeen.has(key)) continue; // deduplicar ticker+grupo
@@ -6209,7 +6247,7 @@ function buildSidebar(){
   // Construir grupo 'duales' con tickers base (matcheando patas)
   const tiposB=_bundle._tipos||{};
   const dualTamarSet=new Set((allT).filter(t=>(tiposB[t]||'').toLowerCase()==='dual_tamar'));
-  const dualFijaSet =new Set((allT).filter(t=>['dual_boncap','dual_boncer'].includes((tiposB[t]||'').toLowerCase())));
+  const dualFijaSet =new Set((allT).filter(t=>['dual_boncap','dual_boncer','dual_dl'].includes((tiposB[t]||'').toLowerCase())));
   // tickers base = nombre sin _F de los _fija, si tienen pata tamar
   const dualBaseSet=new Set();
   for(const t of dualFijaSet){
@@ -6356,12 +6394,12 @@ async function selectCategoria(tipo){
   // Actualizar selectores de eje según categoría
   lcUpdateAxisSelectors();
   // Mostrar botón DUALES solo en categorías que pueden tener duales
-  const CATS_CON_DUALES=new Set(['boncap','tamar','boncer']);
+  const CATS_CON_DUALES=new Set(['boncap','tamar','boncer','dolarlinked']);
   const btnD=document.getElementById('btn-duales');
   if(btnD){
     const hasDuales=CATS_CON_DUALES.has(tipo)&&(_bundle?(_bundle._index||[]).some(t=>{
       const tp=((_bundle._tipos||{})[t]||'').toLowerCase();
-      return(tipo==='boncap'&&tp==='dual_boncap')||(tipo==='tamar'&&tp==='dual_tamar')||(tipo==='boncer'&&tp==='dual_boncer');
+      return(tipo==='boncap'&&tp==='dual_boncap')||(tipo==='tamar'&&tp==='dual_tamar')||(tipo==='boncer'&&tp==='dual_boncer')||(tipo==='dolarlinked'&&tp==='dual_dl');
     }):false);
     btnD.style.display=(hasDuales&&tipo!=='duales')?'':'none';
     const btnP=document.getElementById('btn-patas');
@@ -6413,8 +6451,11 @@ async function selectCategoria(tipo){
   if(cerOffsetWrap) cerOffsetWrap.style.display=(TIPOS_BONCER.has(tipo)||hasDualBoncer)?'flex':'none';
   if(TIPOS_BONCER.has(tipo)||hasDualBoncer) cerUpdateChip();
   const tcWrap=document.getElementById('tc-wrap');
-  if(tcWrap) tcWrap.style.display=tipo==='dolarlinked'?'flex':'none';
-  if(tipo==='dolarlinked') tcUpdateChip();
+  // El chip TC aparece en Dólar Linked, y en TAMARs/Duales cuando hay algún dual TAMAR–DL
+  const hasDualDL=(tipo==='duales'||tipo==='tamar')&&(_bundle?(_bundle._index||[]).some(t=>((_bundle._tipos||{})[t]||'').toLowerCase()==='dual_dl'):false);
+  const mostrarTcWrap=tipo==='dolarlinked'||hasDualDL;
+  if(tcWrap) tcWrap.style.display=mostrarTcWrap?'flex':'none';
+  if(mostrarTcWrap) tcUpdateChip();
 
   renderTabla();
   // Doble setTimeout garantiza que el browser complete el layout antes de renderizar
@@ -6433,7 +6474,7 @@ window.lcOpenDetail=function(ticker){
 
   // Asegurar que la categoría correcta esté activa
   // boncer_bullet y dual_boncer se muestran bajo la categoría 'boncer'
-  const tipoCateg=tipo==='boncer_bullet'||tipo==='dual_boncer'?'boncer':tipo==='dual_boncap'?'boncap':tipo;
+  const tipoCateg=tipo==='boncer_bullet'||tipo==='dual_boncer'?'boncer':tipo==='dual_boncap'?'boncap':tipo==='dual_dl'?'dolarlinked':tipo;
   if(_catActiva!==tipoCateg){_catActiva=tipoCateg;_rows=cruzar(tipoCateg,_precios,defaultLiq());}
 
   const cfs=getCfs(ticker);
@@ -6447,6 +6488,8 @@ window.lcOpenDetail=function(ticker){
     :tipo==='dual_boncer'
     ?(getPrecio(ticker.replace(/_F$/i,''))||getPrecio(ticker))
     :tipo==='dual_boncap'
+    ?(getPrecio(ticker.replace(/_F$/i,''))||getPrecio(ticker))
+    :tipo==='dual_dl'
     ?(getPrecio(ticker.replace(/_F$/i,''))||getPrecio(ticker))
     :getPrecio(ticker);
   const precio=px?.precio??NaN, variacion=px?.variacion??NaN;
@@ -6470,14 +6513,18 @@ window.lcOpenDetail=function(ticker){
   } else if((tipo==='tamar'||tipo==='dual_tamar')&&!isNaN(precio)&&precio>0){
     const tp=_tamarProms[ticker];
     const meta=(_bundle._meta||{})[ticker]||{};
-    if(tp&&meta.maturity) calc=calcTamar(precio,liq,meta.maturity,tp);
+    // Dual TAMAR–DL: la pata TAMAR devenga en USD → precio/TC
+    const dualDL=tipo==='dual_tamar'&&esDualDL(ticker);
+    const tcD=dualDL?tcVigente():null;
+    const precioT=dualDL?(tcD?precio/tcD:NaN):precio;
+    if(tp&&meta.maturity&&!isNaN(precioT)&&precioT>0) calc=calcTamar(precioT,liq,meta.maturity,tp);
     // Para dual_tamar: calcular también la pata fija y guardar estado
     if(tipo==='dual_tamar'){
       const allT2=_bundle._index||[];
       const tipos2=_bundle._tipos||{};
       const tickerFija=allT2.find(t=>{
         const tp2=(tipos2[t]||'').toLowerCase();
-        return (tp2==='dual_boncap'||tp2==='dual_boncer')&&t.replace(/_F$/i,'')===ticker;
+        return (tp2==='dual_boncap'||tp2==='dual_boncer'||tp2==='dual_dl')&&t.replace(/_F$/i,'')===ticker;
       });
       let calcFija=null,tipoFija=null;
       if(tickerFija){
@@ -6489,6 +6536,10 @@ window.lcOpenDetail=function(ticker){
         } else if(tipoFija==='dual_boncer'){
           if(metaFija.cerInicial&&metaFija.maturity&&!isNaN(precio)&&precio>0)
             calcFija=calcBoncer(precio,liq,metaFija.maturity,metaFija.cerInicial,null);
+        } else if(tipoFija==='dual_dl'){
+          // calcDolarLinked divide el precio por TC internamente
+          const matDL=metaFija.maturity||meta.maturity;
+          if(matDL&&tcD&&!isNaN(precio)&&precio>0) calcFija=calcDolarLinked(precio,liq,matDL,tcD);
         }
       }
       const tnaTamar=calc?.tna??-Infinity;
@@ -6500,8 +6551,9 @@ window.lcOpenDetail=function(ticker){
       window._dualGanador=tnaTamar>=tnaFija2?'tamar':'fija';
       window._dualPataVista=window._dualGanador; // pestaña activa por defecto = ganador
     }
-  } else if(tipo==='dolarlinked'&&!isNaN(precio)&&precio>0){
-    const meta=(_bundle._meta||{})[ticker]||{};
+  } else if((tipo==='dolarlinked'||tipo==='dual_dl')&&!isNaN(precio)&&precio>0){
+    // Entrada directa por la pata DL (sección Dólar Linked). calcDolarLinked divide por TC.
+    const meta=(_bundle._meta||{})[ticker]||(_bundle._meta||{})[ticker.replace(/_F$/i,'')]||{};
     const tc=window._tcManualVal??_tcUsd;
     if(meta.maturity&&tc) calc=calcDolarLinked(precio,liq,meta.maturity,tc);
   }
@@ -6548,13 +6600,23 @@ window.lcSetMetActivaA=function(k){window._metActivaA=k;window._rebuildCompA&&wi
 window.lcSetMetActivaB=function(k){window._metActivaB=k;window._rebuildCompB&&window._rebuildCompB();};
 
 window.detRecalcFromCard=function(){
-  const val=window._detPxCard;
+  let val=window._detPxCard;
   window._detPxCard=null;
   const pxInput=document.getElementById('det-px-inp');
   if(!val||!val.trim()){
     // Input vacío → resetear al precio real
     if(pxInput) pxInput.value='';
   } else {
+    // Dual TAMAR–DL, pata TAMAR: el card se muestra en USD. El input oculto (det-px-inp)
+    // y toda la cadena de recálculo trabajan en PESOS (igual que _detPrecioReal), así que
+    // convertimos el valor tipeado (USD) → pesos multiplicando por el TC global.
+    if(window._detTipo==='dual_tamar'&&window._dualTipoFija==='dual_dl'&&window._dualPataVista==='tamar'){
+      const usd=toNum(val);
+      const tc=tcVigente();
+      if(!isNaN(usd)&&usd>0&&tc){
+        val=String(usd*tc).replace('.',',');
+      }
+    }
     if(pxInput) pxInput.value=val;
   }
   detRecalc();
@@ -6574,6 +6636,7 @@ window.detRecalc=function(){
     :tipo==='fixed_rate'?(getPrecio(FIXED_RATE_PX_MAP[ticker.toUpperCase()]||ticker)||getPrecio(ticker))
     :tipo==='dual_boncap'?getPrecio(ticker.replace(/_F$/i,''))
     :tipo==='dual_boncer'?getPrecio(ticker.replace(/_F$/i,''))
+    :tipo==='dual_dl'?getPrecio(ticker.replace(/_F$/i,''))
     :getPrecio(ticker);
   const variacion=px?.variacion??NaN;
   const liq=document.getElementById('det-fecha-liq')?.value||defaultLiq();
@@ -6607,8 +6670,8 @@ window.detRecalc=function(){
     calc=calcSoberano(_bundle[ticker],precio,liq);
   } else if(TIPOS_CALCULADORA.has(tipo)&&cf&&!isNaN(precio)&&precio>0){
     calc=calcLecap(cf,precio,liq);
-  } else if(tipo==='dolarlinked'&&!isNaN(precio)&&precio>0){
-    const meta=(_bundle._meta||{})[ticker]||{};
+  } else if((tipo==='dolarlinked'||tipo==='dual_dl')&&!isNaN(precio)&&precio>0){
+    const meta=(_bundle._meta||{})[ticker]||(_bundle._meta||{})[ticker.replace(/_F$/i,'')]||{};
     const tc=window._tcManualVal??_tcUsd;
     if(meta.maturity&&tc) calc=calcDolarLinked(precio,liq,meta.maturity,tc);
   } else if(tipo==='bopreal'&&!isNaN(precio)&&precio>0&&_bundle[ticker]){
@@ -6618,7 +6681,11 @@ window.detRecalc=function(){
   } else if((tipo==='tamar'||tipo==='dual_tamar')&&!isNaN(precio)&&precio>0){
     const tp=_tamarProms[ticker];
     const meta=(_bundle._meta||{})[ticker]||{};
-    if(tp&&meta.maturity) calc=calcTamar(precio,liq,meta.maturity,tp);
+    // Dual TAMAR–DL: la pata TAMAR devenga en USD → precio/TC
+    const dualDL=tipo==='dual_tamar'&&esDualDL(ticker);
+    const tcD=dualDL?tcVigente():null;
+    const precioT=dualDL?(tcD?precio/tcD:NaN):precio;
+    if(tp&&meta.maturity&&!isNaN(precioT)&&precioT>0) calc=calcTamar(precioT,liq,meta.maturity,tp);
     if(tipo==='dual_tamar'){
       window._dualCalcTamar=calc;
       // Recalcular pata fija
@@ -6633,6 +6700,9 @@ window.detRecalc=function(){
         } else if(tipoFija==='dual_boncer'){
           if(metaFija.cerInicial&&metaFija.maturity&&!isNaN(precio)&&precio>0)
             calcFija=calcBoncer(precio,liq,metaFija.maturity,metaFija.cerInicial,null);
+        } else if(tipoFija==='dual_dl'){
+          const matDL=metaFija.maturity||meta.maturity;
+          if(matDL&&tcD&&!isNaN(precio)&&precio>0) calcFija=calcDolarLinked(precio,liq,matDL,tcD);
         }
       }
       window._dualCalcFija=calcFija;
@@ -6640,14 +6710,10 @@ window.detRecalc=function(){
       const tnaFija2=calcFija?.tna??-Infinity;
       window._dualGanador=tnaTamar>=tnaFija2?'tamar':'fija';
     }
-  } else if(tipo==='dolarlinked'&&!isNaN(precio)&&precio>0){
-    const meta=(_bundle._meta||{})[ticker]||{};
-    const tc=window._tcManualVal??_tcUsd;
-    if(meta.maturity&&tc) calc=calcDolarLinked(precio,liq,meta.maturity,tc);
   }
   // Si la categoría tiene peers que dependen de fecha liq o CER, recalcular _rows
   // Recalcular _rows solo cuando cambia fecha liq o CER (no cuando cambia precio manual)
-  const tipoCategDet=(tipo==='boncer_bullet'||tipo==='dual_boncer')?'boncer':tipo==='dual_boncap'?'boncap':_catActiva;
+  const tipoCategDet=(tipo==='boncer_bullet'||tipo==='dual_boncer')?'boncer':tipo==='dual_boncap'?'boncap':tipo==='dual_dl'?'dolarlinked':_catActiva;
   if(!window._detPxTriggered) _rows=cruzar(tipoCategDet,_precios,liq);
   window._detPxTriggered=false;
   buildDetBody({ticker,tipo,precio,variacion,cf,cfs,calc,_isManual:isManual},liq);
@@ -6679,6 +6745,9 @@ function buildDetBody(row,fechaLiq){
   body.innerHTML='';
   const{ticker,tipo,precio,variacion,cf,cfs,calc}=row;
   const isManual=row._isManual||false;
+  // Dual TAMAR–DL, pata TAMAR: el precio del card viene en USD; _precioPesos es el ARS de referencia.
+  const _esDualDL=row._esDualDL||false;
+  const _precioPesos=row._precioPesos??null;
   const esBoncer=tipo==='boncer_bullet'||tipo==='boncer'||tipo==='dual_boncer';
   const esAmort=tipo==='boncer';
   const esSoberano=tipo==='soberano';
@@ -8523,7 +8592,8 @@ function buildDetBody(row,fechaLiq){
     const tipoFija=window._dualTipoFija||'dual_boncap';
     const ganador=window._dualGanador||'tamar';
     const pataVista=window._dualPataVista||ganador;
-    const labelFija=tipoFija==='dual_boncer'?'BONCER CER':'BONCAP';
+    const labelFija=tipoFija==='dual_boncer'?'BONCER CER':tipoFija==='dual_dl'?'DÓLAR LINKED':'BONCAP';
+    const esDualDLdet=tipoFija==='dual_dl';
 
     // Fila 0: split screen ambas patas
     const splitRow=document.createElement('div');
@@ -8565,9 +8635,11 @@ function buildDetBody(row,fechaLiq){
     const esMostrando=pataVista==='tamar'?'TAMAR':labelFija;
     const esCambiando=pataVista==='tamar'?labelFija:'TAMAR';
     const mostrandoBoncer=pataVista==='fija'&&tipoFija==='dual_boncer';
+    // Dual TAMAR–DL: chip de TC global (afecta AMBAS patas simultáneamente)
     btnSwitch.innerHTML='<label style="font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);font-family:var(--mono);">Fecha liq.</label>'
       +'<input type="date" class="lc-fecha-inp" id="det-fecha-liq" value="'+fechaLiq+'" onchange="detRecalc()">'
       +'<input type="hidden" id="det-px-inp" value="'+(isManual?String(precio).replace('.',','):'')+'" />'
+      +(esDualDLdet?'<span style="display:flex;align-items:center;gap:6px;padding-left:10px;border-left:1px solid var(--border2);">'+buildTcChipHtml()+'</span>':'')
       +(mostrandoBoncer?'<span id="det-cer-offset-wrap" style="display:flex;align-items:center;gap:6px;padding-left:10px;border-left:1px solid var(--border2);">'+buildCerChipHtml()+'</span>':'')
       +'<span style="flex:1;"></span>'
       +'<span style="font-size:9px;font-family:var(--mono);color:var(--text3);">Viendo: <strong style="color:var(--text2);">'+esMostrando+'</strong></span>'
@@ -8580,7 +8652,7 @@ function buildDetBody(row,fechaLiq){
     const pataLabel=document.createElement('div');
     const pataColor=pataVista==='tamar'?'var(--accent)':'var(--accent2)';
     const pataTitulo=pataVista==='tamar'?'Detalle — Pata TAMAR':
-      tipoFija==='dual_boncer'?'Detalle — Pata BONCER CER':'Detalle — Pata BONCAP';
+      tipoFija==='dual_boncer'?'Detalle — Pata BONCER CER':tipoFija==='dual_dl'?'Detalle — Pata Dólar Linked':'Detalle — Pata BONCAP';
     pataLabel.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:14px;';
     pataLabel.innerHTML='<div style="height:3px;flex:1;background:'+pataColor+';border-radius:2px;opacity:.4;"></div>'
       +'<span style="font-size:11px;font-weight:700;font-family:var(--mono);color:'+pataColor+';text-transform:uppercase;letter-spacing:1px;">'+pataTitulo+'</span>'
@@ -8589,8 +8661,13 @@ function buildDetBody(row,fechaLiq){
 
     // Detalle de la pata vista
     if(pataVista==='tamar'&&calcT){
-      // Reutilizar el layout TAMAR inyectando calcT como c
-      const rowFake={ticker,tipo:'tamar',precio,variacion,cf,cfs,calc:calcT,_isManual:isManual};
+      // Reutilizar el layout TAMAR inyectando calcT como c.
+      // En dual TAMAR–DL el card de precio se muestra en USD (precio/TC); guardamos
+      // también el precio en pesos para el subtítulo de referencia.
+      const tcDL=esDualDLdet?tcVigente():null;
+      const precioTamarView=esDualDLdet&&tcDL?precio/tcDL:precio;
+      const rowFake={ticker,tipo:'tamar',precio:precioTamarView,variacion,cf,cfs,calc:calcT,_isManual:isManual,
+        _precioPesos:esDualDLdet?precio:null,_esDualDL:esDualDLdet};
       buildPataDetalle(body,rowFake,fechaLiq);
     } else if(pataVista==='fija'&&calcFija){
       const tickerFija=window._dualTickerFija;
@@ -8623,13 +8700,13 @@ function buildDetBody(row,fechaLiq){
     const gridTIR=document.createElement('div');
     gridTIR.style.cssText='display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;';
     gridTIR.innerHTML=`<div style="background:var(--bg);border:1px solid ${dpBcT};border-radius:8px;padding:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:text;" onclick="document.getElementById('det-px-inp-card')?.select()">
-      <div style="font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:${dpLcT};margin-bottom:8px;font-family:var(--mono);">Dirty Price${isManual?' ✎':''}</div>
+      <div style="font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:${dpLcT};margin-bottom:8px;font-family:var(--mono);">${_esDualDL?'Precio USD':'Dirty Price'}${isManual?' ✎':''}</div>
       <input id="det-px-inp-card" type="text" value="${fmtN(precio,4)}"
         style="font-size:24px;font-weight:700;font-family:var(--mono);color:${isManual?'var(--yellow)':'var(--text)'};background:transparent;border:none;outline:none;text-align:center;width:100%;cursor:text;"
-        placeholder="${fmtN(window._detPrecioReal??NaN,4)}"
+        placeholder="${fmtN(_esDualDL?precio:(window._detPrecioReal??NaN),4)}"
         onkeydown="if(event.key==='Enter'){window._detPxCard=this.value;detRecalcFromCard();}"
         onblur="window._detPxCard=this.value;detRecalcFromCard();"/>
-      ${isDualT?'<div style="font-size:9px;font-family:var(--mono);color:var(--yellow);margin-top:4px;">Pata TAMAR · Dual</div>':''}
+      ${_esDualDL&&_precioPesos!=null?'<div style="font-size:9px;font-family:var(--mono);color:var(--text3);margin-top:4px;">= '+fmtN(_precioPesos,2)+' ARS</div>':(isDualT?'<div style="font-size:9px;font-family:var(--mono);color:var(--yellow);margin-top:4px;">Pata TAMAR · Dual</div>':'')}
     </div>
     <div style="background:var(--bg);border:1px solid var(--accent);border-radius:8px;padding:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
       <div style="font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--accent);margin-bottom:8px;font-family:var(--mono);">TIR TNA</div>
@@ -9076,10 +9153,10 @@ window.tcGlobalInput=function(){
       inp.style.color='var(--yellow)';
     }
   }
-  // Recalcular toda la categoría si es dólar linked
-  if(_catActiva==='dolarlinked'){
+  // Recalcular toda la categoría si el TC afecta las filas visibles (DL, o TAMAR/Duales con dual-DL)
+  if(_catActiva==='dolarlinked'||_catActiva==='tamar'||_catActiva==='duales'){
     const liq=document.getElementById('lc-fecha-liq')?.value||defaultLiq();
-    _rows=cruzar(_catActiva,_precios,liq);
+    _rows=_catActiva==='duales'?cruzarDual(_precios,liq):cruzar(_catActiva,_precios,liq);
     renderCurva(_rows,_cmpRows);
     renderTabla();
   }
@@ -9183,6 +9260,16 @@ function buildCerChipHtml(){
     +'<span style="font-weight:500;color:var(--text);">'+valStr+'</span>'
     +'<svg width="8" height="8" viewBox="0 0 10 10" fill="none" style="color:var(--text3);flex-shrink:0;"><path d="M2 3l3 4 3-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
     +'</span>';
+}
+
+// Chip de TC (A3500) editable — usado en el detalle DL puro y en la barra del dual TAMAR–DL.
+// Escribe sobre el TC global (window._tcManual / _tcManualVal) vía detTcChanged().
+function buildTcChipHtml(){
+  return '<label style="font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);">TC</label>'
+    +'<input type="text" id="det-tc-inp" placeholder="'+fmtN(_tcUsd??NaN,2)+'" value="'+(window._tcManual?fmtN(window._tcManualVal,2):'')+'" '
+    +'title="Editá para fijar un TC manual. Vacialo para volver al valor automático ('+(window._tcUsdFecha||'BCRA')+')." '
+    +'style="width:100px;background:var(--bg);border:1px solid '+(window._tcManual?'var(--yellow)':'var(--border2)')+';border-radius:5px;color:'+(window._tcManual?'var(--yellow)':'var(--text)')+';font-size:11px;font-family:var(--mono);padding:4px 7px;outline:none;box-sizing:border-box;" '
+    +'onkeydown="if(event.key===\'Enter\')detTcChanged()" onblur="detTcChanged()" />';
 }
 
 window.cerDetToggleDropdown=function(e){
@@ -9415,14 +9502,14 @@ function rfCalColor(tipo, isPast) {
   const verde  = isPast ? 'rgba(63,185,80,0.3)'   : '#3fb950';
   const t = (tipo||'').toLowerCase();
   if (t==='boncer'||t==='boncer_bullet'||t==='dual_boncer') return amarillo;
-  if (t==='soberano'||t==='bopreal'||t==='dolarlinked')    return verde;
+  if (t==='soberano'||t==='bopreal'||t==='dolarlinked'||t==='dual_dl')    return verde;
   return azul; // lecap, boncap, tamar, dual_tamar, dual_boncap, fixed_rate
 }
 
 // Devuelve etiqueta del flujo y si es proyectado
 function rfCalFlujoLabel(tipo) {
   const t = (tipo||'').toLowerCase();
-  if (t==='boncer_bullet'||t==='dual_boncer'||t==='dolarlinked') return '(proy.)';
+  if (t==='boncer_bullet'||t==='dual_boncer'||t==='dolarlinked'||t==='dual_dl') return '(proy.)';
   if (t==='tamar'||t==='dual_tamar') return '(proy.)';
   return '';
 }
@@ -9516,6 +9603,10 @@ function rfCalBuildPaymentMap() {
           const cerActual = getCerForDate(restarHabiles(liqStr, _cerOffset));
           if (cerActual) flujoFija = (cerActual / metaFija.cerInicial) * 100;
         }
+      } else if (tipoFija==='dual_dl') {
+        // Pata dólar linked: flujo proyectado = 100 USD × TC actual
+        const tc = window._tcManualVal ?? _tcUsd;
+        if (tc) flujoFija = 100 * tc;
       }
 
       // Ganador: mayor flujo
@@ -9525,15 +9616,15 @@ function rfCalBuildPaymentMap() {
           flujo = flujoTamar; ganadorLabel = '(proy. TAMAR)'; esProy = true;
         } else {
           flujo = flujoFija;
-          ganadorLabel = tipoFija==='dual_boncer' ? '(proy. CER)' : '(fija BONCAP)';
-          esProy = tipoFija==='dual_boncer';
+          ganadorLabel = tipoFija==='dual_boncer' ? '(proy. CER)' : tipoFija==='dual_dl' ? '(proy. DL)' : '(fija BONCAP)';
+          esProy = tipoFija==='dual_boncer' || tipoFija==='dual_dl';
         }
       } else if (flujoTamar!=null) {
         flujo = flujoTamar; ganadorLabel = '(proy. TAMAR)'; esProy = true;
       } else if (flujoFija!=null) {
         flujo = flujoFija;
-        ganadorLabel = tipoFija==='dual_boncer' ? '(proy. CER)' : '(fija BONCAP)';
-        esProy = tipoFija==='dual_boncer';
+        ganadorLabel = tipoFija==='dual_boncer' ? '(proy. CER)' : tipoFija==='dual_dl' ? '(proy. DL)' : '(fija BONCAP)';
+        esProy = tipoFija==='dual_boncer' || tipoFija==='dual_dl';
       }
 
       if (flujo==null) continue;
@@ -9761,7 +9852,7 @@ window.rfCalShowTooltip = function(event, dateStr, idx) {
     lecap:'LECAP', boncap:'BONCAP', boncer:'BONCER', boncer_bullet:'BONCER',
     soberano:'Soberano', dolarlinked:'Dólar Linked', bopreal:'BOPREAL',
     fixed_rate:'Fixed Rate', tamar:'TAMAR', dual_tamar:'Dual TAMAR',
-    dual_boncap:'Dual BONCAP', dual_boncer:'Dual BONCER',
+    dual_boncap:'Dual BONCAP', dual_boncer:'Dual BONCER', dual_dl:'Dual DL',
   };
   const tipoLabel = tipoLabels[p.tipo] || p.tipo;
   const flujoFmt  = p.flujo!=null ? p.flujo.toFixed(2) : '—';
@@ -9809,7 +9900,7 @@ window.rfCalOpenModal = async function(ticker) {
   const CAT = { lecap:'LECAP', boncap:'BONCAP', boncer:'BONCER', boncer_bullet:'BONCER',
     soberano:'Soberano', dolarlinked:'Dólar Linked', bopreal:'BOPREAL',
     fixed_rate:'Fixed Rate', tamar:'TAMAR', dual_tamar:'Dual TAMAR',
-    dual_boncap:'Dual BONCAP', dual_boncer:'Dual BONCER' };
+    dual_boncap:'Dual BONCAP', dual_boncer:'Dual BONCER', dual_dl:'Dual DL' };
   document.getElementById('rf-cal-modal-title').textContent =
     displayName(ticker) + (CAT[tipo] ? '  ·  ' + CAT[tipo] : '');
 
@@ -11156,8 +11247,8 @@ function sensCalcAtPrice(ticker, tipoReal, precio, fechaLiq) {
     const cfs = getCfs(ticker);
     const cf = cfs && cfs.length ? cfs[cfs.length - 1] : null;
     if (cf) return calcLecap(cf, precio, fechaLiq);
-  } else if (tipoReal === 'dolarlinked') {
-    const meta = (_bundle._meta || {})[ticker] || {};
+  } else if (tipoReal === 'dolarlinked' || tipoReal === 'dual_dl') {
+    const meta = (_bundle._meta || {})[ticker] || (_bundle._meta || {})[ticker.replace(/_F$/i,'')] || {};
     const tc = window._tcManualVal ?? _tcUsd;
     if (meta.maturity && tc) return calcDolarLinked(precio, fechaLiq, meta.maturity, tc);
   } else if (tipoReal === 'bopreal' && _bundle[ticker]) {
@@ -11167,7 +11258,13 @@ function sensCalcAtPrice(ticker, tipoReal, precio, fechaLiq) {
   } else if ((tipoReal === 'tamar' || tipoReal === 'dual_tamar')) {
     const tp = _tamarProms[ticker];
     const meta = (_bundle._meta || {})[ticker] || {};
-    if (tp && meta.maturity) return calcTamar(precio, fechaLiq, meta.maturity, tp);
+    // Dual TAMAR–DL: la pata TAMAR devenga en USD → precio/TC
+    if (tipoReal === 'dual_tamar' && esDualDL(ticker)) {
+      const tc = tcVigente();
+      if (tp && meta.maturity && tc) return calcTamar(precio / tc, fechaLiq, meta.maturity, tp);
+    } else {
+      if (tp && meta.maturity) return calcTamar(precio, fechaLiq, meta.maturity, tp);
+    }
   }
   return null;
 }
