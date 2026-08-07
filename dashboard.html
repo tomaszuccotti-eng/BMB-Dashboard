@@ -4357,6 +4357,98 @@ function tcVigente(){
   return (tc&&!isNaN(tc)&&tc>0)?tc:null;
 }
 
+// Rótulo de contexto para el título del detalle (elemento det-tipo).
+// - No-dual: label de categoría normal (ej. 'TAMARs').
+// - Pata de un dual: 'Pata TAMAR · Dual TAMAR–CER · ACTIVA/INACTIVA'.
+//   La pata puede verse sola (entrando por TAMARs/BONCERs/etc.) o dentro del split (Duales);
+//   en ambos casos se aclara qué pata es y si hoy es la ganadora (activa) o no.
+function rotuloDetalle(ticker, tipo){
+  const t=(tipo||'').toLowerCase();
+  const esPataDual = t==='dual_tamar'||t==='dual_boncer'||t==='dual_boncap'||t==='dual_dl';
+  if(!esPataDual) return CAT_LABELS[t]||t;
+
+  const base=String(ticker||'').replace(/_F$/i,'');
+  const tipos=(_bundle&&_bundle._tipos)||{};
+  const tipoFija=(tipos[base+'_F']||'').toLowerCase();
+
+  // ¿Qué pata se está viendo? En el split (Duales) depende de _dualPataVista;
+  // fuera del split, es la pata por la que se entró (el propio tipo).
+  const enSplit = !!window._dualModoSplit;
+  const viendoTamar = enSplit ? (window._dualPataVista!=='fija') : (t==='dual_tamar');
+
+  // Etiqueta de la pata que se está viendo
+  const labelFijaPata =
+    tipoFija==='dual_boncer'? 'CER' :
+    tipoFija==='dual_dl'    ? 'Dólar Linked' :
+    tipoFija==='dual_boncap'? 'BONCAP' : 'BONCAP';
+  const labelPata = viendoTamar ? 'TAMAR' : labelFijaPata;
+
+  // Nombre del dual: TAMAR + su pata fija
+  const labelFijaDual =
+    tipoFija==='dual_boncer'? 'CER' :
+    tipoFija==='dual_dl'    ? 'DL'  :
+    tipoFija==='dual_boncap'? 'BONCAP' : '';
+  const nombreDual = labelFijaDual ? ('Dual TAMAR–'+labelFijaDual) : 'Dual';
+
+  // Estado activa/inactiva: la pata vista vs el ganador del dual (mayor TNA).
+  // Se calcula on-demand comparando ambas patas, para que funcione entrando por
+  // cualquier sección (TAMARs, BONCERs, D.Link, BONCAPs) o desde el split.
+  let estado='';
+  const gan=ganadorDual(base);
+  if(gan){
+    const gana = viendoTamar ? (gan==='tamar') : (gan==='fija');
+    estado = gana ? 'ACTIVA' : 'INACTIVA';
+  }
+
+  return 'Pata '+labelPata+' · '+nombreDual+(estado?(' · '+estado):'');
+}
+
+// Determina la pata ganadora ('tamar'|'fija') de un dual dado su ticker base.
+// Devuelve null si no se puede calcular. Reusa las calculadoras existentes.
+function ganadorDual(base){
+  if(!_bundle) return null;
+  const tipos=_bundle._tipos||{};
+  const meta=_bundle._meta||{};
+  const tickerFija=base+'_F';
+  const tipoFija=(tipos[tickerFija]||'').toLowerCase();
+  if(!tipoFija||(tipos[base]||'').toLowerCase()!=='dual_tamar') return null;
+
+  const liq=defaultLiq();
+  const px=getPrecio(base);
+  const precio=px?.precio??NaN;
+  if(isNaN(precio)||precio<=0) return null;
+
+  const esDL=tipoFija==='dual_dl';
+  const tcD=esDL?tcVigente():null;
+  const precioTamar=esDL?(tcD?precio/tcD:NaN):precio;
+
+  // Pata TAMAR
+  let calcT=null;
+  const tp=_tamarProms[base];
+  const metaTamar=meta[base]||{};
+  if(tp&&metaTamar.maturity&&!isNaN(precioTamar)&&precioTamar>0)
+    calcT=calcTamar(precioTamar,liq,metaTamar.maturity,tp);
+
+  // Pata fija
+  let calcFija=null;
+  const metaFija=meta[tickerFija]||{};
+  if(tipoFija==='dual_boncap'){
+    const cfs=getCfs(tickerFija);const cf=cfs?.length?cfs[cfs.length-1]:null;
+    if(cf&&precio>0) calcFija=calcLecap(cf,precio,liq);
+  } else if(tipoFija==='dual_boncer'){
+    if(metaFija.cerInicial&&metaFija.maturity&&precio>0)
+      calcFija=calcBoncer(precio,liq,metaFija.maturity,metaFija.cerInicial);
+  } else if(tipoFija==='dual_dl'){
+    const matDL=metaFija.maturity||metaTamar.maturity;
+    if(matDL&&tcD&&precio>0) calcFija=calcDolarLinked(precio,liq,matDL,tcD);
+  }
+
+  const tnaTamar=calcT?.tna??-Infinity;
+  const tnaFija =calcFija?.tna??-Infinity;
+  if(tnaTamar===-Infinity&&tnaFija===-Infinity) return null;
+  return tnaTamar>=tnaFija?'tamar':'fija';
+}
+
 // ── Vista consolidada Duales ────────────────────────────────
 function cruzarDual(preciosMap, fechaLiq){
   if(!_bundle) return [];
@@ -6472,6 +6564,12 @@ window.lcOpenDetail=function(ticker){
   _detTicker=ticker;
   setSbActive(ticker,tipo);
 
+  // Origen: categoría desde la que se abrió el detalle (antes de pisar _catActiva).
+  // Un dual_tamar abre el SPLIT solo si venís de la sección Duales; desde TAMARs
+  // se ve como pata TAMAR sola (igual que el dual_boncer entrando por BONCERs).
+  const origen=_catActiva;
+  window._dualModoSplit=(tipo==='dual_tamar'&&origen==='duales');
+
   // Asegurar que la categoría correcta esté activa
   // boncer_bullet y dual_boncer se muestran bajo la categoría 'boncer'
   const tipoCateg=tipo==='boncer_bullet'||tipo==='dual_boncer'?'boncer':tipo==='dual_boncap'?'boncap':tipo==='dual_dl'?'dolarlinked':tipo;
@@ -6562,7 +6660,7 @@ window.lcOpenDetail=function(ticker){
   document.getElementById('view-detalle').style.display='flex';
 
   document.getElementById('det-ticker').textContent=displayName(ticker);
-  document.getElementById('det-tipo').textContent=CAT_LABELS[tipo]||tipo;
+  document.getElementById('det-tipo').textContent=rotuloDetalle(ticker,tipo);
   document.getElementById('det-meta').textContent=calc?`Venc. ${fmtDateShort(calc.fechaVto||calc.fechaPago||'')}${calc.diasReal!=null?' · '+calc.diasReal+' días':''}`:'';
   const fi=document.getElementById('det-fecha-liq');if(fi) fi.value=liq;
   // Mostrar selector de fecha CER solo para boncer_bullet
@@ -6582,7 +6680,16 @@ window.lcOpenDetail=function(ticker){
   window._cerManual=false; // resetear flag de fecha CER manual
   window._tcManual=false; window._tcManualVal=null; // resetear TC manual
 
-  buildDetBody({ticker,tipo,precio,variacion,cf,cfs,calc},liq);
+  // Pata TAMAR de un dual TAMAR–DL vista en modo simple (entrando por TAMARs):
+  // el card se muestra en USD (precio/TC), con el precio pesos como referencia.
+  let rowDet={ticker,tipo,precio,variacion,cf,cfs,calc};
+  if(tipo==='dual_tamar'&&!window._dualModoSplit&&esDualDL(ticker)){
+    const tcS=tcVigente();
+    if(tcS){
+      rowDet={ticker,tipo,precio:precio/tcS,variacion,cf,cfs,calc,_esDualDL:true,_precioPesos:precio};
+    }
+  }
+  buildDetBody(rowDet,liq);
 };
 
 window.lcCloseDetail=function(){
@@ -6716,7 +6823,12 @@ window.detRecalc=function(){
   const tipoCategDet=(tipo==='boncer_bullet'||tipo==='dual_boncer')?'boncer':tipo==='dual_boncap'?'boncap':tipo==='dual_dl'?'dolarlinked':_catActiva;
   if(!window._detPxTriggered) _rows=cruzar(tipoCategDet,_precios,liq);
   window._detPxTriggered=false;
-  buildDetBody({ticker,tipo,precio,variacion,cf,cfs,calc,_isManual:isManual},liq);
+  let rowDet2={ticker,tipo,precio,variacion,cf,cfs,calc,_isManual:isManual};
+  if(tipo==='dual_tamar'&&!window._dualModoSplit&&esDualDL(ticker)){
+    const tcS=tcVigente();
+    if(tcS) rowDet2={ticker,tipo,precio:precio/tcS,variacion,cf,cfs,calc,_isManual:isManual,_esDualDL:true,_precioPesos:precio};
+  }
+  buildDetBody(rowDet2,liq);
   const fi=document.getElementById('det-fecha-liq');if(fi) fi.value=liq;
   const pi=document.getElementById('det-px-inp');if(pi&&isManual) pi.value=String(precio).replace('.',',');
 };
@@ -6759,7 +6871,7 @@ function buildDetBody(row,fechaLiq){
   // Barra de controles (precio manual)
   const ctrl=document.createElement('div');
   ctrl.style.cssText='display:flex;align-items:flex-end;gap:16px;margin-bottom:20px;padding:0 2px;flex-wrap:wrap;';
-  const esDL=tipo==='dolarlinked';
+  const esDL=tipo==='dolarlinked'||tipo==='dual_dl';
   const tcActual=window._tcManualVal??_tcUsd;
   // det-px-inp hidden — valor sincronizado desde el card Dirty Price
   ctrl.innerHTML=`
@@ -7822,7 +7934,7 @@ function buildDetBody(row,fechaLiq){
     row2.appendChild(rankCard);row2.appendChild(compWrap);
     body.appendChild(row2);
 
-  } else if(tipo==='dolarlinked'&&c){
+  } else if((tipo==='dolarlinked'||tipo==='dual_dl')&&c){
     const tc=window._tcManualVal??_tcUsd;
     const isTcManual=!!window._tcManual;
     // ── 4 cards grandes ─────────────────────────────────────────────
@@ -8585,7 +8697,7 @@ function buildDetBody(row,fechaLiq){
       body.appendChild(tblWrapFR);
     }
 
-  } else if(tipo==='dual_tamar'&&c){
+  } else if(tipo==='dual_tamar'&&window._dualModoSplit&&c){
     // ── DUAL: split screen patas + detalle conmutable ────────
     const calcT=window._dualCalcTamar||c;
     const calcFija=window._dualCalcFija||null;
@@ -8682,7 +8794,7 @@ function buildDetBody(row,fechaLiq){
       body.appendChild(note);
     }
 
-  } else if(tipo==='tamar'&&c){
+  } else if((tipo==='tamar'||(tipo==='dual_tamar'&&!window._dualModoSplit))&&c){
     const tp=_tamarProms[ticker]||{};
     const meta=(_bundle._meta||{})[ticker]||{};
     const emisionISO=meta.emision||null;
