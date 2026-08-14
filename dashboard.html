@@ -1790,6 +1790,15 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 #app-rf .t-item.active{background:var(--accent-mid);color:var(--accent2);border-left-color:var(--accent);}
 #app-rf .t-name{font-weight:600;flex:1;}
 #app-rf .t-extra{font-size:9px;color:var(--text3);margin-left:auto;padding-left:4px;white-space:nowrap;}
+#app-rf .prov-wrap{margin:1px 0;}
+#app-rf .prov-hdr{display:flex;align-items:center;gap:7px;padding:6px 10px 6px 22px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--text2);transition:all .12s;user-select:none;}
+#app-rf .prov-hdr:hover{background:var(--accent-light);color:var(--text);}
+#app-rf .prov-hdr.open .prov-chev{transform:rotate(90deg);}
+#app-rf .prov-chev{width:9px;height:9px;flex-shrink:0;color:var(--text3);transition:transform .18s;}
+#app-rf .prov-cnt{margin-left:auto;font-size:9px;color:var(--text3);background:var(--bg4);border-radius:8px;padding:1px 6px;font-family:var(--mono);}
+#app-rf .prov-items{display:none;}
+#app-rf .prov-items.open{display:block;}
+#app-rf .prov-items .t-item{padding-left:38px;}
 
 /* ══ PANEL ══ */
 #app-rf .main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;}
@@ -1915,6 +1924,7 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 #sens-table td{border-bottom:1px solid var(--border);border-right:1px solid rgba(127,127,127,.10);padding:6px 9px;text-align:center;white-space:nowrap;vertical-align:middle;}
 #sens-table td.sens-td-ticker{position:sticky;left:0;z-index:2;background:rgba(30,39,243,0.10);text-align:center;font-weight:700;font-size:13px;color:var(--text);border-right:1px solid rgba(30,39,243,0.25);}
 #sens-table td.sens-td-ticker .sens-mat{display:block;font-size:9px;font-weight:400;color:var(--text3);margin-top:2px;}
+#sens-table td.sens-td-ticker .sens-prov{display:block;font-size:9px;font-weight:600;color:var(--text2);margin-top:1px;}
 #sens-table td.sens-cell{min-width:86px;}
 #sens-table td.sens-cell.sens-actual{background:rgba(30,39,243,0.14)!important;box-shadow:inset 2px 0 0 var(--accent),inset -2px 0 0 var(--accent);}
 /* Jerarquía: TIR destacada arriba, precio protagonista, variación abajo */
@@ -2857,6 +2867,8 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
             <select class="chart-select" id="rf-axis-y" onchange="lcAxisChanged()"></select>
             <span class="chart-axis-label">Eje X</span>
             <select class="chart-select" id="rf-axis-x" onchange="lcAxisChanged()"></select>
+            <button id="btn-hd-separar" onclick="hdToggleSeparar()" style="display:none;margin-left:12px;font-family:var(--mono);font-size:10px;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);cursor:pointer;opacity:.6;">Separar curvas</button>
+            <button id="btn-hd-globales" onclick="hdToggleGlobales()" style="display:none;font-family:var(--mono);font-size:10px;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);cursor:pointer;opacity:.6;">Graficar Globales</button>
           </div>
           <div class="chart-body">
             <div class="outlier-indicator" id="rf-outlier-pips"></div>
@@ -3031,6 +3043,9 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
         </div>
         <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text3);">
           <div style="width:8px;height:8px;border-radius:50%;background:#3fb950;flex-shrink:0;"></div>Dólar
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text3);">
+          <div style="width:8px;height:8px;border-radius:50%;background:#2dd4bf;flex-shrink:0;"></div>Prov. HD
         </div>
       </div>
     </div>
@@ -3382,17 +3397,76 @@ const BOPREAL_USD = {
   'BPO28': 'BP28D',
 };
 
-const CAT_ORDER  = ['lecap','boncap','boncer','soberano','dolarlinked','bopreal','fixed_rate','badlar','dual','tamar','duales'];
+// Prov. Hard Dollar: ticker CSV → símbolo USD de data912 (USD % de par, como GD30D).
+// data912 publica el peso en el ticker pelado; el USD está en una clave irregular.
+// No hay regla derivable (BA37D→BA7DD, PMM29→PM29D...), por eso mapa explícito.
+// Los que NO están acá quedan SIN precio (no se toma el peso, para no romper la TIR).
+const HARDDOLAR_USD = {
+  'BA37D':'BA7DD', 'BB37D':'BB7DD', 'BC37D':'BC7DD',
+  'PUA36':'PUA6D',
+  'CO32':'CO32D', 'CO35':'CO35D', 'CO24':'CO24D', 'CO27':'CO27D',
+  'PMM29':'PM29D',
+  'NDT25':'NDT5D',
+  'SFD34':'SFD4D',
+};
+
+// TC implícito promedio de harddolar: por cada ticker con precio USD (mapa) Y precio pesos
+// (ticker pelado), TC = pesos/USD. Promedio simple de todos los pares disponibles.
+// Se usa para estimar el USD de los que solo tienen precio en pesos.
+function harddolarTCImplicito(preciosMap){
+  const pm=preciosMap||_precios;
+  const getPx=k=>{ const e=pm[k]; if(!e) return null; const v=e.latest||e; return (v&&v.precio>0)?v.precio:null; };
+  const tcs=[];
+  for(const t of Object.keys(HARDDOLAR_USD)){
+    const usd=getPx(HARDDOLAR_USD[t]);
+    const peso=getPx(t);
+    if(usd&&peso) tcs.push(peso/usd);
+  }
+  if(!tcs.length) return null;
+  return tcs.reduce((a,b)=>a+b,0)/tcs.length;
+}
+
+// Precio harddolar para el detalle: USD directo (mapa) o implícito (peso/TC).
+// Devuelve {precio,variacion,vol,fechaPx,implicito} o null.
+function getPrecioHardDolar(ticker){
+  const T=ticker.toUpperCase();
+  const k=HARDDOLAR_USD[T];
+  if(k){ const e=getPrecio(k); if(e&&e.precio>0) return {...e,implicito:false}; }
+  const tc=harddolarTCImplicito(_precios);
+  if(tc){ const p=getPrecio(T); if(p&&p.precio>0) return {precio:p.precio/tc,variacion:p.variacion,vol:p.vol,fechaPx:p.fechaPx,implicito:true}; }
+  return null;
+}
+
+const CAT_ORDER  = ['lecap','boncap','boncer','soberano','dolarlinked','bopreal','fixed_rate','badlar','dual','tamar','duales','harddolar'];
 const CAT_LABELS = {
   lecap:'LECAPs', boncap:'BONCAPs', boncer:'BONCERs', boncer_bullet:'BONCERs', soberano:'Soberanos',
+  harddolar:'Prov. Hard Dollar',
   dolarlinked:'Dólar Linked', bopreal:'BOPREALes', fixed_rate:'Fixed Rate',
   badlar:'BADLAR', dual:'Duales', tamar:'TAMARs', dual_tamar:'TAMARs', dual_boncap:'BONCAPs', dual_boncer:'BONCERs', duales:'Duales'
+};
+
+// ── Subsoberanos (Prov. Hard Dollar) ────────────────────────────────
+// tipo en index.csv = "HardDolar_<PROV>" → se normaliza a base 'harddolar'
+// + _provincia[ticker]='<PROV>' (ver normalizeSubsob). Motor = calcSoberano.
+// Orden de provincias en el sidebar (por importancia; MCOR al final).
+const PROV_ORDER  = ['CABA','BA','COR','ER','NQN','RN','MDZ','SF','SAL','CHA','CHU','JUJ','LR','TDF','MCOR'];
+const PROV_LABELS = {
+  CABA:'CABA', BA:'Buenos Aires', COR:'Córdoba', ER:'Entre Ríos', NQN:'Neuquén',
+  RN:'Río Negro', MDZ:'Mendoza', SF:'Santa Fe', SAL:'Salta', CHA:'Chaco',
+  CHU:'Chubut', JUJ:'Jujuy', LR:'La Rioja', TDF:'Tierra del Fuego', MCOR:'Muni. Córdoba'
+};
+// Color por provincia en el gráfico del Índice (distinguibles sobre fondo oscuro)
+const PROV_COLORS = {
+  CABA:'#3b82f6', BA:'#06b6d4', COR:'#22c55e', ER:'#f59e0b', NQN:'#a855f7',
+  RN:'#ec4899', MDZ:'#f97316', SF:'#14b8a6', SAL:'#ef4444', CHA:'#84cc16',
+  CHU:'#6366f1', JUJ:'#d946ef', LR:'#38bdf8', TDF:'#eab308', MCOR:'#15803d'
 };
 
 /* ══════════════════════════════════════════════════════════
    ESTADO GLOBAL
 ══════════════════════════════════════════════════════════ */
 let _bundle    = null;
+let _provincia = {};      // TICKER → código provincia (solo subsoberanos harddolar), ej "CABA"
 let _precios   = {};      // TICKER → { latest:{precio,variacion,vol,fechaPx}, byDate:{} }
 let _feriados  = new Set(); // "YYYY-MM-DD" — feriados nacionales AR (nager.at)
 // Fallback de feriados nacionales AR (por si nager.at no respondió aún). Se mezcla en _feriados.
@@ -3415,6 +3489,9 @@ let _tcUsd     = null;    // TC oficial BCRA (variable 5) — número o null
 let _tcManual  = false;   // flag: usuario pisó el TC en el detalle
 window._tcManualVal = null;  // valor override TC — en window para acceso cross-scope
 let _catActiva = null;
+let _provinciaFiltro = null; // código provincia activa en harddolar (null = ver toda la categoría)
+let _hdSepararCurvas = false; // toggle: una curva de tendencia por provincia
+let _hdGraficarGlobales = false; // toggle: superponer curva de Globales (soberanos Ley NY)
 let _rows      = [];      // filas calculadas de la categoría activa
 let _sortKey   = 'dias';
 let _sortDir   = 1;
@@ -3793,14 +3870,23 @@ function parseSoberanoCsv(text){
   if(!text||!text.trim()) return null;
   const lines=text.trim().split(/\r?\n|\\n/).filter(l=>l.trim());
   if(lines.length<3) return null;
+  // Detección de escala: soberanos traen VR/tasa como "100.00%"/"0.13%" (formato porcentaje);
+  // subsoberanos provinciales los traen como "1"/"0.025" (formato decimal, ya en base 1).
+  // Regla por celda: si tiene '%' → dividir /100; si no → usar tal cual.
+  const scaled=(cell)=>{
+    if(cell==null) return NaN;
+    const s=String(cell).trim();
+    const n=toNum(s.replace('%',''));
+    return s.includes('%') ? n/100 : n;
+  };
   const result=[];
   for(const line of lines.slice(2)){
     const cols=line.split(',').map(c=>c.trim());
     if(cols.length<9) continue;
     const fecha=cols[1].replace('T00:00:00.000Z','').replace(/T.*$/,'').trim();
-    const vrPct=toNum(cols[3].replace('%',''))/100;
-    const tasaAnual=toNum(cols[4].replace('%',''))/100;
-    const amortPct=toNum(cols[6]);   // amortización c/100vn (col 6)
+    const vrPct=scaled(cols[3]);       // Valor residual (base 1 tras normalizar)
+    const tasaAnual=scaled(cols[4]);   // Tasa de interés anual (decimal)
+    const amortPct=toNum(cols[6]);     // amortización c/100vn (col 6)
     const total=toNum(cols[8]);
     if(!fecha||isNaN(total)) continue;
     result.push({fecha,vrPct,tasaAnual,amortPct,total});
@@ -3897,6 +3983,39 @@ function calcSoberano(csvText, precioSucio, fechaLiqStr){
   return{
     tea,tem,tna,duration,md,conv,paridad,vt,intCorrido,precioLimpio,
     diasReal,fechaVto,nextPayment,vrActual,flujos,precioSucio,
+  };
+}
+
+// Estructura del bono SIN precio: flujos/VT/VR reales, métricas de rendimiento en NaN.
+// Permite mostrar la MISMA vista de detalle cuando no hay precio (métricas → "—").
+function calcSoberanoEstructura(csvText, fechaLiqStr){
+  const cupones=parseSoberanoCsv(csvText);
+  if(!cupones||!cupones.length) return null;
+  const liq=new Date(fechaLiqStr+'T12:00:00');
+  if(isNaN(liq)) return null;
+  const pasados=cupones.filter(cp=>new Date(cp.fecha+'T12:00:00')<=liq);
+  const futuros=cupones.filter(cp=>new Date(cp.fecha+'T12:00:00')>liq);
+  if(!futuros.length) return null;
+  const ultPasado=pasados.length?pasados[pasados.length-1]:null;
+  const vrActual=ultPasado?ultPasado.vrPct:1.0;
+  let intCorrido=0;
+  if(ultPasado){
+    const ultFecha=new Date(ultPasado.fecha+'T12:00:00');
+    const diasCorridos=Math.round((liq-ultFecha)/86400000);
+    intCorrido=(ultPasado.tasaAnual/2)*(diasCorridos/180)*vrActual*100;
+  }
+  const vt=vrActual*100+intCorrido;
+  const flujos=futuros.map(cp=>({
+    dias:Math.round((new Date(cp.fecha+'T12:00:00')-liq)/86400000),
+    total:cp.total, fecha:cp.fecha,
+  }));
+  const diasReal=futuros[futuros.length-1]?Math.round((new Date(futuros[futuros.length-1].fecha+'T12:00:00')-liq)/86400000):0;
+  const fechaVto=futuros[futuros.length-1]?.fecha||'';
+  const nextPayment=futuros[0]?.fecha||'';
+  return {
+    tea:NaN,tem:NaN,tna:NaN,duration:NaN,md:NaN,conv:NaN,paridad:NaN,
+    vt,intCorrido,precioLimpio:NaN,diasReal,fechaVto,nextPayment,vrActual,
+    flujos,precioSucio:NaN,_sinPrecio:true,
   };
 }
 
@@ -4524,6 +4643,23 @@ function cruzarDual(preciosMap, fechaLiq){
 }
 
 
+// Normaliza tipos compuestos "HardDolar_<PROV>" → base 'harddolar' + _provincia.
+// Corre UNA vez al cargar el bundle. Después de esto, _tipos[ticker]='harddolar'
+// (limpio) y ningún call-site ve el sufijo de provincia.
+function normalizeSubsob(bundle){
+  if(!bundle||!bundle._tipos) return;
+  _provincia={};
+  const tipos=bundle._tipos;
+  for(const t of Object.keys(tipos)){
+    const raw=(tipos[t]||'');
+    const m=/^harddolar_(.+)$/i.exec(raw);
+    if(m){
+      _provincia[t]=m[1].toUpperCase();
+      tipos[t]='harddolar';
+    }
+  }
+}
+
 function cruzar(tipo, preciosMap, fechaLiq){
   if(!_bundle) return [];
   const allT=_bundle._index||Object.keys(_bundle).filter(k=>!k.startsWith('_'));
@@ -4543,6 +4679,8 @@ function cruzar(tipo, preciosMap, fechaLiq){
     seen.add(t);
     return true;
   });
+  // TC implícito para harddolar (una sola vez por refresh)
+  const _hdTC = tipo==='harddolar' ? harddolarTCImplicito(preciosMap) : null;
   return tickers.map(ticker=>{
     const metaV=(_bundle._meta||{})[ticker]||{};
     if(metaV.maturity&&metaV.maturity<=fechaLiq) return null; // vencido
@@ -4553,13 +4691,28 @@ function cruzar(tipo, preciosMap, fechaLiq){
     const tipoReal=((_bundle._tipos||{})[ticker]||'').toLowerCase();
     let lookupKey;
     if(tipoReal==='soberano')        lookupKey = ticker.toUpperCase()+'D';
+    else if(tipoReal==='harddolar')  lookupKey = HARDDOLAR_USD[ticker.toUpperCase()] || '\u0000'; // sin mapa → sin precio (no toma pesos)
     else if(tipoReal==='bopreal')    lookupKey = BOPREAL_USD[ticker.toUpperCase()] || ticker.toUpperCase();
     else if(tipoReal==='fixed_rate') lookupKey = (FIXED_RATE_PX_MAP[ticker.toUpperCase()] || ticker.toUpperCase());
     else if(tipoReal==='dual_boncap') lookupKey = ticker.toUpperCase().replace(/_F$/,'');
     else if(tipoReal==='dual_boncer') lookupKey = ticker.toUpperCase().replace(/_F$/,'');
     else if(tipoReal==='dual_dl')     lookupKey = ticker.toUpperCase().replace(/_F$/,'');
     else                             lookupKey = ticker.toUpperCase();
-    const px=preciosMap[lookupKey]||preciosMap[ticker.toUpperCase()]||preciosMap[ticker]||null;
+    let px, pxImplicito=false;
+    if(tipoReal==='harddolar'){
+      px = preciosMap[lookupKey]||null; // USD directo (mapa)
+      if(!px && _hdTC){
+        // Sin USD directo: estimar desde peso (ticker pelado) / TC implícito
+        const pxPeso = preciosMap[ticker.toUpperCase()]||preciosMap[ticker]||null;
+        const pesoEff = pxPeso?(pxPeso.latest||pxPeso):null;
+        if(pesoEff && pesoEff.precio>0){
+          px = { precio:pesoEff.precio/_hdTC, variacion:pesoEff.variacion, vol:pesoEff.vol, fechaPx:pesoEff.fechaPx };
+          pxImplicito=true;
+        }
+      }
+    } else {
+      px = preciosMap[lookupKey]||preciosMap[ticker.toUpperCase()]||preciosMap[ticker]||null;
+    }
     const pxEff=px?(px.latest||px):null;
     const precio=pxEff?pxEff.precio:NaN;
     const variacion=pxEff?pxEff.variacion:NaN;
@@ -4580,7 +4733,7 @@ function cruzar(tipo, preciosMap, fechaLiq){
     } else if(tipoReal==='boncer'&&!isNaN(precio)&&precio>0&&_bundle[ticker]){
       const meta=(_bundle._meta||{})[ticker]||{};
       if(meta.cerInicial) calc=calcBoncerAmort(_bundle[ticker],precio,fechaLiq,meta.cerInicial);
-    } else if(tipoReal==='soberano'&&!isNaN(precio)&&precio>0&&_bundle[ticker]){
+    } else if((tipoReal==='soberano'||tipoReal==='harddolar')&&!isNaN(precio)&&precio>0&&_bundle[ticker]){
       calc=calcSoberano(_bundle[ticker],precio,fechaLiq);
     } else if(TIPOS_CALCULADORA.has(tipoReal)&&cf&&!isNaN(precio)&&precio>0){
       calc=calcLecap(cf,precio,fechaLiq);
@@ -4604,7 +4757,7 @@ function cruzar(tipo, preciosMap, fechaLiq){
         if(tp&&meta.maturity) calc=calcTamar(precio,fechaLiq,meta.maturity,tp);
       }
     }
-    return{ticker,tipo:tipoReal,precio,precioPesos,variacion,vol,fechaPx,cf,cfs,calc};
+    return{ticker,tipo:tipoReal,precio,precioPesos,variacion,vol,fechaPx,cf,cfs,calc,pxImplicito};
   }).filter(Boolean);
 }
 
@@ -4632,12 +4785,11 @@ function getCols(tipo){
     {key:'var',     label:'Var%',      left:false, sort:r=>r.variacion||0,                 fmt:varFmt},
     {key:'vol',     label:'Volumen',   left:false, sort:r=>r.vol||0,                       fmt:r=>isNaN(r.vol)||!r.vol?'—':r.vol.toLocaleString('es-AR',{maximumFractionDigits:0})},
   ];
-  if(tipo==='soberano') return [
+  if(tipo==='soberano'||tipo==='harddolar'){
+   const colsSob=[
     {key:'ticker', label:'Ticker',   left:true,  sort:r=>r.ticker,                         fmt:r=>`<span class="t-link" onclick="event.stopPropagation();lcOpenDetail('${r.ticker}')">${(r.tipo==='dual_tamar'||r.tipo==='dual_boncap'||r.tipo==='dual_boncer'||r.tipo==='dual_dl')?'<span style="font-size:9px;font-weight:600;margin-right:3px;opacity:0.6;">DUAL</span>':''}${displayName(r.ticker)}</span>`},
-    {key:'precio', label:'Precio',   left:false, sort:r=>r.precio||0,                      fmt:r=>fmtN(r.precio,2)},
+    {key:'precio', label:'Precio',   left:false, sort:r=>r.precio||0,                      fmt:r=>r.precio!=null&&!isNaN(r.precio)?(fmtN(r.precio,2)+(r.pxImplicito?'<span style="color:var(--accent2);font-weight:700;" title="Precio implícito (pesos / TC promedio)">*</span>':'')):'—'},
     {key:'tna',    label:'TNA',      left:false, sort:r=>r.calc?.tna??-Infinity,            fmt:r=>r.calc?fmtPct(r.calc.tna,2):'—', colorTNA:true},
-    {key:'tea',    label:'TEA',  left:false, sort:r=>r.calc?.tea??-Infinity,            fmt:r=>r.calc?fmtPct(r.calc.tea,2):'—'},
-    {key:'tem',    label:'TEM',      left:false, sort:r=>r.calc?.tem??-Infinity,            fmt:r=>r.calc?fmtPct(r.calc.tem,2):'—'},
     {key:'par',    label:'Paridad',  left:false, sort:r=>r.calc?.paridad??-Infinity,        fmt:r=>r.calc?fmtPct(r.calc.paridad,2):'—'},
     {key:'vt',     label:'VT',       left:false, sort:r=>r.calc?.vt??-Infinity,             fmt:r=>r.calc?fmtN(r.calc.vt,2):'—'},
     {key:'pl',     label:'Px Limpio',left:false, sort:r=>r.calc?.precioLimpio??-Infinity,   fmt:r=>r.calc?fmtN(r.calc.precioLimpio,2):'—'},
@@ -4648,7 +4800,12 @@ function getCols(tipo){
     {key:'dias',   label:'Días',     left:false, sort:r=>r.calc?.diasReal??Infinity,        fmt:r=>r.calc?String(r.calc.diasReal):'—'},
     {key:'var',    label:'Var%',     left:false, sort:r=>r.variacion||0,                    fmt:varFmt},
     {key:'vol',    label:'Volumen',  left:false, sort:r=>r.vol||0,                          fmt:r=>isNaN(r.vol)||!r.vol?'—':r.vol.toLocaleString('es-AR',{maximumFractionDigits:0})},
-  ];
+   ];
+   if(tipo==='harddolar'){
+     colsSob.unshift({key:'prov', label:'Provincia', left:true, sort:r=>PROV_LABELS[_provincia[r.ticker]]||'', fmt:r=>`<span style="font-size:10px;color:var(--text2);">${PROV_LABELS[_provincia[r.ticker]]||_provincia[r.ticker]||'—'}</span>`});
+   }
+   return colsSob;
+  }
   if(tipo==='fixed_rate') return [
     {key:'ticker', label:'Ticker',    left:true,  sort:r=>r.ticker,                          fmt:r=>`<span class="t-link" onclick="event.stopPropagation();lcOpenDetail('${r.ticker}')">${displayName(r.ticker)}</span>`},
     {key:'precio', label:'Precio',    left:false, sort:r=>r.precio||0,                       fmt:r=>fmtN(r.precio,2)},
@@ -4781,6 +4938,15 @@ function getCols(tipo){
 /* ══════════════════════════════════════════════════════════
    RENDER TABLA
 ══════════════════════════════════════════════════════════ */
+// Filas visibles: aplica el filtro de provincia activo (solo harddolar).
+// Si _provinciaFiltro está seteado, muestra solo los tickers de esa provincia.
+function rowsVisibles(){
+  if(_catActiva==='harddolar'&&_provinciaFiltro){
+    return _rows.filter(r=>(_provincia[r.ticker]||'')===_provinciaFiltro);
+  }
+  return _rows;
+}
+
 function renderTabla(){
   const cols=getCols(_catActiva);
   const thead=document.getElementById('lc-thead');
@@ -4788,12 +4954,15 @@ function renderTabla(){
   if(!thead||!tbody) return;
 
   const isDual=r=>r.tipo==='dual_boncap'||r.tipo==='dual_tamar'||r.tipo==='dual_boncer'||r.tipo==='dual_dl';
-  const sorted=[..._rows].sort((a,b)=>{
+  const sorted=[...rowsVisibles()].sort((a,b)=>{
     // Si duales off: no-duales primero, duales al fondo (ordenados entre sí)
     if(!_showDuales){
       const da=isDual(a)?1:0, db=isDual(b)?1:0;
       if(da!==db) return da-db;
     }
+    // Sin precio/cálculo siempre al fondo (independiente de la dirección del sort)
+    const na=(a.precio==null||isNaN(a.precio))?1:0, nb=(b.precio==null||isNaN(b.precio))?1:0;
+    if(na!==nb) return na-nb;
     const col=cols.find(c=>c.key===_sortKey);
     if(!col) return 0;
     const va=col.sort(a),vb=col.sort(b);
@@ -4815,7 +4984,7 @@ function renderTabla(){
   }).join('');
 
   // Colorear columna TNA
-  if(TIPOS_CALCULADORA.has(_catActiva)||TIPOS_BONCER.has(_catActiva)||_catActiva==='soberano'||_catActiva==='dolarlinked'||_catActiva==='bopreal'||_catActiva==='fixed_rate'||_catActiva==='tamar'||_catActiva==='dual_tamar') colorTNA(cols); // TIPOS_BONCER ya incluye dual_boncer
+  if(TIPOS_CALCULADORA.has(_catActiva)||TIPOS_BONCER.has(_catActiva)||_catActiva==='soberano'||_catActiva==='harddolar'||_catActiva==='dolarlinked'||_catActiva==='bopreal'||_catActiva==='fixed_rate'||_catActiva==='tamar'||_catActiva==='dual_tamar') colorTNA(cols); // TIPOS_BONCER ya incluye dual_boncer
   if(_catActiva==='duales') colorActiva(cols);
 
   // Stats
@@ -4827,6 +4996,14 @@ function renderTabla(){
     const esDolarLinked=_catActiva==='dolarlinked';
     const esBopreal=_catActiva==='bopreal';
     const esFixedRate=_catActiva==='fixed_rate';
+    const esHardDolar=_catActiva==='harddolar';
+    if(esHardDolar){
+      const tc=harddolarTCImplicito(_precios);
+      const nImpl=_rows.filter(r=>r.pxImplicito).length;
+      let s=`${total} instrumentos · ${con} con precio · TIR Newton-Raphson sobre Px Dirty (USD)`;
+      if(nImpl>0&&tc) s+=` · * Precio implícito: pesos / TC promedio ($${tc.toLocaleString('es-AR',{maximumFractionDigits:2})})`;
+      stats.textContent=s;
+    } else
     stats.textContent=(TIPOS_CALCULADORA.has(_catActiva)||esBoncerCat||esSoberano||esDolarLinked||esBopreal||esFixedRate)
       ?(esBoncerCat
         ?`${total} instrumentos · ${con} con precio · CER ajustado · VT = VR × ratio × 100`
@@ -4984,7 +5161,7 @@ async function rfGetToritoPng(){
 // ¿La categoría tiene curva? (mismo criterio que renderCurva)
 function rfCatTieneCurva(tipo){
   return TIPOS_CALCULADORA.has(tipo)||TIPOS_BONCER.has(tipo)||
-    tipo==='soberano'||tipo==='dolarlinked'||tipo==='bopreal'||
+    tipo==='soberano'||tipo==='harddolar'||tipo==='dolarlinked'||tipo==='bopreal'||
     tipo==='fixed_rate'||tipo==='tamar'||tipo==='dual_tamar'||tipo==='duales';
 }
 
@@ -5911,7 +6088,11 @@ function makeTrendDs(pts,color,dashed=false){
 }
 
 function renderCurva(rows, cmpRows){
-  if(!TIPOS_CALCULADORA.has(_catActiva)&&!TIPOS_BONCER.has(_catActiva)&&_catActiva!=='soberano'&&_catActiva!=='dolarlinked'&&_catActiva!=='bopreal'&&_catActiva!=='fixed_rate'&&_catActiva!=='tamar'&&_catActiva!=='dual_tamar'&&_catActiva!=='duales'){
+  // Filtro de provincia (solo harddolar): la curva muestra solo la provincia activa
+  if(_catActiva==='harddolar'&&_provinciaFiltro){
+    rows=(rows||[]).filter(r=>(_provincia[r.ticker]||'')===_provinciaFiltro);
+  }
+  if(!TIPOS_CALCULADORA.has(_catActiva)&&!TIPOS_BONCER.has(_catActiva)&&_catActiva!=='soberano'&&_catActiva!=='harddolar'&&_catActiva!=='dolarlinked'&&_catActiva!=='bopreal'&&_catActiva!=='fixed_rate'&&_catActiva!=='tamar'&&_catActiva!=='dual_tamar'&&_catActiva!=='duales'){
     // Sin curva para tipos sin calculadora
     document.querySelector('#app-rf .chart-panel').style.display='none';
     return;
@@ -5947,6 +6128,17 @@ function renderCurva(rows, cmpRows){
   }
 
   function getAP(){return allPts.filter(p=>!_excluded.has(p.label)&&(_showDuales||(p.tipo!=='dual_boncap'&&p.tipo!=='dual_tamar'&&p.tipo!=='dual_boncer'&&p.tipo!=='dual_dl')));}
+  // Puntos a considerar para el rango de ejes: incluye Globales si el toggle HD está activo
+  function getRangePts(){
+    const base=getAP();
+    if(_catActiva==='harddolar'&&_hdGraficarGlobales){
+      const gRows=hdGlobalesRows(document.getElementById('lc-fecha-liq')?.value);
+      const gp=gRows.filter(r=>r.calc&&isFinite(lcGetAxisVal(r,axX))&&isFinite(lcGetAxisVal(r,axY)))
+        .map(r=>({x:lcGetAxisVal(r,axX),y:lcGetAxisVal(r,axY),label:r.ticker}));
+      return [...base,...gp];
+    }
+    return base;
+  }
   function getRange(pts){
     if(!pts.length) return{xMin:0,xMax:1,yMin:0,yMax:1};
     const fn=polyFit2(pts.filter(p=>isFinite(p.x)&&isFinite(p.y)));
@@ -5987,6 +6179,43 @@ function renderCurva(rows, cmpRows){
         pointRadius:5,pointHoverRadius:8,showLine:false,order:2});
       ds.push({label:'Ley NY',data:ptsNY,backgroundColor:'#22c55e',borderColor:'#22c55e',
         pointRadius:5,pointHoverRadius:8,showLine:false,order:2});
+      return ds;
+    }
+    // Prov. Hard Dollar — puntos coloreados por provincia
+    if(_catActiva==='harddolar'){
+      // Agrupar puntos por provincia
+      const porProv={};
+      ap.forEach(p=>{ const pv=_provincia[p.label]||'??'; (porProv[pv]=porProv[pv]||[]).push(p); });
+      const provsOrd=Object.keys(porProv).sort((a,b)=>{
+        const ia=PROV_ORDER.indexOf(a),ib=PROV_ORDER.indexOf(b);
+        return (ia<0?999:ia)-(ib<0?999:ib);
+      });
+      if(_hdSepararCurvas){
+        // Una curva de tendencia por provincia (con su color). Pocas provincias con 1-2 puntos → solo puntos.
+        provsOrd.forEach(pv=>{
+          const col=PROV_COLORS[pv]||'#1E27F3';
+          const trP=makeTrendDs(porProv[pv],col);
+          if(trP){ trP.label='_trend_'+pv; ds.push(trP); }
+        });
+      } else {
+        // Curva única de tendencia (todos los puntos)
+        const tr=makeTrendDs(ap,'#1E27F3');if(tr) ds.push(tr);
+      }
+      // Puntos por provincia (siempre coloreados)
+      provsOrd.forEach(pv=>{
+        const col=PROV_COLORS[pv]||'#1E27F3';
+        ds.push({label:PROV_LABELS[pv]||pv,data:porProv[pv],backgroundColor:col,borderColor:col,
+          pointRadius:5,pointHoverRadius:8,showLine:false,order:2});
+      });
+      // Globales (soberanos Ley NY) superpuestos
+      if(_hdGraficarGlobales){
+        const gRows=hdGlobalesRows(document.getElementById('lc-fecha-liq')?.value);
+        const gp=gRows.filter(r=>r.calc&&isFinite(lcGetAxisVal(r,axX))&&isFinite(lcGetAxisVal(r,axY)))
+          .map(r=>({x:lcGetAxisVal(r,axX),y:lcGetAxisVal(r,axY),label:r.ticker}));
+        const trG=makeTrendDs(gp,'#22c55e',true);if(trG){trG.label='_trend_gd';ds.push(trG);}
+        ds.push({label:'Globales (Ley NY)',data:gp,backgroundColor:'#22c55e',borderColor:'#22c55e',
+          pointRadius:4,pointHoverRadius:7,pointStyle:'rectRot',showLine:false,order:1});
+      }
       return ds;
     }
     const tr=makeTrendDs(ap,'#1E27F3');if(tr) ds.push(tr);
@@ -6030,9 +6259,9 @@ function renderCurva(rows, cmpRows){
       _chartInst.options.scales.x.min=range.xMin;_chartInst.options.scales.x.max=range.xMax;
       _chartInst.update('active');updatePips();return;
     }
-    const ap=getAP(),range=getRange(ap);
-    // Soberanos: siempre reconstruir completo para mantener split AR/NY
-    if(_catActiva==='soberano'){
+    const ap=getAP(),range=getRange(getRangePts());
+    // Soberanos y Prov. Hard Dollar: reconstruir completo (datasets por Ley / por provincia)
+    if(_catActiva==='soberano'||_catActiva==='harddolar'){
       _chartInst.data.datasets=buildDs();
       _chartInst.options.scales.y.min=range.yMin;_chartInst.options.scales.y.max=range.yMax;
       _chartInst.options.scales.x.min=range.xMin;_chartInst.options.scales.x.max=range.xMax;
@@ -6062,7 +6291,7 @@ function renderCurva(rows, cmpRows){
     const allPatas=[...ptsTamar,...ptsFija].filter(p=>isFinite(p.x)&&isFinite(p.y));
     initRange=getRange(allPatas.length?allPatas:getAP());
   } else {
-    initRange=getRange(getAP());
+    initRange=getRange(getRangePts());
   }
   const ap=getAP(),range=initRange;
   _chartInst=new Chart(canvas,{
@@ -6153,6 +6382,19 @@ function renderCurva(rows, cmpRows){
       <div class="legend-item"><div class="legend-dot" style="background:#1E27F3"></div>TAMAR</div>
       <div class="legend-item"><div class="legend-line" style="background:#0d9e6e;opacity:.8"></div>Tend. BONCAP/CER</div>
       <div class="legend-item"><div class="legend-dot" style="background:#0d9e6e"></div>BONCAP/CER</div>`;
+  } else if(_catActiva==='harddolar'){
+    // Leyenda: un chip por provincia presente (en orden), + Globales si el toggle está activo
+    const provsPresentes=[...new Set(allPts.map(p=>_provincia[p.label]||'??'))]
+      .sort((a,b)=>{const ia=PROV_ORDER.indexOf(a),ib=PROV_ORDER.indexOf(b);return (ia<0?999:ia)-(ib<0?999:ib);});
+    let html=provsPresentes.map(pv=>{
+      const col=PROV_COLORS[pv]||'#1E27F3';
+      return `<div class="legend-item"><div class="legend-dot" style="background:${col}"></div>${PROV_LABELS[pv]||pv}</div>`;
+    }).join('');
+    if(_hdGraficarGlobales){
+      html+=`<div class="legend-item"><div class="legend-line" style="background:#22c55e;opacity:.8"></div>Tend. Globales</div>`
+           +`<div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>Globales (Ley NY)</div>`;
+    }
+    document.getElementById('rf-curve-legend').innerHTML=html;
   } else if(_catActiva==='soberano'){
     document.getElementById('rf-curve-legend').innerHTML=`
       <div class="legend-item"><div class="legend-line" style="background:#1E27F3"></div>Tend. Ley AR</div>
@@ -6197,7 +6439,47 @@ window.lcToggleDuales=function(){
   renderTabla();
 };
 
-// ── Selectores de eje del gráfico de curva ──────────────────────────────────
+// Toggle: separar en una curva de tendencia por provincia
+window.hdToggleSeparar=function(){
+  _hdSepararCurvas=!_hdSepararCurvas;
+  const btn=document.getElementById('btn-hd-separar');
+  if(btn){
+    btn.style.color=_hdSepararCurvas?'var(--accent)':'var(--text3)';
+    btn.style.borderColor=_hdSepararCurvas?'var(--accent)':'var(--border2)';
+    btn.style.opacity=_hdSepararCurvas?'1':'0.6';
+  }
+  if(_chartInst) renderCurva(_rows,[]);
+};
+
+// Toggle: superponer curva de Globales (soberanos Ley NY: GD*)
+window.hdToggleGlobales=function(){
+  _hdGraficarGlobales=!_hdGraficarGlobales;
+  const btn=document.getElementById('btn-hd-globales');
+  if(btn){
+    btn.style.color=_hdGraficarGlobales?'var(--accent)':'var(--text3)';
+    btn.style.borderColor=_hdGraficarGlobales?'var(--accent)':'var(--border2)';
+    btn.style.opacity=_hdGraficarGlobales?'1':'0.6';
+  }
+  if(_chartInst) renderCurva(_rows,[]);
+};
+
+// Filas de Globales (soberanos Ley NY = GD*) calculadas para superponer en el gráfico HD
+function hdGlobalesRows(fechaLiq){
+  if(!_bundle) return [];
+  const liq=fechaLiq||defaultLiq();
+  const allT=_bundle._index||Object.keys(_bundle).filter(k=>!k.startsWith('_'));
+  const tipos=_bundle._tipos||{};
+  return allT.filter(t=>{
+    const tp=(tipos[t]||'').toLowerCase();
+    return tp==='soberano' && /^GD/i.test(t); // Globales = Ley NY = prefijo GD
+  }).map(ticker=>{
+    const px=getPrecio(ticker+'D')||getPrecio(ticker);
+    const precio=px?px.precio:NaN;
+    let calc=null;
+    if(!isNaN(precio)&&precio>0&&_bundle[ticker]) calc=calcSoberano(_bundle[ticker],precio,liq);
+    return {ticker,tipo:'soberano',precio,calc};
+  }).filter(r=>r.calc);
+}
 const RF_AXIS_DEFS = {
   y: {
     default: [
@@ -6406,10 +6688,10 @@ function buildSidebar(){
       hdr.classList.toggle('open',nowOpen);items.classList.toggle('open',nowOpen);
       if(nowOpen) selectCategoria(tipo);
     });
-    for(const ticker of tickers){
+    // Helper: construye un .t-item (ticker) reutilizable en ambos modos
+    const mkItem=(ticker)=>{
       const cfs=getCfs(ticker);
       const cf=cfs?.length?cfs[cfs.length-1]:null;
-      // Para boncer_bullet la fecha viene de _meta.maturity, no del CSV
       const meta=(_bundle._meta||{})[ticker]||{};
       const vencRaw=cf?cf.fechaPago:(meta.maturity||'');
       const venc=vencRaw?fmtDateShort(vencRaw):'';
@@ -6421,7 +6703,50 @@ function buildSidebar(){
         e.stopPropagation();
         if(_detTicker===ticker){ lcCloseDetail(); } else { lcOpenDetail(ticker); }
       });
-      items.appendChild(item);
+      return item;
+    };
+
+    if(tipo==='harddolar'){
+      // Nivel extra: agrupar por provincia (Prov. Hard Dollar → Provincia → Ticker)
+      const byProv={};
+      for(const tk of tickers){ const p=_provincia[tk]||'??'; (byProv[p]=byProv[p]||[]).push(tk); }
+      const provs=Object.keys(byProv).sort((a,b)=>{
+        const ia=PROV_ORDER.indexOf(a), ib=PROV_ORDER.indexOf(b);
+        return (ia<0?999:ia)-(ib<0?999:ib);
+      });
+      provs.forEach((prov,idx)=>{
+        const pWrap=document.createElement('div');pWrap.className='prov-wrap';
+        const pOpen=false; // provincias colapsadas por defecto
+        const pHdr=document.createElement('div');
+        pHdr.className='prov-hdr'+(pOpen?' open':'');
+        pHdr.innerHTML=`<svg class="prov-chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 2l4 4-4 4"/></svg>`
+          +`<span>${PROV_LABELS[prov]||prov}</span><span class="prov-cnt">${byProv[prov].length}</span>`;
+        const pItems=document.createElement('div');pItems.className='prov-items'+(pOpen?' open':'');
+        pHdr.addEventListener('click',e=>{
+          e.stopPropagation();
+          const nowOpen=!pItems.classList.contains('open');
+          // Cerrar otras provincias (solo una abierta a la vez, como ONs)
+          if(nowOpen){
+            pWrap.parentElement.querySelectorAll('.prov-hdr.open').forEach(h=>{
+              if(h!==pHdr){h.classList.remove('open');h.nextElementSibling?.classList.remove('open');}
+            });
+          }
+          pHdr.classList.toggle('open',nowOpen);
+          pItems.classList.toggle('open',nowOpen);
+          // Filtro: abrir provincia = ver solo esa; cerrar = ver toda la categoría
+          _provinciaFiltro = nowOpen ? prov : null;
+          // Cerrar detalle si estaba abierto
+          if(_detTicker){ lcCloseDetail(); }
+          hdCatTitleUpdate();
+          renderTabla();
+          setTimeout(()=>renderCurva(_rows,_cmpRows&&_cmpRows.length?_cmpRows:[]),0);
+        });
+        for(const tk of byProv[prov]) pItems.appendChild(mkItem(tk));
+        pWrap.appendChild(pHdr);pWrap.appendChild(pItems);
+        items.appendChild(pWrap);
+      });
+    } else {
+      for(const ticker of tickers) items.appendChild(mkItem(ticker));
     }
     wrap.appendChild(hdr);wrap.appendChild(items);sb.appendChild(wrap);
   }
@@ -6479,8 +6804,20 @@ function setSbActive(ticker,tipo){
 /* ══════════════════════════════════════════════════════════
    SELECCIÓN: CATEGORÍA
 ══════════════════════════════════════════════════════════ */
+// Actualiza el título de la vista incluyendo la provincia si hay filtro activo
+function hdCatTitleUpdate(){
+  const el=document.getElementById('lc-cat-name');
+  if(!el) return;
+  let txt=CAT_LABELS[_catActiva]||_catActiva;
+  if(_catActiva==='harddolar'&&_provinciaFiltro){
+    txt+=' · '+(PROV_LABELS[_provinciaFiltro]||_provinciaFiltro);
+  }
+  el.textContent=txt;
+}
+
 async function selectCategoria(tipo){
   _catActiva=tipo;_detTicker=null;
+  _provinciaFiltro=null; // al entrar a cualquier categoría, ver todo (sin filtro provincia)
   _excluded=new Set();_cmpMode=null;_cmpRows=[];_cmpDate='';
   _sortKey=tipo==='duales'?'tna_tamar':'tna';_sortDir=-1;
   // Actualizar selectores de eje según categoría
@@ -6509,6 +6846,13 @@ async function selectCategoria(tipo){
     const w=el.closest('.cat-wrap');
     el.classList.toggle('active-cat',w?.dataset.tipo===tipo);
   });
+
+  // Toggles del gráfico exclusivos de Prov. Hard Dollar
+  const btnSep=document.getElementById('btn-hd-separar');
+  const btnGlo=document.getElementById('btn-hd-globales');
+  const esHD=tipo==='harddolar';
+  if(!esHD){ _hdSepararCurvas=false; _hdGraficarGlobales=false; }
+  [btnSep,btnGlo].forEach(b=>{ if(b){ b.style.display=esHD?'':'none'; b.style.color='var(--text3)'; b.style.borderColor='var(--border2)'; b.style.opacity='0.6'; } });
 
   const liq=defaultLiq();
   const fi2=document.getElementById('lc-fecha-liq');if(fi2&&!fi2.value) fi2.value=liq;
@@ -6577,7 +6921,9 @@ window.lcOpenDetail=function(ticker){
 
   const cfs=getCfs(ticker);
   const cf=cfs?.length?cfs[cfs.length-1]:null;
-  const px=tipo==='soberano'
+  const px=tipo==='harddolar'
+    ?getPrecioHardDolar(ticker)
+    :tipo==='soberano'
     ?(getPrecio(ticker+'D')||getPrecio(ticker))
     :tipo==='bopreal'
     ?(getPrecio(BOPREAL_USD[ticker.toUpperCase()])||getPrecio(ticker))
@@ -6600,7 +6946,7 @@ window.lcOpenDetail=function(ticker){
   } else if(tipo==='boncer'&&!isNaN(precio)&&precio>0&&_bundle[ticker]){
     const meta=(_bundle._meta||{})[ticker]||{};
     if(meta.cerInicial) calc=calcBoncerAmort(_bundle[ticker],precio,liq,meta.cerInicial,null);
-  } else if(tipo==='soberano'&&!isNaN(precio)&&precio>0&&_bundle[ticker]){
+  } else if((tipo==='soberano'||tipo==='harddolar')&&!isNaN(precio)&&precio>0&&_bundle[ticker]){
     calc=calcSoberano(_bundle[ticker],precio,liq);
   } else if(TIPOS_CALCULADORA.has(tipo)&&cf&&!isNaN(precio)&&precio>0){
     calc=calcLecap(cf,precio,liq);
@@ -6660,7 +7006,9 @@ window.lcOpenDetail=function(ticker){
   document.getElementById('view-detalle').style.display='flex';
 
   document.getElementById('det-ticker').textContent=displayName(ticker);
-  document.getElementById('det-tipo').textContent=rotuloDetalle(ticker,tipo);
+  document.getElementById('det-tipo').textContent=(tipo==='harddolar'&&_provincia[ticker])
+    ? `${rotuloDetalle(ticker,tipo)} · ${PROV_LABELS[_provincia[ticker]]||_provincia[ticker]}`
+    : rotuloDetalle(ticker,tipo);
   document.getElementById('det-meta').textContent=calc?`Venc. ${fmtDateShort(calc.fechaVto||calc.fechaPago||'')}${calc.diasReal!=null?' · '+calc.diasReal+' días':''}`:'';
   const fi=document.getElementById('det-fecha-liq');if(fi) fi.value=liq;
   // Mostrar selector de fecha CER solo para boncer_bullet
@@ -6697,7 +7045,17 @@ window.lcCloseDetail=function(){
   document.querySelectorAll('.t-item').forEach(el=>el.classList.remove('active'));
   document.getElementById('view-detalle').style.display='none';
   document.getElementById('rf-view-tabla').style.display='flex';
-  if(_catActiva) selectCategoria(_catActiva);
+  const provPrev=_provinciaFiltro; // preservar filtro de provincia al volver del detalle
+  if(_catActiva){
+    selectCategoria(_catActiva).then(()=>{
+      if(_catActiva==='harddolar'&&provPrev){
+        _provinciaFiltro=provPrev;
+        hdCatTitleUpdate();
+        renderTabla();
+        setTimeout(()=>renderCurva(_rows,[]),0);
+      }
+    });
+  }
 };
 
 window.lcSetRankMet=function(k){window._rankMet=k;window._rebuildRank&&window._rebuildRank();};
@@ -6738,7 +7096,8 @@ window.detRecalc=function(){
   const pxVal=pxInput?toNum(pxInput.value):NaN;
   const isManual=!isNaN(pxVal)&&pxVal>0;
   const precio=isManual?pxVal:(window._detPrecioReal??NaN);
-  const px=tipo==='soberano'?(getPrecio(ticker+'D')||getPrecio(ticker))
+  const px=tipo==='harddolar'?getPrecioHardDolar(ticker)
+    :tipo==='soberano'?(getPrecio(ticker+'D')||getPrecio(ticker))
     :tipo==='bopreal'?(getPrecio(BOPREAL_USD[ticker.toUpperCase()])||getPrecio(ticker))
     :tipo==='fixed_rate'?(getPrecio(FIXED_RATE_PX_MAP[ticker.toUpperCase()]||ticker)||getPrecio(ticker))
     :tipo==='dual_boncap'?getPrecio(ticker.replace(/_F$/i,''))
@@ -6773,7 +7132,7 @@ window.detRecalc=function(){
       const elCerVal=document.getElementById('det-cer-valor');
       if(elCerVal) elCerVal.textContent=cerVal?`= ${cerVal.toFixed(4)}`:'sin dato';
     }
-  } else if(tipo==='soberano'&&!isNaN(precio)&&precio>0&&_bundle[ticker]){
+  } else if((tipo==='soberano'||tipo==='harddolar')&&!isNaN(precio)&&precio>0&&_bundle[ticker]){
     calc=calcSoberano(_bundle[ticker],precio,liq);
   } else if(TIPOS_CALCULADORA.has(tipo)&&cf&&!isNaN(precio)&&precio>0){
     calc=calcLecap(cf,precio,liq);
@@ -6862,11 +7221,16 @@ function buildDetBody(row,fechaLiq){
   const _precioPesos=row._precioPesos??null;
   const esBoncer=tipo==='boncer_bullet'||tipo==='boncer'||tipo==='dual_boncer';
   const esAmort=tipo==='boncer';
-  const esSoberano=tipo==='soberano';
+  const esSoberano=tipo==='soberano'||tipo==='harddolar';
   const esBopreal=tipo==='bopreal';
   const esFixedRate=tipo==='fixed_rate';
   const esCalc=TIPOS_CALCULADORA.has(tipo)||esBoncer||esSoberano;
-  const c=calc;
+  let c=calc;
+  // Soberano/harddolar sin precio: generar estructura (flujos reales, métricas en NaN)
+  // para mostrar la MISMA vista con input de precio manual.
+  if(!c && esSoberano && _bundle[ticker]){
+    c=calcSoberanoEstructura(_bundle[ticker], fechaLiq);
+  }
 
   // Barra de controles (precio manual)
   const ctrl=document.createElement('div');
@@ -7361,7 +7725,7 @@ function buildDetBody(row,fechaLiq){
         tblHeader.style.cssText='padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;justify-content:space-between;';
         tblHeader.innerHTML='<span style="font-size:10px;font-weight:700;font-family:var(--mono);color:var(--text2);text-transform:uppercase;letter-spacing:.5px;">Flujo de Fondos — Términos Reales</span>'
           +'<button id="btn-expand-ff" '
-          +'style="padding:2px 9px;border-radius:4px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:9px;font-weight:600;font-family:var(--mono);cursor:pointer;">↓ Ver historial</button>';
+          +'style="padding:2px 9px;border-radius:4px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:9px;font-weight:600;font-family:var(--mono);cursor:pointer;">↑ Solo futuros</button>';
         tblWrap.appendChild(tblHeader);
         // Expand button listener
         setTimeout(()=>{
@@ -7400,7 +7764,7 @@ function buildDetBody(row,fechaLiq){
           +'<th style="'+thStyle+';text-align:right;">Total</th>'
           +'</tr></thead>'
           +'<tbody>'
-          +'<tbody id="ff-past-rows" style="display:none;">'+pastRows.map(renderRow).join('')+'</tbody>'
+          +'<tbody id="ff-past-rows" style="display:table-row-group;">'+pastRows.map(renderRow).join('')+'</tbody>'
           +'<tbody>'+futureRows.map(renderRow).join('')+'</tbody>'
           +'</tbody>';
         tblWrap.appendChild(tblEl);
@@ -7409,6 +7773,13 @@ function buildDetBody(row,fechaLiq){
     }
   }
   } else if(esSoberano&&c){
+    // Aviso cuando no hay precio: la vista es la misma, con input de precio manual editable
+    if(c._sinPrecio){
+      const aviso=document.createElement('div');
+      aviso.style.cssText='padding:11px 15px;background:rgba(227,179,65,0.10);border:1px solid rgba(227,179,65,0.35);border-radius:8px;font-size:11px;font-family:var(--mono);color:#e3b341;margin-bottom:16px;display:flex;align-items:center;gap:9px;';
+      aviso.innerHTML='✎ &nbsp;Sin precio en data912. Ingresá un precio (Dirty Price) abajo para ver TIR, paridad, duration y comparar con el resto.';
+      body.appendChild(aviso);
+    }
     // ── 4 cards grandes ─────────────────────────────────────────────
     const temSob=(Math.pow(1+c.tea/100,1/12)-1)*100;
     const cardsSob=[
@@ -7642,7 +8013,7 @@ function buildDetBody(row,fechaLiq){
       const tblHeaderSob=document.createElement('div');
       tblHeaderSob.style.cssText='padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;justify-content:space-between;';
       tblHeaderSob.innerHTML='<span style="font-size:10px;font-weight:700;font-family:var(--mono);color:var(--text2);text-transform:uppercase;letter-spacing:.5px;">Flujo de Fondos \u2014 USD c/100 VN</span>'
-        +'<button id="btn-expand-ff-sob" style="padding:2px 9px;border-radius:4px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:9px;font-weight:600;font-family:var(--mono);cursor:pointer;">\u2193 Ver historial</button>';
+        +'<button id="btn-expand-ff-sob" style="padding:2px 9px;border-radius:4px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:9px;font-weight:600;font-family:var(--mono);cursor:pointer;">\u2191 Solo futuros</button>';
       tblWrapSob.appendChild(tblHeaderSob);
       setTimeout(()=>{
         const btn=document.getElementById('btn-expand-ff-sob');
@@ -7679,7 +8050,7 @@ function buildDetBody(row,fechaLiq){
         +'<th style="'+thStyleSob+';text-align:right;">VPN</th>'
         +'</tr></thead>'
         +'<tbody>'
-        +'<tbody id="ff-past-rows-sob" style="display:none;">'+pastRowsSob.map(renderRowSob).join('')+'</tbody>'
+        +'<tbody id="ff-past-rows-sob" style="display:table-row-group;">'+pastRowsSob.map(renderRowSob).join('')+'</tbody>'
         +'<tbody>'+futureRowsSob.map(renderRowSob).join('')+'</tbody>'
         +'</tbody>';
       tblWrapSob.appendChild(tblElSob);
@@ -7700,9 +8071,9 @@ function buildDetBody(row,fechaLiq){
     const dpLc=isManual?'var(--yellow)':'var(--text3)';
     grid.innerHTML+=`<div style="background:var(--bg);border:1px solid ${dpBc};border-radius:8px;padding:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:text;" onclick="document.getElementById('det-px-inp-card')?.select()">
       <div style="font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:${dpLc};margin-bottom:8px;font-family:var(--mono);">Dirty Price${isManual?' ✎':''}</div>
-      <input id="det-px-inp-card" type="text" value="${fmtN(precio,4)}"
+      <input id="det-px-inp-card" type="text" value="${(isNaN(precio)||precio==null)?'':fmtN(precio,4)}"
         style="font-size:24px;font-weight:700;font-family:var(--mono);color:${isManual?'var(--yellow)':'var(--text)'};background:transparent;border:none;outline:none;text-align:center;width:100%;cursor:text;"
-        placeholder="${fmtN(window._detPrecioReal??NaN,4)}"
+        placeholder="${(isNaN(window._detPrecioReal??NaN))?'ingresá precio':fmtN(window._detPrecioReal??NaN,4)}"
         onkeydown="if(event.key==='Enter'){window._detPxCard=this.value;detRecalcFromCard();}"
         onblur="window._detPxCard=this.value;detRecalcFromCard();"/>
       ${tipo==='dual_boncap'?'<div style="font-size:9px;font-family:var(--mono);color:var(--yellow);margin-top:4px;">Pata BONCAP · Dual</div>':''}
@@ -8375,7 +8746,7 @@ function buildDetBody(row,fechaLiq){
       const tblHeaderBP=document.createElement('div');
       tblHeaderBP.style.cssText='padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;justify-content:space-between;';
       tblHeaderBP.innerHTML='<span style="font-size:10px;font-weight:700;font-family:var(--mono);color:var(--text2);text-transform:uppercase;letter-spacing:.5px;">Flujo de Fondos — USD c/100 VN</span>'
-        +'<button id="btn-expand-ff-bp" style="padding:2px 9px;border-radius:4px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:9px;font-weight:600;font-family:var(--mono);cursor:pointer;">↓ Ver historial</button>';
+        +'<button id="btn-expand-ff-bp" style="padding:2px 9px;border-radius:4px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:9px;font-weight:600;font-family:var(--mono);cursor:pointer;">↑ Solo futuros</button>';
       tblWrapBP.appendChild(tblHeaderBP);
       setTimeout(()=>{
         const btn=document.getElementById('btn-expand-ff-bp');
@@ -8650,7 +9021,7 @@ function buildDetBody(row,fechaLiq){
       const tblHeaderFR=document.createElement('div');
       tblHeaderFR.style.cssText='padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;justify-content:space-between;';
       tblHeaderFR.innerHTML='<span style="font-size:10px;font-weight:700;font-family:var(--mono);color:var(--text2);text-transform:uppercase;letter-spacing:.5px;">Flujo de Fondos — ARS c/100 VN</span>'
-        +'<button id="btn-expand-ff-fr" style="padding:2px 9px;border-radius:4px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:9px;font-weight:600;font-family:var(--mono);cursor:pointer;">↓ Ver historial</button>';
+        +'<button id="btn-expand-ff-fr" style="padding:2px 9px;border-radius:4px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:9px;font-weight:600;font-family:var(--mono);cursor:pointer;">↑ Solo futuros</button>';
       tblWrapFR.appendChild(tblHeaderFR);
       setTimeout(()=>{
         const btn=document.getElementById('btn-expand-ff-fr');
@@ -9454,6 +9825,7 @@ window.rfRefreshBundle=async function(){
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
     _bundle=await res.json();
     if(_bundle.error) throw new Error(_bundle.error);
+    normalizeSubsob(_bundle);
     const ms=Math.round(performance.now()-t0);
     const refreshed=res.headers.get('X-Refreshed')||'';
     const allT=_bundle._index||[];
@@ -9467,6 +9839,76 @@ window.rfRefreshBundle=async function(){
     document.getElementById('rf-tb-info').textContent=`✗ ${e.message}`;
     console.error('[rfRefreshBundle]',e);
   }
+};
+
+/* ══════════════════════════════════════════════════════════
+   [PROVISORIO] Diagnóstico de precios harddolar — borrar cuando esté cerrado
+   Uso en consola: hdDiag()          → tabla en consola
+                   hdDiag(true)      → además abre panel visual en pantalla
+   ══════════════════════════════════════════════════════════ */
+// [PROVISORIO] Inspeccionar CSV de flujos crudo de un ticker (para diagnóstico de escala)
+window.hdPeek=function(ticker){
+  if(!_bundle) { console.warn('bundle no cargado'); return; }
+  const raw=_bundle[ticker];
+  if(!raw){ console.warn('sin CSV para',ticker); return; }
+  console.log('=== '+ticker+' ===');
+  console.log(raw.split('\n').slice(0,6).join('\n'));
+  return raw;
+};
+
+window.hdDiag=function(showPanel){
+  if(!_bundle||!_bundle._tipos){ console.warn('bundle no cargado'); return; }
+  const tickers=Object.keys(_bundle._tipos).filter(t=>_bundle._tipos[t]==='harddolar');
+  const rows=tickers.map(t=>{
+    const T=t.toUpperCase();
+    const kUSD=HARDDOLAR_USD[T]||null;           // símbolo USD mapeado
+    const pxUSD=kUSD&&_precios[kUSD]?(_precios[kUSD].latest||_precios[kUSD]):null;
+    const pxPeso=_precios[T]?(_precios[T].latest||_precios[T]):null; // peso (ticker pelado) - referencia
+    // Clave que toma el motor: solo la USD mapeada (sin fallback a pesos)
+    const usada = kUSD ? kUSD : '(no mapeado)';
+    const pxUsado = pxUSD?pxUSD.precio : null;
+    return {
+      ticker:t,
+      provincia:(_provincia[t]||'—'),
+      claveUsada:usada,
+      precioTomado:pxUsado!=null?pxUsado:'(sin precio)',
+      pxPesoRef: pxPeso?pxPeso.precio:'·',
+      vol: pxUSD?(pxUSD.vol??'·'):'·',
+      fechaPx: pxUSD?(pxUSD.fechaPx??'·'):'·',
+    };
+  });
+  // Orden por provincia
+  rows.sort((a,b)=>a.provincia.localeCompare(b.provincia)||a.ticker.localeCompare(b.ticker));
+  console.table(rows.map(r=>({ticker:r.ticker,prov:r.provincia,claveUSD:r.claveUsada,precioUSD:r.precioTomado,pxPesoRef:r.pxPesoRef,vol:r.vol,fecha:r.fechaPx})));
+  console.log('Total harddolar:',rows.length,'| con precio:',rows.filter(r=>r.precioTomado!=='(sin precio)').length,'| sin precio:',rows.filter(r=>r.precioTomado==='(sin precio)').length);
+
+  if(showPanel){
+    let p=document.getElementById('hd-diag-panel');
+    if(p) p.remove();
+    p=document.createElement('div');
+    p.id='hd-diag-panel';
+    p.style.cssText='position:fixed;top:60px;right:16px;width:560px;max-height:80vh;overflow:auto;z-index:99999;background:#0d1117;border:1px solid #30363d;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.6);font-family:ui-monospace,monospace;font-size:11px;color:#c9d1d9;';
+    const cerrar='<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid #30363d;position:sticky;top:0;background:#161b22;"><b style="color:#58a6ff;">Diagnóstico precios · Prov. Hard Dollar</b><button onclick="document.getElementById(\'hd-diag-panel\').remove()" style="background:#21262d;border:1px solid #30363d;color:#c9d1d9;border-radius:5px;padding:3px 9px;cursor:pointer;">cerrar ✕</button></div>';
+    const th='<tr style="text-align:left;color:#8b949e;border-bottom:1px solid #30363d;"><th style="padding:6px 8px;">Ticker</th><th>Prov.</th><th>Clave USD</th><th style="text-align:right;">Precio USD</th><th style="text-align:right;">Px peso (ref)</th><th style="text-align:right;">Vol</th></tr>';
+    const trs=rows.map(r=>{
+      const T=r.ticker.toUpperCase();
+      const sinPx=r.precioTomado==='(sin precio)';
+      const col=sinPx?'#f85149':'#c9d1d9';
+      const claveCol=r.claveUsada==='(no mapeado)'?'#8b949e':'#58a6ff';
+      return `<tr style="border-bottom:1px solid #21262d;color:${col};">
+        <td style="padding:5px 8px;font-weight:700;">${r.ticker}</td>
+        <td>${r.provincia}</td>
+        <td style="color:${claveCol};">${r.claveUsada}</td>
+        <td style="text-align:right;font-weight:700;">${typeof r.precioTomado==='number'?r.precioTomado.toLocaleString('es-AR'):r.precioTomado}</td>
+        <td style="text-align:right;color:#8b949e;">${typeof r.pxPesoRef==='number'?r.pxPesoRef.toLocaleString('es-AR'):r.pxPesoRef}</td>
+        <td style="text-align:right;color:#8b949e;">${r.vol}</td>
+      </tr>`;
+    }).join('');
+    const conP=rows.filter(r=>r.precioTomado!=='(sin precio)').length;
+    p.innerHTML=cerrar+`<div style="padding:8px 14px;color:#8b949e;">${rows.length} instrumentos · <span style="color:#3fb950;">${conP} con precio</span> · <span style="color:#f85149;">${rows.length-conP} sin precio</span></div><table style="width:100%;border-collapse:collapse;">${th}${trs}</table><div style="padding:10px 14px;color:#6e7681;font-size:10px;">Clave USD = símbolo de data912 mapeado en HARDDOLAR_USD (lo que toma el motor). Px peso (ref) = precio del ticker pelado en pesos, solo referencia. "(no mapeado)" = queda sin precio a propósito.</div>`;
+    document.body.appendChild(p);
+  }
+  return rows;
 };
 
 window.rfLoad=async function(){
@@ -9483,6 +9925,7 @@ window.rfLoad=async function(){
     const rW=await fetch(WORKER_URL,{cache:'no-store'});
     if(!rW.ok) throw new Error(`Worker HTTP ${rW.status}`);
     _bundle=await rW.json();
+    normalizeSubsob(_bundle);
     const ms0=Math.round(performance.now()-t0);
     const allT=_bundle._index||Object.keys(_bundle).filter(k=>!k.startsWith('_'));
 
@@ -9517,7 +9960,8 @@ window.rfLoad=async function(){
         const tipo=((_bundle._tipos||{})[t]||'').toLowerCase();
         const tu=t.toUpperCase();
         let lk;
-        if(tipo==='soberano')         lk=tu+'D';
+        if(tipo==='harddolar'){ const k=HARDDOLAR_USD[tu]; if(k&&_precios[k]) return _precios[k]; return (harddolarTCImplicito(_precios)&&(_precios[tu]||_precios[t]))?(_precios[tu]||_precios[t]):null; }
+        if(tipo==='soberano') lk=tu+'D';
         else if(tipo==='bopreal')     lk=BOPREAL_USD[tu]||tu;
         else if(tipo==='fixed_rate')  lk=FIXED_RATE_PX_MAP[tu]||tu;
         else if(tipo==='dual_boncap'||tipo==='dual_boncer') lk=tu.replace(/_F$/,'');
@@ -9608,11 +10052,14 @@ const _rfCalState = { year: new Date().getFullYear(), month: new Date().getMonth
 function rfCalColor(tipo, isPast) {
   // Azul: pesos nominales (lecap, boncap, tamar, dual_tamar, dual_boncap, fixed_rate)
   // Amarillo: CER (boncer, boncer_bullet, dual_boncer)
-  // Verde: dólar (soberano, bopreal, dolarlinked)
+  // Verde: dólar soberano (soberano, bopreal, dolarlinked)
+  // Teal: dólar provincial (harddolar) — se distingue del dólar soberano
   const azul   = isPast ? 'rgba(30,39,243,0.3)'   : 'var(--accent)';
   const amarillo = isPast ? 'rgba(227,179,65,0.3)' : '#e3b341';
   const verde  = isPast ? 'rgba(63,185,80,0.3)'   : '#3fb950';
+  const teal   = isPast ? 'rgba(45,212,191,0.3)'  : '#2dd4bf';
   const t = (tipo||'').toLowerCase();
+  if (t==='harddolar') return teal;
   if (t==='boncer'||t==='boncer_bullet'||t==='dual_boncer') return amarillo;
   if (t==='soberano'||t==='bopreal'||t==='dolarlinked'||t==='dual_dl')    return verde;
   return azul; // lecap, boncap, tamar, dual_tamar, dual_boncap, fixed_rate
@@ -9768,7 +10215,7 @@ function rfCalBuildPaymentMap() {
       continue;
     }
 
-    if (tipo==='soberano'||tipo==='bopreal'||tipo==='fixed_rate') {
+    if (tipo==='soberano'||tipo==='harddolar'||tipo==='bopreal'||tipo==='fixed_rate') {
       if (!_bundle[ticker]) continue;
       const cupones = parseSoberanoCsv(_bundle[ticker]);
       if (!cupones) continue;
@@ -9962,7 +10409,7 @@ window.rfCalShowTooltip = function(event, dateStr, idx) {
   // Etiqueta amigable del tipo
   const tipoLabels = {
     lecap:'LECAP', boncap:'BONCAP', boncer:'BONCER', boncer_bullet:'BONCER',
-    soberano:'Soberano', dolarlinked:'Dólar Linked', bopreal:'BOPREAL',
+    soberano:'Soberano', harddolar:'Prov. Hard Dollar', dolarlinked:'Dólar Linked', bopreal:'BOPREAL',
     fixed_rate:'Fixed Rate', tamar:'TAMAR', dual_tamar:'Dual TAMAR',
     dual_boncap:'Dual BONCAP', dual_boncer:'Dual BONCER', dual_dl:'Dual DL',
   };
@@ -10010,7 +10457,7 @@ window.rfCalOpenModal = async function(ticker) {
 
   // Título del modal
   const CAT = { lecap:'LECAP', boncap:'BONCAP', boncer:'BONCER', boncer_bullet:'BONCER',
-    soberano:'Soberano', dolarlinked:'Dólar Linked', bopreal:'BOPREAL',
+    soberano:'Soberano', harddolar:'Prov. Hard Dollar', dolarlinked:'Dólar Linked', bopreal:'BOPREAL',
     fixed_rate:'Fixed Rate', tamar:'TAMAR', dual_tamar:'Dual TAMAR',
     dual_boncap:'Dual BONCAP', dual_boncer:'Dual BONCER', dual_dl:'Dual DL' };
   document.getElementById('rf-cal-modal-title').textContent =
@@ -10534,6 +10981,7 @@ const CMP_CATS = [
   { id:'bopreal',     label:'BOPREALes',    color:'#fb923c' },
   { id:'fixed_rate',  label:'Fixed Rate',   color:'#38bdf8' },
   { id:'duales',      label:'Duales',       color:'#f59e0b' },
+  { id:'harddolar',   label:'Prov. Hard Dollar', color:'#f472b6' },
 ];
 const CMP_SOB_AR = '#f87171';
 const CMP_SOB_NY = '#fda4af';
@@ -10579,6 +11027,8 @@ const _cmpState = {
   initialized: false,
   inclDualesCats: new Set(), // categorías que SÍ incluyen sus duales (default: ninguna)
   colorMap: {},      // catId/serie -> color asignado dinámicamente
+  hdOpen: false,     // desplegable de provincias (harddolar) abierto/cerrado
+  hdProvs: new Set(),// provincias seleccionadas individualmente en harddolar
 };
 let _cmpChartInst = null;
 let _cmpRowsMap   = {};  // { catId: rows[] }
@@ -10621,9 +11071,24 @@ function cmpInit() {
         subChecks = `<div id="cmp-btn-patas" class="cmp-subchk" title="Patas separadas"
           onclick="event.stopPropagation();cmpTogglePatas()"></div>`;
       }
+      // Chevron desplegable para Prov. Hard Dollar (a la derecha, como ONs)
+      let chevron = '';
+      if (cat.id === 'harddolar') {
+        chevron = `<span id="cmp-hd-chevron" onclick="event.stopPropagation();cmpToggleHdOpen()" style="cursor:pointer;margin-left:auto;display:inline-block;transition:transform .18s;transform:rotate(${_cmpState.hdOpen?90:0}deg);color:var(--text3);font-size:11px;">›</span>`;
+      }
       cb.innerHTML = `<span class="cmp-cb-label">${cat.label}</span>`
-        + (subChecks ? `<div class="cmp-subchk-group">${subChecks}</div>` : '');
+        + (subChecks ? `<div class="cmp-subchk-group">${subChecks}</div>` : '')
+        + chevron;
       wrap.appendChild(cb);
+
+      // Lista desplegable de provincias (solo harddolar)
+      if (cat.id === 'harddolar') {
+        const provList = document.createElement('div');
+        provList.id = 'cmp-hd-provlist';
+        provList.style.cssText = `display:${_cmpState.hdOpen?'flex':'none'};flex-direction:column;gap:2px;margin:2px 0 4px 14px;`;
+        provList.innerHTML = cmpHdProvListHTML();
+        wrap.appendChild(provList);
+      }
 
       bar.appendChild(wrap);
     });
@@ -10654,6 +11119,20 @@ function cmpInit() {
 
 // ── Toggle categoría ──
 window.cmpToggleCat = function(catId) {
+  // Prov. Hard Dollar: el chip master prende/apaga TODAS las provincias
+  if (catId === 'harddolar') {
+    const todas = cmpHdProvsDisponibles();
+    const todasOn = todas.length > 0 && todas.every(p => _cmpState.hdProvs.has(p));
+    _cmpState.hdProvs = new Set(todasOn ? [] : todas);
+    if (_cmpState.hdProvs.size > 0) _cmpState.cats.add('harddolar');
+    else _cmpState.cats.delete('harddolar');
+    const cbM = document.getElementById('cmp-cb-harddolar');
+    if (cbM) cbM.classList.toggle('active', _cmpState.cats.has('harddolar'));
+    const list = document.getElementById('cmp-hd-provlist');
+    if (list) list.innerHTML = cmpHdProvListHTML();
+    cmpRecalc();
+    return;
+  }
   const wasActive = _cmpState.cats.has(catId);
   if (wasActive) {
     _cmpState.cats.delete(catId);
@@ -10700,6 +11179,61 @@ window.cmpToggleCat = function(catId) {
     for (const t of tickersDeCat) { _cmpExcluded.delete(t + ' (T)'); _cmpExcluded.delete(t + ' (F)'); }
   }
   cmpUpdateContextualControls();
+  cmpRecalc();
+};
+
+// ── Desplegable de provincias (Prov. Hard Dollar) ──
+// Provincias disponibles = las que tienen al menos un ticker harddolar en el bundle
+function cmpHdProvsDisponibles() {
+  if (!_bundle || !_bundle._tipos) return [];
+  const set = new Set();
+  for (const t of Object.keys(_bundle._tipos)) {
+    if ((_bundle._tipos[t] || '').toLowerCase() === 'harddolar' && _provincia[t]) set.add(_provincia[t]);
+  }
+  return [...set].sort((a, b) => {
+    const ia = PROV_ORDER.indexOf(a), ib = PROV_ORDER.indexOf(b);
+    return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
+  });
+}
+
+// HTML de la lista de provincias (cada una con su color de PROV_COLORS)
+function cmpHdProvListHTML() {
+  const provs = cmpHdProvsDisponibles();
+  return provs.map(pv => {
+    const sel = _cmpState.hdProvs.has(pv);
+    const col = PROV_COLORS[pv] || '#f472b6';
+    const bg = sel ? col + '1a' : 'transparent';
+    const bc = sel ? col : 'var(--border2)';
+    const tc = sel ? 'var(--text)' : 'var(--text3)';
+    return `<div class="cmp-hd-prov-row" onclick="cmpToggleHdProv('${pv}')"
+      style="display:flex;align-items:center;gap:8px;padding:5px 9px;border-radius:6px;border:1px solid ${bc};background:${bg};color:${tc};cursor:pointer;font-family:var(--mono);font-size:11px;font-weight:600;transition:all .12s;">
+      <div style="width:8px;height:8px;border-radius:50%;background:${sel ? col : 'var(--border2)'};flex-shrink:0;"></div>
+      <span style="flex:1;">${PROV_LABELS[pv] || pv}</span>
+    </div>`;
+  }).join('');
+}
+
+// Desplegar/colapsar la lista de provincias
+window.cmpToggleHdOpen = function() {
+  _cmpState.hdOpen = !_cmpState.hdOpen;
+  const chev = document.getElementById('cmp-hd-chevron');
+  const list = document.getElementById('cmp-hd-provlist');
+  if (chev) chev.style.transform = `rotate(${_cmpState.hdOpen ? 90 : 0}deg)`;
+  if (list) list.style.display = _cmpState.hdOpen ? 'flex' : 'none';
+};
+
+// Toggle de una provincia individual
+window.cmpToggleHdProv = function(pv) {
+  if (_cmpState.hdProvs.has(pv)) _cmpState.hdProvs.delete(pv);
+  else _cmpState.hdProvs.add(pv);
+  // Si hay alguna provincia seleccionada, activar la categoría harddolar (para que entre al render)
+  if (_cmpState.hdProvs.size > 0) _cmpState.cats.add('harddolar');
+  else _cmpState.cats.delete('harddolar');
+  const cb = document.getElementById('cmp-cb-harddolar');
+  if (cb) cb.classList.toggle('active', _cmpState.cats.has('harddolar'));
+  // Refrescar la lista visual
+  const list = document.getElementById('cmp-hd-provlist');
+  if (list) list.innerHTML = cmpHdProvListHTML();
   cmpRecalc();
 };
 
@@ -11105,6 +11639,29 @@ function cmpRenderChart() {
       continue;
     }
 
+    // Prov. Hard Dollar — una serie + tendencia por provincia seleccionada
+    if (cat.id === 'harddolar') {
+      const provsSel = [...(_cmpState.hdProvs || [])].sort((a, b) => {
+        const ia = PROV_ORDER.indexOf(a), ib = PROV_ORDER.indexOf(b);
+        return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
+      });
+      for (const pv of provsSel) {
+        const ptsPv = rows
+          .filter(r => (_provincia[r.ticker] || '') === pv && r.calc && isFinite(lcGetAxisVal(r, axX)) && lcGetAxisVal(r, axX) > 0 && isFinite(lcGetAxisVal(r, axY)))
+          .map(r => ({ x: lcGetAxisVal(r, axX), y: lcGetAxisVal(r, axY), label: r.ticker, excl: _cmpExcluded.has(r.ticker) }));
+        if (!ptsPv.length) continue;
+        allDataPts.push(...ptsPv);
+        const col = PROV_COLORS[pv] || '#f472b6';
+        const lbl = PROV_LABELS[pv] || pv;
+        const tr = makeTrendDs(ptsPv, col);
+        if (tr) { tr.label = '_trend'; datasets.push(tr); }
+        datasets.push({ label: 'PHD ' + lbl, data: ptsPv, backgroundColor: ptsPv.map(p => p.excl ? 'rgba(138,144,176,0.3)' : col), borderColor: ptsPv.map(p => p.excl ? 'rgba(138,144,176,0.3)' : col), pointRadius: 5, pointHoverRadius: 8, showLine: false, order: 2 });
+        legendItems.push({ color: col, label: 'Tend. ' + lbl, isLine: true });
+        legendItems.push({ color: col, label: 'PHD ' + lbl, isLine: false });
+      }
+      continue;
+    }
+
     // Categoría normal
     const pts = rows
       .filter(r => r.calc && isFinite(lcGetAxisVal(r, axX)) && lcGetAxisVal(r, axX) > 0 && isFinite(lcGetAxisVal(r, axY)))
@@ -11328,6 +11885,7 @@ const SENS_TYPES = [
   { id:'bopreal',     label:'BOPREALes' },
   { id:'fixed_rate',  label:'Fixed Rate' },
   { id:'duales',      label:'Duales' },
+  { id:'harddolar',   label:'Prov. Hard Dollar' },
 ];
 
 const _sensState = {
@@ -11353,7 +11911,7 @@ function sensCalcAtPrice(ticker, tipoReal, precio, fechaLiq) {
   } else if (tipoReal === 'boncer' && _bundle[ticker]) {
     const meta = (_bundle._meta || {})[ticker] || {};
     if (meta.cerInicial) return calcBoncerAmort(_bundle[ticker], precio, fechaLiq, meta.cerInicial);
-  } else if (tipoReal === 'soberano' && _bundle[ticker]) {
+  } else if ((tipoReal === 'soberano' || tipoReal === 'harddolar') && _bundle[ticker]) {
     return calcSoberano(_bundle[ticker], precio, fechaLiq);
   } else if (TIPOS_CALCULADORA.has(tipoReal)) {
     const cfs = getCfs(ticker);
@@ -11775,7 +12333,10 @@ function sensRenderTable(matrix, deltas, metrica, maxAbsVar, tipo) {
   // Filas
   for (const row of matrix) {
     html += '<tr>';
-    html += `<td class="sens-td-ticker">${displayName(row.ticker)}<span class="sens-mat">${fmtDateShort(row.mat)}</span></td>`;
+    const provSpan = (_sensState.tipo === 'harddolar' && _provincia[row.ticker])
+      ? `<span class="sens-prov">${PROV_LABELS[_provincia[row.ticker]] || _provincia[row.ticker]}</span>`
+      : '';
+    html += `<td class="sens-td-ticker">${displayName(row.ticker)}${provSpan}<span class="sens-mat">${fmtDateShort(row.mat)}</span></td>`;
     for (const c of row.cells) {
       const bg = c.actual ? '' : `background:${sensHeatColor(c.varPct, maxAbsVar)};`;
       const cls = 'sens-cell' + (c.actual ? ' sens-actual' : '');
