@@ -1917,6 +1917,29 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 .cmp-legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 .cmp-legend-line{width:16px;height:2px;flex-shrink:0;border-radius:2px;}
 .cmp-empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-family:var(--mono);font-size:11px;}
+/* ── Histórico / Evolución ── */
+#app-rf #rf-tab-hist{padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;}
+#app-rf #view-rf-hist{display:none;flex-direction:row;flex:1;overflow:hidden;height:calc(100vh - 52px);}
+.hist-topbar{display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;}
+.hist-topbar label{font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.4px;}
+.hist-topbar select{background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:11px;font-family:var(--mono);padding:3px 8px;outline:none;cursor:pointer;}
+.hist-win-group{display:flex;align-items:center;gap:4px;}
+.hist-win-btn{padding:3px 9px;border-radius:5px;border:1px solid var(--border2);background:var(--bg);color:var(--text3);font-family:var(--mono);font-size:10px;font-weight:700;cursor:pointer;transition:all .12s;}
+.hist-win-btn:hover{color:var(--text);border-color:var(--accent);}
+.hist-win-btn.active{border-color:#1E27F3;background:var(--accent-light);color:var(--accent);}
+.hist-cats-bar{display:flex;flex-direction:column;gap:3px;}
+.hist-cat-cb{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:7px;border:1px solid transparent;cursor:pointer;user-select:none;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text2);transition:all .12s;width:100%;box-sizing:border-box;}
+.hist-cat-cb:hover{background:var(--accent-light);color:var(--text);}
+.hist-cat-cb .hist-cb-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.hist-cat-cb.active{border-color:#1E27F3;background:var(--accent-light);color:var(--text);}
+.hist-body{flex:1;display:flex;flex-direction:column;min-height:0;padding:10px 20px 6px;gap:6px;}
+.hist-chart-wrap{flex:1;min-height:0;position:relative;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;flex-direction:column;}
+.hist-chart-inner{flex:1;position:relative;min-height:0;width:100%;}
+.hist-legend{display:flex;flex-wrap:wrap;gap:10px;padding:6px 0 0;flex-shrink:0;}
+.hist-legend-item{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;color:var(--text3);}
+.hist-legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.hist-legend-dot.hist-legend-dot-big{width:11px;height:11px;border:1.5px solid #fff;}
+.hist-empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-family:var(--mono);font-size:11px;}
 /* ── Tabla de Sensibilidad ── */
 #sens-table th{position:sticky;top:0;z-index:3;background:var(--bg2);border-bottom:1px solid var(--border);border-right:1px solid var(--border);padding:7px 10px;font-size:10px;font-weight:700;color:var(--text2);text-align:center;white-space:nowrap;}
 #sens-table th.sens-th-ticker{left:0;z-index:5;text-align:center;min-width:104px;background:var(--bg3)!important;color:var(--text2);font-size:11px;}
@@ -2758,6 +2781,7 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
       <div id="rf-tab-index" onclick="rfSwitchTab('index')">Índice</div>
       <div id="rf-tab-hm" onclick="rfSwitchTab('hm')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;">Heatmap</div>
       <div id="rf-tab-cmp" onclick="rfSwitchTab('cmp')">Comparador</div>
+      <div id="rf-tab-hist" onclick="rfSwitchTab('hist')">Histórico</div>
       <div id="rf-tab-sens" onclick="rfSwitchTab('sens')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;">Sensibilidad</div>
       <div id="rf-tab-cal" onclick="rfSwitchTab('cal')">Calendario</div>
       <div id="rf-tab-be" onclick="rfSwitchTab('be')" style="padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;">Breakeven</div>
@@ -3020,6 +3044,61 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
             style="flex-shrink:0;display:flex;flex-direction:column;gap:3px;overflow-y:auto;overflow-x:hidden;background:var(--bg2);width:0;padding:0;transition:width .18s,padding .18s;"></div>
         </div>
         <div class="cmp-legend" id="cmp-legend"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- VISTA HISTÓRICO / EVOLUCIÓN -->
+  <div id="view-rf-hist">
+
+    <!-- SIDEBAR izquierdo -->
+    <div style="width:230px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+      <!-- Categorías (scroll si hay muchas) -->
+      <div style="flex:1;overflow-y:auto;padding:14px 14px 8px;">
+        <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;">Instrumento</div>
+        <div id="hist-cats-bar" class="hist-cats-bar"></div>
+      </div>
+      <!-- Divider -->
+      <div style="margin:0 14px;height:1px;background:var(--border);flex-shrink:0;"></div>
+      <!-- Ventana de historial -->
+      <div style="padding:10px 14px 14px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;">
+        <label style="font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;">Ventana</label>
+        <div id="hist-win-group" class="hist-win-group">
+          <div class="hist-win-btn" data-win="30" onclick="histSetWindow(30)">30d</div>
+          <div class="hist-win-btn" data-win="60" onclick="histSetWindow(60)">60d</div>
+          <div class="hist-win-btn" data-win="90" onclick="histSetWindow(90)">90d</div>
+          <div class="hist-win-btn" data-win="0" onclick="histSetWindow(0)">Todo</div>
+        </div>
+        <div id="hist-status" style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:2px;">—</div>
+      </div>
+    </div>
+
+    <!-- ÁREA DERECHA: controles gráfico + canvas -->
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;">
+      <!-- Topbar fino: solo ejes -->
+      <div class="hist-topbar">
+        <label>Eje Y</label>
+        <select id="hist-axis-y" onchange="histAxisChanged()">
+          <option value="tna">TIR TNA</option>
+          <option value="tea">TIR TEA</option>
+          <option value="tem">TIR TEM</option>
+        </select>
+        <label>Eje X</label>
+        <select id="hist-axis-x" onchange="histAxisChanged()">
+          <option value="md">MD</option>
+          <option value="dur">Duration</option>
+          <option value="dias">Días</option>
+        </select>
+      </div>
+      <!-- Gráfico + leyenda -->
+      <div class="hist-body">
+        <div class="hist-chart-wrap">
+          <div class="hist-chart-inner">
+            <canvas id="hist-curve-chart" style="position:absolute;inset:0;width:100%!important;height:100%!important;"></canvas>
+          </div>
+        </div>
+        <div class="hist-legend" id="hist-legend"></div>
       </div>
     </div>
 
@@ -10532,7 +10611,7 @@ window.rfSwitchTab = function(tab) {
     _cmpState.tcManualVal = null;
     _cmpState.cerOffset = 10;
   }
-  const tabs = ['index','hm','cmp','sens','cal','be'];
+  const tabs = ['index','hm','cmp','hist','sens','cal','be'];
   tabs.forEach(t => {
     const el = document.getElementById('rf-tab-'+t);
     if (!el) return;
@@ -10543,12 +10622,14 @@ window.rfSwitchTab = function(tab) {
   const viewCal     = document.getElementById('view-rf-cal');
   const viewHm      = document.getElementById('view-rf-hm');
   const viewCmp     = document.getElementById('view-rf-cmp');
+  const viewHist    = document.getElementById('view-rf-hist');
   const viewSens    = document.getElementById('view-rf-sens');
   const viewBe      = document.getElementById('view-rf-be');
   mainContent.style.display = tab==='index' ? 'flex' : 'none';
   viewCal.style.display     = tab==='cal'   ? 'flex' : 'none';
   viewHm.style.display      = tab==='hm'    ? 'flex' : 'none';
   viewCmp.style.display     = tab==='cmp'   ? 'flex' : 'none';
+  if (viewHist) viewHist.style.display = tab==='hist' ? 'flex' : 'none';
   if (viewSens) viewSens.style.display = tab==='sens' ? 'flex' : 'none';
   if (viewBe)   viewBe.style.display   = tab==='be'   ? 'flex' : 'none';
   if (tab==='cal') rfRenderCalendar();
@@ -10570,6 +10651,9 @@ window.rfSwitchTab = function(tab) {
   if (tab==='cmp') {
     cmpInit();
     setTimeout(() => cmpRecalc(), 50);
+  }
+  if (tab==='hist') {
+    histInit();
   }
   if (tab==='sens') {
     sensInit();
@@ -11869,6 +11953,552 @@ window.cmpReactivate = function(lbl) {
   _cmpExcluded.delete(lbl);
   cmpRenderChart();
 };
+
+/* ══════════════════════════════════════════════════════════
+   HISTÓRICO / EVOLUCIÓN — mismo scatter TIR×Duration del
+   Comparador, pero con la cola histórica de cada ticker en vez
+   de un único punto de "hoy". Reusa CMP_CATS/cmpColorFor/
+   lcGetAxisVal/lcAxisLabel del Comparador (misma lista de
+   categorías, mismos colores, mismos ejes) — no se duplican.
+
+   Fuente de datos: dos Google Sheets publicadas como CSV
+   (snapshot diario vía Apps Script):
+     - Histórico: fecha, ticker, tipo(origen data912), precio (sucio, coma decimal)
+     - Macro:     fecha, cer, cer_fecha, tc_oficial, tc_fecha
+
+   No se reutiliza cruzar() completo: esa función depende de
+   globals atados a "hoy" (_precios, _tcUsd, _tamarProms,
+   _cerOffset) que no tienen sentido para una fecha pasada.
+   En cambio se llama DIRECTO a los mismos motores de cálculo
+   que cruzar() ya despacha por tipo (calcLecap/calcBoncer/
+   calcBoncerAmort/calcDolarLinked/calcSoberano/calcBopreal/
+   calcFixedRate), replicando ese mismo switch — ver
+   histCalcForTicker() más abajo. Así la lógica financiera real
+   nunca se duplica, sólo el "cableado" de qué inputs (fecha
+   histórica, precio histórico, CER/TC históricos) le llegan.
+══════════════════════════════════════════════════════════ */
+
+const HIST_TICKERS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbpt8za7OG6hew4Nog4Nqm1VVNDKe5PBIe0EZ5MdeO61e_QWgUfhVDLaoNyOfP7FSEx8JxL_6yAy9G/pub?gid=1668657906&single=true&output=csv';
+const HIST_MACRO_CSV_URL   = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbpt8za7OG6hew4Nog4Nqm1VVNDKe5PBIe0EZ5MdeO61e_QWgUfhVDLaoNyOfP7FSEx8JxL_6yAy9G/pub?gid=1091166883&single=true&output=csv';
+
+const _histState = {
+  cats: new Set(['lecap', 'boncap']), // mismo default que _cmpState
+  axisY: 'tna',
+  axisX: 'md',
+  windowDays: 30, // 30 | 60 | 90 | 0 (=Todo)
+};
+let _histChartInst      = null;
+let _histLoaded         = false;
+let _histLoading        = false;
+let _histSeriesByTicker = {}; // { TICKER: { tipo, cat, pts:[{fecha, calc}] } } — pts ordenados asc por fecha
+let _histMaxFecha       = null; // última fecha presente en la sheet Histórico (referencia para la ventana)
+
+// ── Parser CSV genérico (respeta comillas, a diferencia de los parsers internos
+//    del bundle que asumen columnas sin comas embebidas) ──
+function histSplitCSVLine(line) {
+  const res = []; let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; }
+    else if (c === ',' && !inQ) { res.push(cur); cur = ''; }
+    else cur += c;
+  }
+  res.push(cur);
+  return res;
+}
+function histParseCSV(text) {
+  if (!text || !text.trim()) return [];
+  const lines = text.replace(/\r/g, '').split('\n').filter(l => l.trim().length);
+  if (lines.length < 2) return [];
+  const headers = histSplitCSVLine(lines[0]).map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = histSplitCSVLine(lines[i]);
+    const obj = {};
+    headers.forEach((h, idx) => { obj[h] = (cols[idx] != null ? cols[idx] : '').trim().replace(/^"|"$/g, ''); });
+    rows.push(obj);
+  }
+  return rows;
+}
+
+async function histFetchCSV(url) {
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return await res.text();
+}
+
+function histNormalizeTickerRows(raw) {
+  const out = [];
+  for (const r of raw) {
+    const fecha  = (r.fecha || '').trim().slice(0, 10);
+    const ticker = (r.ticker || '').trim().toUpperCase();
+    const precio = toNum(r.precio);
+    if (!fecha || !ticker || isNaN(precio) || precio <= 0) continue;
+    out.push({ fecha, ticker, precio });
+  }
+  return out;
+}
+function histNormalizeMacroRows(raw) {
+  const map = {};
+  for (const r of raw) {
+    const fecha = (r.fecha || '').trim().slice(0, 10);
+    if (!fecha) continue;
+    const cer = toNum(r.cer);
+    const tc  = toNum(r.tc_oficial);
+    map[fecha] = { cer: isNaN(cer) ? null : cer, tc: isNaN(tc) ? null : tc };
+  }
+  return map;
+}
+
+// ── Mapea el tipo fino (_bundle._tipos[ticker]) a un id de CMP_CATS ──
+// Réplica exacta del agrupamiento que hace cruzar() por parámetro `tipo`.
+function histCatForTipo(tipoReal) {
+  const t = (tipoReal || '').toLowerCase();
+  if (t === 'lecap') return 'lecap';
+  if (t === 'boncap' || t === 'dual_boncap') return 'boncap';
+  if (t === 'boncer' || t === 'boncer_bullet' || t === 'dual_boncer') return 'boncer';
+  if (t === 'tamar' || t === 'dual_tamar') return 'tamar'; // ver nota de soporte en histCalcForTicker
+  if (t === 'dolarlinked' || t === 'dual_dl') return 'dolarlinked';
+  if (t === 'soberano') return 'soberano';
+  if (t === 'harddolar') return 'harddolar';
+  if (t === 'bopreal') return 'bopreal';
+  if (t === 'fixed_rate') return 'fixed_rate';
+  return null;
+}
+
+// ── Resolución de precio "efectivo" por tipo — réplica de cruzar() (~línea 4768-4794) ──
+// Para varios tipos, el ticker que cotiza en la unidad que espera el motor de
+// cálculo (USD, u otro ticker "espejo") NO es el ticker limpio de _bundle._tipos:
+//   - soberano    → <TICKER>D (ej. AL30 usa el precio de AL30D, en USD; AL30 a
+//                    secas cotiza en pesos y NO sirve para calcSoberano)
+//   - bopreal     → BOPREAL_USD[TICKER] (ej. BPOA8 usa el precio de BPA8D), o el
+//                    propio ticker si no está mapeado (ya vendría en USD)
+//   - fixed_rate  → FIXED_RATE_PX_MAP[TICKER] (ej. TY30PP usa el precio de TY30P)
+//   - dual_boncap/dual_boncer/dual_dl (pata "_F") → precio del ticker base, sin el sufijo _F
+//   - resto (lecap/boncap/boncer/dolarlinked/tamar/…) → el propio ticker
+// harddolar NO pasa por acá: tiene su propio fallback (peso/TC implícito) — ver histHarddolarTCImplicito.
+function histLookupKeyFor(tipoReal, ticker) {
+  const T = ticker.toUpperCase();
+  if (tipoReal === 'soberano') return T + 'D';
+  if (tipoReal === 'bopreal') return BOPREAL_USD[T] || T;
+  if (tipoReal === 'fixed_rate') return FIXED_RATE_PX_MAP[T] || T;
+  if (tipoReal === 'dual_boncap' || tipoReal === 'dual_boncer' || tipoReal === 'dual_dl') return T.replace(/_F$/, '');
+  return T;
+}
+
+// TC implícito harddolar para UNA fecha histórica — misma fórmula que
+// harddolarTCImplicito(preciosMap) (promedio de peso/USD sobre los pares
+// mapeados en HARDDOLAR_USD), pero leyendo del índice histórico de precios de
+// ese día en vez del _precios "de hoy".
+function histHarddolarTCImplicito(fecha, pxByDateTicker) {
+  const dayMap = pxByDateTicker[fecha];
+  if (!dayMap) return null;
+  const tcs = [];
+  for (const t of Object.keys(HARDDOLAR_USD)) {
+    const usd = dayMap[HARDDOLAR_USD[t]];
+    const peso = dayMap[t];
+    if (usd > 0 && peso > 0) tcs.push(peso / usd);
+  }
+  if (!tcs.length) return null;
+  return tcs.reduce((a, b) => a + b, 0) / tcs.length;
+}
+
+// Sustituye temporalmente el _cerDatos global por un mapa de un solo día
+// (mismo patrón de "patch temporal" que ya usan cruzarCmp/cruzarDualCmp con
+// _cerOffset/window._tcManual) para que calcBoncer/calcBoncerAmort —que
+// resuelven el CER internamente vía getCerForDate(_cerDatos)— encuentren el
+// CER de la fecha histórica exacta, sin tocar el CER "de hoy" del resto de la app.
+function histWithPatchedCer(fechaStr, cerHist, fn) {
+  const prev = _cerDatos;
+  _cerDatos = { [fechaStr]: cerHist };
+  try { return fn(); }
+  finally { _cerDatos = prev; }
+}
+
+// ── Dispatch de motor de cálculo por tipo fino, para UNA fila histórica ──
+// Réplica el mismo switch por tipo que cruzar() (ver más arriba, ~línea 4728),
+// pero recibe precio/fecha/CER/TC de una fila histórica en vez de leerlos de
+// _precios/_tcUsd/_cerDatos "de hoy". cerHist/tcHist vienen de la fila de Macro
+// que matchea la MISMA fecha exacta de la fila histórica (sin offset T-N —
+// ver limitación documentada en el reporte final).
+function histCalcForTicker(ticker, tipoReal, precio, fechaStr, cerHist, tcHist) {
+  if (isNaN(precio) || precio <= 0) return null;
+  const meta = (_bundle._meta || {})[ticker] || {};
+  try {
+    if (tipoReal === 'boncer_bullet' || tipoReal === 'dual_boncer') {
+      if (!meta.cerInicial || !meta.maturity || cerHist == null || isNaN(cerHist)) return null;
+      return histWithPatchedCer(fechaStr, cerHist, () => calcBoncer(precio, fechaStr, meta.maturity, meta.cerInicial, fechaStr));
+    }
+    if (tipoReal === 'boncer') {
+      if (!meta.cerInicial || !_bundle[ticker] || cerHist == null || isNaN(cerHist)) return null;
+      return histWithPatchedCer(fechaStr, cerHist, () => calcBoncerAmort(_bundle[ticker], precio, fechaStr, meta.cerInicial, fechaStr));
+    }
+    if (tipoReal === 'soberano' || tipoReal === 'harddolar') {
+      if (!_bundle[ticker]) return null;
+      return calcSoberano(_bundle[ticker], precio, fechaStr);
+    }
+    if (TIPOS_CALCULADORA.has(tipoReal)) { // lecap, boncap, dual_boncap
+      const cfs = getCfs(ticker);
+      const cf  = cfs && cfs.length ? cfs[cfs.length - 1] : null;
+      if (!cf) return null;
+      return calcLecap(cf, precio, fechaStr);
+    }
+    if (tipoReal === 'dolarlinked' || tipoReal === 'dual_dl') {
+      if (!meta.maturity || tcHist == null || isNaN(tcHist) || tcHist <= 0) return null;
+      return calcDolarLinked(precio, fechaStr, meta.maturity, tcHist);
+    }
+    if (tipoReal === 'bopreal') {
+      if (!_bundle[ticker]) return null;
+      return calcBopreal(_bundle[ticker], precio, fechaStr);
+    }
+    if (tipoReal === 'fixed_rate') {
+      if (!_bundle[ticker]) return null;
+      return calcFixedRate(_bundle[ticker], precio, fechaStr);
+    }
+  } catch (e) {
+    console.warn('histCalcForTicker: error calculando', ticker, fechaStr, e);
+    return null;
+  }
+  // tamar / dual_tamar / duales: el motor TAMAR necesita el promedio histórico de
+  // la tasa TAMAR hasta esa fecha (calcularTamarProms sólo trae el promedio
+  // vigente "hoy" desde el worker /tamar) — dato no disponible en Histórico/Macro,
+  // así que estos tipos no producen puntos históricos (categoría queda sin datos).
+  return null;
+}
+
+// ── Carga y arma las series históricas (una vez; recalculable si hace falta) ──
+async function histLoadData() {
+  if (_histLoading) return;
+  if (!_bundle || !_bundle._tipos) return;
+  _histLoading = true;
+  histSetStatus('Cargando histórico…');
+  try {
+    const [txtTickers, txtMacro] = await Promise.all([
+      histFetchCSV(HIST_TICKERS_CSV_URL),
+      histFetchCSV(HIST_MACRO_CSV_URL),
+    ]);
+    const rawRows  = histNormalizeTickerRows(histParseCSV(txtTickers));
+    const macroMap = histNormalizeMacroRows(histParseCSV(txtMacro));
+
+    // Índice de precios crudos por fecha+ticker, armado con TODAS las filas
+    // (sin filtrar todavía por _bundle._tipos) — lo necesitamos para resolver,
+    // p.ej., el precio de AL30D cuando calculamos AL30 (soberano cotiza en USD
+    // bajo el ticker con sufijo D; el ticker "limpio" cotiza en pesos y NO sirve
+    // para calcSoberano). Ver histLookupKeyFor / histHarddolarTCImplicito.
+    const pxByDateTicker = {};
+    for (const row of rawRows) {
+      if (!pxByDateTicker[row.fecha]) pxByDateTicker[row.fecha] = {};
+      pxByDateTicker[row.fecha][row.ticker] = row.precio;
+    }
+    const tcImplCache = {}; // fecha → TC implícito harddolar (se calcula una vez por día)
+
+    const seriesByTicker = {};
+    let maxFecha = null, usadas = 0, descartadas = 0;
+
+    for (const row of rawRows) {
+      if (!maxFecha || row.fecha > maxFecha) maxFecha = row.fecha;
+
+      // Ticker fuera del universo del dashboard (sin bundle/tipo) → sin forma de
+      // calcular TIR (no hay cashflow). Se descarta en silencio. Esto también
+      // descarta, sin ruido, las propias filas "espejo" (AL30D, BPA8D, TY30P…)
+      // cuando ellas mismas no son un tipo del bundle — sólo se usan como fuente
+      // de precio para su ticker limpio correspondiente, nunca se grafican solas.
+      const tipoReal = ((_bundle._tipos || {})[row.ticker] || '').toLowerCase();
+      if (!tipoReal) { descartadas++; continue; }
+
+      // Sin fila de Macro para esa fecha exacta → sin CER/TC de esa fecha, se descarta.
+      const macroRow = macroMap[row.fecha];
+      if (!macroRow) { descartadas++; continue; }
+
+      // Precio EFECTIVO a usar para el motor de cálculo — para soberano/harddolar/
+      // bopreal/fixed_rate el ticker que cotiza en la unidad correcta es DISTINTO
+      // del ticker limpio (misma resolución que cruzar()). Si ese ticker "espejo"
+      // no tiene fila ESE día exacto, se descarta la fila — nunca se usa el precio
+      // del ticker limpio como fallback (sería la unidad equivocada, ej. pesos en
+      // vez de USD).
+      const dayMap = pxByDateTicker[row.fecha] || {};
+      let precioEfectivo = null;
+      if (tipoReal === 'harddolar') {
+        const key = HARDDOLAR_USD[row.ticker] || null;
+        if (key && dayMap[key] > 0) {
+          precioEfectivo = dayMap[key];
+        } else {
+          // Sin USD directo ese día: estimar desde peso/TC implícito de ESE día
+          // (mismo fallback que cruzar(), calculado con los precios históricos
+          // de esa fecha en vez de los de "hoy").
+          if (!(row.fecha in tcImplCache)) tcImplCache[row.fecha] = histHarddolarTCImplicito(row.fecha, pxByDateTicker);
+          const tcImpl = tcImplCache[row.fecha];
+          const pxPeso = dayMap[row.ticker];
+          if (tcImpl > 0 && pxPeso > 0) precioEfectivo = pxPeso / tcImpl;
+        }
+      } else {
+        const key = histLookupKeyFor(tipoReal, row.ticker);
+        if (key && dayMap[key] > 0) precioEfectivo = dayMap[key];
+      }
+      if (precioEfectivo == null || isNaN(precioEfectivo) || precioEfectivo <= 0) { descartadas++; continue; }
+
+      const calc = histCalcForTicker(row.ticker, tipoReal, precioEfectivo, row.fecha, macroRow.cer, macroRow.tc);
+      if (!calc) { descartadas++; continue; }
+
+      const cat = histCatForTipo(tipoReal);
+      if (!cat) { descartadas++; continue; }
+
+      if (!seriesByTicker[row.ticker]) seriesByTicker[row.ticker] = { tipo: tipoReal, cat, pts: [] };
+      seriesByTicker[row.ticker].pts.push({ fecha: row.fecha, calc });
+      usadas++;
+    }
+
+    for (const t of Object.keys(seriesByTicker)) {
+      seriesByTicker[t].pts.sort((a, b) => a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0);
+    }
+
+    _histSeriesByTicker = seriesByTicker;
+    _histMaxFecha        = maxFecha;
+    _histLoaded          = true;
+
+    const nTickers = Object.keys(seriesByTicker).length;
+    histSetStatus(`${usadas} punto${usadas !== 1 ? 's' : ''} · ${nTickers} ticker${nTickers !== 1 ? 's' : ''}`
+      + (descartadas ? ` · ${descartadas} fila${descartadas !== 1 ? 's' : ''} descartada${descartadas !== 1 ? 's' : ''}` : ''));
+    histRenderChart();
+  } catch (e) {
+    console.warn('Histórico: error cargando datos', e);
+    histSetStatus('Error cargando histórico (ver consola)');
+  } finally {
+    _histLoading = false;
+  }
+}
+
+function histSetStatus(msg) {
+  const el = document.getElementById('hist-status');
+  if (el) el.textContent = msg;
+}
+
+// ── Inicialización del tab (primera vez y cada vez que se activa) ──
+function histInit() {
+  if (!_bundle || !_bundle._tipos) return;
+
+  const bar = document.getElementById('hist-cats-bar');
+  if (bar && !bar.querySelector('.hist-cat-cb')) {
+    CMP_CATS.forEach(cat => {
+      const active = _histState.cats.has(cat.id);
+      const cb = document.createElement('div');
+      cb.className = 'hist-cat-cb' + (active ? ' active' : '');
+      cb.id = 'hist-cb-' + cat.id;
+      cb.innerHTML = `<span class="hist-cb-label">${cat.label}</span>`;
+      cb.onclick = () => histToggleCat(cat.id);
+      bar.appendChild(cb);
+      if (active) histRefreshChipColor(cat.id);
+    });
+  }
+
+  document.querySelectorAll('#hist-win-group .hist-win-btn').forEach(b => {
+    b.classList.toggle('active', Number(b.dataset.win) === _histState.windowDays);
+  });
+
+  const selY = document.getElementById('hist-axis-y');
+  const selX = document.getElementById('hist-axis-x');
+  if (selY) selY.value = _histState.axisY;
+  if (selX) selX.value = _histState.axisX;
+
+  if (!_histLoaded && !_histLoading) histLoadData();
+  else if (_histLoaded) histRenderChart();
+}
+
+// Nota: sólo LEE el color vía cmpColorFor (nunca cmpAssignColor) para no mutar
+// _cmpState.colorMap desde esta pestaña — evita que activar/desactivar categorías
+// acá cambie los colores que ve el Comparador al volver a esa pestaña.
+function histRefreshChipColor(catId) {
+  const cb = document.getElementById('hist-cb-' + catId);
+  if (!cb) return;
+  if (_histState.cats.has(catId)) {
+    const color = cmpColorFor(catId);
+    cb.style.borderColor = color;
+    cb.style.background = color + '1a';
+    cb.style.color = 'var(--text)';
+  } else {
+    cb.style.borderColor = '';
+    cb.style.background = '';
+    cb.style.color = '';
+  }
+}
+
+window.histToggleCat = function (catId) {
+  if (_histState.cats.has(catId)) _histState.cats.delete(catId);
+  else _histState.cats.add(catId);
+  const cb = document.getElementById('hist-cb-' + catId);
+  if (cb) cb.classList.toggle('active', _histState.cats.has(catId));
+  histRefreshChipColor(catId);
+  histRenderChart();
+};
+
+window.histSetWindow = function (days) {
+  _histState.windowDays = days;
+  document.querySelectorAll('#hist-win-group .hist-win-btn').forEach(b => {
+    b.classList.toggle('active', Number(b.dataset.win) === days);
+  });
+  histRenderChart();
+};
+
+window.histAxisChanged = function () {
+  const selY = document.getElementById('hist-axis-y');
+  const selX = document.getElementById('hist-axis-x');
+  if (selY) _histState.axisY = selY.value;
+  if (selX) _histState.axisX = selX.value;
+  histRenderChart();
+};
+
+// ── Render del gráfico: un dataset (línea+puntos) por ticker, agrupado por
+//    categoría para el color; último punto (fecha más reciente) más grande y
+//    con borde blanco, el resto de la cola más chico ──
+function histRenderChart() {
+  const canvas = document.getElementById('hist-curve-chart');
+  if (!canvas) return;
+  if (_histChartInst) { _histChartInst.destroy(); _histChartInst = null; }
+
+  const legendEl = document.getElementById('hist-legend');
+  if (!_histLoaded) {
+    if (legendEl) legendEl.innerHTML = '<span style="font-size:9px;color:var(--text3);font-family:var(--mono);">Cargando histórico…</span>';
+    return;
+  }
+
+  const axY = _histState.axisY || 'tna';
+  const axX = _histState.axisX || 'md';
+  const isXDias = axX === 'dias';
+
+  // Ventana: relativa a la última fecha DISPONIBLE en los datos (no a la fecha
+  // del navegador), para que "30 días" siga teniendo sentido si el snapshot
+  // diario quedó atrasado.
+  let cutoff = null;
+  if (_histState.windowDays > 0 && _histMaxFecha) {
+    const d = new Date(_histMaxFecha + 'T12:00:00');
+    d.setDate(d.getDate() - _histState.windowDays);
+    cutoff = d.toISOString().slice(0, 10);
+  }
+
+  const datasets = [];
+  const legendItems = [];
+  const allDataPts = [];
+
+  for (const cat of CMP_CATS) {
+    if (!_histState.cats.has(cat.id)) continue;
+    const color = cmpColorFor(cat.id);
+    let catHasData = false;
+
+    for (const ticker of Object.keys(_histSeriesByTicker)) {
+      const serie = _histSeriesByTicker[ticker];
+      if (serie.cat !== cat.id) continue;
+
+      const pts = serie.pts
+        .filter(p => !cutoff || p.fecha >= cutoff)
+        .map(p => ({ x: lcGetAxisVal(p, axX), y: lcGetAxisVal(p, axY), fecha: p.fecha, label: ticker }))
+        .filter(p => isFinite(p.x) && p.x > 0 && isFinite(p.y));
+      if (!pts.length) continue;
+
+      catHasData = true;
+      allDataPts.push(...pts);
+
+      const n = pts.length;
+      const pointRadius       = pts.map((p, i) => i === n - 1 ? 7 : 3);
+      const pointHoverRadius  = pointRadius.map(r => r + 2);
+      const pointBorderColor  = pts.map((p, i) => i === n - 1 ? '#fff' : color);
+      const pointBorderWidth  = pts.map((p, i) => i === n - 1 ? 2 : 0);
+
+      datasets.push({
+        label: ticker,
+        data: pts,
+        showLine: true,
+        borderColor: color,
+        backgroundColor: color,
+        pointBackgroundColor: color,
+        pointBorderColor,
+        pointBorderWidth,
+        pointRadius,
+        pointHoverRadius,
+        borderWidth: 1.5,
+        tension: 0,
+        fill: false,
+        order: 2,
+      });
+    }
+    if (catHasData) legendItems.push({ color, label: cat.label });
+  }
+
+  if (!allDataPts.length) {
+    if (legendEl) legendEl.innerHTML = '<span style="font-size:9px;color:var(--text3);font-family:var(--mono);">Sin datos para graficar en la ventana/categorías elegidas</span>';
+    return;
+  }
+
+  const xs = allDataPts.map(p => p.x).filter(isFinite);
+  const ys = allDataPts.map(p => p.y).filter(isFinite);
+  const xMin = Math.min(...xs), xMax = Math.max(...xs);
+  const yMin = Math.min(...ys), yMax = Math.max(...ys);
+  const xSpan = xMax - xMin || 1, ySpan = yMax - yMin || 1;
+  const xPad = xSpan * 0.08, yPad = ySpan * 0.15;
+
+  _histChartInst = new Chart(canvas, {
+    type: 'scatter',
+    data: { datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#131929', borderColor: 'rgba(30,39,243,0.3)', borderWidth: 1,
+          titleColor: '#e8eaf6', bodyColor: '#a5b4fc', padding: 10,
+          titleFont: { family: "'DM Mono',monospace", size: 11 },
+          bodyFont:  { family: "'DM Mono',monospace", size: 11 },
+          callbacks: {
+            label: c => {
+              const p = c.raw;
+              const yStr = p.y.toFixed(4) + '%';
+              const xStr = isXDias ? Math.round(p.x) + 'd' : p.x.toFixed(4);
+              return `${p.label} (${p.fecha}): ${lcAxisLabel(axY)} ${yStr} | ${lcAxisLabel(axX)} ${xStr}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          min: xMin - xPad, max: xMax + xPad,
+          grid: { color: 'rgba(30,39,243,0.08)' },
+          ticks: { color: '#4a5280', font: { family: "'DM Mono',monospace", size: 10 }, callback: v => isXDias ? Math.round(v) + 'd' : v.toFixed(3) },
+          title: { display: true, text: lcAxisLabel(axX), color: '#8a90b0', font: { size: 10 } }
+        },
+        y: {
+          min: yMin - yPad, max: yMax + yPad,
+          grid: { color: 'rgba(30,39,243,0.08)' },
+          ticks: { color: '#4a5280', font: { family: "'DM Mono',monospace", size: 10 }, callback: v => v.toFixed(1) + '%' },
+          title: { display: true, text: lcAxisLabel(axY) + ' (%)', color: '#8a90b0', font: { size: 10 } }
+        }
+      }
+    }
+  });
+
+  if (!window._histResizeObs) {
+    window._histResizeObs = new ResizeObserver(() => {
+      if (document.getElementById('view-rf-hist')?.style.display !== 'none') {
+        clearTimeout(window._histResizeTimer);
+        window._histResizeTimer = setTimeout(() => { if (_histChartInst) _histChartInst.resize(); }, 60);
+      }
+    });
+  }
+  const wrap = document.getElementById('hist-curve-chart')?.parentElement;
+  if (wrap && !window._histResizeObsAttached) {
+    window._histResizeObs.observe(wrap);
+    window._histResizeObsAttached = true;
+  }
+
+  if (legendEl) {
+    legendEl.innerHTML = legendItems.map(item =>
+      `<div class="hist-legend-item">
+        <div class="hist-legend-dot" style="background:${item.color}"></div>
+        <span>${item.label}</span>
+      </div>`
+    ).join('') + '<div class="hist-legend-item"><div class="hist-legend-dot hist-legend-dot-big" style="background:var(--text3);"></div><span>Último dato</span></div>';
+  }
+}
 
 /* ══════════════════════════════════════════════════════════
    SENSIBILIDAD (precio ↔ TIR objetivo)
