@@ -11993,6 +11993,28 @@ let _histLoading        = false;
 let _histSeriesByTicker = {}; // { TICKER: { tipo, cat, pts:[{fecha, calc}] } } — pts ordenados asc por fecha
 let _histMaxFecha       = null; // última fecha presente en la sheet Histórico (referencia para la ventana)
 
+// ── ONs — bundle propio del Worker de ONs, cargado en paralelo al de Bonos.
+// Independiente de onsState (que es el estado de la pestaña ONs): se hace un
+// fetch crudo acá para no disparar efectos secundarios de esa pestaña (sidebar,
+// tabla, etc.) — mismo patrón que histFetchCSV para las dos Google Sheets.
+let _histOnsBundle    = null;                  // bundle crudo del ONS_WORKER_URL
+let _histOnsIndex     = {};                    // { TICKER_INDICE: on } — de bundle._index
+let _histOnsPriceKeys = {};                    // { TICKER_INDICE: [tickers candidatos para precio, en prioridad] }
+
+// Categoría extra de ONs para el Histórico — NO se agrega a CMP_CATS a propósito:
+// el Comparador es sólo Bonos/Letras y no debe mostrar una categoría "ON". Se usa
+// HIST_CATS (= CMP_CATS + ON) sólo dentro de esta pestaña.
+const HIST_ON_CAT = { id: 'on', label: 'Obligaciones Negociables', color: '#2dd4bf' };
+const HIST_CATS = CMP_CATS.concat([HIST_ON_CAT]);
+
+// Color de una categoría en el Histórico: para 'on' es fijo (no vive en CMP_CATS
+// ni en _cmpState.colorMap); para el resto delega en cmpColorFor (mismos colores
+// que el Comparador, sin mutar su estado — ver histRefreshChipColor).
+function histColorFor(catId) {
+  if (catId === HIST_ON_CAT.id) return HIST_ON_CAT.color;
+  return cmpColorFor(catId);
+}
+
 // ── Parser CSV genérico (respeta comillas, a diferencia de los parsers internos
 //    del bundle que asumen columnas sin comas embebidas) ──
 function histSplitCSVLine(line) {
@@ -12025,6 +12047,23 @@ async function histFetchCSV(url) {
   const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error('HTTP ' + res.status);
   return await res.text();
+}
+
+// Fetch propio (no ons_initFromWorker) para no disparar efectos secundarios de
+// la pestaña ONs (sidebar, tabla, scoring...). Nunca tira — si falla, el resto
+// del Histórico (Bonos/Letras) sigue funcionando; simplemente ningún ticker de
+// ON clasifica ese ciclo.
+async function histFetchOnsBundle() {
+  try {
+    const res = await fetch(ONS_WORKER_URL, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const j = await res.json();
+    if (j.error) return null;
+    return j;
+  } catch (e) {
+    console.warn('Histórico: no se pudo cargar el bundle de ONs', e);
+    return null;
+  }
 }
 
 function histNormalizeTickerRows(raw) {
@@ -12063,6 +12102,7 @@ function histCatForTipo(tipoReal) {
   if (t === 'harddolar') return 'harddolar';
   if (t === 'bopreal') return 'bopreal';
   if (t === 'fixed_rate') return 'fixed_rate';
+  if (t === 'on') return 'on';
   return null;
 }
 
@@ -12155,6 +12195,32 @@ function histCalcForTicker(ticker, tipoReal, precio, fechaStr, cerHist, tcHist) 
       if (!_bundle[ticker]) return null;
       return calcFixedRate(_bundle[ticker], precio, fechaStr);
     }
+    if (tipoReal === 'on') {
+      // No pasa por cruzar() (las ONs son un subsistema aparte, onsState/
+      // ONS_WORKER_URL) — réplica del cálculo que hace la pestaña ONs
+      // (ons_calcMetrics, línea ~27924), pero con precio/fecha históricos en
+      // vez de onsState.prices/"hoy". ons_calcMetrics espera precio LIMPIO,
+      // que es justo lo que guarda el snapshot diario para ONs (mismo valor
+      // "c" de data912/arg_corp que ya usa ons_fetchPrecios sin conversión).
+      const onMeta = _histOnsIndex[ticker];
+      if (!onMeta) return null;
+      const cfText = _histOnsBundle?.[ticker] ?? _histOnsBundle?.cashflows?.[ticker];
+      if (!cfText) return null;
+      const cfs = ons_parseCSVCashflow(cfText);
+      if (!cfs || !cfs.length) return null;
+      const settle = new Date(fechaStr + 'T12:00:00');
+      const m = ons_calcMetrics(cfs, precio, settle, onMeta.frecuencia);
+      if (!m || !isFinite(m.ytm)) return null;
+      // ytm de ons_calcMetrics es TEA base 365 (mismo Newton-Raphson que
+      // calcSoberano) — se deriva tna/tem con la misma fórmula que usa
+      // calcSoberano (línea ~4041/4061) para que sea comparable en el gráfico.
+      const tea = m.ytm * 100;
+      const tna = (Math.pow(Math.max(1 + tea / 100, 0.0001), 180 / 360) - 1) * 2 * 100;
+      const tem = (Math.pow(1 + tea / 100, 1 / 12) - 1) * 100;
+      const ultimoCf = m.futuros && m.futuros.length ? m.futuros[m.futuros.length - 1] : null;
+      const diasReal = ultimoCf ? Math.round((ultimoCf.fecha - settle) / 86400000) : null;
+      return { tea, tna, tem, duration: m.duration, md: m.modDuration, diasReal };
+    }
   } catch (e) {
     console.warn('histCalcForTicker: error calculando', ticker, fechaStr, e);
     return null;
@@ -12173,12 +12239,32 @@ async function histLoadData() {
   _histLoading = true;
   histSetStatus('Cargando histórico…');
   try {
-    const [txtTickers, txtMacro] = await Promise.all([
+    const [txtTickers, txtMacro, onsBundle] = await Promise.all([
       histFetchCSV(HIST_TICKERS_CSV_URL),
       histFetchCSV(HIST_MACRO_CSV_URL),
+      histFetchOnsBundle(),
     ]);
     const rawRows  = histNormalizeTickerRows(histParseCSV(txtTickers));
     const macroMap = histNormalizeMacroRows(histParseCSV(txtMacro));
+
+    // Índice de ONs (ticker "índice" del Worker de ONs → {vencimiento, sector,
+    // empresa, frecuencia, ...}) + candidatos de ticker de PRECIO para cada uno
+    // — mismo criterio de prioridad que ons_fetchPrecios (línea ~31004-31027):
+    // los tickers que terminan en "O" cotizan bajo un ticker espejo D (cable) o
+    // C (mep); el resto cotiza bajo su propio ticker, con D como fallback. Si el
+    // Worker de ONs no respondió, onsBundle es null y ningún ticker de ONs
+    // clasifica — el resto del Histórico (Bonos/Letras) sigue andando igual.
+    _histOnsBundle    = onsBundle;
+    _histOnsIndex     = {};
+    _histOnsPriceKeys = {};
+    for (const on of (onsBundle?._index || [])) {
+      const tk = (on.ticker || '').toUpperCase();
+      if (!tk) continue;
+      _histOnsIndex[tk] = on;
+      const suf  = tk.slice(-1);
+      const base = tk.slice(0, -1);
+      _histOnsPriceKeys[tk] = suf === 'O' ? [base + 'D', base + 'C'] : [tk, base + 'D'];
+    }
 
     // Índice de precios crudos por fecha+ticker, armado con TODAS las filas
     // (sin filtrar todavía por _bundle._tipos) — lo necesitamos para resolver,
@@ -12203,7 +12289,14 @@ async function histLoadData() {
       // descarta, sin ruido, las propias filas "espejo" (AL30D, BPA8D, TY30P…)
       // cuando ellas mismas no son un tipo del bundle — sólo se usan como fuente
       // de precio para su ticker limpio correspondiente, nunca se grafican solas.
-      const tipoReal = ((_bundle._tipos || {})[row.ticker] || '').toLowerCase();
+      // Primero Bonos/Letras (_bundle._tipos); si no está ahí, se prueba contra
+      // el índice de ONs (_histOnsIndex) — mismo criterio "clasifica sólo lo que
+      // el csv de referencia reconoce hoy", ahora para ambos universos. Un
+      // ticker histórico que ya no está vigente en NINGUNO de los dos (bono
+      // vencido hace años, ON deslistada) sigue sin clasificar — ese es el tema
+      // más amplio de histórico de vencidas, todavía pendiente.
+      let tipoReal = ((_bundle._tipos || {})[row.ticker] || '').toLowerCase();
+      if (!tipoReal && _histOnsIndex[row.ticker]) tipoReal = 'on';
       if (!tipoReal) { descartadas++; continue; }
 
       // Sin fila de Macro para esa fecha exacta → sin CER/TC de esa fecha, se descarta.
@@ -12230,6 +12323,12 @@ async function histLoadData() {
           const tcImpl = tcImplCache[row.fecha];
           const pxPeso = dayMap[row.ticker];
           if (tcImpl > 0 && pxPeso > 0) precioEfectivo = pxPeso / tcImpl;
+        }
+      } else if (tipoReal === 'on') {
+        // Mismo orden de prioridad que ons_fetchPrecios (D → C para los "O",
+        // propio ticker → D para el resto) — ver armado de _histOnsPriceKeys.
+        for (const key of (_histOnsPriceKeys[row.ticker] || [row.ticker])) {
+          if (dayMap[key] > 0) { precioEfectivo = dayMap[key]; break; }
         }
       } else {
         const key = histLookupKeyFor(tipoReal, row.ticker);
@@ -12279,7 +12378,7 @@ function histInit() {
 
   const bar = document.getElementById('hist-cats-bar');
   if (bar && !bar.querySelector('.hist-cat-cb')) {
-    CMP_CATS.forEach(cat => {
+    HIST_CATS.forEach(cat => {
       const active = _histState.cats.has(cat.id);
       const cb = document.createElement('div');
       cb.className = 'hist-cat-cb' + (active ? ' active' : '');
@@ -12304,14 +12403,15 @@ function histInit() {
   else if (_histLoaded) histRenderChart();
 }
 
-// Nota: sólo LEE el color vía cmpColorFor (nunca cmpAssignColor) para no mutar
+// Nota: sólo LEE el color vía histColorFor (nunca cmpAssignColor) para no mutar
 // _cmpState.colorMap desde esta pestaña — evita que activar/desactivar categorías
-// acá cambie los colores que ve el Comparador al volver a esa pestaña.
+// acá cambie los colores que ve el Comparador al volver a esa pestaña. 'on' no
+// vive en CMP_CATS/_cmpState en absoluto (ver histColorFor).
 function histRefreshChipColor(catId) {
   const cb = document.getElementById('hist-cb-' + catId);
   if (!cb) return;
   if (_histState.cats.has(catId)) {
-    const color = cmpColorFor(catId);
+    const color = histColorFor(catId);
     cb.style.borderColor = color;
     cb.style.background = color + '1a';
     cb.style.color = 'var(--text)';
@@ -12379,9 +12479,9 @@ function histRenderChart() {
   const legendItems = [];
   const allDataPts = [];
 
-  for (const cat of CMP_CATS) {
+  for (const cat of HIST_CATS) {
     if (!_histState.cats.has(cat.id)) continue;
-    const color = cmpColorFor(cat.id);
+    const color = histColorFor(cat.id);
     let catHasData = false;
 
     for (const ticker of Object.keys(_histSeriesByTicker)) {
