@@ -12345,7 +12345,8 @@ function histCatForTipo(tipoReal) {
   if (t === 'lecap') return 'lecap';
   if (t === 'boncap' || t === 'dual_boncap') return 'boncap';
   if (t === 'boncer' || t === 'boncer_bullet' || t === 'dual_boncer') return 'boncer';
-  if (t === 'tamar' || t === 'dual_tamar') return 'tamar'; // ver nota de soporte en histCalcForTicker
+  if (t === 'tamar') return 'tamar';
+  if (t === 'dual_tamar') return 'duales'; // no es TAMAR "puro" — ver histCalcDualForTicker (compara ambas patas)
   if (t === 'dolarlinked' || t === 'dual_dl') return 'dolarlinked';
   if (t === 'soberano') return 'soberano';
   if (t === 'harddolar') return 'harddolar';
@@ -12402,6 +12403,141 @@ function histWithPatchedCer(fechaStr, cerHist, fn) {
   _cerDatos = { [fechaStr]: cerHist };
   try { return fn(); }
   finally { _cerDatos = prev; }
+}
+
+// ── Promedio TAMAR "a la fecha" (para un punto histórico) ──
+// Misma lógica que calcTamarPromTicker (línea ~4380), pero con el corte de
+// "hoy" reemplazado por asOfFechaStr: sólo usa datos reales de _tamarSerie
+// con fecha <= asOfFechaStr (nunca datos posteriores a esa fecha — sería
+// mirar el futuro) y proyecta el resto (desde el día siguiente al corte
+// hasta maturity T-10) con el promedio de los últimos 5 datos reales
+// conocidos A ESA FECHA, no los últimos 5 de la serie completa. La serie
+// BCRA (variable 44, /tamar) arranca el 01/10/2024 — no hay forma de
+// reconstruir puntos anteriores a esa fecha, porque la tasa TAMAR
+// simplemente no se publicaba (y, en la práctica, tampoco había bonos TAMAR
+// emitidos todavía).
+function histCalcTamarPromAsOf(emisionISO, maturityISO, asOfFechaStr) {
+  const emT10 = tMenos10Tamar(emisionISO);
+  const matT10 = tMenos10Tamar(maturityISO);
+
+  const serieHastaFecha = _tamarSerie.filter(d => d.fecha <= asOfFechaStr);
+  if (!serieHastaFecha.length) return null;
+
+  const seriePorFecha = {};
+  for (const d of serieHastaFecha) seriePorFecha[d.fecha] = d.valor;
+  const ultimaFecha = serieHastaFecha[serieHastaFecha.length - 1].fecha;
+
+  let sumaReal = 0, nReal = 0, ultimoValor = 0;
+  for (const d of serieHastaFecha) {
+    if (d.fecha < emT10) ultimoValor = d.valor;
+    else break;
+  }
+
+  const emT10Date = new Date(emT10 + 'T12:00:00');
+  const matT10Date = new Date(matT10 + 'T12:00:00');
+  const ultimaDate = new Date(ultimaFecha + 'T12:00:00');
+  const cur = new Date(emT10Date);
+  while (cur <= matT10Date) {
+    const iso = cur.toISOString().slice(0, 10);
+    const dow = cur.getDay();
+    if (dow !== 0 && dow !== 6) {
+      if (cur <= ultimaDate) {
+        if (seriePorFecha[iso] !== undefined) ultimoValor = seriePorFecha[iso];
+        sumaReal += ultimoValor;
+        nReal++;
+      }
+    }
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  let nProy = 0;
+  if (ultimaFecha < matT10) {
+    const sigDia = new Date(ultimaFecha + 'T12:00:00');
+    sigDia.setDate(sigDia.getDate() + 1);
+    nProy = contarHabilesTamar(sigDia.toISOString().slice(0, 10), matT10);
+  }
+
+  const ultimas5 = serieHastaFecha.slice(-5);
+  const tamarProy = ultimas5.length ? ultimas5.reduce((s, d) => s + d.valor, 0) / ultimas5.length : 0;
+
+  const nTotal = nReal + nProy;
+  if (nTotal === 0) return null;
+
+  const tamarPromTNA = (sumaReal + nProy * tamarProy) / nTotal / 100;
+  return { tamarPromTNA, tem: tamarTnaToTem(tamarPromTNA), nReal, nProy, tamarProy: tamarProy / 100, ultimaFecha };
+}
+
+// ── Duales (TAMAR vs. pata fija) para UN punto histórico ──
+// Réplica de cruzarDual (línea ~4664): un dual tiene dos patas que comparten
+// el MISMO precio de mercado — el ticker "base" (el mismo que trae la fila
+// de precio y está tipado 'dual_tamar'). La pata fija (boncap/boncer/dólar
+// linked bullet) vive bajo el ticker "<base>_F", tipada dual_boncap/
+// dual_boncer/dual_dl, pero nunca tiene su propia fila de precio en la hoja
+// — usa el precio de "base", igual que hace cruzarDual con preciosMap[base].
+// Se calculan ambas patas con ese mismo precio histórico y gana la de mayor
+// TNA — así se arma el punto de "Duales" (no es una categoría con motor
+// propio, es el resultado de comparar las otras dos, fecha por fecha).
+function histCalcDualForTicker(base, precio, fechaStr, cerHist, tcHist) {
+  const meta = _bundle._meta || {};
+  const tipos = _bundle._tipos || {};
+  const metaTamar = meta[base] || {};
+  if (!metaTamar.emision || !metaTamar.maturity) return null;
+
+  const tickerFija = base + '_F';
+  const tipoFija = (tipos[tickerFija] || '').toLowerCase();
+  if (!tipoFija) return null;
+  const metaFija = meta[tickerFija] || {};
+
+  // Dual TAMAR–DL: todo el instrumento devenga en USD → precio/TC para la
+  // pata TAMAR (calcDolarLinked de la pata fija ya divide por TC adentro).
+  const esDL = tipoFija === 'dual_dl';
+  const precioTamar = esDL ? (tcHist > 0 ? precio / tcHist : NaN) : precio;
+
+  let calcT = null;
+  if (isFinite(precioTamar) && precioTamar > 0) {
+    const tp = histCalcTamarPromAsOf(metaTamar.emision, metaTamar.maturity, fechaStr);
+    if (tp) {
+      tp.margen = metaTamar.margen ?? 0;
+      tp.emision = metaTamar.emision || null;
+      calcT = calcTamar(precioTamar, fechaStr, metaTamar.maturity, tp);
+    }
+  }
+
+  let calcFija = null;
+  try {
+    if (tipoFija === 'dual_boncap') {
+      const cfs = getCfs(tickerFija);
+      const cf = cfs && cfs.length ? cfs[cfs.length - 1] : null;
+      if (cf && precio > 0) calcFija = calcLecap(cf, precio, fechaStr);
+    } else if (tipoFija === 'dual_boncer') {
+      if (metaFija.cerInicial && metaFija.maturity && cerHist != null && isFinite(cerHist) && precio > 0) {
+        calcFija = histWithPatchedCer(fechaStr, cerHist, () => calcBoncer(precio, fechaStr, metaFija.maturity, metaFija.cerInicial, fechaStr));
+      }
+    } else if (tipoFija === 'dual_dl') {
+      const matDL = metaFija.maturity || metaTamar.maturity;
+      if (matDL && tcHist != null && isFinite(tcHist) && tcHist > 0 && precio > 0) {
+        calcFija = calcDolarLinked(precio, fechaStr, matDL, tcHist);
+      }
+    }
+  } catch (e) {
+    calcFija = null;
+  }
+
+  if (!calcT && !calcFija) return null;
+
+  const tnaTamar = calcT?.tna ?? -Infinity;
+  const tnaFija  = calcFija?.tna ?? -Infinity;
+  const ganador = tnaTamar >= tnaFija ? 'tamar' : 'fija';
+  const winner = ganador === 'tamar' ? calcT : calcFija;
+  if (!winner) return null;
+
+  return {
+    tna: winner.tna, tea: winner.tea, tem: winner.tem,
+    md: winner.md || 0, duration: winner.duration ?? winner.dur ?? winner.md, // calcLecap devuelve "dur", no "duration"
+    diasReal: winner.diasReal,
+    ganador, tipoFija,
+    calcTamar: calcT, calcFija,
+  };
 }
 
 // ── Dispatch de motor de cálculo por tipo fino, para UNA fila histórica ──
@@ -12470,14 +12606,18 @@ function histCalcForTicker(ticker, tipoReal, precio, fechaStr, cerHist, tcHist) 
       const diasReal = ultimoCf ? Math.round((ultimoCf.fecha - settle) / 86400000) : null;
       return { tea, tna, tem, duration: m.duration, md: m.modDuration, diasReal };
     }
+    if (tipoReal === 'tamar') { // dual_tamar NO pasa por acá — ver histCalcDualForTicker, llamado directo desde el loop principal
+      if (!meta.emision || !meta.maturity) return null;
+      const tp = histCalcTamarPromAsOf(meta.emision, meta.maturity, fechaStr);
+      if (!tp) return null; // típicamente: fechaStr anterior al 01/10/2024 (arranque de la serie BCRA)
+      tp.margen = meta.margen ?? 0;
+      tp.emision = meta.emision || null;
+      return calcTamar(precio, fechaStr, meta.maturity, tp);
+    }
   } catch (e) {
     console.warn('histCalcForTicker: error calculando', ticker, fechaStr, e);
     return null;
   }
-  // tamar / dual_tamar / duales: el motor TAMAR necesita el promedio histórico de
-  // la tasa TAMAR hasta esa fecha (calcularTamarProms sólo trae el promedio
-  // vigente "hoy" desde el worker /tamar) — dato no disponible en Histórico/Macro,
-  // así que estos tipos no producen puntos históricos (categoría queda sin datos).
   return null;
 }
 
@@ -12488,10 +12628,16 @@ async function histLoadData() {
   _histLoading = true;
   histSetStatus('Cargando histórico…');
   try {
+    // _tamarSerie (serie diaria BCRA de TAMAR, variable 44) se necesita para
+    // reconstruir puntos históricos de tamar/dual_tamar (ver
+    // histCalcTamarPromAsOf) — se carga una sola vez, en paralelo con el
+    // resto. calcularTamarProms() también calcula _tamarProms ("hoy"), que
+    // Histórico no usa, pero no cuesta nada de más.
     const [txtTickers, txtMacro, onsBundle] = await Promise.all([
       histFetchCSV(HIST_TICKERS_CSV_URL),
       histFetchCSV(HIST_MACRO_CSV_URL),
       histFetchOnsBundle(),
+      (_tamarSerie.length ? Promise.resolve() : calcularTamarProms().catch(() => {})),
     ]);
     const rawRows  = histNormalizeTickerRows(histParseCSV(txtTickers));
     const macroMap = histNormalizeMacroRows(histParseCSV(txtMacro));
@@ -12609,7 +12755,11 @@ async function histLoadData() {
         continue;
       }
 
-      const calc = histCalcForTicker(row.ticker, tipoReal, precioEfectivo, row.fecha, macroRow.cer, macroRow.tc);
+      // dual_tamar tiene motor propio (compara las dos patas, ver
+      // histCalcDualForTicker) — el resto pasa por el dispatch normal.
+      const calc = tipoReal === 'dual_tamar'
+        ? histCalcDualForTicker(row.ticker, precioEfectivo, row.fecha, macroRow.cer, macroRow.tc)
+        : histCalcForTicker(row.ticker, tipoReal, precioEfectivo, row.fecha, macroRow.cer, macroRow.tc);
       if (!calc) { descartadas++; motivos.sinCalc++; histBump(tipoReal, 'sinCalc'); continue; }
 
       const cat = histCatForTipo(tipoReal);
@@ -12664,6 +12814,9 @@ async function histLoadData() {
       macroSaneoCandidatosNoAplicados: macroSaneo.candidatosNoAplicados, // saltos >3x/<1/3 que sobreviven a la reconstrucción — para revisar, no se descartan
       cerAnchorEncontrada: _histMacroAnchorInfo.cerAnchorEncontrada, // false = no está la fecha ancla (01/09/2021) en la hoja → CER puede no reconstruirse bien
       tcAnchorEncontrada: _histMacroAnchorInfo.tcAnchorEncontrada,
+      tamarSerieCount: _tamarSerie.length, // 0 = no se pudo cargar la serie BCRA de TAMAR → tamar/dual_tamar quedan sin puntos
+      tamarSeriePrimeraFecha: _tamarSerie.length ? _tamarSerie[0].fecha : null,
+      tamarSerieUltimaFecha: _tamarSerie.length ? _tamarSerie[_tamarSerie.length - 1].fecha : null,
       bundleTiposCount: Object.keys(_bundle._tipos || {}).length,
       onsIndexCount: Object.keys(_histOnsIndex).length,
       macroMapCount: Object.keys(macroMap).length,
