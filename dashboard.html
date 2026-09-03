@@ -1933,6 +1933,15 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 .hist-density-ctl span{flex:1;text-align:center;font-family:var(--mono);font-size:10px;color:var(--text2);min-width:32px;}
 .hist-status-toggle{width:18px;height:18px;border-radius:50%;border:1px solid var(--border2);background:var(--bg);color:var(--text3);font-family:var(--mono);font-size:10px;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .12s;flex-shrink:0;}
 .hist-status-toggle:hover,.hist-status-toggle.active{color:var(--accent);border-color:var(--accent);}
+#hist-mode-group.hist-win-group-50{width:100%;}
+#hist-mode-group.hist-win-group-50 .hist-win-btn{flex:1;text-align:center;}
+.hist-chart-float-btn{position:absolute;z-index:5;border:1px solid var(--border2);border-radius:5px;background:rgba(15,19,33,0.85);color:var(--text2);font-family:var(--mono);font-size:10px;font-weight:700;padding:4px 9px;cursor:pointer;transition:all .12s;backdrop-filter:blur(2px);}
+.hist-chart-float-btn:hover{color:var(--accent);border-color:var(--accent);}
+.hist-reset-btn{top:10px;left:10px;}
+.hist-density-float{position:absolute;top:10px;right:10px;z-index:5;background:rgba(15,19,33,0.85);backdrop-filter:blur(2px);}
+.hist-bottom-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-shrink:0;}
+.hist-bottom-row .hist-legend{flex:1;min-width:0;}
+.hist-info-wrap{display:flex;align-items:center;gap:6px;flex-shrink:0;}
 .hist-loading-overlay{position:absolute;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:rgba(10,13,24,0.72);backdrop-filter:blur(1px);}
 .hist-loading-overlay.show{display:flex;}
 .hist-bm-loader{display:inline-flex;flex-direction:column;align-items:center;gap:18px;}
@@ -3106,21 +3115,9 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
           <div class="hist-win-btn" data-win="0" onclick="histSetWindow(0)">Todo</div>
         </div>
         <label style="font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-top:4px;">Modo</label>
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-          <div id="hist-mode-group" class="hist-win-group">
-            <div class="hist-win-btn" data-mode="trayectoria" onclick="histSetMode('trayectoria')">Trayectoria</div>
-            <div class="hist-win-btn" data-mode="curva" onclick="histSetMode('curva')">Curva</div>
-          </div>
-          <div id="hist-curva-density-wrap" class="hist-density-ctl" style="display:none;"
-               title="Densidad de curvas — rueda del mouse o los botones" onwheel="histDensityWheel(event)">
-            <button type="button" onclick="histDensityStep(-10)">−</button>
-            <span id="hist-curva-density-val">100%</span>
-            <button type="button" onclick="histDensityStep(10)">+</button>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
-          <button type="button" class="hist-status-toggle" id="hist-status-toggle" onclick="histToggleStatus()" title="Ver detalle de carga">i</button>
-          <div id="hist-status" style="display:none;font-family:var(--mono);font-size:9px;color:var(--text3);">—</div>
+        <div id="hist-mode-group" class="hist-win-group hist-win-group-50">
+          <div class="hist-win-btn" data-mode="trayectoria" onclick="histSetMode('trayectoria')">Trayectoria</div>
+          <div class="hist-win-btn" data-mode="curva" onclick="histSetMode('curva')">Curva</div>
         </div>
       </div>
     </div>
@@ -3148,8 +3145,22 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
           <div class="hist-chart-inner">
             <canvas id="hist-curve-chart" style="position:absolute;inset:0;width:100%!important;height:100%!important;"></canvas>
           </div>
+          <!-- Controles flotantes DENTRO del gráfico -->
+          <button type="button" id="hist-reset-btn" class="hist-chart-float-btn hist-reset-btn" onclick="histResetExclusions()" style="display:none;" title="Reincluir todos los instrumentos/datos excluidos">↺ Reset</button>
+          <div id="hist-curva-density-wrap" class="hist-density-ctl hist-density-float" style="display:none;"
+               title="Densidad de curvas — rueda del mouse o los botones" onwheel="histDensityWheel(event)">
+            <button type="button" onclick="histDensityStep(-10)">−</button>
+            <span id="hist-curva-density-val">100%</span>
+            <button type="button" onclick="histDensityStep(10)">+</button>
+          </div>
         </div>
-        <div class="hist-legend" id="hist-legend"></div>
+        <div class="hist-bottom-row">
+          <div class="hist-legend" id="hist-legend"></div>
+          <div class="hist-info-wrap">
+            <button type="button" class="hist-status-toggle" id="hist-status-toggle" onclick="histToggleStatus()" title="Ver detalle de carga">i</button>
+            <div id="hist-status" style="display:none;font-family:var(--mono);font-size:9px;color:var(--text3);white-space:nowrap;">—</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -12049,6 +12060,7 @@ let _histDebug          = {}; // volcado de diagnóstico — ver window._histDeb
 let _histExcluded       = new Set(); // tickers excluidos del gráfico por click en su último punto (modo trayectoria)
 let _histExcludedPoints = new Set(); // "TICKER|fecha" — datos puntuales excluidos por click (ruido, amortizaciones, etc.), sin sacar todo el ticker
 let _histHoverTicker    = null; // ticker actualmente resaltado por hover (modo trayectoria) — null = ninguno
+let _histHoverCurvaKey  = null; // "grupo|fecha" de la curva resaltada por hover (modo curva) — null = ninguna
 
 // ── ONs — bundle propio del Worker de ONs, cargado en paralelo al de Bonos.
 // Independiente de onsState (que es el estado de la pestaña ONs): se hace un
@@ -13023,6 +13035,15 @@ window.histToggleStatus = function () {
   if (btn) btn.classList.toggle('active', show);
 };
 
+// Reincluye todos los tickers y puntos individuales excluidos, y vuelve a
+// dibujar el gráfico (ejes se recalculan solos ya que allDataPts vuelve a
+// incluir todo).
+window.histResetExclusions = function () {
+  _histExcluded.clear();
+  _histExcludedPoints.clear();
+  histRenderChart();
+};
+
 window.histAxisChanged = function () {
   const selY = document.getElementById('hist-axis-y');
   const selX = document.getElementById('hist-axis-x');
@@ -13212,14 +13233,17 @@ function histBuildDatasetsCurva(axX, axY, cutoff) {
         allDataPts.push(...pts);
 
         const isLastDate = i === nF - 1;
-        // Degradé no lineal: las curvas recientes se mantienen bien visibles y
-        // las viejas caen rápido a casi transparentes (en vez de un fade parejo
-        // a lo largo de toda la ventana) — GAMMA>1 concentra la opacidad cerca
-        // del extremo reciente.
-        const GAMMA = 3.2;
-        const posicion = nF === 1 ? 1 : i / (nF - 1); // 0 = más vieja, 1 = más reciente
-        const alpha = nF === 1 ? 1 : 0.03 + Math.pow(posicion, GAMMA) * 0.97;
+        // Degradé por CANTIDAD de curvas hacia atrás, no por fracción del total
+        // — con una fracción, una ventana chica (ej. 7d ≈ 6-7 curvas) quedaba
+        // casi toda por debajo del piso de opacidad y no se veía nada. Con un
+        // decaimiento absoluto, las primeras ~15 curvas hacia atrás se ven bien
+        // SIEMPRE (sea la ventana 7d o "Todo"), y recién después de ~25-30 caen
+        // al piso (casi transparentes).
+        const stepsBack = nF - 1 - i; // 0 = la más reciente
+        const DECAY = 0.90, FLOOR = 0.04;
+        const alpha = Math.max(FLOOR, Math.pow(DECAY, stepsBack));
         const rgba = histHexToRgba(baseColor, alpha);
+        const curvaKey = gk + '|' + fecha; // une la línea de tendencia con sus puntos reales para hover/click
 
         // Línea de TENDENCIA (regresión polinómica, no unir los puntos reales) —
         // se muestrean ~24 puntos parejos dentro del rango de X de ESE día para
@@ -13247,18 +13271,27 @@ function histBuildDatasetsCurva(axX, axY, cutoff) {
             backgroundColor: rgba,
             pointRadius: 0,
             pointHoverRadius: 0,
-            pointHitRadius: 0,
+            // Hit radius >0 aunque no se vean (radius 0): así el mouse puede
+            // "engancharse" a la curva para el hover, no sólo a un punto real.
+            pointHitRadius: 7,
             borderWidth: isLastDate ? 2.2 : 1,
             tension: 0.15,
             fill: false,
             order: isLastDate ? 1 : 3,
+            _histCurvaKey: curvaKey,
             _histCurvaFecha: fecha, // usado por el plugin de etiquetas para poner la fecha junto a la curva
-            _histCurvaColor: rgba,
+            _histCurvaColor: baseColor, // hex base, sin alpha — para recomputar en hover
+            _histCurvaBaseAlpha: alpha,
+            _histCurvaBaseWidth: isLastDate ? 2.2 : 1,
+            _histCurvaBaseOrder: isLastDate ? 1 : 3,
+            _histCurvaIsLast: isLastDate,
           });
         }
 
         // Puntos REALES — sólo como referencia (más chicos, sin línea propia);
-        // el día más reciente se marca más grande con borde blanco.
+        // el día más reciente se marca más grande con borde blanco. También
+        // clickeables (modo curva): click en un punto excluye ese INSTRUMENTO
+        // entero (todas sus curvas), igual que el último punto en Trayectoria.
         datasets.push({
           label: `${histGroupLabel(gk)} ${fecha}`,
           data: pts,
@@ -13270,7 +13303,12 @@ function histBuildDatasetsCurva(axX, axY, cutoff) {
           pointBorderWidth: isLastDate ? 1.5 : 0,
           pointRadius: isLastDate ? 4 : 2,
           pointHoverRadius: isLastDate ? 6 : 4,
+          pointHitRadius: 6,
           order: isLastDate ? 1 : 3,
+          _histCurvaKey: curvaKey,
+          _histCurvaColor: baseColor,
+          _histCurvaBaseAlpha: alpha,
+          _histCurvaIsLast: isLastDate,
         });
       });
 
@@ -13281,7 +13319,7 @@ function histBuildDatasetsCurva(axX, axY, cutoff) {
   return { datasets, legendItems, allDataPts };
 }
 
-// Click en un punto — sólo hace algo en modo trayectoria. Tres casos:
+// Click en un punto. En TRAYECTORIA, tres casos:
 //  1) Dataset de puntos EXCLUIDOS individualmente (_histExcludedPointsFor):
 //     reincluye ese dato puntual.
 //  2) Punto ÚLTIMO de la línea de un ticker (el marcador grande con borde
@@ -13291,11 +13329,26 @@ function histBuildDatasetsCurva(axX, axY, cutoff) {
 //     (_histExcludedPoints) — para sacar un outlier aislado sin perder el
 //     resto de la cola del ticker. Queda visible, chico y tenue, en un
 //     dataset aparte, todavía clickeable para reincluirlo (caso 1).
+// En CURVA, un solo caso: click en un dato real (no en la línea de tendencia,
+// que no tiene ticker propio) excluye ese INSTRUMENTO entero — no hay noción
+// de "punto puntual" en curva porque cada curva ya es "un día", sacar un solo
+// dato de un día puntual no tiene el mismo sentido que en trayectoria.
 function histHandleChartClick(evt, elements, chart) {
-  if (_histState.mode !== 'trayectoria' || !elements || !elements.length) return;
+  if (!elements || !elements.length) return;
   const el = elements[0];
   const ds = chart.data.datasets[el.datasetIndex];
   if (!ds) return;
+
+  if (_histState.mode === 'curva') {
+    const pt = ds.data[el.index];
+    const ticker = pt && pt.label;
+    if (!ticker || !_histSeriesByTicker[ticker]) return; // click en la curva de tendencia, no en un dato real — no hace nada
+    if (_histExcluded.has(ticker)) _histExcluded.delete(ticker); else _histExcluded.add(ticker);
+    histRenderChart();
+    return;
+  }
+
+  if (_histState.mode !== 'trayectoria') return;
 
   if (ds._histExcludedPointsFor) {
     const pt = ds.data[el.index];
@@ -13318,11 +13371,14 @@ function histHandleChartClick(evt, elements, chart) {
   histRenderChart();
 }
 
-// Hover — sólo en modo trayectoria: resalta TODA la línea del ticker bajo el
-// mouse (opacidad plena + borde más grueso + al frente) y atenúa el resto,
-// para poder seguir una trayectoria puntual sin que se mezcle con las demás.
-// Los tickers ya excluidos (_histExcluded) no se tocan, siguen tenues.
+// Hover — resalta bajo el mouse y atenúa el resto, en los dos modos:
+//  - Trayectoria: toda la línea del ticker bajo el mouse.
+//  - Curva: la curva del día bajo el mouse (línea de tendencia + sus puntos
+//    reales, unidos por _histCurvaKey) — se pone a opacidad plena, más
+//    gruesa, al frente, y con su etiqueta de fecha bien legible (ver plugin
+//    'hist-lbl' en histRenderChart).
 function histHandleChartHover(evt, elements, chart) {
+  if (_histState.mode === 'curva') return histHandleChartHoverCurva(elements, chart);
   if (_histState.mode !== 'trayectoria') return;
   let ticker = null;
   if (elements && elements.length) {
@@ -13348,12 +13404,47 @@ function histHandleChartHover(evt, elements, chart) {
   if (changed) chart.update('none');
 }
 
+function histHandleChartHoverCurva(elements, chart) {
+  let key = null;
+  if (elements && elements.length) {
+    const ds = chart.data.datasets[elements[0].datasetIndex];
+    if (ds && ds._histCurvaKey) key = ds._histCurvaKey;
+  }
+  if (key === _histHoverCurvaKey) return;
+  _histHoverCurvaKey = key;
+
+  let changed = false;
+  chart.data.datasets.forEach(ds => {
+    if (!ds._histCurvaKey || ds._histCurvaBaseAlpha == null) return;
+    const isHovered = key && ds._histCurvaKey === key;
+    const dimmed = key && !isHovered;
+    const alpha = isHovered ? 1 : (dimmed ? ds._histCurvaBaseAlpha * 0.25 : ds._histCurvaBaseAlpha);
+    const rgba = histHexToRgba(ds._histCurvaColor, alpha);
+    const width = ds._histCurvaBaseWidth != null ? (isHovered ? ds._histCurvaBaseWidth + 1.6 : ds._histCurvaBaseWidth) : undefined;
+    const order = isHovered ? -1 : (ds._histCurvaBaseOrder ?? ds.order);
+    if (ds.borderColor !== rgba) {
+      ds.borderColor = rgba; ds.backgroundColor = rgba;
+      if (ds.pointBackgroundColor !== undefined) ds.pointBackgroundColor = rgba;
+      if (!ds._histCurvaIsLast && ds.pointBorderColor !== undefined) ds.pointBorderColor = rgba;
+      if (width !== undefined) ds.borderWidth = width;
+      ds.order = order;
+      changed = true;
+    }
+  });
+  if (changed) chart.update('none');
+}
+
 // ── Render del gráfico — dispatcher según _histState.mode (ver
 //    histBuildDatasetsTrayectoria / histBuildDatasetsCurva más arriba) ──
 function histRenderChart() {
   const canvas = document.getElementById('hist-curve-chart');
   if (!canvas) return;
   if (_histChartInst) { _histChartInst.destroy(); _histChartInst = null; }
+
+  // Botón "Reset" flotante: sólo visible si hay algo excluido (ticker
+  // completo o punto individual) para reincluir.
+  const resetBtn = document.getElementById('hist-reset-btn');
+  if (resetBtn) resetBtn.style.display = (_histExcluded.size > 0 || _histExcludedPoints.size > 0) ? '' : 'none';
 
   const legendEl = document.getElementById('hist-legend');
   if (!_histLoaded) {
@@ -13390,7 +13481,9 @@ function histRenderChart() {
   const xMin = Math.min(...xs), xMax = Math.max(...xs);
   const yMin = Math.min(...ys), yMax = Math.max(...ys);
   const xSpan = xMax - xMin || 1, ySpan = yMax - yMin || 1;
-  const xPad = xSpan * 0.08, yPad = ySpan * 0.15;
+  // Margen chico — sólo el aire justo para que el punto extremo no quede
+  // pegado al borde del gráfico, sin desperdiciar espacio de más.
+  const xPad = xSpan * 0.035, yPad = ySpan * 0.06;
 
   const histMode = _histState.mode;
   _histChartInst = new Chart(canvas, {
@@ -13442,18 +13535,28 @@ function histRenderChart() {
       afterDatasetsDraw(chart) {
         const ctx = chart.ctx;
         if (histMode === 'curva') {
+          // Etiqueta de fecha SÓLO en la curva más reciente de cada grupo
+          // (siempre) y en la resaltada por hover (mientras dura el hover) —
+          // etiquetar las ~90 curvas de una ventana grande a la vez las hacía
+          // ilegibles. Fondo sólido + letra más grande para que se lea bien.
           chart.data.datasets.forEach((ds, di) => {
             if (!ds._histCurvaFecha) return;
+            const isHovered = _histHoverCurvaKey && ds._histCurvaKey === _histHoverCurvaKey;
+            if (!ds._histCurvaIsLast && !isHovered) return;
             const meta = chart.getDatasetMeta(di);
             const els = meta.data;
             if (!els || !els.length) return;
             const last = els[els.length - 1]; // extremo de mayor x de la curva
             if (!last) return;
             ctx.save();
-            ctx.font = "600 8px 'DM Mono',monospace";
-            ctx.fillStyle = ds._histCurvaColor || ds.borderColor;
+            ctx.font = "700 10px 'DM Mono',monospace";
+            const w = ctx.measureText(ds._histCurvaFecha).width;
+            const lx = last.x + 6, ly = last.y;
+            ctx.fillStyle = 'rgba(19,25,41,0.88)';
+            ctx.fillRect(lx - 3, ly - 8, w + 6, 15);
+            ctx.fillStyle = isHovered ? '#fff' : (ds._histCurvaColor || '#e8eaf6');
             ctx.textBaseline = 'middle';
-            ctx.fillText(ds._histCurvaFecha, last.x + 4, last.y);
+            ctx.fillText(ds._histCurvaFecha, lx, ly);
             ctx.restore();
           });
           return;
