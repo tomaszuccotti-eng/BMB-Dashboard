@@ -12227,6 +12227,40 @@ function histNormalizeMacroRows(raw) {
   return map;
 }
 
+// ── Saneo de CER/TC: la fila más nueva de Macro la escribe sola el Apps Script
+// cada día (a diferencia del bulk histórico, que ya reparamos a mano) — y de
+// vez en cuando Sheets le reformatea la celda (mismo problema de fondo que ya
+// tuvimos con las fechas: si la columna no está fijada como Texto plano, un
+// valor recién escrito puede perder el punto decimal al exportarse a CSV, ej.
+// TC real 1509.4686 sale como "15094686"). CER/TC son series lentas — no se
+// mueven más de un puñado de % por día hábil — así que un salto >5x o <1/5
+// contra el último valor válido es, con altísima probabilidad, este bug de
+// formato y no un movimiento real de mercado. Se descarta esa fecha entera
+// (mismo trato que "sin fila de Macro" en el loop principal) para no
+// contaminar boncer/boncer_bullet/dólar linked, que sí dependen de CER/TC.
+// El arreglo de fondo sigue siendo fijar esa columna como Texto plano en la
+// planilla — esto es sólo para que el gráfico no muestre la fila corrupta.
+function histSanitizeMacroMap(macroMap) {
+  const fechas = Object.keys(macroMap).sort();
+  let prevCer = null, prevTc = null;
+  const descartadas = [];
+  for (const f of fechas) {
+    const row = macroMap[f];
+    const cerOk = row.cer != null && isFinite(row.cer);
+    const tcOk  = row.tc  != null && isFinite(row.tc);
+    const cerSalto = prevCer != null && cerOk && (row.cer > prevCer * 5 || row.cer < prevCer / 5);
+    const tcSalto  = prevTc  != null && tcOk  && (row.tc  > prevTc  * 5 || row.tc  < prevTc  / 5);
+    if (cerSalto || tcSalto) {
+      descartadas.push({ fecha: f, cer: row.cer, tc: row.tc, prevCer, prevTc, motivo: cerSalto && tcSalto ? 'cer y tc' : cerSalto ? 'cer' : 'tc' });
+      delete macroMap[f];
+      continue; // no actualiza prevCer/prevTc con un valor que se descartó
+    }
+    if (cerOk) prevCer = row.cer;
+    if (tcOk) prevTc = row.tc;
+  }
+  return descartadas;
+}
+
 // ── Mapea el tipo fino (_bundle._tipos[ticker]) a un id de CMP_CATS ──
 // Réplica exacta del agrupamiento que hace cruzar() por parámetro `tipo`.
 function histCatForTipo(tipoReal) {
@@ -12384,6 +12418,7 @@ async function histLoadData() {
     ]);
     const rawRows  = histNormalizeTickerRows(histParseCSV(txtTickers));
     const macroMap = histNormalizeMacroRows(histParseCSV(txtMacro));
+    const macroFilasDescartadas = histSanitizeMacroMap(macroMap);
 
     // Índice de ONs (ticker "índice" del Worker de ONs → {vencimiento, sector,
     // empresa, frecuencia, ...}) + candidatos de ticker de PRECIO para cada uno
@@ -12547,6 +12582,7 @@ async function histLoadData() {
       motivosPorTipo,
       sampleSinPrecio,
       sampleExtremos,
+      macroFilasDescartadas, // fechas de Macro excluidas por salto absurdo de CER/TC (ver histSanitizeMacroMap)
       bundleTiposCount: Object.keys(_bundle._tipos || {}).length,
       onsIndexCount: Object.keys(_histOnsIndex).length,
       macroMapCount: Object.keys(macroMap).length,
