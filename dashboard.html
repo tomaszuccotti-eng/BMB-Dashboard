@@ -1919,7 +1919,7 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 .cmp-empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-family:var(--mono);font-size:11px;}
 /* ── Histórico / Evolución ── */
 #app-rf #rf-tab-hist{padding:0 16px;height:52px;display:flex;align-items:center;font-size:11px;font-weight:700;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .15s;}
-#app-rf #view-rf-hist{display:none;flex-direction:row;flex:1;overflow:hidden;height:calc(100vh - 52px);}
+#app-rf #view-rf-hist{display:none;position:relative;flex-direction:row;flex:1;overflow:hidden;height:calc(100vh - 52px);}
 .hist-topbar{display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;}
 .hist-topbar label{font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.4px;}
 .hist-topbar select{background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:11px;font-family:var(--mono);padding:3px 8px;outline:none;cursor:pointer;}
@@ -1927,6 +1927,21 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
 .hist-win-btn{padding:3px 9px;border-radius:5px;border:1px solid var(--border2);background:var(--bg);color:var(--text3);font-family:var(--mono);font-size:10px;font-weight:700;cursor:pointer;transition:all .12s;}
 .hist-win-btn:hover{color:var(--text);border-color:var(--accent);}
 .hist-win-btn.active{border-color:#1E27F3;background:var(--accent-light);color:var(--accent);}
+.hist-density-ctl{display:flex;align-items:center;gap:0;border:1px solid var(--border2);border-radius:5px;background:var(--bg);overflow:hidden;user-select:none;}
+.hist-density-ctl button{border:none;background:transparent;color:var(--accent);font-family:var(--mono);font-size:11px;font-weight:700;width:20px;height:20px;line-height:20px;padding:0;cursor:pointer;transition:background .12s;}
+.hist-density-ctl button:hover{background:var(--accent-light);}
+.hist-density-ctl span{flex:1;text-align:center;font-family:var(--mono);font-size:10px;color:var(--text2);min-width:32px;}
+.hist-status-toggle{width:18px;height:18px;border-radius:50%;border:1px solid var(--border2);background:var(--bg);color:var(--text3);font-family:var(--mono);font-size:10px;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .12s;flex-shrink:0;}
+.hist-status-toggle:hover,.hist-status-toggle.active{color:var(--accent);border-color:var(--accent);}
+.hist-loading-overlay{position:absolute;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:rgba(10,13,24,0.72);backdrop-filter:blur(1px);}
+.hist-loading-overlay.show{display:flex;}
+.hist-bm-loader{display:inline-flex;flex-direction:column;align-items:center;gap:18px;}
+.hist-bm-ring{position:relative;width:96px;height:96px;display:flex;align-items:center;justify-content:center;}
+.hist-bm-ring svg.hist-bm-ring-svg{position:absolute;inset:0;animation:histBmSpin 2s linear infinite;}
+.hist-bm-ring svg.hist-bm-mark{transform-origin:center;animation:histBmBreathe 2s ease-in-out infinite;}
+.hist-bm-label{font-family:var(--mono);font-size:11px;letter-spacing:.25px;color:rgba(232,234,246,.78);}
+@keyframes histBmSpin{to{transform:rotate(360deg);}}
+@keyframes histBmBreathe{0%,100%{transform:scale(1);}50%{transform:scale(1.045);}}
 .hist-cats-bar{display:flex;flex-direction:column;gap:3px;}
 .hist-cat-cb{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:7px;border:1px solid transparent;cursor:pointer;user-select:none;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text2);transition:all .12s;width:100%;box-sizing:border-box;}
 .hist-cat-cb:hover{background:var(--accent-light);color:var(--text);}
@@ -3052,6 +3067,25 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
   <!-- VISTA HISTÓRICO / EVOLUCIÓN -->
   <div id="view-rf-hist">
 
+    <!-- Pantalla de carga — visible mientras histLoadData() trae/procesa el CSV
+         grande de Histórico; se oculta sola al terminar (ver histLoadData). -->
+    <div id="hist-loading-overlay" class="hist-loading-overlay">
+      <div class="hist-bm-loader">
+        <div class="hist-bm-ring">
+          <svg class="hist-bm-ring-svg" width="96" height="96" viewBox="0 0 132 132" fill="none" aria-hidden="true">
+            <circle cx="66" cy="66" r="63" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="3"/>
+            <circle cx="66" cy="66" r="63" fill="none" stroke="#1E27F3" stroke-width="3" stroke-linecap="round" pathLength="100" stroke-dasharray="26 74"/>
+          </svg>
+          <svg class="hist-bm-mark" width="58" height="58" viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M925.36 73.3889C931.18 74.9889 937.94 74.6589 943.98 75.4389C1034.9 87.1789 1110.25 158.999 1124 249.999C1124.88 255.819 1124.8 261.829 1126.2 267.499V933.409C1118.79 1036.08 1033.79 1120.48 930.7 1126.6L267.63 1126.54C165.53 1119.33 81.69 1035.91 74.01 933.869C74.7 708.439 72.57 482.819 75.09 257.519C87.06 155.319 173.35 79.1189 274.83 73.3789H925.38L925.36 73.3889Z" fill="#1E27F3"/>
+            <path d="M905.84 334.479L853.22 431.669C849.51 438.519 842.37 442.769 834.59 442.769H365.43C357.64 442.769 350.5 438.519 346.79 431.659L294.17 334.469H208.72L280.72 467.439C297.58 498.569 330.04 517.909 365.44 517.909H834.6C870 517.909 902.46 498.579 919.31 467.439L991.31 334.469H905.86L905.84 334.479Z" fill="#FFFFFF"/>
+            <path d="M654.47 825.099H543.57L476.29 578.379H311.17L348.39 652.819L415.68 632.619L492.93 902.969H707.14L793.04 632.989L856.51 657.799L888.27 578.379H728.49L654.47 825.099Z" fill="#FFFFFF"/>
+          </svg>
+        </div>
+        <div class="hist-bm-label" id="hist-loading-label">Cargando histórico…</div>
+      </div>
+    </div>
+
     <!-- SIDEBAR izquierdo -->
     <div style="width:230px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
       <!-- Categorías (scroll si hay muchas) -->
@@ -3065,25 +3099,29 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
       <div style="padding:10px 14px 14px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;">
         <label style="font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;">Ventana</label>
         <div id="hist-win-group" class="hist-win-group">
+          <div class="hist-win-btn" data-win="7" onclick="histSetWindow(7)">7d</div>
           <div class="hist-win-btn" data-win="30" onclick="histSetWindow(30)">30d</div>
           <div class="hist-win-btn" data-win="60" onclick="histSetWindow(60)">60d</div>
           <div class="hist-win-btn" data-win="90" onclick="histSetWindow(90)">90d</div>
           <div class="hist-win-btn" data-win="0" onclick="histSetWindow(0)">Todo</div>
         </div>
         <label style="font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-top:4px;">Modo</label>
-        <div id="hist-mode-group" class="hist-win-group">
-          <div class="hist-win-btn" data-mode="trayectoria" onclick="histSetMode('trayectoria')">Trayectoria</div>
-          <div class="hist-win-btn" data-mode="curva" onclick="histSetMode('curva')">Curva</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <div id="hist-mode-group" class="hist-win-group">
+            <div class="hist-win-btn" data-mode="trayectoria" onclick="histSetMode('trayectoria')">Trayectoria</div>
+            <div class="hist-win-btn" data-mode="curva" onclick="histSetMode('curva')">Curva</div>
+          </div>
+          <div id="hist-curva-density-wrap" class="hist-density-ctl" style="display:none;"
+               title="Densidad de curvas — rueda del mouse o los botones" onwheel="histDensityWheel(event)">
+            <button type="button" onclick="histDensityStep(-10)">−</button>
+            <span id="hist-curva-density-val">100%</span>
+            <button type="button" onclick="histDensityStep(10)">+</button>
+          </div>
         </div>
-        <div id="hist-curva-density-wrap" style="display:none;flex-direction:column;gap:4px;margin-top:4px;">
-          <label style="font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;display:flex;justify-content:space-between;">
-            <span>Densidad de curvas</span>
-            <span id="hist-curva-density-val" style="color:var(--text2);">100%</span>
-          </label>
-          <input type="range" id="hist-curva-density" min="1" max="100" value="100" step="1"
-                 oninput="histSetCurvaDensity(this.value)" style="width:100%;">
+        <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+          <button type="button" class="hist-status-toggle" id="hist-status-toggle" onclick="histToggleStatus()" title="Ver detalle de carga">i</button>
+          <div id="hist-status" style="display:none;font-family:var(--mono);font-size:9px;color:var(--text3);">—</div>
         </div>
-        <div id="hist-status" style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:2px;">—</div>
       </div>
     </div>
 
@@ -12009,6 +12047,8 @@ let _histSeriesByTicker = {}; // { TICKER: { tipo, cat, pts:[{fecha, calc}] } } 
 let _histMaxFecha       = null; // última fecha presente en la sheet Histórico (referencia para la ventana)
 let _histDebug          = {}; // volcado de diagnóstico — ver window._histDebugDump() en histLoadData
 let _histExcluded       = new Set(); // tickers excluidos del gráfico por click en su último punto (modo trayectoria)
+let _histExcludedPoints = new Set(); // "TICKER|fecha" — datos puntuales excluidos por click (ruido, amortizaciones, etc.), sin sacar todo el ticker
+let _histHoverTicker    = null; // ticker actualmente resaltado por hover (modo trayectoria) — null = ninguno
 
 // ── ONs — bundle propio del Worker de ONs, cargado en paralelo al de Bonos.
 // Independiente de onsState (que es el estado de la pestaña ONs): se hace un
@@ -12627,6 +12667,7 @@ async function histLoadData() {
   if (!_bundle || !_bundle._tipos) return;
   _histLoading = true;
   histSetStatus('Cargando histórico…');
+  histShowLoadingOverlay(true);
   try {
     // _tamarSerie (serie diaria BCRA de TAMAR, variable 44) se necesita para
     // reconstruir puntos históricos de tamar/dual_tamar (ver
@@ -12840,12 +12881,21 @@ async function histLoadData() {
     window._histDebugDump = function () { return _histDebug; };
   } finally {
     _histLoading = false;
+    histShowLoadingOverlay(false);
   }
 }
 
 function histSetStatus(msg) {
   const el = document.getElementById('hist-status');
   if (el) el.textContent = msg;
+}
+
+// Pantalla de carga (pop-up centrado) mientras se trae/procesa el CSV grande
+// de Histórico — se muestra al empezar histLoadData() y se oculta en su
+// finally, tanto si terminó bien como si tiró error.
+function histShowLoadingOverlay(show) {
+  const el = document.getElementById('hist-loading-overlay');
+  if (el) el.classList.toggle('show', show);
 }
 
 // ── Inicialización del tab (primera vez y cada vez que se activa) ──
@@ -12876,9 +12926,7 @@ function histInit() {
 
   const densWrap = document.getElementById('hist-curva-density-wrap');
   if (densWrap) densWrap.style.display = _histState.mode === 'curva' ? 'flex' : 'none';
-  const densInput = document.getElementById('hist-curva-density');
   const densVal = document.getElementById('hist-curva-density-val');
-  if (densInput) densInput.value = _histState.curvaDensity;
   if (densVal) densVal.textContent = _histState.curvaDensity + '%';
 
   const selY = document.getElementById('hist-axis-y');
@@ -12939,11 +12987,40 @@ window.histSetMode = function (mode) {
 // Densidad de curvas en modo Curva — 100% = una curva por cada fecha disponible
 // en la ventana elegida; a menor %, se van salteando fechas parejo (no al azar)
 // para llegar a esa fracción, conservando siempre la fecha más reciente.
+// Control chico tipo "volumen" (− / + o rueda del mouse, ver histDensityWheel)
+// en vez de una barra de rango nativa — así no hereda el celeste del navegador.
 window.histSetCurvaDensity = function (val) {
-  _histState.curvaDensity = Number(val);
+  const clamped = Math.max(1, Math.min(100, Math.round(Number(val))));
+  _histState.curvaDensity = clamped;
   const densVal = document.getElementById('hist-curva-density-val');
-  if (densVal) densVal.textContent = val + '%';
+  if (densVal) densVal.textContent = clamped + '%';
   histRenderChart();
+};
+
+window.histDensityWheel = function (e) {
+  e.preventDefault();
+  const delta = e.deltaY < 0 ? 5 : -5; // rueda arriba = más densidad, abajo = menos
+  histDensityStep(delta);
+};
+
+// Ojo: no referenciar _histState directo desde un atributo onclick/onwheel del
+// HTML — esas expresiones corren en scope global y _histState vive adentro
+// del IIFE que envuelve la app (mismo problema que ya hubo con isSobLeyAR).
+// Por eso el +/- y la rueda llaman a esta función (colgada de window) en vez
+// de leer _histState en el propio atributo.
+window.histDensityStep = function (delta) {
+  histSetCurvaDensity((_histState.curvaDensity ?? 100) + delta);
+};
+
+// Muestra/oculta el detalle de carga ("N puntos · N tickers · N filas
+// descartadas") — antes estaba siempre visible, ahora sólo con el botoncito "i".
+window.histToggleStatus = function () {
+  const el = document.getElementById('hist-status');
+  const btn = document.getElementById('hist-status-toggle');
+  if (!el) return;
+  const show = el.style.display === 'none';
+  el.style.display = show ? 'block' : 'none';
+  if (btn) btn.classList.toggle('active', show);
 };
 
 window.histAxisChanged = function () {
@@ -12966,6 +13043,11 @@ function histHexToRgba(hex, alpha) {
 // distingue instrumento por instrumento. Último punto (fecha más reciente) más
 // grande y con borde blanco — clickeable para excluir/reincluir ese ticker
 // (queda su último punto atenuado y clickeable, el resto de la cola se oculta).
+// Un punto intermedio (no el último) también es clickeable, pero togglea sólo
+// ESE dato puntual (_histExcludedPoints) — para sacar un outlier aislado
+// (amortización, dato corrupto, etc.) sin perder el resto de la cola del
+// ticker. Los puntos excluidos así quedan en un dataset aparte, chicos y
+// tenues, todavía clickeables para reincluirlos — ver histHandleChartClick.
 function histBuildDatasetsTrayectoria(axX, axY, cutoff) {
   const datasets = [];
   const legendItems = [];
@@ -12991,40 +13073,71 @@ function histBuildDatasetsTrayectoria(axX, axY, cutoff) {
 
       tickers.forEach((ticker, idx) => {
         const serie = _histSeriesByTicker[ticker];
-        const pts = serie.pts
+        const allPts = serie.pts
           .filter(p => !cutoff || p.fecha >= cutoff)
           .map(p => ({ x: lcGetAxisVal(p, axX), y: lcGetAxisVal(p, axY), fecha: p.fecha, label: ticker, group: gk }))
           .filter(p => isFinite(p.x) && p.x > 0 && isFinite(p.y));
-        if (!pts.length) return;
+        if (!allPts.length) return;
+
+        const pts        = allPts.filter(p => !_histExcludedPoints.has(ticker + '|' + p.fecha));
+        const excludedPts = allPts.filter(p => _histExcludedPoints.has(ticker + '|' + p.fecha));
+        if (!pts.length && !excludedPts.length) return;
 
         groupHasData = true;
-        allDataPts.push(...pts);
+        const excluded = _histExcluded.has(ticker);
+        // Los puntos de un ticker excluido no cuentan para el rango de los
+        // ejes — así al sacar un instrumento el gráfico se reacomoda en vez
+        // de dejar el rango ensanchado por datos que ya no se ven.
+        if (!excluded) allDataPts.push(...pts);
 
         const color = histTickerShade(baseColor, idx, tickers.length);
-        const excluded = _histExcluded.has(ticker);
-        const n = pts.length;
-        const pointRadius      = excluded ? pts.map((p, i) => i === n - 1 ? 6 : 0) : pts.map((p, i) => i === n - 1 ? 7 : 3);
-        const pointHoverRadius = pointRadius.map(r => r + 2);
-        const pointBorderColor = pts.map((p, i) => i === n - 1 ? '#fff' : (excluded ? DIM : color));
-        const pointBorderWidth = pts.map((p, i) => i === n - 1 ? 2 : 0);
 
-        datasets.push({
-          label: ticker,
-          data: pts,
-          showLine: !excluded,
-          borderColor: excluded ? DIM : color,
-          backgroundColor: excluded ? DIM : color,
-          pointBackgroundColor: excluded ? DIM : color,
-          pointBorderColor,
-          pointBorderWidth,
-          pointRadius,
-          pointHoverRadius,
-          borderWidth: 1.5,
-          tension: 0,
-          fill: false,
-          order: 2,
-          _histTicker: ticker, // usado por el click handler para saber a qué ticker toggear
-        });
+        if (pts.length) {
+          const n = pts.length;
+          const pointRadius      = excluded ? pts.map((p, i) => i === n - 1 ? 6 : 0) : pts.map((p, i) => i === n - 1 ? 7 : 3);
+          const pointHoverRadius = pointRadius.map(r => r + 2);
+          const pointBorderColor = pts.map((p, i) => i === n - 1 ? '#fff' : (excluded ? DIM : color));
+          const pointBorderWidth = pts.map((p, i) => i === n - 1 ? 2 : 0);
+          // Puntos intermedios: radio visual chico (3px) pero área de click más
+          // generosa (pointHitRadius) para poder desclickear un dato puntual sin
+          // tener que acertarle al píxel exacto.
+          const pointHitRadius   = pts.map((p, i) => i === n - 1 ? 4 : 8);
+
+          datasets.push({
+            label: ticker,
+            data: pts,
+            showLine: !excluded,
+            borderColor: excluded ? DIM : color,
+            backgroundColor: excluded ? DIM : color,
+            pointBackgroundColor: excluded ? DIM : color,
+            pointBorderColor,
+            pointBorderWidth,
+            pointRadius,
+            pointHoverRadius,
+            pointHitRadius,
+            borderWidth: 1.5,
+            tension: 0,
+            fill: false,
+            order: 2,
+            _histTicker: ticker, // usado por el click handler para saber a qué ticker toggear
+            _histBaseColor: excluded ? DIM : color, // color "de base" sin el dimming de hover, para poder restaurarlo
+          });
+        }
+
+        if (excludedPts.length) {
+          datasets.push({
+            label: `${ticker} (excluidos)`,
+            data: excludedPts,
+            showLine: false,
+            pointBackgroundColor: DIM,
+            pointBorderColor: DIM,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            pointHitRadius: 6,
+            order: 2,
+            _histExcludedPointsFor: ticker, // usado por el click handler para reincluir el punto clickeado
+          });
+        }
       });
 
       if (groupHasData && !legendGroupsSeen.has(gk)) {
@@ -13040,9 +13153,13 @@ function histBuildDatasetsTrayectoria(axX, axY, cutoff) {
 // ── Modo CURVA: en vez de la cola de cada ticker, una curva TIR×Duration por
 // DÍA (todos los tickers del grupo con dato ese día, ordenados por eje X) —
 // así se ve cómo se fue moviendo la curva completa. Los días más viejos salen
-// más tenues (alpha menor), el día más reciente sale opaco y con puntos
-// marcados. Soberanos sale como dos curvas separadas (AR/NY), igual que en
-// modo trayectoria.
+// casi transparentes (degradé no lineal, ver GAMMA más abajo), el día más
+// reciente sale opaco y con puntos marcados, y cada curva de tendencia queda
+// etiquetada con su fecha (dibujada por el plugin 'hist-lbl' en histRenderChart).
+// Soberanos sale como dos curvas separadas (AR/NY), igual que en modo
+// trayectoria. Respeta las mismas exclusiones que Trayectoria (_histExcluded/
+// _histExcludedPoints): un instrumento o dato puntual sacado ahí tampoco entra
+// acá, y la curva de ese día se recalcula sin ese dato.
 function histBuildDatasetsCurva(axX, axY, cutoff) {
   const datasets = [];
   const legendItems = [];
@@ -13055,9 +13172,11 @@ function histBuildDatasetsCurva(axX, axY, cutoff) {
     for (const ticker of Object.keys(_histSeriesByTicker)) {
       const serie = _histSeriesByTicker[ticker];
       if (serie.cat !== cat.id) continue;
+      if (_histExcluded.has(ticker)) continue; // instrumento excluido entero (ver Trayectoria) — tampoco entra a las curvas
       const gk = histGroupKeyFor(cat.id, ticker);
       for (const p of serie.pts) {
         if (cutoff && p.fecha < cutoff) continue;
+        if (_histExcludedPoints.has(ticker + '|' + p.fecha)) continue; // dato puntual excluido — la curva de ese día se arma sin él
         const x = lcGetAxisVal(p, axX), y = lcGetAxisVal(p, axY);
         if (!isFinite(x) || x <= 0 || !isFinite(y)) continue;
         const byFecha = (ptsByGroupFecha[gk] = ptsByGroupFecha[gk] || {});
@@ -13093,7 +13212,13 @@ function histBuildDatasetsCurva(axX, axY, cutoff) {
         allDataPts.push(...pts);
 
         const isLastDate = i === nF - 1;
-        const alpha = nF === 1 ? 1 : 0.12 + (i / (nF - 1)) * 0.88; // más vieja → más tenue
+        // Degradé no lineal: las curvas recientes se mantienen bien visibles y
+        // las viejas caen rápido a casi transparentes (en vez de un fade parejo
+        // a lo largo de toda la ventana) — GAMMA>1 concentra la opacidad cerca
+        // del extremo reciente.
+        const GAMMA = 3.2;
+        const posicion = nF === 1 ? 1 : i / (nF - 1); // 0 = más vieja, 1 = más reciente
+        const alpha = nF === 1 ? 1 : 0.03 + Math.pow(posicion, GAMMA) * 0.97;
         const rgba = histHexToRgba(baseColor, alpha);
 
         // Línea de TENDENCIA (regresión polinómica, no unir los puntos reales) —
@@ -13127,6 +13252,8 @@ function histBuildDatasetsCurva(axX, axY, cutoff) {
             tension: 0.15,
             fill: false,
             order: isLastDate ? 1 : 3,
+            _histCurvaFecha: fecha, // usado por el plugin de etiquetas para poner la fecha junto a la curva
+            _histCurvaColor: rgba,
           });
         }
 
@@ -13154,20 +13281,71 @@ function histBuildDatasetsCurva(axX, axY, cutoff) {
   return { datasets, legendItems, allDataPts };
 }
 
-// Click en un punto — sólo hace algo en modo trayectoria, y sólo si el punto
-// clickeado es el ÚLTIMO de su ticker (el marcador grande con borde blanco):
-// togglea ese ticker dentro/fuera de _histExcluded, igual que el patrón de
-// "excluir" que ya usa el Índice (el ticker excluido queda con su último punto
-// atenuado pero clickeable, para poder reincluirlo con otro click).
+// Click en un punto — sólo hace algo en modo trayectoria. Tres casos:
+//  1) Dataset de puntos EXCLUIDOS individualmente (_histExcludedPointsFor):
+//     reincluye ese dato puntual.
+//  2) Punto ÚLTIMO de la línea de un ticker (el marcador grande con borde
+//     blanco): togglea el ticker ENTERO dentro/fuera de _histExcluded, igual
+//     que el patrón de "excluir" que ya usa el Índice.
+//  3) Cualquier otro punto de la línea: togglea SÓLO ese dato puntual
+//     (_histExcludedPoints) — para sacar un outlier aislado sin perder el
+//     resto de la cola del ticker. Queda visible, chico y tenue, en un
+//     dataset aparte, todavía clickeable para reincluirlo (caso 1).
 function histHandleChartClick(evt, elements, chart) {
   if (_histState.mode !== 'trayectoria' || !elements || !elements.length) return;
   const el = elements[0];
   const ds = chart.data.datasets[el.datasetIndex];
-  if (!ds || !ds._histTicker) return;
-  if (el.index !== ds.data.length - 1) return; // sólo el último punto togglea
+  if (!ds) return;
+
+  if (ds._histExcludedPointsFor) {
+    const pt = ds.data[el.index];
+    const ticker = ds._histExcludedPointsFor;
+    if (pt && pt.fecha) _histExcludedPoints.delete(ticker + '|' + pt.fecha);
+    histRenderChart();
+    return;
+  }
+
+  if (!ds._histTicker) return;
   const ticker = ds._histTicker;
-  if (_histExcluded.has(ticker)) _histExcluded.delete(ticker); else _histExcluded.add(ticker);
+  if (el.index === ds.data.length - 1) {
+    if (_histExcluded.has(ticker)) _histExcluded.delete(ticker); else _histExcluded.add(ticker);
+  } else {
+    const pt = ds.data[el.index];
+    if (!pt || !pt.fecha) return;
+    const key = ticker + '|' + pt.fecha;
+    if (_histExcludedPoints.has(key)) _histExcludedPoints.delete(key); else _histExcludedPoints.add(key);
+  }
   histRenderChart();
+}
+
+// Hover — sólo en modo trayectoria: resalta TODA la línea del ticker bajo el
+// mouse (opacidad plena + borde más grueso + al frente) y atenúa el resto,
+// para poder seguir una trayectoria puntual sin que se mezcle con las demás.
+// Los tickers ya excluidos (_histExcluded) no se tocan, siguen tenues.
+function histHandleChartHover(evt, elements, chart) {
+  if (_histState.mode !== 'trayectoria') return;
+  let ticker = null;
+  if (elements && elements.length) {
+    const ds = chart.data.datasets[elements[0].datasetIndex];
+    if (ds && ds._histTicker) ticker = ds._histTicker;
+  }
+  if (ticker === _histHoverTicker) return; // sin cambios, no repintar
+  _histHoverTicker = ticker;
+
+  let changed = false;
+  chart.data.datasets.forEach(ds => {
+    if (!ds._histTicker || !ds._histBaseColor || _histExcluded.has(ds._histTicker)) return;
+    let color, width, order;
+    if (!ticker) { color = ds._histBaseColor; width = 1.5; order = 2; }
+    else if (ds._histTicker === ticker) { color = ds._histBaseColor; width = 3; order = -1; }
+    else { color = histHexToRgba(ds._histBaseColor, 0.12); width = 1.5; order = 2; }
+    if (ds.borderColor !== color) {
+      ds.borderColor = color; ds.backgroundColor = color; ds.pointBackgroundColor = color;
+      ds.borderWidth = width; ds.order = order;
+      changed = true;
+    }
+  });
+  if (changed) chart.update('none');
 }
 
 // ── Render del gráfico — dispatcher según _histState.mode (ver
@@ -13214,6 +13392,7 @@ function histRenderChart() {
   const xSpan = xMax - xMin || 1, ySpan = yMax - yMin || 1;
   const xPad = xSpan * 0.08, yPad = ySpan * 0.15;
 
+  const histMode = _histState.mode;
   _histChartInst = new Chart(canvas, {
     type: 'scatter',
     data: { datasets },
@@ -13222,6 +13401,7 @@ function histRenderChart() {
       maintainAspectRatio: false,
       animation: false,
       onClick: (evt, elements, chart) => histHandleChartClick(evt, elements, chart),
+      onHover: (evt, elements, chart) => histHandleChartHover(evt, elements, chart),
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -13253,7 +13433,65 @@ function histRenderChart() {
           title: { display: true, text: lcAxisLabel(axY) + ' (%)', color: '#8a90b0', font: { size: 10 } }
         }
       }
-    }
+    },
+    // ── Etiquetas dibujadas a mano (mismo patrón que 'cmp-lbl' del Comparador) ──
+    // Trayectoria: ticker junto al círculo grande (último dato) de cada línea.
+    // Curva: fecha junto al extremo derecho de cada curva de tendencia.
+    plugins: [{
+      id: 'hist-lbl',
+      afterDatasetsDraw(chart) {
+        const ctx = chart.ctx;
+        if (histMode === 'curva') {
+          chart.data.datasets.forEach((ds, di) => {
+            if (!ds._histCurvaFecha) return;
+            const meta = chart.getDatasetMeta(di);
+            const els = meta.data;
+            if (!els || !els.length) return;
+            const last = els[els.length - 1]; // extremo de mayor x de la curva
+            if (!last) return;
+            ctx.save();
+            ctx.font = "600 8px 'DM Mono',monospace";
+            ctx.fillStyle = ds._histCurvaColor || ds.borderColor;
+            ctx.textBaseline = 'middle';
+            ctx.fillText(ds._histCurvaFecha, last.x + 4, last.y);
+            ctx.restore();
+          });
+          return;
+        }
+        // Trayectoria: un label por ticker, en su último punto visible —
+        // mismo esquema de anti-colisión simple que cmp-lbl (Comparador).
+        const labelItems = [];
+        chart.data.datasets.forEach((ds, di) => {
+          if (!ds._histTicker) return;
+          const meta = chart.getDatasetMeta(di);
+          const idx = ds.data.length - 1;
+          const el = meta.data[idx];
+          if (!el) return;
+          labelItems.push({ ticker: ds._histTicker, el, excl: _histExcluded.has(ds._histTicker) });
+        });
+        const placed = [];
+        labelItems.forEach(item => {
+          ctx.font = "600 9px 'DM Mono',monospace";
+          const w = ctx.measureText(item.ticker).width;
+          const h = 12;
+          let lx = item.el.x + 9, ly = item.el.y - 8;
+          for (const p of placed) {
+            if (Math.abs(lx - p.lx) < (w + p.w) / 2 + 4 && Math.abs(ly - p.ly) < h + 2) ly = p.ly + h + 3;
+          }
+          placed.push({ lx, ly, w, h });
+          item._lx = lx; item._ly = ly;
+        });
+        labelItems.forEach(({ ticker, _lx: lx, _ly: ly, excl }) => {
+          ctx.save();
+          ctx.font = "600 9px 'DM Mono',monospace";
+          const w = ctx.measureText(ticker).width;
+          if (!excl) { ctx.fillStyle = 'rgba(19,25,41,0.82)'; ctx.fillRect(lx - 2, ly - 9, w + 4, 12); }
+          ctx.fillStyle = excl ? 'rgba(138,144,176,0.5)' : '#e8eaf6';
+          ctx.fillText(ticker, lx, ly);
+          ctx.restore();
+        });
+      }
+    }]
   });
 
   if (!window._histResizeObs) {
@@ -13272,7 +13510,7 @@ function histRenderChart() {
 
   if (legendEl) {
     const ultimoDatoHtml = _histState.mode === 'trayectoria'
-      ? '<div class="hist-legend-item"><div class="hist-legend-dot hist-legend-dot-big" style="background:var(--text3);"></div><span>Último dato (click para excluir)</span></div>'
+      ? '<div class="hist-legend-item"><div class="hist-legend-dot hist-legend-dot-big" style="background:var(--text3);"></div><span>Último dato: click excluye el ticker · otro punto: click excluye sólo ese dato</span></div>'
       : '';
     legendEl.innerHTML = legendItems.map(item =>
       `<div class="hist-legend-item">
