@@ -12013,7 +12013,11 @@ let _histOnsPriceKeys = {};                    // { TICKER_INDICE: [tickers cand
 // el Comparador es sólo Bonos/Letras y no debe mostrar una categoría "ON". Se usa
 // HIST_CATS (= CMP_CATS + ON) sólo dentro de esta pestaña.
 const HIST_ON_CAT = { id: 'on', label: 'Obligaciones Negociables', color: '#2dd4bf' };
-const HIST_CATS = CMP_CATS.concat([HIST_ON_CAT]);
+// ON sacado del listado del sidebar de Histórico a pedido — la clasificación/cálculo
+// de ONs sigue existiendo más abajo (histCalcForTicker, _histOnsIndex, etc.) por si
+// se la vuelve a pedir, pero al no estar en HIST_CATS nunca aparece como chip ni se
+// itera en los builders de datasets.
+const HIST_CATS = CMP_CATS;
 
 // Color de una categoría en el Histórico: para 'on' es fijo (no vive en CMP_CATS
 // ni en _cmpState.colorMap); para el resto delega en cmpColorFor (mismos colores
@@ -12086,6 +12090,52 @@ function histTickerShade(baseColor, idx, total) {
   const lMin = 32, lMax = 76; // evita extremos ilegibles (muy oscuro/muy claro)
   const newL = lMin + (idx / (total - 1)) * (lMax - lMin);
   return histHslToHex(h, Math.min(92, Math.max(35, s)), newL);
+}
+
+// ── Regresión polinómica (mín. cuadrados, grado ≤2) — usada en modo CURVA para
+// dibujar una línea de tendencia por fecha en vez de unir los puntos reales.
+// degree se recorta a n-1 (con 2 puntos da una recta; con 1 no hay fit posible).
+// Resuelve el sistema de ecuaciones normales por eliminación gaussiana con
+// pivoteo parcial — con grado ≤2 son a lo sumo 3 incógnitas, no hace falta
+// una librería de álgebra lineal para esto.
+function histPolyFit(xs, ys, degree) {
+  const n = xs.length;
+  if (n < 2) return null;
+  degree = Math.min(degree, n - 1);
+  const m = degree + 1;
+  const A = [], b = [];
+  for (let i = 0; i < m; i++) {
+    const row = [];
+    for (let j = 0; j < m; j++) {
+      let s = 0;
+      for (let k = 0; k < n; k++) s += Math.pow(xs[k], i + j);
+      row.push(s);
+    }
+    A.push(row);
+    let sb = 0;
+    for (let k = 0; k < n; k++) sb += ys[k] * Math.pow(xs[k], i);
+    b.push(sb);
+  }
+  for (let col = 0; col < m; col++) {
+    let piv = col;
+    for (let r = col + 1; r < m; r++) if (Math.abs(A[r][col]) > Math.abs(A[piv][col])) piv = r;
+    if (piv !== col) { [A[col], A[piv]] = [A[piv], A[col]]; [b[col], b[piv]] = [b[piv], b[col]]; }
+    if (Math.abs(A[col][col]) < 1e-9) return null; // sistema degenerado (ej. todos los x iguales)
+    for (let r = 0; r < m; r++) {
+      if (r === col) continue;
+      const factor = A[r][col] / A[col][col];
+      for (let c2 = col; c2 < m; c2++) A[r][c2] -= factor * A[col][c2];
+      b[r] -= factor * b[col];
+    }
+  }
+  const coef = [];
+  for (let i = 0; i < m; i++) coef.push(b[i] / A[i][i]);
+  return coef; // [c0, c1, c2] tal que y = c0 + c1·x + c2·x²
+}
+function histPolyEval(coef, x) {
+  let y = 0, p = 1;
+  for (let i = 0; i < coef.length; i++) { y += coef[i] * p; p *= x; }
+  return y;
 }
 
 // ── Parser CSV genérico (respeta comillas, a diferencia de los parsers internos
@@ -12355,6 +12405,18 @@ async function histLoadData() {
     let maxFecha = null, usadas = 0, descartadas = 0;
     const motivos = { sinTipo: 0, sinMacro: 0, sinPrecio: 0, sinCalc: 0, sinCat: 0 };
 
+    // Diagnóstico por tipo fino — para poder ver, sin adivinar, POR QUÉ una
+    // categoría entera queda vacía (ej. soberano: ¿nunca encuentra precio del
+    // ticker "D"?) o produce valores disparatados (ej. boncer/dolarlinked:
+    // ¿el CER/TC de esa fecha viene corrupto?). Se vuelca en window._histDebugDump().
+    const motivosPorTipo = {};   // { tipoReal: {sinMacro,sinPrecio,sinCalc,ok} }
+    const sampleSinPrecio = {};  // { tipoReal: [{ticker,fecha,triedKey}, ...] (máx 3) }
+    const sampleExtremos = {};   // { tipoReal: [{ticker,fecha,precio,cerHist,tcHist,tna,md}, ...] (máx 3) }
+    function histBump(tipo, campo) {
+      const m = (motivosPorTipo[tipo] = motivosPorTipo[tipo] || { sinMacro: 0, sinPrecio: 0, sinCalc: 0, ok: 0 });
+      m[campo]++;
+    }
+
     for (const row of rawRows) {
       if (!maxFecha || row.fecha > maxFecha) maxFecha = row.fecha;
 
@@ -12375,7 +12437,7 @@ async function histLoadData() {
 
       // Sin fila de Macro para esa fecha exacta → sin CER/TC de esa fecha, se descarta.
       const macroRow = macroMap[row.fecha];
-      if (!macroRow) { descartadas++; motivos.sinMacro++; continue; }
+      if (!macroRow) { descartadas++; motivos.sinMacro++; histBump(tipoReal, 'sinMacro'); continue; }
 
       // Precio EFECTIVO a usar para el motor de cálculo — para soberano/harddolar/
       // bopreal/fixed_rate el ticker que cotiza en la unidad correcta es DISTINTO
@@ -12408,13 +12470,37 @@ async function histLoadData() {
         const key = histLookupKeyFor(tipoReal, row.ticker);
         if (key && dayMap[key] > 0) precioEfectivo = dayMap[key];
       }
-      if (precioEfectivo == null || isNaN(precioEfectivo) || precioEfectivo <= 0) { descartadas++; motivos.sinPrecio++; continue; }
+      if (precioEfectivo == null || isNaN(precioEfectivo) || precioEfectivo <= 0) {
+        descartadas++; motivos.sinPrecio++; histBump(tipoReal, 'sinPrecio');
+        const arr = (sampleSinPrecio[tipoReal] = sampleSinPrecio[tipoReal] || []);
+        if (arr.length < 3) {
+          const triedKey = tipoReal === 'harddolar' ? (HARDDOLAR_USD[row.ticker] || null)
+            : tipoReal === 'on' ? (_histOnsPriceKeys[row.ticker] || [row.ticker]).join('|')
+            : histLookupKeyFor(tipoReal, row.ticker);
+          arr.push({ ticker: row.ticker, fecha: row.fecha, triedKey });
+        }
+        continue;
+      }
 
       const calc = histCalcForTicker(row.ticker, tipoReal, precioEfectivo, row.fecha, macroRow.cer, macroRow.tc);
-      if (!calc) { descartadas++; motivos.sinCalc++; continue; }
+      if (!calc) { descartadas++; motivos.sinCalc++; histBump(tipoReal, 'sinCalc'); continue; }
 
       const cat = histCatForTipo(tipoReal);
       if (!cat) { descartadas++; motivos.sinCat++; continue; }
+
+      histBump(tipoReal, 'ok');
+      const tnaChk = Math.abs(calc.tna ?? calc.tea ?? 0);
+      if (!isFinite(tnaChk) || tnaChk > 300) {
+        const arr = (sampleExtremos[tipoReal] = sampleExtremos[tipoReal] || []);
+        if (arr.length < 3) {
+          const { flujos, ...calcSinFlujos } = calc; // el array de flujos infla el dump, no aporta al diagnóstico
+          arr.push({
+            ticker: row.ticker, fecha: row.fecha, precio: precioEfectivo,
+            cerHist: macroRow.cer, tcHist: macroRow.tc,
+            calc: calcSinFlujos,
+          });
+        }
+      }
 
       if (!seriesByTicker[row.ticker]) seriesByTicker[row.ticker] = { tipo: tipoReal, cat, pts: [] };
       seriesByTicker[row.ticker].pts.push({ fecha: row.fecha, calc });
@@ -12443,6 +12529,9 @@ async function histLoadData() {
       rawRowsCount: rawRows.length,
       maxFecha,
       motivos,
+      motivosPorTipo,
+      sampleSinPrecio,
+      sampleExtremos,
       bundleTiposCount: Object.keys(_bundle._tipos || {}).length,
       onsIndexCount: Object.keys(_histOnsIndex).length,
       macroMapCount: Object.keys(macroMap).length,
@@ -12689,10 +12778,41 @@ function histBuildDatasetsCurva(axX, axY, cutoff) {
         const alpha = nF === 1 ? 1 : 0.12 + (i / (nF - 1)) * 0.88; // más vieja → más tenue
         const rgba = histHexToRgba(baseColor, alpha);
 
+        // Línea de TENDENCIA (regresión polinómica grado ≤2, no unir los puntos
+        // reales) — se muestrean ~24 puntos parejos dentro del rango de X de ESE
+        // día para dibujar la curva suave.
+        const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+        const coef = histPolyFit(xs, ys, 2);
+        if (coef) {
+          const xMinD = Math.min(...xs), xMaxD = Math.max(...xs);
+          const STEPS = 24;
+          const curvePts = [];
+          for (let s = 0; s <= STEPS; s++) {
+            const x = xMinD + (xMaxD - xMinD) * (s / STEPS);
+            curvePts.push({ x, y: histPolyEval(coef, x), label: histGroupLabel(gk), fecha });
+          }
+          datasets.push({
+            label: `${histGroupLabel(gk)} ${fecha} (tendencia)`,
+            data: curvePts,
+            showLine: true,
+            borderColor: rgba,
+            backgroundColor: rgba,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            pointHitRadius: 0,
+            borderWidth: isLastDate ? 2.2 : 1,
+            tension: 0.15,
+            fill: false,
+            order: isLastDate ? 1 : 3,
+          });
+        }
+
+        // Puntos REALES — sólo como referencia (más chicos, sin línea propia);
+        // el día más reciente se marca más grande con borde blanco.
         datasets.push({
           label: `${histGroupLabel(gk)} ${fecha}`,
           data: pts,
-          showLine: true,
+          showLine: false,
           borderColor: rgba,
           backgroundColor: rgba,
           pointBackgroundColor: rgba,
@@ -12700,9 +12820,6 @@ function histBuildDatasetsCurva(axX, axY, cutoff) {
           pointBorderWidth: isLastDate ? 1.5 : 0,
           pointRadius: isLastDate ? 4 : 2,
           pointHoverRadius: isLastDate ? 6 : 4,
-          borderWidth: isLastDate ? 2.2 : 1,
-          tension: 0,
-          fill: false,
           order: isLastDate ? 1 : 3,
         });
       });
