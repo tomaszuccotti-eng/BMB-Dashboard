@@ -12242,23 +12242,45 @@ function histNormalizeMacroRows(raw) {
 // planilla — esto es sólo para que el gráfico no muestre la fila corrupta.
 function histSanitizeMacroMap(macroMap) {
   const fechas = Object.keys(macroMap).sort();
-  let prevCer = null, prevTc = null;
-  const descartadas = [];
+  let prevCer = null, prevTc = null, prevFecha = null;
+  const candidatos = [];
   for (const f of fechas) {
     const row = macroMap[f];
     const cerOk = row.cer != null && isFinite(row.cer);
     const tcOk  = row.tc  != null && isFinite(row.tc);
-    const cerSalto = prevCer != null && cerOk && (row.cer > prevCer * 5 || row.cer < prevCer / 5);
-    const tcSalto  = prevTc  != null && tcOk  && (row.tc  > prevTc  * 5 || row.tc  < prevTc  / 5);
+    // Sólo comparamos contra el día anterior si está a ≤5 días corridos — el
+    // histórico tiene 5 años (2021→2026) y CER creció MUCHO en ese lapso (esto
+    // no es un salto de un día, es inflación real). Si hubiera un hueco grande
+    // sin filas en el medio, comparar contra un prevCer de meses/años atrás
+    // dispara un falso positivo — y como esta fila se compara contra la
+    // ANTERIOR VÁLIDA, un solo falso positivo así arrastra en cadena a TODAS
+    // las fechas siguientes. Con el gap acotado, un hueco grande simplemente
+    // no se controla (no hay forma confiable de juzgarlo) en vez de rechazar
+    // en cadena.
+    const diasGap = prevFecha ? Math.round((new Date(f + 'T12:00:00') - new Date(prevFecha + 'T12:00:00')) / 86400000) : null;
+    const comparar = diasGap != null && diasGap <= 5;
+    const cerSalto = comparar && prevCer != null && cerOk && (row.cer > prevCer * 5 || row.cer < prevCer / 5);
+    const tcSalto  = comparar && prevTc  != null && tcOk  && (row.tc  > prevTc  * 5 || row.tc  < prevTc  / 5);
     if (cerSalto || tcSalto) {
-      descartadas.push({ fecha: f, cer: row.cer, tc: row.tc, prevCer, prevTc, motivo: cerSalto && tcSalto ? 'cer y tc' : cerSalto ? 'cer' : 'tc' });
-      delete macroMap[f];
-      continue; // no actualiza prevCer/prevTc con un valor que se descartó
+      candidatos.push({ fecha: f, cer: row.cer, tc: row.tc, prevCer, prevTc, motivo: cerSalto && tcSalto ? 'cer y tc' : cerSalto ? 'cer' : 'tc' });
+      continue; // NO actualiza prevCer/prevTc/prevFecha con un candidato (recién se aplica el descarte más abajo, si pasa el freno de seguridad)
     }
     if (cerOk) prevCer = row.cer;
     if (tcOk) prevTc = row.tc;
+    prevFecha = f;
   }
-  return descartadas;
+  // Freno de seguridad: la corrupción real que ya vimos es puntual (1-2 filas
+  // "en vivo" con la coma corrida). Si este filtro "detecta" muchas más que
+  // eso, es mucho más probable que el filtro esté mal calibrado para este
+  // dataset que que haya semejante cantidad de filas corruptas — en ese caso
+  // NO se descarta nada (se deja el Macro tal cual vino) y se informa la
+  // lista igual, para poder revisarla sin volver a romper el gráfico entero.
+  const LIMITE = Math.max(15, Math.round(fechas.length * 0.03));
+  if (candidatos.length > LIMITE) {
+    return { descartadas: [], candidatosNoAplicados: candidatos, frenoDeSeguridad: `${candidatos.length} fechas parecían corruptas, por encima del límite de seguridad (${LIMITE}) — no se descartó nada, revisar candidatosNoAplicados` };
+  }
+  for (const c of candidatos) delete macroMap[c.fecha];
+  return { descartadas: candidatos, candidatosNoAplicados: [], frenoDeSeguridad: null };
 }
 
 // ── Mapea el tipo fino (_bundle._tipos[ticker]) a un id de CMP_CATS ──
@@ -12418,7 +12440,7 @@ async function histLoadData() {
     ]);
     const rawRows  = histNormalizeTickerRows(histParseCSV(txtTickers));
     const macroMap = histNormalizeMacroRows(histParseCSV(txtMacro));
-    const macroFilasDescartadas = histSanitizeMacroMap(macroMap);
+    const macroSaneo = histSanitizeMacroMap(macroMap);
 
     // Índice de ONs (ticker "índice" del Worker de ONs → {vencimiento, sector,
     // empresa, frecuencia, ...}) + candidatos de ticker de PRECIO para cada uno
@@ -12582,7 +12604,9 @@ async function histLoadData() {
       motivosPorTipo,
       sampleSinPrecio,
       sampleExtremos,
-      macroFilasDescartadas, // fechas de Macro excluidas por salto absurdo de CER/TC (ver histSanitizeMacroMap)
+      macroFilasDescartadas: macroSaneo.descartadas, // fechas de Macro excluidas por salto absurdo de CER/TC (ver histSanitizeMacroMap)
+      macroSaneoFrenoDeSeguridad: macroSaneo.frenoDeSeguridad, // si no es null, el freno de seguridad se activó y NO se descartó nada
+      macroSaneoCandidatosNoAplicados: macroSaneo.candidatosNoAplicados,
       bundleTiposCount: Object.keys(_bundle._tipos || {}).length,
       onsIndexCount: Object.keys(_histOnsIndex).length,
       macroMapCount: Object.keys(macroMap).length,
