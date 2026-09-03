@@ -1,4 +1,4 @@
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -11992,6 +11992,7 @@ let _histLoaded         = false;
 let _histLoading        = false;
 let _histSeriesByTicker = {}; // { TICKER: { tipo, cat, pts:[{fecha, calc}] } } — pts ordenados asc por fecha
 let _histMaxFecha       = null; // última fecha presente en la sheet Histórico (referencia para la ventana)
+let _histDebug          = {}; // volcado de diagnóstico — ver window._histDebugDump() en histLoadData
 
 // ── ONs — bundle propio del Worker de ONs, cargado en paralelo al de Bonos.
 // Independiente de onsState (que es el estado de la pestaña ONs): se hace un
@@ -12280,6 +12281,7 @@ async function histLoadData() {
 
     const seriesByTicker = {};
     let maxFecha = null, usadas = 0, descartadas = 0;
+    const motivos = { sinTipo: 0, sinMacro: 0, sinPrecio: 0, sinCalc: 0, sinCat: 0 };
 
     for (const row of rawRows) {
       if (!maxFecha || row.fecha > maxFecha) maxFecha = row.fecha;
@@ -12297,11 +12299,11 @@ async function histLoadData() {
       // más amplio de histórico de vencidas, todavía pendiente.
       let tipoReal = ((_bundle._tipos || {})[row.ticker] || '').toLowerCase();
       if (!tipoReal && _histOnsIndex[row.ticker]) tipoReal = 'on';
-      if (!tipoReal) { descartadas++; continue; }
+      if (!tipoReal) { descartadas++; motivos.sinTipo++; continue; }
 
       // Sin fila de Macro para esa fecha exacta → sin CER/TC de esa fecha, se descarta.
       const macroRow = macroMap[row.fecha];
-      if (!macroRow) { descartadas++; continue; }
+      if (!macroRow) { descartadas++; motivos.sinMacro++; continue; }
 
       // Precio EFECTIVO a usar para el motor de cálculo — para soberano/harddolar/
       // bopreal/fixed_rate el ticker que cotiza en la unidad correcta es DISTINTO
@@ -12334,13 +12336,13 @@ async function histLoadData() {
         const key = histLookupKeyFor(tipoReal, row.ticker);
         if (key && dayMap[key] > 0) precioEfectivo = dayMap[key];
       }
-      if (precioEfectivo == null || isNaN(precioEfectivo) || precioEfectivo <= 0) { descartadas++; continue; }
+      if (precioEfectivo == null || isNaN(precioEfectivo) || precioEfectivo <= 0) { descartadas++; motivos.sinPrecio++; continue; }
 
       const calc = histCalcForTicker(row.ticker, tipoReal, precioEfectivo, row.fecha, macroRow.cer, macroRow.tc);
-      if (!calc) { descartadas++; continue; }
+      if (!calc) { descartadas++; motivos.sinCalc++; continue; }
 
       const cat = histCatForTipo(tipoReal);
-      if (!cat) { descartadas++; continue; }
+      if (!cat) { descartadas++; motivos.sinCat++; continue; }
 
       if (!seriesByTicker[row.ticker]) seriesByTicker[row.ticker] = { tipo: tipoReal, cat, pts: [] };
       seriesByTicker[row.ticker].pts.push({ fecha: row.fecha, calc });
@@ -12358,10 +12360,38 @@ async function histLoadData() {
     const nTickers = Object.keys(seriesByTicker).length;
     histSetStatus(`${usadas} punto${usadas !== 1 ? 's' : ''} · ${nTickers} ticker${nTickers !== 1 ? 's' : ''}`
       + (descartadas ? ` · ${descartadas} fila${descartadas !== 1 ? 's' : ''} descartada${descartadas !== 1 ? 's' : ''}` : ''));
+
+    // Diagnóstico temporal — volcado accesible desde la consola con
+    // window._histDebugDump() (bare "_bundle"/etc no se ve desde afuera del
+    // cierre que envuelve todo este bloque, pero esto sí porque se cuelga
+    // explícitamente de window). Muestra por qué se descarta cada fila y una
+    // muestra concreta de la fecha más reciente presente en el CSV.
+    const filasHoy = rawRows.filter(r => r.fecha === maxFecha);
+    _histDebug = {
+      rawRowsCount: rawRows.length,
+      maxFecha,
+      motivos,
+      bundleTiposCount: Object.keys(_bundle._tipos || {}).length,
+      onsIndexCount: Object.keys(_histOnsIndex).length,
+      macroMapCount: Object.keys(macroMap).length,
+      macroFechasUltimas: Object.keys(macroMap).sort().slice(-5),
+      tieneMacroParaMaxFecha: !!macroMap[maxFecha],
+      filasHoyCount: filasHoy.length,
+      muestraFilasHoy: filasHoy.slice(0, 8).map(r => ({
+        ticker: r.ticker,
+        precio: r.precio,
+        tipoEnBundle: (_bundle._tipos || {})[r.ticker] || null,
+        esON: !!_histOnsIndex[r.ticker],
+      })),
+    };
+    window._histDebugDump = function () { return _histDebug; };
+
     histRenderChart();
   } catch (e) {
     console.warn('Histórico: error cargando datos', e);
     histSetStatus('Error cargando histórico (ver consola)');
+    _histDebug = { errorFatal: String(e) };
+    window._histDebugDump = function () { return _histDebug; };
   } finally {
     _histLoading = false;
   }
