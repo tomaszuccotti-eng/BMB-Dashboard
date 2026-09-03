@@ -1,4 +1,4 @@
-    <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -3069,6 +3069,11 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
           <div class="hist-win-btn" data-win="60" onclick="histSetWindow(60)">60d</div>
           <div class="hist-win-btn" data-win="90" onclick="histSetWindow(90)">90d</div>
           <div class="hist-win-btn" data-win="0" onclick="histSetWindow(0)">Todo</div>
+        </div>
+        <label style="font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-top:4px;">Modo</label>
+        <div id="hist-mode-group" class="hist-win-group">
+          <div class="hist-win-btn" data-mode="trayectoria" onclick="histSetMode('trayectoria')">Trayectoria</div>
+          <div class="hist-win-btn" data-mode="curva" onclick="histSetMode('curva')">Curva</div>
         </div>
         <div id="hist-status" style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:2px;">—</div>
       </div>
@@ -11986,6 +11991,7 @@ const _histState = {
   axisY: 'tna',
   axisX: 'md',
   windowDays: 30, // 30 | 60 | 90 | 0 (=Todo)
+  mode: 'trayectoria', // 'trayectoria' (cola por ticker) | 'curva' (curva del tipo por día)
 };
 let _histChartInst      = null;
 let _histLoaded         = false;
@@ -11993,6 +11999,7 @@ let _histLoading        = false;
 let _histSeriesByTicker = {}; // { TICKER: { tipo, cat, pts:[{fecha, calc}] } } — pts ordenados asc por fecha
 let _histMaxFecha       = null; // última fecha presente en la sheet Histórico (referencia para la ventana)
 let _histDebug          = {}; // volcado de diagnóstico — ver window._histDebugDump() en histLoadData
+let _histExcluded       = new Set(); // tickers excluidos del gráfico por click en su último punto (modo trayectoria)
 
 // ── ONs — bundle propio del Worker de ONs, cargado en paralelo al de Bonos.
 // Independiente de onsState (que es el estado de la pestaña ONs): se hace un
@@ -12014,6 +12021,71 @@ const HIST_CATS = CMP_CATS.concat([HIST_ON_CAT]);
 function histColorFor(catId) {
   if (catId === HIST_ON_CAT.id) return HIST_ON_CAT.color;
   return cmpColorFor(catId);
+}
+
+// ── Soberanos: Ley AR (Bonares) vs Ley NY (Globales) — mismo split visual que
+// el Índice/Comparador (isSobLeyAR: arranca con "A" → Ley AR), pero con colores
+// PROPIOS del Histórico (CMP_SOB_AR/CMP_SOB_NY, ya definidos y sin uso — evita
+// pasar por cmpAssignColor('soberano_ny'), que mutaría el color del Comparador).
+// "Grupo" acá es la unidad real de color/curva: para todo lo que no es
+// soberano, el grupo es la categoría tal cual; para soberano, se parte en dos.
+function histGroupKeyFor(catId, ticker) {
+  if (catId === 'soberano') return isSobLeyAR(ticker) ? 'soberano_ar' : 'soberano_ny';
+  return catId;
+}
+function histGroupColor(groupKey) {
+  if (groupKey === 'soberano_ar') return CMP_SOB_AR;
+  if (groupKey === 'soberano_ny') return CMP_SOB_NY;
+  return histColorFor(groupKey);
+}
+function histGroupLabel(groupKey) {
+  if (groupKey === 'soberano_ar') return 'Soberanos Ley AR';
+  if (groupKey === 'soberano_ny') return 'Soberanos Ley NY';
+  const cat = HIST_CATS.find(c => c.id === groupKey);
+  return cat ? cat.label : groupKey;
+}
+
+// ── Tonos por instrumento dentro de un mismo grupo — varía la luminosidad
+// alrededor del color base (mismo hue/saturación) así las líneas de distintos
+// tickers de una misma categoría se distinguen entre sí. idx/total = posición
+// del ticker dentro de su grupo, ya ordenado de forma estable (alfabético).
+function histHexToHsl(hex) {
+  hex = (hex || '#888888').replace('#', '');
+  if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+  const r = parseInt(hex.slice(0, 2), 16) / 255, g = parseInt(hex.slice(2, 4), 16) / 255, b = parseInt(hex.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0; const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      default: h = (r - g) / d + 4; break;
+    }
+    h /= 6;
+  }
+  return [h * 360, s * 100, l * 100];
+}
+function histHslToHex(h, s, l) {
+  h = ((h % 360) + 360) % 360 / 360; s = Math.max(0, Math.min(100, s)) / 100; l = Math.max(0, Math.min(100, l)) / 100;
+  let r, g, b;
+  if (s === 0) { r = g = b = l; }
+  else {
+    const hue2rgb = (p, q, t) => { if (t < 0) t += 1; if (t > 1) t -= 1; if (t < 1 / 6) return p + (q - p) * 6 * t; if (t < 1 / 2) return q; if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6; return p; };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1 / 3); g = hue2rgb(p, q, h); b = hue2rgb(p, q, h - 1 / 3);
+  }
+  const toHex = x => Math.round(x * 255).toString(16).padStart(2, '0');
+  return '#' + toHex(r) + toHex(g) + toHex(b);
+}
+function histTickerShade(baseColor, idx, total) {
+  if (total <= 1) return baseColor;
+  const [h, s, l] = histHexToHsl(baseColor);
+  const lMin = 32, lMax = 76; // evita extremos ilegibles (muy oscuro/muy claro)
+  const newL = lMin + (idx / (total - 1)) * (lMax - lMin);
+  return histHslToHex(h, Math.min(92, Math.max(35, s)), newL);
 }
 
 // ── Parser CSV genérico (respeta comillas, a diferencia de los parsers internos
@@ -12424,6 +12496,10 @@ function histInit() {
     b.classList.toggle('active', Number(b.dataset.win) === _histState.windowDays);
   });
 
+  document.querySelectorAll('#hist-mode-group .hist-win-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === _histState.mode);
+  });
+
   const selY = document.getElementById('hist-axis-y');
   const selX = document.getElementById('hist-axis-x');
   if (selY) selY.value = _histState.axisY;
@@ -12469,6 +12545,14 @@ window.histSetWindow = function (days) {
   histRenderChart();
 };
 
+window.histSetMode = function (mode) {
+  _histState.mode = mode;
+  document.querySelectorAll('#hist-mode-group .hist-win-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+  histRenderChart();
+};
+
 window.histAxisChanged = function () {
   const selY = document.getElementById('hist-axis-y');
   const selX = document.getElementById('hist-axis-x');
@@ -12477,9 +12561,177 @@ window.histAxisChanged = function () {
   histRenderChart();
 };
 
-// ── Render del gráfico: un dataset (línea+puntos) por ticker, agrupado por
-//    categoría para el color; último punto (fecha más reciente) más grande y
-//    con borde blanco, el resto de la cola más chico ──
+function histHexToRgba(hex, alpha) {
+  hex = (hex || '#888888').replace('#', '');
+  if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+  const r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// ── Modo TRAYECTORIA: un dataset (línea+puntos) por ticker — cada uno con su
+// propio tono dentro del color del grupo (categoría, o soberano_ar/ny), así se
+// distingue instrumento por instrumento. Último punto (fecha más reciente) más
+// grande y con borde blanco — clickeable para excluir/reincluir ese ticker
+// (queda su último punto atenuado y clickeable, el resto de la cola se oculta).
+function histBuildDatasetsTrayectoria(axX, axY, cutoff) {
+  const datasets = [];
+  const legendItems = [];
+  const allDataPts = [];
+  const legendGroupsSeen = new Set();
+  const DIM = 'rgba(138,144,176,0.28)';
+
+  for (const cat of HIST_CATS) {
+    if (!_histState.cats.has(cat.id)) continue;
+
+    const tickersByGroup = {};
+    for (const ticker of Object.keys(_histSeriesByTicker)) {
+      const serie = _histSeriesByTicker[ticker];
+      if (serie.cat !== cat.id) continue;
+      const gk = histGroupKeyFor(cat.id, ticker);
+      (tickersByGroup[gk] = tickersByGroup[gk] || []).push(ticker);
+    }
+
+    for (const gk of Object.keys(tickersByGroup)) {
+      const tickers = tickersByGroup[gk].sort();
+      const baseColor = histGroupColor(gk);
+      let groupHasData = false;
+
+      tickers.forEach((ticker, idx) => {
+        const serie = _histSeriesByTicker[ticker];
+        const pts = serie.pts
+          .filter(p => !cutoff || p.fecha >= cutoff)
+          .map(p => ({ x: lcGetAxisVal(p, axX), y: lcGetAxisVal(p, axY), fecha: p.fecha, label: ticker, group: gk }))
+          .filter(p => isFinite(p.x) && p.x > 0 && isFinite(p.y));
+        if (!pts.length) return;
+
+        groupHasData = true;
+        allDataPts.push(...pts);
+
+        const color = histTickerShade(baseColor, idx, tickers.length);
+        const excluded = _histExcluded.has(ticker);
+        const n = pts.length;
+        const pointRadius      = excluded ? pts.map((p, i) => i === n - 1 ? 6 : 0) : pts.map((p, i) => i === n - 1 ? 7 : 3);
+        const pointHoverRadius = pointRadius.map(r => r + 2);
+        const pointBorderColor = pts.map((p, i) => i === n - 1 ? '#fff' : (excluded ? DIM : color));
+        const pointBorderWidth = pts.map((p, i) => i === n - 1 ? 2 : 0);
+
+        datasets.push({
+          label: ticker,
+          data: pts,
+          showLine: !excluded,
+          borderColor: excluded ? DIM : color,
+          backgroundColor: excluded ? DIM : color,
+          pointBackgroundColor: excluded ? DIM : color,
+          pointBorderColor,
+          pointBorderWidth,
+          pointRadius,
+          pointHoverRadius,
+          borderWidth: 1.5,
+          tension: 0,
+          fill: false,
+          order: 2,
+          _histTicker: ticker, // usado por el click handler para saber a qué ticker toggear
+        });
+      });
+
+      if (groupHasData && !legendGroupsSeen.has(gk)) {
+        legendGroupsSeen.add(gk);
+        legendItems.push({ color: baseColor, label: histGroupLabel(gk) });
+      }
+    }
+  }
+
+  return { datasets, legendItems, allDataPts };
+}
+
+// ── Modo CURVA: en vez de la cola de cada ticker, una curva TIR×Duration por
+// DÍA (todos los tickers del grupo con dato ese día, ordenados por eje X) —
+// así se ve cómo se fue moviendo la curva completa. Los días más viejos salen
+// más tenues (alpha menor), el día más reciente sale opaco y con puntos
+// marcados. Soberanos sale como dos curvas separadas (AR/NY), igual que en
+// modo trayectoria.
+function histBuildDatasetsCurva(axX, axY, cutoff) {
+  const datasets = [];
+  const legendItems = [];
+  const allDataPts = [];
+
+  for (const cat of HIST_CATS) {
+    if (!_histState.cats.has(cat.id)) continue;
+
+    const ptsByGroupFecha = {};
+    for (const ticker of Object.keys(_histSeriesByTicker)) {
+      const serie = _histSeriesByTicker[ticker];
+      if (serie.cat !== cat.id) continue;
+      const gk = histGroupKeyFor(cat.id, ticker);
+      for (const p of serie.pts) {
+        if (cutoff && p.fecha < cutoff) continue;
+        const x = lcGetAxisVal(p, axX), y = lcGetAxisVal(p, axY);
+        if (!isFinite(x) || x <= 0 || !isFinite(y)) continue;
+        const byFecha = (ptsByGroupFecha[gk] = ptsByGroupFecha[gk] || {});
+        (byFecha[p.fecha] = byFecha[p.fecha] || []).push({ x, y, label: ticker, fecha: p.fecha, group: gk });
+      }
+    }
+
+    for (const gk of Object.keys(ptsByGroupFecha)) {
+      const baseColor = histGroupColor(gk);
+      const fechas = Object.keys(ptsByGroupFecha[gk]).sort(); // asc — la última es la más reciente
+      if (!fechas.length) continue;
+      const nF = fechas.length;
+      let groupHasData = false;
+
+      fechas.forEach((fecha, i) => {
+        const pts = ptsByGroupFecha[gk][fecha].slice().sort((a, b) => a.x - b.x);
+        if (pts.length < 2) return; // hace falta al menos 2 puntos para que sea una "curva"
+        groupHasData = true;
+        allDataPts.push(...pts);
+
+        const isLastDate = i === nF - 1;
+        const alpha = nF === 1 ? 1 : 0.12 + (i / (nF - 1)) * 0.88; // más vieja → más tenue
+        const rgba = histHexToRgba(baseColor, alpha);
+
+        datasets.push({
+          label: `${histGroupLabel(gk)} ${fecha}`,
+          data: pts,
+          showLine: true,
+          borderColor: rgba,
+          backgroundColor: rgba,
+          pointBackgroundColor: rgba,
+          pointBorderColor: isLastDate ? '#fff' : rgba,
+          pointBorderWidth: isLastDate ? 1.5 : 0,
+          pointRadius: isLastDate ? 4 : 2,
+          pointHoverRadius: isLastDate ? 6 : 4,
+          borderWidth: isLastDate ? 2.2 : 1,
+          tension: 0,
+          fill: false,
+          order: isLastDate ? 1 : 3,
+        });
+      });
+
+      if (groupHasData) legendItems.push({ color: baseColor, label: histGroupLabel(gk) });
+    }
+  }
+
+  return { datasets, legendItems, allDataPts };
+}
+
+// Click en un punto — sólo hace algo en modo trayectoria, y sólo si el punto
+// clickeado es el ÚLTIMO de su ticker (el marcador grande con borde blanco):
+// togglea ese ticker dentro/fuera de _histExcluded, igual que el patrón de
+// "excluir" que ya usa el Índice (el ticker excluido queda con su último punto
+// atenuado pero clickeable, para poder reincluirlo con otro click).
+function histHandleChartClick(evt, elements, chart) {
+  if (_histState.mode !== 'trayectoria' || !elements || !elements.length) return;
+  const el = elements[0];
+  const ds = chart.data.datasets[el.datasetIndex];
+  if (!ds || !ds._histTicker) return;
+  if (el.index !== ds.data.length - 1) return; // sólo el último punto togglea
+  const ticker = ds._histTicker;
+  if (_histExcluded.has(ticker)) _histExcluded.delete(ticker); else _histExcluded.add(ticker);
+  histRenderChart();
+}
+
+// ── Render del gráfico — dispatcher según _histState.mode (ver
+//    histBuildDatasetsTrayectoria / histBuildDatasetsCurva más arriba) ──
 function histRenderChart() {
   const canvas = document.getElementById('hist-curve-chart');
   if (!canvas) return;
@@ -12505,53 +12757,10 @@ function histRenderChart() {
     cutoff = d.toISOString().slice(0, 10);
   }
 
-  const datasets = [];
-  const legendItems = [];
-  const allDataPts = [];
-
-  for (const cat of HIST_CATS) {
-    if (!_histState.cats.has(cat.id)) continue;
-    const color = histColorFor(cat.id);
-    let catHasData = false;
-
-    for (const ticker of Object.keys(_histSeriesByTicker)) {
-      const serie = _histSeriesByTicker[ticker];
-      if (serie.cat !== cat.id) continue;
-
-      const pts = serie.pts
-        .filter(p => !cutoff || p.fecha >= cutoff)
-        .map(p => ({ x: lcGetAxisVal(p, axX), y: lcGetAxisVal(p, axY), fecha: p.fecha, label: ticker }))
-        .filter(p => isFinite(p.x) && p.x > 0 && isFinite(p.y));
-      if (!pts.length) continue;
-
-      catHasData = true;
-      allDataPts.push(...pts);
-
-      const n = pts.length;
-      const pointRadius       = pts.map((p, i) => i === n - 1 ? 7 : 3);
-      const pointHoverRadius  = pointRadius.map(r => r + 2);
-      const pointBorderColor  = pts.map((p, i) => i === n - 1 ? '#fff' : color);
-      const pointBorderWidth  = pts.map((p, i) => i === n - 1 ? 2 : 0);
-
-      datasets.push({
-        label: ticker,
-        data: pts,
-        showLine: true,
-        borderColor: color,
-        backgroundColor: color,
-        pointBackgroundColor: color,
-        pointBorderColor,
-        pointBorderWidth,
-        pointRadius,
-        pointHoverRadius,
-        borderWidth: 1.5,
-        tension: 0,
-        fill: false,
-        order: 2,
-      });
-    }
-    if (catHasData) legendItems.push({ color, label: cat.label });
-  }
+  const built = _histState.mode === 'curva'
+    ? histBuildDatasetsCurva(axX, axY, cutoff)
+    : histBuildDatasetsTrayectoria(axX, axY, cutoff);
+  const { datasets, legendItems, allDataPts } = built;
 
   if (!allDataPts.length) {
     if (legendEl) legendEl.innerHTML = '<span style="font-size:9px;color:var(--text3);font-family:var(--mono);">Sin datos para graficar en la ventana/categorías elegidas</span>';
@@ -12572,6 +12781,7 @@ function histRenderChart() {
       responsive: true,
       maintainAspectRatio: false,
       animation: false,
+      onClick: (evt, elements, chart) => histHandleChartClick(evt, elements, chart),
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -12621,12 +12831,15 @@ function histRenderChart() {
   }
 
   if (legendEl) {
+    const ultimoDatoHtml = _histState.mode === 'trayectoria'
+      ? '<div class="hist-legend-item"><div class="hist-legend-dot hist-legend-dot-big" style="background:var(--text3);"></div><span>Último dato (click para excluir)</span></div>'
+      : '';
     legendEl.innerHTML = legendItems.map(item =>
       `<div class="hist-legend-item">
         <div class="hist-legend-dot" style="background:${item.color}"></div>
         <span>${item.label}</span>
       </div>`
-    ).join('') + '<div class="hist-legend-item"><div class="hist-legend-dot hist-legend-dot-big" style="background:var(--text3);"></div><span>Último dato</span></div>';
+    ).join('') + ultimoDatoHtml;
   }
 }
 
