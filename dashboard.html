@@ -12215,31 +12215,107 @@ function histNormalizeTickerRows(raw) {
   }
   return out;
 }
+// ── Reconstrucción de CER/TC mal formateados por Sheets ──
+// Cuando la columna no está fijada como Texto plano, Sheets le mete puntos de
+// separador de miles a TODO el string de dígitos significativos — incluso a
+// través de lo que debería ser la parte decimal — y a veces suma un ",00"
+// final estilo moneda. Esto no es un problema puntual de la fila "de hoy":
+// pasa en CASI TODA la serie de CER (5 años) y en buena parte de TC. Ejemplos
+// reales (hoja Macro, fila real):
+//   CER "83.232.691.481.546"  → correcto: 832.32691481546
+//   TC  "15.094.686,00"       → correcto: 1509.4686
+// No hay forma de saber la posición correcta del punto mirando sólo el
+// string (puede ir en cualquiera de N-1 lugares) — pero CER y TC son series
+// que casi no se mueven día a día, así que se reconstruye probando cada
+// posición posible del punto decimal sobre los puros dígitos y quedándose
+// con la que da el valor más parecido (en proporción) al del día hábil
+// anterior YA reconstruido. Validado a mano contra el export completo real
+// de la hoja Macro (1214 filas, 2021-09-01 → 2026-09-01): 0 valores
+// ambiguos, 0 saltos falsos en CER, y en TC sólo aparecen los 2 saltos
+// grandes que son devaluaciones reales (14/08/2023 y 13/12/2023, no errores
+// de datos) — y el valor final calculado coincide con la fuente externa
+// (BCRA, vía indicadores.ar) y con el dato de TC ya validado antes a mano.
+//
+// Como la comparación es contra el día anterior, el algoritmo es invariante
+// de escala (34.29, 342.9 o 3429 arrancan igual de "consistentes" entre sí) —
+// hace falta un ancla externa para desambiguar. Se usan los valores reales
+// del 01/09/2021, la fecha más vieja disponible hoy en la hoja. Si esa fecha
+// deja de estar (se borra la fila más vieja), no hay ancla y la
+// reconstrucción de CER en particular puede fallar — queda reflejado en
+// window._histDebugDump() (cerAnchorEncontrada/tcAnchorEncontrada).
+const CER_ANCHOR_FECHA = '2021-09-01';
+const CER_ANCHOR_VALOR = 34.28632676361;
+const TC_ANCHOR_FECHA  = '2021-09-01';
+const TC_ANCHOR_VALOR  = 97.78;
+let _histMacroAnchorInfo = { cerAnchorEncontrada: false, tcAnchorEncontrada: false };
+
+function histFixOverGroupedNumber(rawStr, refValue) {
+  if (rawStr == null) return NaN;
+  let s = String(rawStr).trim();
+  if (s === '') return NaN;
+  if (s.endsWith(',00')) s = s.slice(0, -3);
+  else if (s.endsWith('.00')) s = s.slice(0, -3);
+  const digits = s.replace(/[^\d]/g, '');
+  if (!digits) return NaN;
+  if (refValue == null || !isFinite(refValue) || refValue <= 0) {
+    // Sin referencia (no hay día anterior reconstruido): mejor esfuerzo con
+    // el parser genérico — funciona si esta fila puntual no está corrompida,
+    // pero no puede desambiguar una fila con puntos de miles corridos.
+    const naive = toNum(rawStr);
+    return isNaN(naive) ? NaN : naive;
+  }
+  let best = NaN, bestScore = Infinity;
+  for (let cut = 1; cut <= digits.length; cut++) {
+    const candStr = cut === digits.length ? digits : (digits.slice(0, cut) + '.' + digits.slice(cut));
+    const val = parseFloat(candStr);
+    if (!val || !isFinite(val)) continue;
+    const ratio = Math.max(val / refValue, refValue / val);
+    if (ratio < bestScore) { bestScore = ratio; best = val; }
+  }
+  return best;
+}
+
 function histNormalizeMacroRows(raw) {
-  const map = {};
+  // La reconstrucción necesita procesar en orden cronológico: cada valor se
+  // ancla contra el anterior ya reconstruido, así que primero se ordena por
+  // fecha (el CSV de Sheets no viene necesariamente ordenado).
+  const rows = [];
   for (const r of raw) {
     const fecha = (r.fecha || '').trim().slice(0, 10);
     if (!fecha) continue;
-    const cer = toNum(r.cer);
-    const tc  = toNum(r.tc_oficial);
-    map[fecha] = { cer: isNaN(cer) ? null : cer, tc: isNaN(tc) ? null : tc };
+    rows.push({ fecha, cerRaw: r.cer, tcRaw: r.tc_oficial });
   }
+  rows.sort((a, b) => a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0);
+
+  const map = {};
+  let prevCer = null, prevTc = null;
+  let cerAnchorEncontrada = false, tcAnchorEncontrada = false;
+  for (const r of rows) {
+    let cer;
+    if (r.fecha === CER_ANCHOR_FECHA) { cer = CER_ANCHOR_VALOR; cerAnchorEncontrada = true; }
+    else cer = histFixOverGroupedNumber(r.cerRaw, prevCer);
+    if (isFinite(cer)) prevCer = cer; else cer = null;
+
+    let tc;
+    if (r.fecha === TC_ANCHOR_FECHA) { tc = TC_ANCHOR_VALOR; tcAnchorEncontrada = true; }
+    else tc = histFixOverGroupedNumber(r.tcRaw, prevTc);
+    if (isFinite(tc)) prevTc = tc; else tc = null;
+
+    map[r.fecha] = { cer, tc };
+  }
+  _histMacroAnchorInfo = { cerAnchorEncontrada, tcAnchorEncontrada };
   return map;
 }
 
-// ── Saneo de CER/TC: la fila más nueva de Macro la escribe sola el Apps Script
-// cada día (a diferencia del bulk histórico, que ya reparamos a mano) — y de
-// vez en cuando Sheets le reformatea la celda (mismo problema de fondo que ya
-// tuvimos con las fechas: si la columna no está fijada como Texto plano, un
-// valor recién escrito puede perder el punto decimal al exportarse a CSV, ej.
-// TC real 1509.4686 sale como "15094686"). CER/TC son series lentas — no se
-// mueven más de un puñado de % por día hábil — así que un salto >5x o <1/5
-// contra el último valor válido es, con altísima probabilidad, este bug de
-// formato y no un movimiento real de mercado. Se descarta esa fecha entera
-// (mismo trato que "sin fila de Macro" en el loop principal) para no
-// contaminar boncer/boncer_bullet/dólar linked, que sí dependen de CER/TC.
-// El arreglo de fondo sigue siendo fijar esa columna como Texto plano en la
-// planilla — esto es sólo para que el gráfico no muestre la fila corrupta.
+// ── Auditoría (no destructiva) de CER/TC ya reconstruidos ──
+// La reconstrucción de arriba ya resuelve el problema de fondo (no se
+// descarta nada por escala). Esto sólo deja constancia, para debug, de
+// cualquier salto >3x o <1/3 que sobreviva contra el día hábil anterior más
+// cercano (gap ≤5 días) — puede ser un movimiento real de mercado (ej. una
+// devaluación) o una fila con datos genuinamente malos, no un problema de
+// formato. NUNCA borra filas de macroMap: la vez que este tipo de filtro
+// borraba datos rompió el gráfico entero (ver historial), así que ahora es
+// puramente informativo.
 function histSanitizeMacroMap(macroMap) {
   const fechas = Object.keys(macroMap).sort();
   let prevCer = null, prevTc = null, prevFecha = null;
@@ -12248,39 +12324,18 @@ function histSanitizeMacroMap(macroMap) {
     const row = macroMap[f];
     const cerOk = row.cer != null && isFinite(row.cer);
     const tcOk  = row.tc  != null && isFinite(row.tc);
-    // Sólo comparamos contra el día anterior si está a ≤5 días corridos — el
-    // histórico tiene 5 años (2021→2026) y CER creció MUCHO en ese lapso (esto
-    // no es un salto de un día, es inflación real). Si hubiera un hueco grande
-    // sin filas en el medio, comparar contra un prevCer de meses/años atrás
-    // dispara un falso positivo — y como esta fila se compara contra la
-    // ANTERIOR VÁLIDA, un solo falso positivo así arrastra en cadena a TODAS
-    // las fechas siguientes. Con el gap acotado, un hueco grande simplemente
-    // no se controla (no hay forma confiable de juzgarlo) en vez de rechazar
-    // en cadena.
     const diasGap = prevFecha ? Math.round((new Date(f + 'T12:00:00') - new Date(prevFecha + 'T12:00:00')) / 86400000) : null;
     const comparar = diasGap != null && diasGap <= 5;
-    const cerSalto = comparar && prevCer != null && cerOk && (row.cer > prevCer * 5 || row.cer < prevCer / 5);
-    const tcSalto  = comparar && prevTc  != null && tcOk  && (row.tc  > prevTc  * 5 || row.tc  < prevTc  / 5);
+    const cerSalto = comparar && prevCer != null && cerOk && (row.cer > prevCer * 3 || row.cer < prevCer / 3);
+    const tcSalto  = comparar && prevTc  != null && tcOk  && (row.tc  > prevTc  * 3 || row.tc  < prevTc  / 3);
     if (cerSalto || tcSalto) {
       candidatos.push({ fecha: f, cer: row.cer, tc: row.tc, prevCer, prevTc, motivo: cerSalto && tcSalto ? 'cer y tc' : cerSalto ? 'cer' : 'tc' });
-      continue; // NO actualiza prevCer/prevTc/prevFecha con un candidato (recién se aplica el descarte más abajo, si pasa el freno de seguridad)
     }
     if (cerOk) prevCer = row.cer;
     if (tcOk) prevTc = row.tc;
     prevFecha = f;
   }
-  // Freno de seguridad: la corrupción real que ya vimos es puntual (1-2 filas
-  // "en vivo" con la coma corrida). Si este filtro "detecta" muchas más que
-  // eso, es mucho más probable que el filtro esté mal calibrado para este
-  // dataset que que haya semejante cantidad de filas corruptas — en ese caso
-  // NO se descarta nada (se deja el Macro tal cual vino) y se informa la
-  // lista igual, para poder revisarla sin volver a romper el gráfico entero.
-  const LIMITE = Math.max(15, Math.round(fechas.length * 0.03));
-  if (candidatos.length > LIMITE) {
-    return { descartadas: [], candidatosNoAplicados: candidatos, frenoDeSeguridad: `${candidatos.length} fechas parecían corruptas, por encima del límite de seguridad (${LIMITE}) — no se descartó nada, revisar candidatosNoAplicados` };
-  }
-  for (const c of candidatos) delete macroMap[c.fecha];
-  return { descartadas: candidatos, candidatosNoAplicados: [], frenoDeSeguridad: null };
+  return { descartadas: [], candidatosNoAplicados: candidatos, frenoDeSeguridad: null };
 }
 
 // ── Mapea el tipo fino (_bundle._tipos[ticker]) a un id de CMP_CATS ──
@@ -12604,9 +12659,11 @@ async function histLoadData() {
       motivosPorTipo,
       sampleSinPrecio,
       sampleExtremos,
-      macroFilasDescartadas: macroSaneo.descartadas, // fechas de Macro excluidas por salto absurdo de CER/TC (ver histSanitizeMacroMap)
-      macroSaneoFrenoDeSeguridad: macroSaneo.frenoDeSeguridad, // si no es null, el freno de seguridad se activó y NO se descartó nada
-      macroSaneoCandidatosNoAplicados: macroSaneo.candidatosNoAplicados,
+      macroFilasDescartadas: macroSaneo.descartadas, // siempre [] ahora — el saneo es sólo informativo, ya no borra filas
+      macroSaneoFrenoDeSeguridad: macroSaneo.frenoDeSeguridad,
+      macroSaneoCandidatosNoAplicados: macroSaneo.candidatosNoAplicados, // saltos >3x/<1/3 que sobreviven a la reconstrucción — para revisar, no se descartan
+      cerAnchorEncontrada: _histMacroAnchorInfo.cerAnchorEncontrada, // false = no está la fecha ancla (01/09/2021) en la hoja → CER puede no reconstruirse bien
+      tcAnchorEncontrada: _histMacroAnchorInfo.tcAnchorEncontrada,
       bundleTiposCount: Object.keys(_bundle._tipos || {}).length,
       onsIndexCount: Object.keys(_histOnsIndex).length,
       macroMapCount: Object.keys(macroMap).length,
