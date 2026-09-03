@@ -3075,6 +3075,14 @@ html::-webkit-scrollbar-thumb:hover { background:rgba(30,39,243,0.7); }
           <div class="hist-win-btn" data-mode="trayectoria" onclick="histSetMode('trayectoria')">Trayectoria</div>
           <div class="hist-win-btn" data-mode="curva" onclick="histSetMode('curva')">Curva</div>
         </div>
+        <div id="hist-curva-density-wrap" style="display:none;flex-direction:column;gap:4px;margin-top:4px;">
+          <label style="font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;display:flex;justify-content:space-between;">
+            <span>Densidad de curvas</span>
+            <span id="hist-curva-density-val" style="color:var(--text2);">100%</span>
+          </label>
+          <input type="range" id="hist-curva-density" min="1" max="100" value="100" step="1"
+                 oninput="histSetCurvaDensity(this.value)" style="width:100%;">
+        </div>
         <div id="hist-status" style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:2px;">—</div>
       </div>
     </div>
@@ -11992,6 +12000,7 @@ const _histState = {
   axisX: 'md',
   windowDays: 30, // 30 | 60 | 90 | 0 (=Todo)
   mode: 'trayectoria', // 'trayectoria' (cola por ticker) | 'curva' (curva del tipo por día)
+  curvaDensity: 100, // % de fechas a graficar en modo curva (100 = todas, 50 = una cada dos, etc.)
 };
 let _histChartInst      = null;
 let _histLoaded         = false;
@@ -12028,13 +12037,19 @@ function histColorFor(catId) {
 }
 
 // ── Soberanos: Ley AR (Bonares) vs Ley NY (Globales) — mismo split visual que
-// el Índice/Comparador (isSobLeyAR: arranca con "A" → Ley AR), pero con colores
-// PROPIOS del Histórico (CMP_SOB_AR/CMP_SOB_NY, ya definidos y sin uso — evita
-// pasar por cmpAssignColor('soberano_ny'), que mutaría el color del Comparador).
+// el Índice/Comparador (arranca con "A" → Ley AR), pero con colores PROPIOS del
+// Histórico (CMP_SOB_AR/CMP_SOB_NY, ya definidos y sin uso — evita pasar por
+// cmpAssignColor('soberano_ny'), que mutaría el color del Comparador).
+// NOTA: hay OTRAS funciones "isSobLeyAR" en el archivo (líneas ~5530, ~6236,
+// ~11652), pero son locales a sus propias funciones (Comparador/Índice) — no
+// visibles desde acá. Por eso una versión propia, para no repetir el bug de
+// referenciar una que no está en este scope (causaba ReferenceError y rompía
+// TODO el render de Histórico apenas Soberanos estaba tildado).
+function histIsSobLeyAR(ticker) { return (ticker || '').toUpperCase().startsWith('A'); }
 // "Grupo" acá es la unidad real de color/curva: para todo lo que no es
 // soberano, el grupo es la categoría tal cual; para soberano, se parte en dos.
 function histGroupKeyFor(catId, ticker) {
-  if (catId === 'soberano') return isSobLeyAR(ticker) ? 'soberano_ar' : 'soberano_ny';
+  if (catId === 'soberano') return histIsSobLeyAR(ticker) ? 'soberano_ar' : 'soberano_ny';
   return catId;
 }
 function histGroupColor(groupKey) {
@@ -12589,6 +12604,13 @@ function histInit() {
     b.classList.toggle('active', b.dataset.mode === _histState.mode);
   });
 
+  const densWrap = document.getElementById('hist-curva-density-wrap');
+  if (densWrap) densWrap.style.display = _histState.mode === 'curva' ? 'flex' : 'none';
+  const densInput = document.getElementById('hist-curva-density');
+  const densVal = document.getElementById('hist-curva-density-val');
+  if (densInput) densInput.value = _histState.curvaDensity;
+  if (densVal) densVal.textContent = _histState.curvaDensity + '%';
+
   const selY = document.getElementById('hist-axis-y');
   const selX = document.getElementById('hist-axis-x');
   if (selY) selY.value = _histState.axisY;
@@ -12639,6 +12661,18 @@ window.histSetMode = function (mode) {
   document.querySelectorAll('#hist-mode-group .hist-win-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.mode === mode);
   });
+  const densWrap = document.getElementById('hist-curva-density-wrap');
+  if (densWrap) densWrap.style.display = mode === 'curva' ? 'flex' : 'none';
+  histRenderChart();
+};
+
+// Densidad de curvas en modo Curva — 100% = una curva por cada fecha disponible
+// en la ventana elegida; a menor %, se van salteando fechas parejo (no al azar)
+// para llegar a esa fracción, conservando siempre la fecha más reciente.
+window.histSetCurvaDensity = function (val) {
+  _histState.curvaDensity = Number(val);
+  const densVal = document.getElementById('hist-curva-density-val');
+  if (densVal) densVal.textContent = val + '%';
   histRenderChart();
 };
 
@@ -12768,7 +12802,21 @@ function histBuildDatasetsCurva(axX, axY, cutoff) {
       const nF = fechas.length;
       let groupHasData = false;
 
-      fechas.forEach((fecha, i) => {
+      // Densidad: a menor %, se saltean fechas parejo (ej. 50% → una cada dos)
+      // en vez de al azar, para no perder la forma "cómo se fue moviendo la
+      // curva". Siempre se conserva la fecha más reciente.
+      const density = Math.max(1, Math.min(100, _histState.curvaDensity ?? 100));
+      let fechasThinned = fechas;
+      if (density < 100 && nF > 1) {
+        const keepCount = Math.max(1, Math.round(nF * density / 100));
+        const idxs = new Set();
+        for (let k = 0; k < keepCount; k++) idxs.add(Math.round(k * (nF - 1) / Math.max(1, keepCount - 1)));
+        idxs.add(nF - 1); // conservar siempre la más reciente
+        fechasThinned = fechas.filter((_, i) => idxs.has(i));
+      }
+
+      fechasThinned.forEach((fecha) => {
+        const i = fechas.indexOf(fecha); // posición real (para que el alpha refleje la antigüedad real, no la del subset)
         const pts = ptsByGroupFecha[gk][fecha].slice().sort((a, b) => a.x - b.x);
         if (pts.length < 2) return; // hace falta al menos 2 puntos para que sea una "curva"
         groupHasData = true;
@@ -12778,11 +12826,16 @@ function histBuildDatasetsCurva(axX, axY, cutoff) {
         const alpha = nF === 1 ? 1 : 0.12 + (i / (nF - 1)) * 0.88; // más vieja → más tenue
         const rgba = histHexToRgba(baseColor, alpha);
 
-        // Línea de TENDENCIA (regresión polinómica grado ≤2, no unir los puntos
-        // reales) — se muestrean ~24 puntos parejos dentro del rango de X de ESE
-        // día para dibujar la curva suave.
+        // Línea de TENDENCIA (regresión polinómica, no unir los puntos reales) —
+        // se muestrean ~24 puntos parejos dentro del rango de X de ESE día para
+        // dibujar la curva suave. Grado 2 sólo con >=4 puntos: con exactamente 3
+        // puntos, un grado 2 pasa EXACTO por los tres (0 residuo) y cualquier
+        // ruido de un solo dato se convierte en una curvatura exagerada —
+        // categorías con pocos tickers (ej. BOPREALes) quedaban con curvas
+        // "locas" día a día por esto, no por datos corruptos. Con 2 puntos ya da
+        // grado 1 (recta) porque histPolyFit recorta a n-1.
         const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
-        const coef = histPolyFit(xs, ys, 2);
+        const coef = histPolyFit(xs, ys, pts.length >= 4 ? 2 : 1);
         if (coef) {
           const xMinD = Math.min(...xs), xMaxD = Math.max(...xs);
           const STEPS = 24;
